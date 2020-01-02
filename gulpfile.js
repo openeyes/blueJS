@@ -5,12 +5,14 @@ blueJS OE UI JS (JS) - Gulp generates:
 */
 
 const config = {
-	jsPrefix:	'blueJS',
+	jsPrefix:	'oe3_ui_js',
 }
 
 const paths = {
-	js: {
-		input:	'./src/js/**/*.js',
+	js: {	
+		input:	[	'./src/js/polyfills/*.js',		// to ensure concat order is correct
+					'./src/js/app/*.js', 
+					'./src/js/**/*.js'],			// and then everything else
 		output:	'./dist/',
 	},
 	reload:		'./dist/'
@@ -87,6 +89,6 @@ exports.buildJS = parallel(buildScripts,lintScripts);
 
 exports.default = series(
 	cleanDist,
-	exports.buildJS
-	//watchJS
+	exports.buildJS,
+	watchJS
 );
