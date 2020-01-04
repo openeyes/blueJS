@@ -16,7 +16,7 @@
 	};
 	
 	/**
-	* Append DOM Element to <body>, provides a consistent approach 	
+	* Provide a consistent approach to appending DOM Element to <body>, 	
 	* @param {DOM Element} el
 	*/
 	const appendTo = (dom,el) => {

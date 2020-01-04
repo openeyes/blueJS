@@ -10,10 +10,10 @@ const config = {
 
 const paths = {
 	js: {	
-		input:	[	'./src/js/polyfills/*.js',		// to ensure concat order is correct
-					'./src/js/app/*.js',			// load in the app
-					'./src/js/ui/*.js',				// all the other stuff
-					'./src/js/events/*.js'],		// and now the events
+		input:	[	'./src/polyfills/*.js',		// to ensure concat order is correct
+					'./src/app/*.js',			// load in the app
+					'./src/ui/*.js',			// all the other stuff
+					'./src/events/*.js'],		// and now the events
 		output:	'./dist/',
 	},
 	reload:		'./dist/'

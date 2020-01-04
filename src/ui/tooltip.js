@@ -1,8 +1,8 @@
 /**
 Tooltips (on icons)
 These may be loaded after intial DOM load (asynchronously)
-Build DOM structure and watch for Events, only ONE tooltip
-is open at a time, it just needs updating and positioning
+Build DOM structure and watch for Events, as only ONE tooltip
+is open at a time, reuse DOM, update and position
 */
 (function () {
 

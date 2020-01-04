@@ -69,12 +69,10 @@ const bluejay = (function () {
 	'use strict';
 	
 	/**
-	To improve performance capture all events
-	are routed through a single Event Listener.
-	Modules register with the app and the Event 
-	is then pushed back to the them
+	To improve performance all events are routed 
+	through a single Event Listener.
+	Modules register here and get a callback
 	*/
-	
 	const listeners = {
 		click:[],
 		hover:[],
@@ -92,7 +90,7 @@ const bluejay = (function () {
 	
 	
 	/**
-	* Called by the single Event Listener 
+	* Called by the single document Event Listener 
 	* @param {Event} 
 	*/
 	const clickEvent = (event) => {
@@ -127,7 +125,7 @@ const bluejay = (function () {
 	};
 	
 	/**
-	* Append DOM Element to <body>, provides a consistent approach 	
+	* Provide a consistent approach to appending DOM Element to <body>, 	
 	* @param {DOM Element} el
 	*/
 	const appendTo = (dom,el) => {
@@ -197,8 +195,8 @@ const bluejay = (function () {
 /**
 Tooltips (on icons)
 These may be loaded after intial DOM load (asynchronously)
-Build DOM structure and watch for Events, only ONE tooltip
-is open at a time, it just needs updating and positioning
+Build DOM structure and watch for Events, as only ONE tooltip
+is open at a time, reuse DOM, update and position
 */
 (function () {
 

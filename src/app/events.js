@@ -6,12 +6,10 @@
 	'use strict';
 	
 	/**
-	To improve performance capture all events
-	are routed through a single Event Listener.
-	Modules register with the app and the Event 
-	is then pushed back to the them
+	To improve performance all events are routed 
+	through a single Event Listener.
+	Modules register here and get a callback
 	*/
-	
 	const listeners = {
 		click:[],
 		hover:[],
@@ -29,7 +27,7 @@
 	
 	
 	/**
-	* Called by the single Event Listener 
+	* Called by the single document Event Listener 
 	* @param {Event} 
 	*/
 	const clickEvent = (event) => {
