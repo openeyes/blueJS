@@ -8,8 +8,8 @@ const bluejay = (function () {
 
 	'use strict';
 
-	const methods = {}; 	// Create a public methods object
-	const debug = true;		// Out debug to console
+	const methods = {}; 	// Create a public methods object 
+	const debug = true;		// Output debug to console
 	let extendID = 1;		// Method IDs
 
 	/**
@@ -18,19 +18,25 @@ const bluejay = (function () {
 	* @param  {Function} fn   	The method
 	* @returns {boolean}  
 	*/
-	methods.extend = function (name, fn) {
-		// only extend if not already been added
-		if(!fn.id){
-			bluejay.log('extending app: '+name);
+	methods.extend = (name,fn) => {
+		/*
+		only extend if not already been added 
+		and if the name is available
+		*/
+		if(!fn.id && !(name in methods)){
+			// ok, extend		
+			bluejay.log('extending app: '+ name + '()');
 			fn.id = extendID++;
 			methods[name] = fn;
 			return true;
+			
 		} else {
 			// method already added!
 			bluejay.log('Err: Can not extend again: "' + name + '"');
 			return false;
 		}
 	};
+	
 	
 	/**
 	* Log to console, if debug is true
@@ -41,6 +47,8 @@ const bluejay = (function () {
 			console.log('[bluejay] ' + msg);
 		}
 	};
+	
+	methods.log('OE JS UI layer... Setting up');
 	
 	// Return public methods object
 	return methods;

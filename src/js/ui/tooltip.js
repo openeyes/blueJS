@@ -1,35 +1,32 @@
 /**
-UI Tooltips 
+Tooltips (on icons)
+These may be loaded after intial DOM load (asynchronously)
+Build DOM structure and watch for Events, only ONE tooltip
+is open at a time, it just needs updating and positioning
 */
 (function () {
 
 	'use strict';
+
+	const selector = ".js-has-tooltip";
+	const dataAttribute = "tooltipContent"; 			// data-tooltip-content
+	const app = bluejay.addModule('tooltip'); 			// get unique namespace for module
 	
-	/**
-		Find all tooltips (js-has-tooltip)
-		touch with hover enhancement
-		build dom frame (and record state)
-		position and update css to reflex this
-	*/
-	
-	// do we have any tooltips?
-	let tooltips = bluejay.nodeArray(document.querySelectorAll('.js-has-tooltip'));
-	if(tooltips.length === 0) return; // none!
-	
-	bluejay.log('tooltips - init:' + tooltips.length);
-	
-	/*
-	create and add the div to the DOM
-	simply update the content when required
-	hide offscreen when removed
-	*/
+	// creat DOM
 	const div = document.createElement('div');
 	div.className = "oe-tooltip";
+	div.style.top = '20px';
+	div.style.left = '20px';
 	
-	bluejay.appendToBody(div);
+	bluejay.appendTo('body',div);
 	
+	const userClick = (event) => {
+		console.log(event);
+		//div.innerHTML = tip; // could contain HTML
+	};
 	
-
+	// Register to listen for Events
+	bluejay.listenForClick(selector,userClick);
 
 })(); 
 

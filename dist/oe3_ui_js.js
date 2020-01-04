@@ -15,8 +15,8 @@ const bluejay = (function () {
 
 	'use strict';
 
-	const methods = {}; 	// Create a public methods object
-	const debug = true;		// Out debug to console
+	const methods = {}; 	// Create a public methods object 
+	const debug = true;		// Output debug to console
 	let extendID = 1;		// Method IDs
 
 	/**
@@ -25,19 +25,25 @@ const bluejay = (function () {
 	* @param  {Function} fn   	The method
 	* @returns {boolean}  
 	*/
-	methods.extend = function (name, fn) {
-		// only extend if not already been added
-		if(!fn.id){
-			bluejay.log('extending app: '+name);
+	methods.extend = (name,fn) => {
+		/*
+		only extend if not already been added 
+		and if the name is available
+		*/
+		if(!fn.id && !(name in methods)){
+			// ok, extend		
+			bluejay.log('extending app: '+ name + '()');
 			fn.id = extendID++;
 			methods[name] = fn;
 			return true;
+			
 		} else {
 			// method already added!
 			bluejay.log('Err: Can not extend again: "' + name + '"');
 			return false;
 		}
 	};
+	
 	
 	/**
 	* Log to console, if debug is true
@@ -49,8 +55,58 @@ const bluejay = (function () {
 		}
 	};
 	
+	methods.log('OE JS UI layer... Setting up');
+	
 	// Return public methods object
 	return methods;
+
+})();
+/**
+* Events
+*/
+(function () {
+
+	'use strict';
+	
+	/**
+	To improve performance capture all events
+	are routed through a single Event Listener.
+	Modules register with the app and the Event 
+	is then pushed back to the them
+	*/
+	
+	const listeners = {
+		click:[],
+		hover:[],
+	};
+	
+	/**
+	* Register to receive Event
+	* @param {Sting}  	selector	DOM selector, or set of selectors e.g '.class' or '#id' 	
+	* @param {Function} cb			callback function
+	*/
+	const listenForClick = (selector,cb) => {
+		listeners.click.push({ 	selector:selector,
+								cb:cb });
+	};
+	
+	
+	/**
+	* Called by the single Event Listener 
+	* @param {Event} 
+	*/
+	const clickEvent = (event) => {
+		listeners.click.forEach((item) => {
+			if(event.target.matches(item.selector)){
+				item.cb(event);
+			}
+		});
+	};
+	
+	
+	// extend App
+	bluejay.extend('listenForClick',listenForClick);
+	bluejay.extend('clickEvent',clickEvent);
 
 })();
 
@@ -71,101 +127,102 @@ const bluejay = (function () {
 	};
 	
 	/**
-	* Append Element to <body> 	
+	* Append DOM Element to <body>, provides a consistent approach 	
 	* @param {DOM Element} el
 	*/
-	const appendToBody = (el) => {
-		let body = document.querySelector('body');
+	const appendTo = (dom,el) => {
+		let body = document.querySelector(dom);
 		body.appendChild(el);
 	};
 	
 	// Extend App
 	bluejay.extend('nodeArray', NodeListToArray);
-	bluejay.extend('appendToBody',appendToBody);
-	//bluejay.extend('getConfig', getSettings);
+	bluejay.extend('appendTo',appendTo);
+	
 })();
 
 /**
-  * Settings functionality
-  * asdfs
+  * Namespace functionality within App for Modules
   */
 (function () {
 
 	'use strict';
 	
-	// Create app settings
-	let config = {
-		debug: false
-	};
+	/**
+	Manage all my Modules 
+	*/
+	const modules = {};
 	
 	/**
-	 * Update the settings object
-	 * @param  {String} key The setting key
-	 * @param  {*}      val The new value
+	 * Add a new module
+	 * @param {String} name of module 
+	 * @param {Object} public methods
+	 * @returns {Boolean} 
 	 */
-	let add = function (key, val) {
+	let add = (name, methods) => {
+		// check for unique namespace
+		if (!(name in modules)){
+			
+			bluejay.log('Module added: '+name);
+			modules[name] = {};
+			return modules[name];
 	
-		// if the setting doesn't exist, bail
-		if (!(key in settings)) return;
-	
-		// Update the settings
-		settings[key] = val;
-	
-	};
-	
-	/**
-	 * Get settings
-	 * @param  {String} key The setting key (optional)
-	 * @return {*}          The setting or object of settings
-	 */
-	var get = function (key) {
-	
-		// If there's a key, get a specific setting
-		if (key) {
-			return settings[key];
+		} else {
+			
+			bluejay.log('Err: Module aleady added? ' + name);
+			return false;
 		}
+	};
 	
-		// Otherwise return the whole settings object
-		return Object.assign({}, settings);
-	
+	/**
+	 * Get namespace
+	 * @param  {String} namespace
+	 * @return {Object} 
+	 */
+	let get = (name) => {
+		
+		if (!(name in modules)){
+			bluejay.log('Module does not exist?: '+name);
+			return;	
+		}
+		
+		return modules[name];
 	};
 	
 	// Extend App
-	//bluejay.extend('addConfig', setting);
-	//bluejay.extend('getConfig', getSettings);
+	bluejay.extend('addModule',add);
+	bluejay.extend('getModule',get);
+	
 })();
 /**
-UI Tooltips 
+Tooltips (on icons)
+These may be loaded after intial DOM load (asynchronously)
+Build DOM structure and watch for Events, only ONE tooltip
+is open at a time, it just needs updating and positioning
 */
 (function () {
 
 	'use strict';
+
+	const selector = ".js-has-tooltip";
+	const dataAttribute = "tooltipContent"; 			// data-tooltip-content
+	const app = bluejay.addModule('tooltip'); 			// get unique namespace for module
 	
-	/**
-		Find all tooltips (js-has-tooltip)
-		touch with hover enhancement
-		build dom frame (and record state)
-		position and update css to reflex this
-	*/
-	
-	// do we have any tooltips?
-	let tooltips = bluejay.nodeArray(document.querySelectorAll('.js-has-tooltip'));
-	if(tooltips.length === 0) return; // none!
-	
-	bluejay.log('tooltips - init:' + tooltips.length);
-	
-	/*
-	create and add the div to the DOM
-	simply update the content when required
-	hide offscreen when removed
-	*/
+	// creat DOM
 	const div = document.createElement('div');
 	div.className = "oe-tooltip";
+	div.style.top = '20px';
+	div.style.left = '20px';
 	
-	bluejay.appendToBody(div);
+	bluejay.appendTo('body',div);
 	
+	const userClick = (event) => {
+		console.log(event);
+		//div.innerHTML = tip; // could contain HTML
+	};
 	
-
+	// Register to listen for Events
+	bluejay.listenForClick(selector,userClick);
 
 })(); 
 
@@ -213,3 +270,19 @@ idg.tooltips = function(){
 	);	
 }
 */
+
+/**
+* Events
+*/
+(function () {
+
+	'use strict';
+	
+	/**
+	To improve performance capture all events
+	are routed through single Event Listeners
+	*/
+	
+	document.addEventListener('click', bluejay.clickEvent, false); // useCapture, not required on click, it bubbles
+
+})();
