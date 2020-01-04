@@ -8,7 +8,7 @@ if (!Element.prototype.matches) {
 /**
 OE3 JS layer to handle UI interactions.
 Tooltips, popups, etc. 
-Using bluejay on IDG for namespace (easy to replace)
+Using "bluejay" for namespace
 @namespace
 */
 const bluejay = (function () {
@@ -27,7 +27,7 @@ const bluejay = (function () {
 	*/
 	methods.extend = (name,fn) => {
 		/*
-		only extend if not already been added 
+		only extend if not already added 
 		and if the name is available
 		*/
 		if(!fn.id && !(name in methods)){
@@ -76,6 +76,7 @@ const bluejay = (function () {
 	const listeners = {
 		click:[],
 		hover:[],
+		exit:[]
 	};
 	
 	/**
@@ -83,17 +84,40 @@ const bluejay = (function () {
 	* @param {Sting}  	selector	DOM selector, or set of selectors e.g '.class' or '#id' 	
 	* @param {Function} cb			callback function
 	*/
-	const listenForClick = (selector,cb) => {
+	const addClick = (selector,cb) => {
 		listeners.click.push({ 	selector:selector,
 								cb:cb });
 	};
 	
+	const addHover = (selector,cb) => {
+		listeners.hover.push({ 	selector:selector,
+								cb:cb });
+	};
+	
+	const addExit = (selector,cb) => {
+		listeners.exit.push({ 	selector:selector,
+								cb:cb });
+	};
+	
+	// extend app
+	bluejay.extend('listenForHover',addHover);
+	bluejay.extend('listenForClick',addClick);
+	bluejay.extend('listenForExit',addHover);
 	
 	/**
-	* Called by the single document Event Listener 
+	* Document Event Listener for 'mousedown'
 	* @param {Event} 
 	*/
-	const clickEvent = (event) => {
+	const userClick = (event) => {
+		listeners.click.forEach((item) => {
+			if(event.target.matches(item.selector)){
+				item.cb(event);
+			}
+		});
+	};
+	
+	// mouseenter
+	const userHover = (event) => {
 		listeners.click.forEach((item) => {
 			if(event.target.matches(item.selector)){
 				item.cb(event);
@@ -102,9 +126,20 @@ const bluejay = (function () {
 	};
 	
 	
+	const userExit = (event) => {
+		listeners.click.forEach((item) => {
+			if(event.target.matches(item.selector)){
+				item.cb(event);
+			}
+		});
+	};
+	
 	// extend App
-	bluejay.extend('listenForClick',listenForClick);
-	bluejay.extend('clickEvent',clickEvent);
+	bluejay.extend('clickEvent',userClick);
+	bluejay.extend('hoverEvent',userHover);
+	bluejay.extend('exitEvent',userExit);
+
+	
 
 })();
 
@@ -206,7 +241,9 @@ is open at a time, reuse DOM, update and position
 	const dataAttribute = "tooltipContent"; 			// data-tooltip-content
 	const app = bluejay.addModule('tooltip'); 			// get unique namespace for module
 	
-	// creat DOM
+	let showing = false;
+	
+	// create DOM
 	const div = document.createElement('div');
 	div.className = "oe-tooltip";
 	div.style.top = '20px';
@@ -214,13 +251,22 @@ is open at a time, reuse DOM, update and position
 	
 	bluejay.appendTo('body',div);
 	
-	const userClick = (event) => {
+	// on user click or hover
+	const show = (event) => {
+		if(showing) return;
 		console.log(event);
 		//div.innerHTML = tip; // could contain HTML
 	};
 	
+	const hide = () => {
+		console.log('hide tooltip');
+	};
+	
 	// Register to listen for Events
-	bluejay.listenForClick(selector,userClick);
+	bluejay.listenForHover(selector,show);
+	bluejay.listenForClick(selector,show);
+	bluejay.listenForExit(selector,hide);
+	
 
 })(); 
 
@@ -281,6 +327,9 @@ idg.tooltips = function(){
 	are routed through single Event Listeners
 	*/
 	
-	document.addEventListener('click', bluejay.clickEvent, false); // useCapture, not required on click, it bubbles
-
+	document.addEventListener('mouseenter',	bluejay.hoverEvent,	false); // useCapture, not required as it bubbles
+	document.addEventListener('mousedown',	bluejay.clickEvent,	false); 
+	document.addEventListener('mouseout',	bluejay.exitEvent,	false); 
+	
+	
 })();

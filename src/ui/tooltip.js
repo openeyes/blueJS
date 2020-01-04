@@ -12,7 +12,9 @@ is open at a time, reuse DOM, update and position
 	const dataAttribute = "tooltipContent"; 			// data-tooltip-content
 	const app = bluejay.addModule('tooltip'); 			// get unique namespace for module
 	
-	// creat DOM
+	let showing = false;
+	
+	// create DOM
 	const div = document.createElement('div');
 	div.className = "oe-tooltip";
 	div.style.top = '20px';
@@ -20,13 +22,22 @@ is open at a time, reuse DOM, update and position
 	
 	bluejay.appendTo('body',div);
 	
-	const userClick = (event) => {
+	// on user click or hover
+	const show = (event) => {
+		if(showing) return;
 		console.log(event);
 		//div.innerHTML = tip; // could contain HTML
 	};
 	
+	const hide = () => {
+		console.log('hide tooltip');
+	};
+	
 	// Register to listen for Events
-	bluejay.listenForClick(selector,userClick);
+	bluejay.listenForHover(selector,show);
+	bluejay.listenForClick(selector,show);
+	bluejay.listenForExit(selector,hide);
+	
 
 })(); 
 

@@ -10,6 +10,9 @@
 	are routed through single Event Listeners
 	*/
 	
-	document.addEventListener('click', bluejay.clickEvent, false); // useCapture, not required on click, it bubbles
-
+	document.addEventListener('mouseenter',	bluejay.hoverEvent,	false); // useCapture, not required as it bubbles
+	document.addEventListener('mousedown',	bluejay.clickEvent,	false); 
+	document.addEventListener('mouseout',	bluejay.exitEvent,	false); 
+	
+	
 })();

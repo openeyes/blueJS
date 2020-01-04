@@ -1,7 +1,7 @@
 /**
 OE3 JS layer to handle UI interactions.
 Tooltips, popups, etc. 
-Using bluejay on IDG for namespace (easy to replace)
+Using "bluejay" for namespace
 @namespace
 */
 const bluejay = (function () {
@@ -20,7 +20,7 @@ const bluejay = (function () {
 	*/
 	methods.extend = (name,fn) => {
 		/*
-		only extend if not already been added 
+		only extend if not already added 
 		and if the name is available
 		*/
 		if(!fn.id && !(name in methods)){

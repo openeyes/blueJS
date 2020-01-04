@@ -13,6 +13,7 @@
 	const listeners = {
 		click:[],
 		hover:[],
+		exit:[]
 	};
 	
 	/**
@@ -20,17 +21,40 @@
 	* @param {Sting}  	selector	DOM selector, or set of selectors e.g '.class' or '#id' 	
 	* @param {Function} cb			callback function
 	*/
-	const listenForClick = (selector,cb) => {
+	const addClick = (selector,cb) => {
 		listeners.click.push({ 	selector:selector,
 								cb:cb });
 	};
 	
+	const addHover = (selector,cb) => {
+		listeners.hover.push({ 	selector:selector,
+								cb:cb });
+	};
+	
+	const addExit = (selector,cb) => {
+		listeners.exit.push({ 	selector:selector,
+								cb:cb });
+	};
+	
+	// extend app
+	bluejay.extend('listenForHover',addHover);
+	bluejay.extend('listenForClick',addClick);
+	bluejay.extend('listenForExit',addHover);
 	
 	/**
-	* Called by the single document Event Listener 
+	* Document Event Listener for 'mousedown'
 	* @param {Event} 
 	*/
-	const clickEvent = (event) => {
+	const userClick = (event) => {
+		listeners.click.forEach((item) => {
+			if(event.target.matches(item.selector)){
+				item.cb(event);
+			}
+		});
+	};
+	
+	// mouseenter
+	const userHover = (event) => {
 		listeners.click.forEach((item) => {
 			if(event.target.matches(item.selector)){
 				item.cb(event);
@@ -39,8 +63,19 @@
 	};
 	
 	
+	const userExit = (event) => {
+		listeners.click.forEach((item) => {
+			if(event.target.matches(item.selector)){
+				item.cb(event);
+			}
+		});
+	};
+	
 	// extend App
-	bluejay.extend('listenForClick',listenForClick);
-	bluejay.extend('clickEvent',clickEvent);
+	bluejay.extend('clickEvent',userClick);
+	bluejay.extend('hoverEvent',userHover);
+	bluejay.extend('exitEvent',userExit);
+
+	
 
 })();
