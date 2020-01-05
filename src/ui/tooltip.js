@@ -8,21 +8,20 @@ is open at a time, reuse DOM, update and position
 
 	'use strict';
 
-	const selector = ".js-has-tooltip";
 	const app = bluejay.addModule('tooltip'); 	// get unique namespace for module
-	
+	const selector = ".js-has-tooltip";
+	const mainClass = "oe-tooltip";
 	let showing = false;
-	
-	// create DOM
+		
+	// create DOM (keep out of reflow)
 	let div = document.createElement('div');
-	div.className = "oe-tooltip";
+	div.className = mainClass;
 	div.style.display = "none";
 	bluejay.appendTo('body',div);
 
-	/*
-	Interaction.
-	1: Click or Touch - (scroll will hide)
-	2: Hover on/off enhancement.
+	/**
+	* Show tooltip. Update from Event
+	* @param {Event} event
 	*/
 	const show = (event) => {
 		if(showing) return;
@@ -37,7 +36,7 @@ is open at a time, reuse DOM, update and position
 		*/
 		let offsetW = 100; // toptip is 200px
 		let offsetH = 8; // visual offset, allows for the arrow
-		let css = ""; // classes to add
+		let css = ""; // classes to position the arrows correct
 		
 		// can't get the height without some tricky...
 		let h = bluejay.getHiddenElemSize(div).h;
@@ -50,13 +49,7 @@ is open at a time, reuse DOM, update and position
 		*/
 		let domRect = icon.getBoundingClientRect();
 		let center = domRect.right - (domRect.width/2);
-		
-		// is there enough space above icon for standard posiitoning?
-		if( domRect.top >= h ){
-			div.style.top =  domRect.top - h - offsetH + 'px'; 	// yep, position above 
-		} else {
-			div.style.top = domRect.bottom + offsetH + 'px';  	// nope, invert and position below
-		}
+		let top = domRect.top - h - offsetH + 'px';
 	
 		// watch out for the hotlist
 		let extendedBrowser = bluejay.getSetting('css').extendedBrowserSize;
@@ -64,24 +57,45 @@ is open at a time, reuse DOM, update and position
 		
 		// Icon too near a side?
 		if(center <= offsetW){
-			offsetW = 10; // position right of icon
+			offsetW = 20; 			// position right of icon, needs to match CSS arrow position
+			css = "offset-right";
 		} else if (center > (maxRightPos - offsetW)) {
-			offsetW = 190; // position left of icon
+			offsetW = 180; 			// position left of icon, needs to match CSS arrow position
+			css = "offset-left";
 		}
 		
+		// is there enough space above icon for standard posiitoning?
+		if( domRect.top < h ){
+			top = domRect.bottom + offsetH + 'px'; // nope, invert and position below
+			css = "inverted";
+		} 
+		
+		// update DOM
+		div.className = mainClass + " " + css;
+		div.style.top = top;
 		div.style.left = (center - offsetW) + 'px';
 		div.style.display = "block";
 	};
 	
-	const hide = () => {
-		div.innerHTML = "";
-		div.style.cssText = "display:none"; // clear all styles
+	/**
+	* Hide tooltip and reset
+	* @param {Event}
+	*/
+	const hide = (event) => {
+		if(showing === false) return;
 		showing = false;
+		
+		div.innerHTML = "";
+		div.className = mainClass;
+		div.style.cssText = "display:none"; // clear all styles
 	};
+
 	
-	// Register to listen for Events
-	bluejay.listenForClick(selector,show);
-	bluejay.listenForHover(selector,show);
-	bluejay.listenForExit(selector,hide);
+	// Register/Listen for Events
+	bluejay.registerForClick(selector,show);
+	bluejay.registerForHover(selector,show);
+	bluejay.registerForExit(selector,hide);
+	
+	bluejay.listenForScroll(hide);
 	
 })(); 

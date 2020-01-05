@@ -76,8 +76,10 @@ const bluejay = (function () {
 	*/
 	const listeners = {
 		click:[],		// mousedown
-		hover:[],		// mouseenter
+		hover:[],		// mouseover
 		exit:[],		// mouseout
+		scroll:[],		// scroll
+		resize:[],		// window resize
 	};
 	
 	/**
@@ -85,25 +87,42 @@ const bluejay = (function () {
 	* @param {Sting}  	selector	DOM selector, or set of selectors e.g '.class' or '#id' 	
 	* @param {Function} cb			callback function
 	*/
-	const addClick = (selector,cb) => {
+	const addToClick = (selector,cb) => {
 		listeners.click.push({ 	selector:selector,
 								cb:cb });
 	};
 	
-	const addHover = (selector,cb) => {
+	const addToHover = (selector,cb) => {
 		listeners.hover.push({ 	selector:selector,
 								cb:cb });
 	};
 	
-	const addExit = (selector,cb) => {
+	const addToExit = (selector,cb) => {
 		listeners.exit.push({ 	selector:selector,
 								cb:cb });
 	};
 	
+	/**
+	* Register to receive Scroll / Resize
+	* @param {Function} cb			callback function
+	*/
+	const addToScroll = (cb) => {
+		listeners.scroll.push({ cb:cb });
+	};
+	
+	const addToResize = (cb) => {
+		listeners.scroll.push({ cb:cb });
+	};
+	
+	
 	// extend app
-	bluejay.extend('listenForHover',addHover);
-	bluejay.extend('listenForClick',addClick);
-	bluejay.extend('listenForExit',addExit);
+	bluejay.extend('registerForHover',addToHover);
+	bluejay.extend('registerForClick',addToClick);
+	bluejay.extend('registerForExit',addToExit);
+	
+	bluejay.extend('listenForScroll',addToScroll);
+	bluejay.extend('listenForResize',addToResize);
+	
 	
 	/**
 	* Handle Events from the Document Event Listener for
@@ -125,24 +144,52 @@ const bluejay = (function () {
 	* Receive Event: 'mousedown'
 	* @param {Event} 
 	*/
+	
+	// 'mousedown'
 	const userClick = (event) => checkListeners(listeners.click,event);
 	
-	/**
-	* Receive Event: 'mouseenter'
-	* @param {Event} 
-	*/
+	// 'mouseover'
 	const userHover = (event) => checkListeners(listeners.hover,event);
 	
-	/**
-	* Receive Event: 'mouseout'
-	* @param {Event} 
-	*/
+	// 'mouseout'
 	const userExit = (event) => checkListeners(listeners.exit,event);
+	
+	/**
+	* Scroll & Resize fire at high rates so throttle them
+	*/
+	const throttler = {
+		fire:true,
+		timerID:null,
+		throttleEvent: function(listeners){
+			if(this.fire){
+				this.fire = false;
+				this.broadcast(listeners);
+				this.timerID = setTimeout( () => {
+					clearTimeout(this.timerID );
+					this.fire = true;
+				},300);
+			}	
+		},
+		broadcast:function(listeners){
+			listeners.forEach((item) => {
+				item.cb();
+			});
+		}
+	};
+
+	// 'scroll'
+	const windowScroll = () => throttler.throttleEvent(listeners.scroll);
+	
+	// onResize
+	const windowResize = () => throttler.throttleEvent(listeners.resize);
+	
 	
 	// extend App
 	bluejay.extend('clickEvent',userClick);
 	bluejay.extend('hoverEvent',userHover);
 	bluejay.extend('exitEvent',userExit);
+	bluejay.extend('windowScroll',windowScroll);
+	bluejay.extend('windowResize',windowResize);
 
 })();
 
@@ -296,21 +343,20 @@ is open at a time, reuse DOM, update and position
 
 	'use strict';
 
-	const selector = ".js-has-tooltip";
 	const app = bluejay.addModule('tooltip'); 	// get unique namespace for module
-	
+	const selector = ".js-has-tooltip";
+	const mainClass = "oe-tooltip";
 	let showing = false;
-	
-	// create DOM
+		
+	// create DOM (keep out of reflow)
 	let div = document.createElement('div');
-	div.className = "oe-tooltip";
+	div.className = mainClass;
 	div.style.display = "none";
 	bluejay.appendTo('body',div);
 
-	/*
-	Interaction.
-	1: Click or Touch - (scroll will hide)
-	2: Hover on/off enhancement.
+	/**
+	* Show tooltip. Update from Event
+	* @param {Event} event
 	*/
 	const show = (event) => {
 		if(showing) return;
@@ -325,7 +371,7 @@ is open at a time, reuse DOM, update and position
 		*/
 		let offsetW = 100; // toptip is 200px
 		let offsetH = 8; // visual offset, allows for the arrow
-		let css = ""; // classes to add
+		let css = ""; // classes to position the arrows correct
 		
 		// can't get the height without some tricky...
 		let h = bluejay.getHiddenElemSize(div).h;
@@ -338,13 +384,7 @@ is open at a time, reuse DOM, update and position
 		*/
 		let domRect = icon.getBoundingClientRect();
 		let center = domRect.right - (domRect.width/2);
-		
-		// is there enough space above icon for standard posiitoning?
-		if( domRect.top >= h ){
-			div.style.top =  domRect.top - h - offsetH + 'px'; 	// yep, position above 
-		} else {
-			div.style.top = domRect.bottom + offsetH + 'px';  	// nope, invert and position below
-		}
+		let top = domRect.top - h - offsetH + 'px';
 	
 		// watch out for the hotlist
 		let extendedBrowser = bluejay.getSetting('css').extendedBrowserSize;
@@ -352,25 +392,46 @@ is open at a time, reuse DOM, update and position
 		
 		// Icon too near a side?
 		if(center <= offsetW){
-			offsetW = 10; // position right of icon
+			offsetW = 20; 			// position right of icon, needs to match CSS arrow position
+			css = "offset-right";
 		} else if (center > (maxRightPos - offsetW)) {
-			offsetW = 190; // position left of icon
+			offsetW = 180; 			// position left of icon, needs to match CSS arrow position
+			css = "offset-left";
 		}
 		
+		// is there enough space above icon for standard posiitoning?
+		if( domRect.top < h ){
+			top = domRect.bottom + offsetH + 'px'; // nope, invert and position below
+			css = "inverted";
+		} 
+		
+		// update DOM
+		div.className = mainClass + " " + css;
+		div.style.top = top;
 		div.style.left = (center - offsetW) + 'px';
 		div.style.display = "block";
 	};
 	
-	const hide = () => {
-		div.innerHTML = "";
-		div.style.cssText = "display:none"; // clear all styles
+	/**
+	* Hide tooltip and reset
+	* @param {Event}
+	*/
+	const hide = (event) => {
+		if(showing === false) return;
 		showing = false;
+		
+		div.innerHTML = "";
+		div.className = mainClass;
+		div.style.cssText = "display:none"; // clear all styles
 	};
+
 	
-	// Register to listen for Events
-	bluejay.listenForClick(selector,show);
-	bluejay.listenForHover(selector,show);
-	bluejay.listenForExit(selector,hide);
+	// Register/Listen for Events
+	bluejay.registerForClick(selector,show);
+	bluejay.registerForHover(selector,show);
+	bluejay.registerForExit(selector,hide);
+	
+	bluejay.listenForScroll(hide);
 	
 })(); 
 /**
@@ -385,9 +446,12 @@ is open at a time, reuse DOM, update and position
 	are routed through single Event Listeners
 	*/
 	
-	document.addEventListener('mouseenter',	bluejay.hoverEvent,	true);
-	document.addEventListener('mousedown',	bluejay.clickEvent,	false); 
-	document.addEventListener('mouseout',	bluejay.exitEvent,	true); 
-	
+	document.addEventListener('mouseover',	bluejay.hoverEvent,		false);
+	document.addEventListener('mousedown',	bluejay.clickEvent,		false); 
+	document.addEventListener('mouseout',	bluejay.exitEvent,		false);
+	 
+	// these are handled a bit differently
+	window.addEventListener('scroll',		bluejay.windowScroll,	true);
+	window.onresize = bluejay.windowResize; 
 	
 })();
