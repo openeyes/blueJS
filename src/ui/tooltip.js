@@ -9,79 +9,79 @@ is open at a time, reuse DOM, update and position
 	'use strict';
 
 	const selector = ".js-has-tooltip";
-	const dataAttribute = "tooltipContent"; 			// data-tooltip-content
-	const app = bluejay.addModule('tooltip'); 			// get unique namespace for module
+	const app = bluejay.addModule('tooltip'); 	// get unique namespace for module
 	
 	let showing = false;
 	
 	// create DOM
-	const div = document.createElement('div');
+	let div = document.createElement('div');
 	div.className = "oe-tooltip";
-	div.style.top = '20px';
-	div.style.left = '20px';
-	
+	div.style.display = "none";
 	bluejay.appendTo('body',div);
-	
-	// on user click or hover
+
+	/*
+	Interaction.
+	1: Click or Touch - (scroll will hide)
+	2: Hover on/off enhancement.
+	*/
 	const show = (event) => {
 		if(showing) return;
-		console.log(event);
-		//div.innerHTML = tip; // could contain HTML
+		showing = true;
+				
+		const icon = event.target; // always an icon	
+		div.innerHTML = icon.dataset.tooltipContent; // could contain HTML
+		
+		/*
+		tooltip could be anything check the tooltip height
+		width is restricted in the CSS to 200px;	
+		*/
+		let offsetW = 100; // toptip is 200px
+		let offsetH = 8; // visual offset, allows for the arrow
+		let css = ""; // classes to add
+		
+		// can't get the height without some tricky...
+		let h = bluejay.getHiddenElemSize(div).h;
+						
+		/*
+		work out positioning based on icon
+		this is a little more complex due to the hotlist being
+		fixed open by CSS above a certain browser size, the
+		tooltip could be cropped on the right side if it is.
+		*/
+		let domRect = icon.getBoundingClientRect();
+		let center = domRect.right - (domRect.width/2);
+		
+		// is there enough space above icon for standard posiitoning?
+		if( domRect.top >= h ){
+			div.style.top =  domRect.top - h - offsetH + 'px'; 	// yep, position above 
+		} else {
+			div.style.top = domRect.bottom + offsetH + 'px';  	// nope, invert and position below
+		}
+	
+		// watch out for the hotlist
+		let extendedBrowser = bluejay.getSetting('css').extendedBrowserSize;
+		let maxRightPos = window.innerWidth > extendedBrowser ? extendedBrowser : window.innerWidth;
+		
+		// Icon too near a side?
+		if(center <= offsetW){
+			offsetW = 10; // position right of icon
+		} else if (center > (maxRightPos - offsetW)) {
+			offsetW = 190; // position left of icon
+		}
+		
+		div.style.left = (center - offsetW) + 'px';
+		div.style.display = "block";
 	};
 	
 	const hide = () => {
-		console.log('hide tooltip');
+		div.innerHTML = "";
+		div.style.cssText = "display:none"; // clear all styles
+		showing = false;
 	};
 	
 	// Register to listen for Events
-	bluejay.listenForHover(selector,show);
 	bluejay.listenForClick(selector,show);
+	bluejay.listenForHover(selector,show);
 	bluejay.listenForExit(selector,hide);
 	
-
 })(); 
-
-
-/*
-idg.tooltips = function(){
-	$('.js-has-tooltip').hover(
-		function(){
-			var text = $(this).data('tooltip-content');
-			var leftPos, toolCSS; 
-		
-			// get icon DOM position
-			let iconPos = $(this)[ 0 ].getBoundingClientRect();
-			let iconCenter = iconPos.width / 2;
-			
-			// check for the available space for tooltip:
-			if ( ( $( window ).width() - iconPos.left) < 100 ){
-				leftPos = (iconPos.left - 188) + iconPos.width // tooltip is 200px (left offset on the icon)
-				toolCSS = "oe-tooltip offset-left";
-			} else {
-				leftPos = (iconPos.left - 100) + iconCenter - 0.5 	// tooltip is 200px (center on the icon)
-				toolCSS = "oe-tooltip";
-			}
-			
-			// add, calculate height then show (remove 'hidden')
-			var tip = $( "<div></div>", {
-								"class": toolCSS,
-								"style":"left:"+leftPos+"px; top:0;"
-								});
-			// add the tip (HTML as <br> could be in the string)
-			tip.html(text);
-			
-			$('body').append(tip);
-			// calc height:
-			var h = $(".oe-tooltip").height();
-			// update position and show
-			var top = iconPos.y - h - 25;
-			
-			$(".oe-tooltip").css({"top":top+"px"});
-			
-		},
-		function(){
-			$(".oe-tooltip").remove();
-		}
-	);	
-}
-*/

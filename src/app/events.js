@@ -6,14 +6,15 @@
 	'use strict';
 	
 	/**
-	To improve performance all events are routed 
-	through a single Event Listener.
-	Modules register here and get a callback
+	To improve performance route all events through 
+	single Event Listener on the document. Modules register 
+	callbacks here. The functionality they want is basically
+	"click","hover","exit" 
 	*/
 	const listeners = {
-		click:[],
-		hover:[],
-		exit:[]
+		click:[],		// mousedown
+		hover:[],		// mouseenter
+		exit:[],		// mouseout
 	};
 	
 	/**
@@ -39,43 +40,45 @@
 	// extend app
 	bluejay.extend('listenForHover',addHover);
 	bluejay.extend('listenForClick',addClick);
-	bluejay.extend('listenForExit',addHover);
+	bluejay.extend('listenForExit',addExit);
 	
 	/**
-	* Document Event Listener for 'mousedown'
+	* Handle Events from the Document Event Listener for
+	* @param {Array}  Callback that are listening 
+	* @param {Event} 
+	*
+	*/
+	const checkListeners = (listeners,event) => {
+		// only a few listeners, forEach should be fast enough
+		if(event.target === document) return;
+		listeners.forEach((item) => {
+			if(event.target.matches(item.selector)){
+				item.cb(event);
+			}
+		});
+	};
+	
+	/**
+	* Receive Event: 'mousedown'
 	* @param {Event} 
 	*/
-	const userClick = (event) => {
-		listeners.click.forEach((item) => {
-			if(event.target.matches(item.selector)){
-				item.cb(event);
-			}
-		});
-	};
+	const userClick = (event) => checkListeners(listeners.click,event);
 	
-	// mouseenter
-	const userHover = (event) => {
-		listeners.click.forEach((item) => {
-			if(event.target.matches(item.selector)){
-				item.cb(event);
-			}
-		});
-	};
+	/**
+	* Receive Event: 'mouseenter'
+	* @param {Event} 
+	*/
+	const userHover = (event) => checkListeners(listeners.hover,event);
 	
-	
-	const userExit = (event) => {
-		listeners.click.forEach((item) => {
-			if(event.target.matches(item.selector)){
-				item.cb(event);
-			}
-		});
-	};
+	/**
+	* Receive Event: 'mouseout'
+	* @param {Event} 
+	*/
+	const userExit = (event) => checkListeners(listeners.exit,event);
 	
 	// extend App
 	bluejay.extend('clickEvent',userClick);
 	bluejay.extend('hoverEvent',userHover);
 	bluejay.extend('exitEvent',userExit);
-
-	
 
 })();

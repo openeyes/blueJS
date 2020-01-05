@@ -69,14 +69,15 @@ const bluejay = (function () {
 	'use strict';
 	
 	/**
-	To improve performance all events are routed 
-	through a single Event Listener.
-	Modules register here and get a callback
+	To improve performance route all events through 
+	single Event Listener on the document. Modules register 
+	callbacks here. The functionality they want is basically
+	"click","hover","exit" 
 	*/
 	const listeners = {
-		click:[],
-		hover:[],
-		exit:[]
+		click:[],		// mousedown
+		hover:[],		// mouseenter
+		exit:[],		// mouseout
 	};
 	
 	/**
@@ -102,44 +103,46 @@ const bluejay = (function () {
 	// extend app
 	bluejay.extend('listenForHover',addHover);
 	bluejay.extend('listenForClick',addClick);
-	bluejay.extend('listenForExit',addHover);
+	bluejay.extend('listenForExit',addExit);
 	
 	/**
-	* Document Event Listener for 'mousedown'
+	* Handle Events from the Document Event Listener for
+	* @param {Array}  Callback that are listening 
+	* @param {Event} 
+	*
+	*/
+	const checkListeners = (listeners,event) => {
+		// only a few listeners, forEach should be fast enough
+		if(event.target === document) return;
+		listeners.forEach((item) => {
+			if(event.target.matches(item.selector)){
+				item.cb(event);
+			}
+		});
+	};
+	
+	/**
+	* Receive Event: 'mousedown'
 	* @param {Event} 
 	*/
-	const userClick = (event) => {
-		listeners.click.forEach((item) => {
-			if(event.target.matches(item.selector)){
-				item.cb(event);
-			}
-		});
-	};
+	const userClick = (event) => checkListeners(listeners.click,event);
 	
-	// mouseenter
-	const userHover = (event) => {
-		listeners.click.forEach((item) => {
-			if(event.target.matches(item.selector)){
-				item.cb(event);
-			}
-		});
-	};
+	/**
+	* Receive Event: 'mouseenter'
+	* @param {Event} 
+	*/
+	const userHover = (event) => checkListeners(listeners.hover,event);
 	
-	
-	const userExit = (event) => {
-		listeners.click.forEach((item) => {
-			if(event.target.matches(item.selector)){
-				item.cb(event);
-			}
-		});
-	};
+	/**
+	* Receive Event: 'mouseout'
+	* @param {Event} 
+	*/
+	const userExit = (event) => checkListeners(listeners.exit,event);
 	
 	// extend App
 	bluejay.extend('clickEvent',userClick);
 	bluejay.extend('hoverEvent',userHover);
 	bluejay.extend('exitEvent',userExit);
-
-	
 
 })();
 
@@ -168,9 +171,33 @@ const bluejay = (function () {
 		body.appendChild(el);
 	};
 	
+	/**
+	* Get dimensions of hidden DOM element
+	* only use on 'fixed' or 'absolute'elements
+	* @param {DOM Element} el 	currently out of the document flow
+	* @returns {Object} width and height as {w:w,h:h}
+	*/
+	const getHiddenElemSize = (el) => {
+		// need to render with all the right CSS being applied
+		// show but hidden...
+		el.style.visibility = 'hidden';
+		el.style.display = 'block';		// doesn't work for 'flex'
+		
+		// ok now calc...
+		let props =  {	w:el.offsetWidth,
+						h:el.offsetHeight }; 	
+		
+		// now hide properly again
+		el.style.visibility = 'inherit';
+		el.style.display = 'none';
+		
+		return props;
+	};
+
 	// Extend App
 	bluejay.extend('nodeArray', NodeListToArray);
 	bluejay.extend('appendTo',appendTo);
+	bluejay.extend('getHiddenElemSize', getHiddenElemSize);
 	
 })();
 
@@ -228,6 +255,38 @@ const bluejay = (function () {
 	
 })();
 /**
+* Settings
+* Useful global settings
+*/
+(function () {
+
+	'use strict';
+
+	const settings = {
+		/*
+		Newblue CSS contains some key
+		media query widths, this are found in: config.all.scss
+		Capture the key ones, for JS
+		*/
+		css : {
+			extendedBrowserSize: 1440,
+			browserHotlistFixSize: 1890,
+		},
+	};
+	
+	/**
+	 * Get settings
+	 * @param  {String} key The setting key (optional)
+	 * @return {*}          The setting
+	 */
+	var getSetting = function (key) {
+		return settings[key];
+	};
+	
+	// Extend App
+	bluejay.extend('getSetting',getSetting);
+})();
+/**
 Tooltips (on icons)
 These may be loaded after intial DOM load (asynchronously)
 Build DOM structure and watch for Events, as only ONE tooltip
@@ -238,83 +297,82 @@ is open at a time, reuse DOM, update and position
 	'use strict';
 
 	const selector = ".js-has-tooltip";
-	const dataAttribute = "tooltipContent"; 			// data-tooltip-content
-	const app = bluejay.addModule('tooltip'); 			// get unique namespace for module
+	const app = bluejay.addModule('tooltip'); 	// get unique namespace for module
 	
 	let showing = false;
 	
 	// create DOM
-	const div = document.createElement('div');
+	let div = document.createElement('div');
 	div.className = "oe-tooltip";
-	div.style.top = '20px';
-	div.style.left = '20px';
-	
+	div.style.display = "none";
 	bluejay.appendTo('body',div);
-	
-	// on user click or hover
+
+	/*
+	Interaction.
+	1: Click or Touch - (scroll will hide)
+	2: Hover on/off enhancement.
+	*/
 	const show = (event) => {
 		if(showing) return;
-		console.log(event);
-		//div.innerHTML = tip; // could contain HTML
+		showing = true;
+				
+		const icon = event.target; // always an icon	
+		div.innerHTML = icon.dataset.tooltipContent; // could contain HTML
+		
+		/*
+		tooltip could be anything check the tooltip height
+		width is restricted in the CSS to 200px;	
+		*/
+		let offsetW = 100; // toptip is 200px
+		let offsetH = 8; // visual offset, allows for the arrow
+		let css = ""; // classes to add
+		
+		// can't get the height without some tricky...
+		let h = bluejay.getHiddenElemSize(div).h;
+						
+		/*
+		work out positioning based on icon
+		this is a little more complex due to the hotlist being
+		fixed open by CSS above a certain browser size, the
+		tooltip could be cropped on the right side if it is.
+		*/
+		let domRect = icon.getBoundingClientRect();
+		let center = domRect.right - (domRect.width/2);
+		
+		// is there enough space above icon for standard posiitoning?
+		if( domRect.top >= h ){
+			div.style.top =  domRect.top - h - offsetH + 'px'; 	// yep, position above 
+		} else {
+			div.style.top = domRect.bottom + offsetH + 'px';  	// nope, invert and position below
+		}
+	
+		// watch out for the hotlist
+		let extendedBrowser = bluejay.getSetting('css').extendedBrowserSize;
+		let maxRightPos = window.innerWidth > extendedBrowser ? extendedBrowser : window.innerWidth;
+		
+		// Icon too near a side?
+		if(center <= offsetW){
+			offsetW = 10; // position right of icon
+		} else if (center > (maxRightPos - offsetW)) {
+			offsetW = 190; // position left of icon
+		}
+		
+		div.style.left = (center - offsetW) + 'px';
+		div.style.display = "block";
 	};
 	
 	const hide = () => {
-		console.log('hide tooltip');
+		div.innerHTML = "";
+		div.style.cssText = "display:none"; // clear all styles
+		showing = false;
 	};
 	
 	// Register to listen for Events
-	bluejay.listenForHover(selector,show);
 	bluejay.listenForClick(selector,show);
+	bluejay.listenForHover(selector,show);
 	bluejay.listenForExit(selector,hide);
 	
-
 })(); 
-
-
-/*
-idg.tooltips = function(){
-	$('.js-has-tooltip').hover(
-		function(){
-			var text = $(this).data('tooltip-content');
-			var leftPos, toolCSS; 
-		
-			// get icon DOM position
-			let iconPos = $(this)[ 0 ].getBoundingClientRect();
-			let iconCenter = iconPos.width / 2;
-			
-			// check for the available space for tooltip:
-			if ( ( $( window ).width() - iconPos.left) < 100 ){
-				leftPos = (iconPos.left - 188) + iconPos.width // tooltip is 200px (left offset on the icon)
-				toolCSS = "oe-tooltip offset-left";
-			} else {
-				leftPos = (iconPos.left - 100) + iconCenter - 0.5 	// tooltip is 200px (center on the icon)
-				toolCSS = "oe-tooltip";
-			}
-			
-			// add, calculate height then show (remove 'hidden')
-			var tip = $( "<div></div>", {
-								"class": toolCSS,
-								"style":"left:"+leftPos+"px; top:0;"
-								});
-			// add the tip (HTML as <br> could be in the string)
-			tip.html(text);
-			
-			$('body').append(tip);
-			// calc height:
-			var h = $(".oe-tooltip").height();
-			// update position and show
-			var top = iconPos.y - h - 25;
-			
-			$(".oe-tooltip").css({"top":top+"px"});
-			
-		},
-		function(){
-			$(".oe-tooltip").remove();
-		}
-	);	
-}
-*/
-
 /**
 * Events
 */
@@ -327,9 +385,9 @@ idg.tooltips = function(){
 	are routed through single Event Listeners
 	*/
 	
-	document.addEventListener('mouseenter',	bluejay.hoverEvent,	false); // useCapture, not required as it bubbles
+	document.addEventListener('mouseenter',	bluejay.hoverEvent,	true);
 	document.addEventListener('mousedown',	bluejay.clickEvent,	false); 
-	document.addEventListener('mouseout',	bluejay.exitEvent,	false); 
+	document.addEventListener('mouseout',	bluejay.exitEvent,	true); 
 	
 	
 })();
