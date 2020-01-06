@@ -1,8 +1,6 @@
 /**
-Tooltips (on icons)
-These may be loaded after intial DOM load (asynchronously)
-Build DOM structure and watch for Events, as only ONE tooltip
-is open at a time, reuse DOM, update and position
+* Tooltips (on icons)
+* These may be loaded after intial DOM  load (asynchronously)
 */
 (function () {
 
@@ -12,13 +10,24 @@ is open at a time, reuse DOM, update and position
 	const selector = ".js-has-tooltip";
 	const mainClass = "oe-tooltip";
 	let showing = false;
+	let winWidth = window.innerWidth; // forces layout / reflow
 		
 	// create DOM (keep out of reflow)
 	let div = document.createElement('div');
 	div.className = mainClass;
 	div.style.display = "none";
 	bluejay.appendTo('body',div);
-
+	
+	/**
+	* Window Resize 
+	*/
+	const resize = () => winWidth = window.innerWidth;
+	
+	/**
+	* click - show and hide (unclick)
+	*/
+	const userClick = (event) => showing? hide(event) : show(event);
+	
 	/**
 	* Show tooltip. Update from Event
 	* @param {Event} event
@@ -26,7 +35,7 @@ is open at a time, reuse DOM, update and position
 	const show = (event) => {
 		if(showing) return;
 		showing = true;
-				
+						
 		const icon = event.target; // always an icon	
 		div.innerHTML = icon.dataset.tooltipContent; // could contain HTML
 		
@@ -53,9 +62,9 @@ is open at a time, reuse DOM, update and position
 	
 		// watch out for the hotlist
 		let extendedBrowser = bluejay.getSetting('css').extendedBrowserSize;
-		let maxRightPos = window.innerWidth > extendedBrowser ? extendedBrowser : window.innerWidth;
+		let maxRightPos = winWidth > extendedBrowser ? extendedBrowser : winWidth;
 		
-		// Icon too near a side?
+		// Icon too near either side?
 		if(center <= offsetW){
 			offsetW = 20; 			// position right of icon, needs to match CSS arrow position
 			css = "offset-right";
@@ -70,7 +79,7 @@ is open at a time, reuse DOM, update and position
 			css = "inverted";
 		} 
 		
-		// update DOM
+		// update DOM and show the tooltip
 		div.className = mainClass + " " + css;
 		div.style.top = top;
 		div.style.left = (center - offsetW) + 'px';
@@ -92,10 +101,10 @@ is open at a time, reuse DOM, update and position
 
 	
 	// Register/Listen for Events
-	bluejay.registerForClick(selector,show);
+	bluejay.registerForClick(selector,userClick);
 	bluejay.registerForHover(selector,show);
 	bluejay.registerForExit(selector,hide);
-	
 	bluejay.listenForScroll(hide);
+	bluejay.listenForResize(resize);
 	
 })(); 

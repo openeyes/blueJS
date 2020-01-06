@@ -1,7 +1,6 @@
-
 /**
-  * Helper functions
-  */
+* Helper functions
+*/
 (function () {
 
 	'use strict';

@@ -1,7 +1,6 @@
-
 /**
-  * Namespace functionality within App for Modules
-  */
+* Namespace controller within App for Modules
+*/
 (function () {
 
 	'use strict';

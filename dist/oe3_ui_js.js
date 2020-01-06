@@ -6,10 +6,10 @@ if (!Element.prototype.matches) {
 	Element.prototype.matches = Element.prototype.msMatchesSelector || Element.prototype.webkitMatchesSelector;
 }
 /**
-OE3 JS layer to handle UI interactions.
-Tooltips, popups, etc. 
-Using "bluejay" for namespace
-@namespace
+* OE3 JS layer to handle UI interactions.
+* Tooltips, popups, etc. 
+* Using "bluejay" for namespace
+* @namespace
 */
 const bluejay = (function () {
 
@@ -80,58 +80,39 @@ const bluejay = (function () {
 		exit:[],		// mouseout
 		scroll:[],		// scroll
 		resize:[],		// window resize
+		update:[],		// UI updated (something added)
 	};
 	
 	/**
-	* Register to receive Event
+	* Register to receive Events
 	* @param {Sting}  	selector	DOM selector, or set of selectors e.g '.class' or '#id' 	
 	* @param {Function} cb			callback function
 	*/
-	const addToClick = (selector,cb) => {
-		listeners.click.push({ 	selector:selector,
-								cb:cb });
-	};
-	
-	const addToHover = (selector,cb) => {
-		listeners.hover.push({ 	selector:selector,
-								cb:cb });
-	};
-	
-	const addToExit = (selector,cb) => {
-		listeners.exit.push({ 	selector:selector,
-								cb:cb });
-	};
-	
+	const addToClick = (selector,cb) => listeners.click.push({ selector:selector, cb:cb });
+	const addToHover = (selector,cb) => listeners.hover.push({ selector:selector, cb:cb });
+	const addToExit = (selector,cb) => listeners.exit.push({ selector:selector, cb:cb });
 	/**
-	* Register to receive Scroll / Resize
+	* Listen for Events 
 	* @param {Function} cb			callback function
 	*/
-	const addToScroll = (cb) => {
-		listeners.scroll.push({ cb:cb });
-	};
-	
-	const addToResize = (cb) => {
-		listeners.scroll.push({ cb:cb });
-	};
-	
-	
+	const addToScroll = (cb) => listeners.scroll.push({ cb:cb });
+	const addToResize = (cb) => listeners.resize.push({ cb:cb });
+	const addToUpdate = (cb) => listeners.update.push({ cb:cb });
+
 	// extend app
 	bluejay.extend('registerForHover',addToHover);
 	bluejay.extend('registerForClick',addToClick);
 	bluejay.extend('registerForExit',addToExit);
-	
 	bluejay.extend('listenForScroll',addToScroll);
 	bluejay.extend('listenForResize',addToResize);
-	
+	bluejay.extend('listenForDomChange',addToUpdate);
 	
 	/**
-	* Handle Events from the Document Event Listener for
+	* Handle Listeners awaiting Document Events
 	* @param {Array}  Callback that are listening 
-	* @param {Event} 
-	*
+	* @param {Event}  Event - check event.target against selector
 	*/
 	const checkListeners = (listeners,event) => {
-		// only a few listeners, forEach should be fast enough
 		if(event.target === document) return;
 		listeners.forEach((item) => {
 			if(event.target.matches(item.selector)){
@@ -144,22 +125,17 @@ const bluejay = (function () {
 	* Receive Event: 'mousedown'
 	* @param {Event} 
 	*/
-	
-	// 'mousedown'
-	const userClick = (event) => checkListeners(listeners.click,event);
-	
-	// 'mouseover'
-	const userHover = (event) => checkListeners(listeners.hover,event);
-	
-	// 'mouseout'
-	const userExit = (event) => checkListeners(listeners.exit,event);
+	const userClick = (event) => checkListeners(listeners.click,event);		// 'mousedown'
+	const userHover = (event) => checkListeners(listeners.hover,event);		// 'mouseover'
+	const userExit = (event) => checkListeners(listeners.exit,event);		// 'mouseout'
 	
 	/**
-	* Scroll & Resize fire at high rates so throttle them
+	* Scroll & Resize 
+	* These fire at high rates and need throttling
 	*/
 	const throttler = {
 		fire:true,
-		timerID:null,
+		timerID:0,
 		throttleEvent: function(listeners){
 			if(this.fire){
 				this.fire = false;
@@ -177,11 +153,18 @@ const bluejay = (function () {
 		}
 	};
 
-	// 'scroll'
-	const windowScroll = () => throttler.throttleEvent(listeners.scroll);
+	const windowScroll = () => throttler.throttleEvent(listeners.scroll);	// 'scroll'
+	const windowResize = () => throttler.throttleEvent(listeners.resize);	// 'resize'
 	
-	// onResize
-	const windowResize = () => throttler.throttleEvent(listeners.resize);
+	/**
+	* DOM updated. 
+	* Called whenever a change is made to the DOM
+	*/
+	const domChange = () => {
+		listeners.udpate.forEach((item) => {
+			item.cb(event);
+		});
+	};
 	
 	
 	// extend App
@@ -190,12 +173,12 @@ const bluejay = (function () {
 	bluejay.extend('exitEvent',userExit);
 	bluejay.extend('windowScroll',windowScroll);
 	bluejay.extend('windowResize',windowResize);
+	bluejay.extend('domUpdate',domChange);
 
 })();
-
 /**
-  * Helper functions
-  */
+* Helper functions
+*/
 (function () {
 
 	'use strict';
@@ -247,10 +230,9 @@ const bluejay = (function () {
 	bluejay.extend('getHiddenElemSize', getHiddenElemSize);
 	
 })();
-
 /**
-  * Namespace functionality within App for Modules
-  */
+* Namespace controller within App for Modules
+*/
 (function () {
 
 	'use strict';
@@ -302,8 +284,7 @@ const bluejay = (function () {
 	
 })();
 /**
-* Settings
-* Useful global settings
+* Settings (useful globals)
 */
 (function () {
 
@@ -319,6 +300,9 @@ const bluejay = (function () {
 			extendedBrowserSize: 1440,
 			browserHotlistFixSize: 1890,
 		},
+		dom : {
+			dataAttr: 'bluejay',
+		}
 	};
 	
 	/**
@@ -334,10 +318,166 @@ const bluejay = (function () {
 	bluejay.extend('getSetting',getSetting);
 })();
 /**
-Tooltips (on icons)
-These may be loaded after intial DOM load (asynchronously)
-Build DOM structure and watch for Events, as only ONE tooltip
-is open at a time, reuse DOM, update and position
+* Collapse/Expand (show/hide) Data 
+*/
+(function () {
+
+	'use strict';	
+	
+	const app = bluejay.addModule('collapseData'); 	// get unique namespace for module
+	const selector = '.collapse-data-header-icon';	
+	const dataAttrName = bluejay.getSetting('dom').dataAttr;
+	let store = []; // store all elements 
+
+	/**
+	* @class CollapseExpander
+	* @param {DOMElement} elem 
+	*/
+	function CollapseExpander(elem){
+		this.btn = elem.querySelector('.' + this.btnClass);
+		this.content = elem.querySelector('.collapse-data-content');
+		this.collapsed = true;
+	}
+	
+	/* 
+	set up inheritance for CollapseExpander	
+	*/
+	CollapseExpander.prototype.btnClass = "collapse-data-header-icon";
+	
+	// add change method
+	CollapseExpander.prototype.change = function(){
+		if(this.collapsed){
+			this.content.style.display = "block";
+			this.btn.className = this.btnClass + " collapse";
+			
+			//	idg.restrictDataHeight( content.querySelector('.restrict-data-shown'); )
+				
+		} else {
+			this.content.style.display = "none";
+			this.btn.className = this.btnClass + " expand";
+		}
+		
+		this.collapsed = !this.collapsed;
+	};
+	
+	/**
+	* Callback for Event (header btn)
+	* @param {event} event
+	*/
+	const userClick = (event) => {
+		let id =  event.target.parentNode.dataset[dataAttrName];
+		store[id].change();
+	};
+	
+	/**
+	* Initialise DOM Elements
+	* setup wrapped in case it needs calling on a UI update
+	*/
+	const init = () => {
+		let collapseData = bluejay.nodeArray(document.querySelectorAll('.collapse-data'));
+		if(collapseData.length < 1) return; // no elements!
+		
+		collapseData.forEach( (elem) => {
+			// check to see if elem is already set up
+			if(elem.hasAttribute('data-'+dataAttrName) === false){
+				// store ID on DOM data-attribute and store Instance		
+				elem.setAttribute('data-'+dataAttrName, store.length);
+				store.push( new CollapseExpander(elem) );				
+			}
+		});
+	};
+	
+	// init DOM Elements
+	init();
+	
+	// Regsiter for Events
+	bluejay.registerForClick(selector,userClick);
+
+})(); 
+/**
+* Restrict Data Height (shown!) 
+* Tile Element data (in SEM) and "Past Appointments"
+* can be very long lists. There high is restricted by 
+* CSS but the data overflow needs visually flagging.
+*/
+(function () {
+
+	'use strict';
+
+	
+/*
+	idg.restrictDataHeight = function( wasHiddenElem = false ){
+	
+	
+	if( wasHiddenElem !== false){
+		/*
+		A restricted height element could be wrapped in hideshow
+		wrapper DOM. Therefore when it's open IT calls this function 
+		with an Elem and then sets it up. 
+		
+		console.log( wasHiddenElem)
+		setupRestrict( $(wasHiddenElem) );
+		return;
+	}
+	
+	
+	if( $('.restrict-data-shown').length == 0 ) return;
+	/*
+	Quick demo of the UI / UX behaviour	
+
+	$('.restrict-data-shown').each(function(){
+		setupRestrict( $(this) );
+	});
+	
+	function setupRestrict( $elem ){
+
+		/*
+		Restrict data can have several different 
+		heights, e.g. 'rows-10','rows-5'	
+	
+	
+		let wrapHeight 		= $elem.height();
+		let $content 		= $elem.find('.restrict-data-content');
+		let scrollH 		= $content.prop('scrollHeight');
+		
+		
+		/*
+		if set up, don't do bother again, probably coming in from a
+		hide show wrapper.
+		
+		if( $elem.data('build') ){
+			// but fade in the flag UI.. 
+			$elem.find('.restrict-data-shown-flag').fadeIn();
+		} else {
+			if(scrollH > wrapHeight){
+				
+				// it's scrolling, so flag it
+				let flag = $('<div/>',{ class:"restrict-data-shown-flag"});
+				$elem.prepend(flag);
+				
+				flag.click(function(){
+					$content.animate({
+						scrollTop: $content.height()
+					}, 1000);
+				});	
+	
+				$content.on('scroll',function(){
+					flag.fadeOut();
+				});
+				
+				$elem.data('build',true);
+			}	
+		}	
+	}
+}
+
+*/
+	
+	
+})(); 
+/**
+* Tooltips (on icons)
+* These may be loaded after intial DOM  load (asynchronously)
 */
 (function () {
 
@@ -347,13 +487,24 @@ is open at a time, reuse DOM, update and position
 	const selector = ".js-has-tooltip";
 	const mainClass = "oe-tooltip";
 	let showing = false;
+	let winWidth = window.innerWidth; // forces layout / reflow
 		
 	// create DOM (keep out of reflow)
 	let div = document.createElement('div');
 	div.className = mainClass;
 	div.style.display = "none";
 	bluejay.appendTo('body',div);
-
+	
+	/**
+	* Window Resize 
+	*/
+	const resize = () => winWidth = window.innerWidth;
+	
+	/**
+	* click - show and hide (unclick)
+	*/
+	const userClick = (event) => showing? hide(event) : show(event);
+	
 	/**
 	* Show tooltip. Update from Event
 	* @param {Event} event
@@ -361,7 +512,7 @@ is open at a time, reuse DOM, update and position
 	const show = (event) => {
 		if(showing) return;
 		showing = true;
-				
+						
 		const icon = event.target; // always an icon	
 		div.innerHTML = icon.dataset.tooltipContent; // could contain HTML
 		
@@ -388,9 +539,9 @@ is open at a time, reuse DOM, update and position
 	
 		// watch out for the hotlist
 		let extendedBrowser = bluejay.getSetting('css').extendedBrowserSize;
-		let maxRightPos = window.innerWidth > extendedBrowser ? extendedBrowser : window.innerWidth;
+		let maxRightPos = winWidth > extendedBrowser ? extendedBrowser : winWidth;
 		
-		// Icon too near a side?
+		// Icon too near either side?
 		if(center <= offsetW){
 			offsetW = 20; 			// position right of icon, needs to match CSS arrow position
 			css = "offset-right";
@@ -405,7 +556,7 @@ is open at a time, reuse DOM, update and position
 			css = "inverted";
 		} 
 		
-		// update DOM
+		// update DOM and show the tooltip
 		div.className = mainClass + " " + css;
 		div.style.top = top;
 		div.style.left = (center - offsetW) + 'px';
@@ -427,15 +578,16 @@ is open at a time, reuse DOM, update and position
 
 	
 	// Register/Listen for Events
-	bluejay.registerForClick(selector,show);
+	bluejay.registerForClick(selector,userClick);
 	bluejay.registerForHover(selector,show);
 	bluejay.registerForExit(selector,hide);
-	
 	bluejay.listenForScroll(hide);
+	bluejay.listenForResize(resize);
 	
 })(); 
 /**
-* Events
+* Event Listeners
+* Must be last!
 */
 (function () {
 

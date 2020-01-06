@@ -1,8 +1,8 @@
 /**
-OE3 JS layer to handle UI interactions.
-Tooltips, popups, etc. 
-Using "bluejay" for namespace
-@namespace
+* OE3 JS layer to handle UI interactions.
+* Tooltips, popups, etc. 
+* Using "bluejay" for namespace
+* @namespace
 */
 const bluejay = (function () {
 

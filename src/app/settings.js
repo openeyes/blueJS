@@ -1,6 +1,5 @@
 /**
-* Settings
-* Useful global settings
+* Settings (useful globals)
 */
 (function () {
 
@@ -16,6 +15,9 @@
 			extendedBrowserSize: 1440,
 			browserHotlistFixSize: 1890,
 		},
+		dom : {
+			dataAttr: 'bluejay',
+		}
 	};
 	
 	/**
