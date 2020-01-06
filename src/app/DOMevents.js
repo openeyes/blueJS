@@ -1,5 +1,5 @@
 /**
-* Events
+* DOM Events
 */
 (function () {
 

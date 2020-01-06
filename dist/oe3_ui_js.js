@@ -62,7 +62,39 @@ const bluejay = (function () {
 
 })();
 /**
-* Events
+* Custom App Events 
+* (lets keep it a bit loose)
+*/
+(function () {
+
+	'use strict';
+	
+	const myEvents = {};
+	
+	/**
+	* Create Custom Event 
+	* @param {string} eventType
+	* @param {Object}
+	*/
+	const createEvent = (eventType,eventDetail) => {
+		// check it's available
+		if (!(eventType in myEvents)){
+			bluejay.log('New Event added: '+eventType);
+			myEvents[eventType] = new CustomEvent(eventType,{detail:eventDetail});
+			return true;
+	
+		} else {
+			
+			bluejay.log('Err: Event aleady added? ' + eventType);
+			return false;
+		}
+	};
+
+	bluejay.extend('addCustomEvent',createEvent);	
+
+})();
+/**
+* DOM Events
 */
 (function () {
 
@@ -587,20 +619,19 @@ const bluejay = (function () {
 })(); 
 /**
 * Event Listeners
-* Must be last!
 */
 (function () {
 
 	'use strict';
 	
 	/**
-	To improve performance capture all events
-	are routed through single Event Listeners
+	To improve performance delegate Event handling to the document
+	useCapture rather than waiting for the bubbling
 	*/
 	
-	document.addEventListener('mouseover',	bluejay.hoverEvent,		false);
-	document.addEventListener('mousedown',	bluejay.clickEvent,		false); 
-	document.addEventListener('mouseout',	bluejay.exitEvent,		false);
+	document.addEventListener('mouseover',	bluejay.hoverEvent,		true);
+	document.addEventListener('mousedown',	bluejay.clickEvent,		true); 
+	document.addEventListener('mouseout',	bluejay.exitEvent,		true);
 	 
 	// these are handled a bit differently
 	window.addEventListener('scroll',		bluejay.windowScroll,	true);

@@ -1,19 +1,18 @@
 /**
 * Event Listeners
-* Must be last!
 */
 (function () {
 
 	'use strict';
 	
 	/**
-	To improve performance capture all events
-	are routed through single Event Listeners
+	To improve performance delegate Event handling to the document
+	useCapture rather than waiting for the bubbling
 	*/
 	
-	document.addEventListener('mouseover',	bluejay.hoverEvent,		false);
-	document.addEventListener('mousedown',	bluejay.clickEvent,		false); 
-	document.addEventListener('mouseout',	bluejay.exitEvent,		false);
+	document.addEventListener('mouseover',	bluejay.hoverEvent,		true);
+	document.addEventListener('mousedown',	bluejay.clickEvent,		true); 
+	document.addEventListener('mouseout',	bluejay.exitEvent,		true);
 	 
 	// these are handled a bit differently
 	window.addEventListener('scroll',		bluejay.windowScroll,	true);
