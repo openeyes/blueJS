@@ -1,7 +1,7 @@
 /**
 * Helper functions
 */
-(function () {
+(function (uiApp) {
 
 	'use strict';
 	
@@ -47,8 +47,8 @@
 	};
 
 	// Extend App
-	bluejay.extend('nodeArray', NodeListToArray);
-	bluejay.extend('appendTo',appendTo);
-	bluejay.extend('getHiddenElemSize', getHiddenElemSize);
+	uiApp.extend('nodeArray', NodeListToArray);
+	uiApp.extend('appendTo',appendTo);
+	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
 	
-})();
+})(bluejay);

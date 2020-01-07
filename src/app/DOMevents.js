@@ -1,15 +1,13 @@
 /**
 * DOM Events
 */
-(function () {
+(function (uiApp) {
 
 	'use strict';
 	
 	/**
-	To improve performance route all events through 
-	single Event Listener on the document. Modules register 
-	callbacks here. The functionality they want is basically
-	"click","hover","exit" 
+	To improve performance delegate all events. Modules register 
+	callbacks here. Basically they want "click","hover","exit" 
 	*/
 	const listeners = {
 		click:[],		// mousedown
@@ -37,12 +35,12 @@
 	const addToUpdate = (cb) => listeners.update.push({ cb:cb });
 
 	// extend app
-	bluejay.extend('registerForHover',addToHover);
-	bluejay.extend('registerForClick',addToClick);
-	bluejay.extend('registerForExit',addToExit);
-	bluejay.extend('listenForScroll',addToScroll);
-	bluejay.extend('listenForResize',addToResize);
-	bluejay.extend('listenForDomChange',addToUpdate);
+	uiApp.extend('registerForHover',addToHover);
+	uiApp.extend('registerForClick',addToClick);
+	uiApp.extend('registerForExit',addToExit);
+	uiApp.extend('listenForScroll',addToScroll);
+	uiApp.extend('listenForResize',addToResize);
+	uiApp.extend('listenForDomChange',addToUpdate);
 	
 	/**
 	* Handle Listeners awaiting Document Events
@@ -102,14 +100,13 @@
 			item.cb(event);
 		});
 	};
-	
-	
-	// extend App
-	bluejay.extend('clickEvent',userClick);
-	bluejay.extend('hoverEvent',userHover);
-	bluejay.extend('exitEvent',userExit);
-	bluejay.extend('windowScroll',windowScroll);
-	bluejay.extend('windowResize',windowResize);
-	bluejay.extend('domUpdate',domChange);
 
-})();
+	// extend App
+	uiApp.extend('onClickEvent',userClick);
+	uiApp.extend('onHoverEvent',userHover);
+	uiApp.extend('onExitEvent',userExit);
+	uiApp.extend('onWindowScroll',windowScroll);
+	uiApp.extend('onWindowResize',windowResize);
+	uiApp.extend('onDomUpdate',domChange);
+
+})(bluejay);

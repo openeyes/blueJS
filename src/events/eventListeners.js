@@ -1,7 +1,7 @@
 /**
 * Event Listeners
 */
-(function () {
+(function (uiApp) {
 
 	'use strict';
 	
@@ -10,12 +10,12 @@
 	useCapture rather than waiting for the bubbling
 	*/
 	
-	document.addEventListener('mouseover',	bluejay.hoverEvent,		true);
-	document.addEventListener('mousedown',	bluejay.clickEvent,		true); 
-	document.addEventListener('mouseout',	bluejay.exitEvent,		true);
+	document.addEventListener('mouseover',	uiApp.onHoverEvent,		true);
+	document.addEventListener('mousedown',	uiApp.onClickEvent,		true); 
+	document.addEventListener('mouseout',	uiApp.onExitEvent,		true);
 	 
 	// these are handled a bit differently
-	window.addEventListener('scroll',		bluejay.windowScroll,	true);
-	window.onresize = bluejay.windowResize; 
+	window.addEventListener('scroll',		uiApp.onWindowScroll,	true);
+	window.onresize = uiApp.onWindowResize; 
 	
-})();
+})(bluejay);

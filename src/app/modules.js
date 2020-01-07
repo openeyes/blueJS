@@ -1,7 +1,7 @@
 /**
 * Namespace controller within App for Modules
 */
-(function () {
+(function (uiApp) {
 
 	'use strict';
 	
@@ -20,13 +20,13 @@
 		// check for unique namespace
 		if (!(name in modules)){
 			
-			bluejay.log('Module added: '+name);
+			uiApp.log('[Module] new module added: '+name);
 			modules[name] = {};
 			return modules[name];
 	
 		} else {
 			
-			bluejay.log('Err: Module aleady added? ' + name);
+			uiApp.log('** Err: Module aleady added? ' + name);
 			return false;
 		}
 	};
@@ -39,7 +39,7 @@
 	let get = (name) => {
 		
 		if (!(name in modules)){
-			bluejay.log('Module does not exist?: '+name);
+			uiApp.log('Module does not exist?: '+name);
 			return;	
 		}
 		
@@ -47,7 +47,7 @@
 	};
 	
 	// Extend App
-	bluejay.extend('addModule',add);
-	bluejay.extend('getModule',get);
+	uiApp.extend('addModule',add);
+	uiApp.extend('getModule',get);
 	
-})();
+})(bluejay);

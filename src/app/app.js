@@ -32,7 +32,7 @@ const bluejay = (function () {
 			
 		} else {
 			// method already added!
-			bluejay.log('Err: Can not extend again: "' + name + '"');
+			bluejay.log('** Err: Can not extend again: "' + name + '"');
 			return false;
 		}
 	};

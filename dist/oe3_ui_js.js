@@ -39,7 +39,7 @@ const bluejay = (function () {
 			
 		} else {
 			// method already added!
-			bluejay.log('Err: Can not extend again: "' + name + '"');
+			bluejay.log('** Err: Can not extend again: "' + name + '"');
 			return false;
 		}
 	};
@@ -62,49 +62,15 @@ const bluejay = (function () {
 
 })();
 /**
-* Custom App Events 
-* (lets keep it a bit loose)
-*/
-(function () {
-
-	'use strict';
-	
-	const myEvents = {};
-	
-	/**
-	* Create Custom Event 
-	* @param {string} eventType
-	* @param {Object}
-	*/
-	const createEvent = (eventType,eventDetail) => {
-		// check it's available
-		if (!(eventType in myEvents)){
-			bluejay.log('New Event added: '+eventType);
-			myEvents[eventType] = new CustomEvent(eventType,{detail:eventDetail});
-			return true;
-	
-		} else {
-			
-			bluejay.log('Err: Event aleady added? ' + eventType);
-			return false;
-		}
-	};
-
-	bluejay.extend('addCustomEvent',createEvent);	
-
-})();
-/**
 * DOM Events
 */
-(function () {
+(function (uiApp) {
 
 	'use strict';
 	
 	/**
-	To improve performance route all events through 
-	single Event Listener on the document. Modules register 
-	callbacks here. The functionality they want is basically
-	"click","hover","exit" 
+	To improve performance delegate all events. Modules register 
+	callbacks here. Basically they want "click","hover","exit" 
 	*/
 	const listeners = {
 		click:[],		// mousedown
@@ -132,12 +98,12 @@ const bluejay = (function () {
 	const addToUpdate = (cb) => listeners.update.push({ cb:cb });
 
 	// extend app
-	bluejay.extend('registerForHover',addToHover);
-	bluejay.extend('registerForClick',addToClick);
-	bluejay.extend('registerForExit',addToExit);
-	bluejay.extend('listenForScroll',addToScroll);
-	bluejay.extend('listenForResize',addToResize);
-	bluejay.extend('listenForDomChange',addToUpdate);
+	uiApp.extend('registerForHover',addToHover);
+	uiApp.extend('registerForClick',addToClick);
+	uiApp.extend('registerForExit',addToExit);
+	uiApp.extend('listenForScroll',addToScroll);
+	uiApp.extend('listenForResize',addToResize);
+	uiApp.extend('listenForDomChange',addToUpdate);
 	
 	/**
 	* Handle Listeners awaiting Document Events
@@ -197,21 +163,43 @@ const bluejay = (function () {
 			item.cb(event);
 		});
 	};
-	
-	
-	// extend App
-	bluejay.extend('clickEvent',userClick);
-	bluejay.extend('hoverEvent',userHover);
-	bluejay.extend('exitEvent',userExit);
-	bluejay.extend('windowScroll',windowScroll);
-	bluejay.extend('windowResize',windowResize);
-	bluejay.extend('domUpdate',domChange);
 
-})();
+	// extend App
+	uiApp.extend('onClickEvent',userClick);
+	uiApp.extend('onHoverEvent',userHover);
+	uiApp.extend('onExitEvent',userExit);
+	uiApp.extend('onWindowScroll',windowScroll);
+	uiApp.extend('onWindowResize',windowResize);
+	uiApp.extend('onDomUpdate',domChange);
+
+})(bluejay);
+/**
+* Custom App Events 
+* (lets try and keep it loose)
+*/
+(function (uiApp) {
+
+	'use strict';
+	
+	/**
+	* Create Custom Event
+	* @param {string} eventType
+	* @param {Object}
+	*/
+	const createEvent = (eventType,eventDetail) => {
+		eventType = "oeui-" + eventType; 
+		const event = new CustomEvent(eventType,{detail:eventDetail});
+		document.dispatchEvent(event);
+		bluejay.log('[Custom Event] - "'+eventType+'"');
+	};
+		
+	uiApp.extend('triggerCustomEvent',createEvent);	
+	
+})(bluejay);
 /**
 * Helper functions
 */
-(function () {
+(function (uiApp) {
 
 	'use strict';
 	
@@ -257,15 +245,15 @@ const bluejay = (function () {
 	};
 
 	// Extend App
-	bluejay.extend('nodeArray', NodeListToArray);
-	bluejay.extend('appendTo',appendTo);
-	bluejay.extend('getHiddenElemSize', getHiddenElemSize);
+	uiApp.extend('nodeArray', NodeListToArray);
+	uiApp.extend('appendTo',appendTo);
+	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
 	
-})();
+})(bluejay);
 /**
 * Namespace controller within App for Modules
 */
-(function () {
+(function (uiApp) {
 
 	'use strict';
 	
@@ -284,13 +272,13 @@ const bluejay = (function () {
 		// check for unique namespace
 		if (!(name in modules)){
 			
-			bluejay.log('Module added: '+name);
+			uiApp.log('[Module] new module added: '+name);
 			modules[name] = {};
 			return modules[name];
 	
 		} else {
 			
-			bluejay.log('Err: Module aleady added? ' + name);
+			uiApp.log('** Err: Module aleady added? ' + name);
 			return false;
 		}
 	};
@@ -303,7 +291,7 @@ const bluejay = (function () {
 	let get = (name) => {
 		
 		if (!(name in modules)){
-			bluejay.log('Module does not exist?: '+name);
+			uiApp.log('Module does not exist?: '+name);
 			return;	
 		}
 		
@@ -311,14 +299,14 @@ const bluejay = (function () {
 	};
 	
 	// Extend App
-	bluejay.extend('addModule',add);
-	bluejay.extend('getModule',get);
+	uiApp.extend('addModule',add);
+	uiApp.extend('getModule',get);
 	
-})();
+})(bluejay);
 /**
 * Settings (useful globals)
 */
-(function () {
+(function (uiApp) {
 
 	'use strict';
 
@@ -347,20 +335,21 @@ const bluejay = (function () {
 	};
 	
 	// Extend App
-	bluejay.extend('getSetting',getSetting);
-})();
+	uiApp.extend('getSetting',getSetting);
+
+})(bluejay);
 /**
 * Collapse/Expand (show/hide) Data 
 */
-(function () {
+(function (uiApp) {
 
 	'use strict';	
 	
-	const app = bluejay.addModule('collapseData'); 	// get unique namespace for module
+	const app = uiApp.addModule('collapseData'); 	// get unique namespace for module
 	const selector = '.collapse-data-header-icon';	
-	const dataAttrName = bluejay.getSetting('dom').dataAttr;
+	const dataAttrName = uiApp.getSetting('dom').dataAttr;
 	let store = []; // store all elements 
-
+	
 	/**
 	* @class CollapseExpander
 	* @param {DOMElement} elem 
@@ -371,25 +360,23 @@ const bluejay = (function () {
 		this.collapsed = true;
 	}
 	
-	/* 
-	set up inheritance for CollapseExpander	
-	*/
+	// set up inheritance...	
 	CollapseExpander.prototype.btnClass = "collapse-data-header-icon";
 	
 	// add change method
+	// expand / collapse css sets the icon 
 	CollapseExpander.prototype.change = function(){
-		if(this.collapsed){
-			this.content.style.display = "block";
-			this.btn.className = this.btnClass + " collapse";
-			
-			//	idg.restrictDataHeight( content.querySelector('.restrict-data-shown'); )
-				
-		} else {
-			this.content.style.display = "none";
-			this.btn.className = this.btnClass + " expand";
-		}
-		
-		this.collapsed = !this.collapsed;
+		let display = "none";
+		let css = "expand";
+		let collapsed = this.collapsed;
+		if(collapsed){
+			display = "block";
+			css = "collapse";
+			uiApp.triggerCustomEvent("collapse-data-revealed",{content:this.content});		
+		} 
+		this.content.style.display = display;
+		this.btn.className = this.btnClass + " " + css;
+		collapsed = !collapsed;
 	};
 	
 	/**
@@ -406,7 +393,7 @@ const bluejay = (function () {
 	* setup wrapped in case it needs calling on a UI update
 	*/
 	const init = () => {
-		let collapseData = bluejay.nodeArray(document.querySelectorAll('.collapse-data'));
+		let collapseData = uiApp.nodeArray(document.querySelectorAll('.collapse-data'));
 		if(collapseData.length < 1) return; // no elements!
 		
 		collapseData.forEach( (elem) => {
@@ -423,49 +410,54 @@ const bluejay = (function () {
 	init();
 	
 	// Regsiter for Events
-	bluejay.registerForClick(selector,userClick);
+	uiApp.registerForClick(selector,userClick);	
 
-})(); 
+})(bluejay); 
 /**
-* Restrict Data Height (shown!) 
+* Restrict Data Height
 * Tile Element data (in SEM) and "Past Appointments"
 * can be very long lists. There high is restricted by 
-* CSS but the data overflow needs visually flagging.
+* CSS but the data overflow needs visually flagged so 
+* as not to be missed.
 */
-(function () {
+(function (uiApp) {
 
 	'use strict';
+	
+	/*
+	* setup Restricted Data Visual Flag 
+	* once clicked on, or scrolled it's removed.
+	* several different CSS heights e.g. 'rows-10','rows-5'
+	*/
+	const setup = (elem) => {
+		console.log(elem);
+		
+			
+		// end of scroll: element.scrollHeight - element.scrollTop === element.clientHeight
+	};	
+	
+	/**
+	* Initialise DOM Elements
+	* setup wrapped in case it needs calling on a UI update
+	*/
+	const init = () => {
+		let restrictedData = uiApp.nodeArray(document.querySelectorAll('.restrict-data-shown'));
+		if(restrictedData.length < 1) return; // no elements!
+		
+		restrictedData.forEach( (elem) => {
+			setup(elem);
+		});
+	};
+	
+	// init DOM Elements
+	init();
 
 	
 /*
-	idg.restrictDataHeight = function( wasHiddenElem = false ){
-	
-	
-	if( wasHiddenElem !== false){
-		/*
-		A restricted height element could be wrapped in hideshow
-		wrapper DOM. Therefore when it's open IT calls this function 
-		with an Elem and then sets it up. 
-		
-		console.log( wasHiddenElem)
-		setupRestrict( $(wasHiddenElem) );
-		return;
-	}
-	
-	
-	if( $('.restrict-data-shown').length == 0 ) return;
-	/*
-	Quick demo of the UI / UX behaviour	
-
-	$('.restrict-data-shown').each(function(){
-		setupRestrict( $(this) );
-	});
 	
 	function setupRestrict( $elem ){
 
-		/*
-		Restrict data can have several different 
-		heights, e.g. 'rows-10','rows-5'	
+			
 	
 	
 		let wrapHeight 		= $elem.height();
@@ -506,26 +498,25 @@ const bluejay = (function () {
 */
 	
 	
-})(); 
+})(bluejay); 
 /**
 * Tooltips (on icons)
 * These may be loaded after intial DOM  load (asynchronously)
 */
-(function () {
+(function (uiApp) {
 
 	'use strict';
 
-	const app = bluejay.addModule('tooltip'); 	// get unique namespace for module
 	const selector = ".js-has-tooltip";
 	const mainClass = "oe-tooltip";
 	let showing = false;
-	let winWidth = window.innerWidth; // forces layout / reflow
+	let winWidth = window.innerWidth; // forces reflow
 		
 	// create DOM (keep out of reflow)
 	let div = document.createElement('div');
 	div.className = mainClass;
 	div.style.display = "none";
-	bluejay.appendTo('body',div);
+	uiApp.appendTo('body',div);
 	
 	/**
 	* Window Resize 
@@ -557,7 +548,7 @@ const bluejay = (function () {
 		let css = ""; // classes to position the arrows correct
 		
 		// can't get the height without some tricky...
-		let h = bluejay.getHiddenElemSize(div).h;
+		let h = uiApp.getHiddenElemSize(div).h;
 						
 		/*
 		work out positioning based on icon
@@ -570,7 +561,7 @@ const bluejay = (function () {
 		let top = domRect.top - h - offsetH + 'px';
 	
 		// watch out for the hotlist
-		let extendedBrowser = bluejay.getSetting('css').extendedBrowserSize;
+		let extendedBrowser = uiApp.getSetting('css').extendedBrowserSize;
 		let maxRightPos = winWidth > extendedBrowser ? extendedBrowser : winWidth;
 		
 		// Icon too near either side?
@@ -610,17 +601,17 @@ const bluejay = (function () {
 
 	
 	// Register/Listen for Events
-	bluejay.registerForClick(selector,userClick);
-	bluejay.registerForHover(selector,show);
-	bluejay.registerForExit(selector,hide);
-	bluejay.listenForScroll(hide);
-	bluejay.listenForResize(resize);
+	uiApp.registerForClick(selector,userClick);
+	uiApp.registerForHover(selector,show);
+	uiApp.registerForExit(selector,hide);
+	uiApp.listenForScroll(hide);
+	uiApp.listenForResize(resize);
 	
-})(); 
+})(bluejay); 
 /**
 * Event Listeners
 */
-(function () {
+(function (uiApp) {
 
 	'use strict';
 	
@@ -629,12 +620,12 @@ const bluejay = (function () {
 	useCapture rather than waiting for the bubbling
 	*/
 	
-	document.addEventListener('mouseover',	bluejay.hoverEvent,		true);
-	document.addEventListener('mousedown',	bluejay.clickEvent,		true); 
-	document.addEventListener('mouseout',	bluejay.exitEvent,		true);
+	document.addEventListener('mouseover',	uiApp.onHoverEvent,		true);
+	document.addEventListener('mousedown',	uiApp.onClickEvent,		true); 
+	document.addEventListener('mouseout',	uiApp.onExitEvent,		true);
 	 
 	// these are handled a bit differently
-	window.addEventListener('scroll',		bluejay.windowScroll,	true);
-	window.onresize = bluejay.windowResize; 
+	window.addEventListener('scroll',		uiApp.onWindowScroll,	true);
+	window.onresize = uiApp.onWindowResize; 
 	
-})();
+})(bluejay);

@@ -1,32 +1,23 @@
 /**
 * Custom App Events 
-* (lets keep it a bit loose)
+* (lets try and keep it loose)
 */
-(function () {
+(function (uiApp) {
 
 	'use strict';
 	
-	const myEvents = {};
-	
 	/**
-	* Create Custom Event 
+	* Create Custom Event
 	* @param {string} eventType
 	* @param {Object}
 	*/
 	const createEvent = (eventType,eventDetail) => {
-		// check it's available
-		if (!(eventType in myEvents)){
-			bluejay.log('New Event added: '+eventType);
-			myEvents[eventType] = new CustomEvent(eventType,{detail:eventDetail});
-			return true;
-	
-		} else {
-			
-			bluejay.log('Err: Event aleady added? ' + eventType);
-			return false;
-		}
+		eventType = "oeui-" + eventType; 
+		const event = new CustomEvent(eventType,{detail:eventDetail});
+		document.dispatchEvent(event);
+		bluejay.log('[Custom Event] - "'+eventType+'"');
 	};
-
-	bluejay.extend('addCustomEvent',createEvent);	
-
-})();
+		
+	uiApp.extend('triggerCustomEvent',createEvent);	
+	
+})(bluejay);

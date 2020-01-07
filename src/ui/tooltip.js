@@ -2,21 +2,20 @@
 * Tooltips (on icons)
 * These may be loaded after intial DOM  load (asynchronously)
 */
-(function () {
+(function (uiApp) {
 
 	'use strict';
 
-	const app = bluejay.addModule('tooltip'); 	// get unique namespace for module
 	const selector = ".js-has-tooltip";
 	const mainClass = "oe-tooltip";
 	let showing = false;
-	let winWidth = window.innerWidth; // forces layout / reflow
+	let winWidth = window.innerWidth; // forces reflow
 		
 	// create DOM (keep out of reflow)
 	let div = document.createElement('div');
 	div.className = mainClass;
 	div.style.display = "none";
-	bluejay.appendTo('body',div);
+	uiApp.appendTo('body',div);
 	
 	/**
 	* Window Resize 
@@ -48,7 +47,7 @@
 		let css = ""; // classes to position the arrows correct
 		
 		// can't get the height without some tricky...
-		let h = bluejay.getHiddenElemSize(div).h;
+		let h = uiApp.getHiddenElemSize(div).h;
 						
 		/*
 		work out positioning based on icon
@@ -61,7 +60,7 @@
 		let top = domRect.top - h - offsetH + 'px';
 	
 		// watch out for the hotlist
-		let extendedBrowser = bluejay.getSetting('css').extendedBrowserSize;
+		let extendedBrowser = uiApp.getSetting('css').extendedBrowserSize;
 		let maxRightPos = winWidth > extendedBrowser ? extendedBrowser : winWidth;
 		
 		// Icon too near either side?
@@ -101,10 +100,10 @@
 
 	
 	// Register/Listen for Events
-	bluejay.registerForClick(selector,userClick);
-	bluejay.registerForHover(selector,show);
-	bluejay.registerForExit(selector,hide);
-	bluejay.listenForScroll(hide);
-	bluejay.listenForResize(resize);
+	uiApp.registerForClick(selector,userClick);
+	uiApp.registerForHover(selector,show);
+	uiApp.registerForExit(selector,hide);
+	uiApp.listenForScroll(hide);
+	uiApp.listenForResize(resize);
 	
-})(); 
+})(bluejay); 

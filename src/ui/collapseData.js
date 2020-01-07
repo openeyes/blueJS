@@ -1,15 +1,15 @@
 /**
 * Collapse/Expand (show/hide) Data 
 */
-(function () {
+(function (uiApp) {
 
 	'use strict';	
 	
-	const app = bluejay.addModule('collapseData'); 	// get unique namespace for module
+	const app = uiApp.addModule('collapseData'); 	// get unique namespace for module
 	const selector = '.collapse-data-header-icon';	
-	const dataAttrName = bluejay.getSetting('dom').dataAttr;
+	const dataAttrName = uiApp.getSetting('dom').dataAttr;
 	let store = []; // store all elements 
-
+	
 	/**
 	* @class CollapseExpander
 	* @param {DOMElement} elem 
@@ -20,25 +20,23 @@
 		this.collapsed = true;
 	}
 	
-	/* 
-	set up inheritance for CollapseExpander	
-	*/
+	// set up inheritance...	
 	CollapseExpander.prototype.btnClass = "collapse-data-header-icon";
 	
 	// add change method
+	// expand / collapse css sets the icon 
 	CollapseExpander.prototype.change = function(){
-		if(this.collapsed){
-			this.content.style.display = "block";
-			this.btn.className = this.btnClass + " collapse";
-			
-			//	idg.restrictDataHeight( content.querySelector('.restrict-data-shown'); )
-				
-		} else {
-			this.content.style.display = "none";
-			this.btn.className = this.btnClass + " expand";
-		}
-		
-		this.collapsed = !this.collapsed;
+		let display = "none";
+		let css = "expand";
+		let collapsed = this.collapsed;
+		if(collapsed){
+			display = "block";
+			css = "collapse";
+			uiApp.triggerCustomEvent("collapse-data-revealed",{content:this.content});		
+		} 
+		this.content.style.display = display;
+		this.btn.className = this.btnClass + " " + css;
+		collapsed = !collapsed;
 	};
 	
 	/**
@@ -55,7 +53,7 @@
 	* setup wrapped in case it needs calling on a UI update
 	*/
 	const init = () => {
-		let collapseData = bluejay.nodeArray(document.querySelectorAll('.collapse-data'));
+		let collapseData = uiApp.nodeArray(document.querySelectorAll('.collapse-data'));
 		if(collapseData.length < 1) return; // no elements!
 		
 		collapseData.forEach( (elem) => {
@@ -72,6 +70,6 @@
 	init();
 	
 	// Regsiter for Events
-	bluejay.registerForClick(selector,userClick);
+	uiApp.registerForClick(selector,userClick);	
 
-})(); 
+})(bluejay); 

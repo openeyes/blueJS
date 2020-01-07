@@ -1,43 +1,48 @@
 /**
-* Restrict Data Height (shown!) 
+* Restrict Data Height
 * Tile Element data (in SEM) and "Past Appointments"
 * can be very long lists. There high is restricted by 
-* CSS but the data overflow needs visually flagging.
+* CSS but the data overflow needs visually flagged so 
+* as not to be missed.
 */
-(function () {
+(function (uiApp) {
 
 	'use strict';
+	
+	/*
+	* setup Restricted Data Visual Flag 
+	* once clicked on, or scrolled it's removed.
+	* several different CSS heights e.g. 'rows-10','rows-5'
+	*/
+	const setup = (elem) => {
+		console.log(elem);
+		
+			
+		// end of scroll: element.scrollHeight - element.scrollTop === element.clientHeight
+	};	
+	
+	/**
+	* Initialise DOM Elements
+	* setup wrapped in case it needs calling on a UI update
+	*/
+	const init = () => {
+		let restrictedData = uiApp.nodeArray(document.querySelectorAll('.restrict-data-shown'));
+		if(restrictedData.length < 1) return; // no elements!
+		
+		restrictedData.forEach( (elem) => {
+			setup(elem);
+		});
+	};
+	
+	// init DOM Elements
+	init();
 
 	
 /*
-	idg.restrictDataHeight = function( wasHiddenElem = false ){
-	
-	
-	if( wasHiddenElem !== false){
-		/*
-		A restricted height element could be wrapped in hideshow
-		wrapper DOM. Therefore when it's open IT calls this function 
-		with an Elem and then sets it up. 
-		
-		console.log( wasHiddenElem)
-		setupRestrict( $(wasHiddenElem) );
-		return;
-	}
-	
-	
-	if( $('.restrict-data-shown').length == 0 ) return;
-	/*
-	Quick demo of the UI / UX behaviour	
-
-	$('.restrict-data-shown').each(function(){
-		setupRestrict( $(this) );
-	});
 	
 	function setupRestrict( $elem ){
 
-		/*
-		Restrict data can have several different 
-		heights, e.g. 'rows-10','rows-5'	
+			
 	
 	
 		let wrapHeight 		= $elem.height();
@@ -78,4 +83,4 @@
 */
 	
 	
-})(); 
+})(bluejay); 

@@ -1,7 +1,7 @@
 /**
 * Settings (useful globals)
 */
-(function () {
+(function (uiApp) {
 
 	'use strict';
 
@@ -30,5 +30,6 @@
 	};
 	
 	// Extend App
-	bluejay.extend('getSetting',getSetting);
-})();
+	uiApp.extend('getSetting',getSetting);
+
+})(bluejay);
