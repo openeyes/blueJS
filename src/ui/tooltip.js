@@ -5,7 +5,8 @@
 (function (uiApp) {
 
 	'use strict';
-
+	
+	uiApp.addModule('tooltip');
 	const selector = ".js-has-tooltip";
 	const mainClass = "oe-tooltip";
 	let showing = false;

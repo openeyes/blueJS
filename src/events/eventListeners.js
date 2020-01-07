@@ -15,7 +15,7 @@
 	document.addEventListener('mouseout',	uiApp.onExitEvent,		true);
 	 
 	// these are handled a bit differently
-	window.addEventListener('scroll',		uiApp.onWindowScroll,	true);
+	window.addEventListener('scroll', uiApp.onWindowScroll,	true);
 	window.onresize = uiApp.onWindowResize; 
 	
 })(bluejay);

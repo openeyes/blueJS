@@ -141,12 +141,12 @@ const bluejay = (function () {
 				this.timerID = setTimeout( () => {
 					clearTimeout(this.timerID );
 					this.fire = true;
-				},300);
+				},320);  // 16ms * 20
 			}	
 		},
 		broadcast:function(listeners){
 			listeners.forEach((item) => {
-				item.cb();
+				item.cb(event);
 			});
 		}
 	};
@@ -272,7 +272,7 @@ const bluejay = (function () {
 		// check for unique namespace
 		if (!(name in modules)){
 			
-			uiApp.log('[Module] new module added: '+name);
+			uiApp.log('[Module] added: '+name);
 			modules[name] = {};
 			return modules[name];
 	
@@ -320,9 +320,16 @@ const bluejay = (function () {
 			extendedBrowserSize: 1440,
 			browserHotlistFixSize: 1890,
 		},
-		dom : {
-			dataAttr: 'bluejay',
-		}
+	};
+	
+	/**
+	* Standardise data-attributes names
+	* @param {String} suffix optional
+	* @returns {Sting} 
+	*/
+	const domDataAttribute = (suffix = false) => {
+		let attr = suffix === false ? 'oeui' : 'oeui-' + suffix;
+		return attr;
 	};
 	
 	/**
@@ -336,6 +343,7 @@ const bluejay = (function () {
 	
 	// Extend App
 	uiApp.extend('getSetting',getSetting);
+	uiApp.extend('getDataAttributeName',domDataAttribute);
 
 })(bluejay);
 /**
@@ -345,14 +353,15 @@ const bluejay = (function () {
 
 	'use strict';	
 	
-	const app = uiApp.addModule('collapseData'); 	// get unique namespace for module
+	uiApp.addModule('collapseData');
 	const selector = '.collapse-data-header-icon';	
-	const dataAttrName = uiApp.getSetting('dom').dataAttr;
+	const dataAttrName = uiApp.getDataAttributeName();
 	let store = []; // store all elements 
 	
 	/**
-	* @class CollapseExpander
-	* @param {DOMElement} elem 
+	* @class 
+	* @param {DOMElement} elem
+	* @private
 	*/
 	function CollapseExpander(elem){
 		this.btn = elem.querySelector('.' + this.btnClass);
@@ -360,11 +369,15 @@ const bluejay = (function () {
 		this.collapsed = true;
 	}
 	
-	// set up inheritance...	
+	/**
+	* Defaults
+	*/	
 	CollapseExpander.prototype.btnClass = "collapse-data-header-icon";
 	
-	// add change method
-	// expand / collapse css sets the icon 
+	/**
+	* change state of content
+	* @method 
+	*/
 	CollapseExpander.prototype.change = function(){
 		let display = "none";
 		let css = "expand";
@@ -374,9 +387,10 @@ const bluejay = (function () {
 			css = "collapse";
 			uiApp.triggerCustomEvent("collapse-data-revealed",{content:this.content});		
 		} 
+		// update DOM
 		this.content.style.display = display;
 		this.btn.className = this.btnClass + " " + css;
-		collapsed = !collapsed;
+		this.collapsed = !collapsed;
 	};
 	
 	/**
@@ -390,7 +404,7 @@ const bluejay = (function () {
 	
 	/**
 	* Initialise DOM Elements
-	* setup wrapped in case it needs calling on a UI update
+	* setup up wrapped in case it needs calling later
 	*/
 	const init = () => {
 		let collapseData = uiApp.nodeArray(document.querySelectorAll('.collapse-data'));
@@ -424,17 +438,71 @@ const bluejay = (function () {
 
 	'use strict';
 	
+	uiApp.addModule('restrictDataHeightFlag');
+	const dataAttrName = uiApp.getDataAttributeName();
+	const flagClass = 'restrict-data-shown-flag';
+	const store = []; // store Flag instances
+	
+	/**
+	* @class 
+	* @param {DOMElement} elem
+	* @private
+	*/
+	function Flag(elem, content, endPos){
+		this.content = content;
+		this.end = endPos;
+		this.flag = document.createElement('div');
+		this.flag.className = flagClass;
+		this.flag.setAttribute('data-'+dataAttrName, store.length);
+		elem.appendChild(this.flag); // reflow in loop! should be OK as only a few of these
+		// store Flag instance
+		store.push(this);
+	}
+
+	/**
+	* Animate scroll down to end 
+	* remove flag
+	* @method
+	*/
+	Flag.prototype.scroll = function(){
+		let easeOutQuad = (t) => t * (2 - t);
+		let duration = 200; // num of steps
+		let step = 1;	
+		let time = 0;	
+				
+		let id = setInterval(() => {
+			time = Math.min(1, (step/duration));
+			this.content.scrollTop = Math.ceil((easeOutQuad(time) * this.end));
+			if(time == 1) clearInterval(id);
+			step = step + 1; // increment animation
+		}, 4);
+	};
+				
 	/*
 	* setup Restricted Data Visual Flag 
 	* once clicked on, or scrolled it's removed.
-	* several different CSS heights e.g. 'rows-10','rows-5'
 	*/
-	const setup = (elem) => {
-		console.log(elem);
+	const checkForScroll = (elem) => {
+		const content = elem.querySelector('.restrict-data-content');
+		const elemHeight = elem.clientHeight; // reflow
+		const scrollHeight = content.scrollHeight; // reflow
 		
-			
-		// end of scroll: element.scrollHeight - element.scrollTop === element.clientHeight
+		/*
+		CSS restricts high on 'rows' e.g. 'rows-10','rows-5'
+		but the only concern is hidden data, this we flag
+		check there is scrolling and the user hasn't scrolled
+		*/
+ 		if(scrollHeight > elemHeight && content.scrollTop === 0){
+	 		store.push( new Flag(elem, content, scrollHeight - elemHeight) );
+ 		}
 	};	
+	
+	
+	const userClicksFlag = (event) => {
+		let flag = store[event.target.getAttribute('data-'+dataAttrName)];
+		flag.scroll();
+	};
+	
 	
 	/**
 	* Initialise DOM Elements
@@ -445,57 +513,15 @@ const bluejay = (function () {
 		if(restrictedData.length < 1) return; // no elements!
 		
 		restrictedData.forEach( (elem) => {
-			setup(elem);
+			checkForScroll(elem);
 		});
 	};
 	
 	// init DOM Elements
 	init();
-
 	
-/*
-	
-	function setupRestrict( $elem ){
-
-			
-	
-	
-		let wrapHeight 		= $elem.height();
-		let $content 		= $elem.find('.restrict-data-content');
-		let scrollH 		= $content.prop('scrollHeight');
-		
-		
-		/*
-		if set up, don't do bother again, probably coming in from a
-		hide show wrapper.
-		
-		if( $elem.data('build') ){
-			// but fade in the flag UI.. 
-			$elem.find('.restrict-data-shown-flag').fadeIn();
-		} else {
-			if(scrollH > wrapHeight){
-				
-				// it's scrolling, so flag it
-				let flag = $('<div/>',{ class:"restrict-data-shown-flag"});
-				$elem.prepend(flag);
-				
-				flag.click(function(){
-					$content.animate({
-						scrollTop: $content.height()
-					}, 1000);
-				});	
-	
-				$content.on('scroll',function(){
-					flag.fadeOut();
-				});
-				
-				$elem.data('build',true);
-			}	
-		}	
-	}
-}
-
-*/
+	// register Events
+	uiApp.registerForClick('.'+flagClass, userClicksFlag);
 	
 	
 })(bluejay); 
@@ -506,7 +532,8 @@ const bluejay = (function () {
 (function (uiApp) {
 
 	'use strict';
-
+	
+	uiApp.addModule('tooltip');
 	const selector = ".js-has-tooltip";
 	const mainClass = "oe-tooltip";
 	let showing = false;
@@ -625,7 +652,7 @@ const bluejay = (function () {
 	document.addEventListener('mouseout',	uiApp.onExitEvent,		true);
 	 
 	// these are handled a bit differently
-	window.addEventListener('scroll',		uiApp.onWindowScroll,	true);
+	window.addEventListener('scroll', uiApp.onWindowScroll,	true);
 	window.onresize = uiApp.onWindowResize; 
 	
 })(bluejay);

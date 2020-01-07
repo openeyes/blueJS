@@ -15,9 +15,16 @@
 			extendedBrowserSize: 1440,
 			browserHotlistFixSize: 1890,
 		},
-		dom : {
-			dataAttr: 'bluejay',
-		}
+	};
+	
+	/**
+	* Standardise data-attributes names
+	* @param {String} suffix optional
+	* @returns {Sting} 
+	*/
+	const domDataAttribute = (suffix = false) => {
+		let attr = suffix === false ? 'oeui' : 'oeui-' + suffix;
+		return attr;
 	};
 	
 	/**
@@ -31,5 +38,6 @@
 	
 	// Extend App
 	uiApp.extend('getSetting',getSetting);
+	uiApp.extend('getDataAttributeName',domDataAttribute);
 
 })(bluejay);

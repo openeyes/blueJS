@@ -78,12 +78,12 @@
 				this.timerID = setTimeout( () => {
 					clearTimeout(this.timerID );
 					this.fire = true;
-				},300);
+				},320);  // 16ms * 20
 			}	
 		},
 		broadcast:function(listeners){
 			listeners.forEach((item) => {
-				item.cb();
+				item.cb(event);
 			});
 		}
 	};

@@ -5,14 +5,15 @@
 
 	'use strict';	
 	
-	const app = uiApp.addModule('collapseData'); 	// get unique namespace for module
+	uiApp.addModule('collapseData');
 	const selector = '.collapse-data-header-icon';	
-	const dataAttrName = uiApp.getSetting('dom').dataAttr;
+	const dataAttrName = uiApp.getDataAttributeName();
 	let store = []; // store all elements 
 	
 	/**
-	* @class CollapseExpander
-	* @param {DOMElement} elem 
+	* @class 
+	* @param {DOMElement} elem
+	* @private
 	*/
 	function CollapseExpander(elem){
 		this.btn = elem.querySelector('.' + this.btnClass);
@@ -20,11 +21,15 @@
 		this.collapsed = true;
 	}
 	
-	// set up inheritance...	
+	/**
+	* Defaults
+	*/	
 	CollapseExpander.prototype.btnClass = "collapse-data-header-icon";
 	
-	// add change method
-	// expand / collapse css sets the icon 
+	/**
+	* change state of content
+	* @method 
+	*/
 	CollapseExpander.prototype.change = function(){
 		let display = "none";
 		let css = "expand";
@@ -34,9 +39,10 @@
 			css = "collapse";
 			uiApp.triggerCustomEvent("collapse-data-revealed",{content:this.content});		
 		} 
+		// update DOM
 		this.content.style.display = display;
 		this.btn.className = this.btnClass + " " + css;
-		collapsed = !collapsed;
+		this.collapsed = !collapsed;
 	};
 	
 	/**
@@ -50,7 +56,7 @@
 	
 	/**
 	* Initialise DOM Elements
-	* setup wrapped in case it needs calling on a UI update
+	* setup up wrapped in case it needs calling later
 	*/
 	const init = () => {
 		let collapseData = uiApp.nodeArray(document.querySelectorAll('.collapse-data'));
