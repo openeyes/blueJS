@@ -13,11 +13,19 @@ const paths = {
 		input:	[	'./src/polyfills/*.js',		// to ensure concat order is correct
 					'./src/app/app.js',			// load in the app file first
 					'./src/app/*.js',			// then... 
-					'./src/ui/*.js',			// all the other stuff
+					'./src/ui/*.js',			// UI modules
 					'./src/events/*.js'],		// finally the events listeners
 		output:	'./dist/',
 	},
-	reload:		'./dist/'
+	idgDev: {
+		input:	[	'./src/polyfills/*.js',		// to ensure concat order is correct
+					'./src/app/app.js',			// load in the app file first
+					'./src/app/*.js',			// then... 
+					'./src/ui/*.js',			// UI Modules
+					'./src/idg/*.js',			// *** IDG Developement modules - extra development modules
+					'./src/events/*.js'],		// finally the events listeners
+		output:	'./idg-dev/',
+	}
 };
 
 /*
@@ -42,22 +50,22 @@ Process and JS files
 */
 
 // Lint, minify, and concatenate scripts
-var buildScripts = function (done) {
-	return src(paths.js.input)
+var buildScripts = function (input,output) {
+	return src(input)
 		.pipe(concat(config.jsPrefix + '.js'))
 		.pipe(optimizejs())
-		.pipe(dest(paths.js.output))
+		.pipe(dest(output))
 		.pipe(rename({suffix: '.min'}))
 		.pipe(uglify())
 		.pipe(optimizejs())
-		.pipe(dest(paths.js.output));
+		.pipe(dest(output));
 
 };
 
 // Lint scripts
 var lintScripts = function (done) {
 	// Lint scripts
-	return src(paths.js.input)
+	return src(paths.idgDev.input)
 		.pipe(jshint())
 		.pipe(jshint.reporter('jshint-stylish'));
 
@@ -76,18 +84,27 @@ var cleanDist = function (done) {
 	done();
 };
 
+var distJS = function(){
+	return buildScripts(	paths.js.input,
+							paths.js.output );
+};
+
+var idgDevJS = function(){
+	return buildScripts(	paths.idgDev.input,
+							paths.idgDev.output );
+};
 
 var watchJS = function(done){
 	watch(paths.js.input, series(exports.buildJS));
 	done();
-}
+};
 
 /*
 -----------------------------
 Export Tasks
 -----------------------------
 */
-exports.buildJS = parallel(buildScripts,lintScripts);
+exports.buildJS = parallel(distJS,idgDevJS,lintScripts);
 
 exports.default = series(
 	cleanDist,

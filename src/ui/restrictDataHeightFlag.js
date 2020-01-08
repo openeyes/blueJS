@@ -50,7 +50,7 @@
 	*/ 
 	Flag.prototype.userClick = function(){
 		if(this.userKnows) return;
-		this.animateID = animateScroll(this); // note! this will fire the scroll event
+		animateScroll(this); // note! this will fire the scroll event
 	};
 		
 	/**
@@ -60,8 +60,8 @@
 	* @returns {number} the setInterval ID
 	*/		
 	const animateScroll = (flag) => {
-		let easeOutQuad = (t) => t * (2 - t);
-		let duration = 200; // num of steps
+		const easeOutQuad = (t) => t * (2 - t);
+		const duration = 200; // num of steps
 		let step = 1;	
 		let time = 0;	
 		// set up the animation		
@@ -71,8 +71,6 @@
 			step = step + 1; // increment animation
 			if(time == 1) clearInterval(id); 
 		}, 2);
-		
-		return id;
 	};	
 
 	/**
