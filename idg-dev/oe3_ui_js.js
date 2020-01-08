@@ -238,15 +238,15 @@ const bluejay = (function () {
 	*/
 	const getHiddenElemSize = (el) => {
 		// need to render with all the right CSS being applied
-		// show but hidden...
+		// displayed but hidden...
 		el.style.visibility = 'hidden';
-		el.style.display = 'block';		// doesn't work for 'flex'
+		el.style.display = 'block';			// this won't work for 'flex'
 		
 		// ok now calc...
 		let props =  {	w:el.offsetWidth,
 						h:el.offsetHeight }; 	
 		
-		// now hide properly again
+		// and now hide again
 		el.style.visibility = 'inherit';
 		el.style.display = 'none';
 		
@@ -268,7 +268,7 @@ const bluejay = (function () {
 	'use strict';
 	
 	/**
-	Manage all my Modules 
+	Manage Modules 
 	*/
 	const modules = {};
 	
@@ -294,7 +294,7 @@ const bluejay = (function () {
 	};
 	
 	/**
-	 * Get namespace
+	 * Get module namespace
 	 * @param  {String} namespace
 	 * @return {Object} 
 	 */
@@ -324,7 +324,7 @@ const bluejay = (function () {
 		/*
 		Newblue CSS contains some key
 		media query widths, this are found in: config.all.scss
-		Capture the key ones, for JS
+		Story the key ones for JS
 		*/
 		css : {
 			extendedBrowserSize: 1440,
@@ -473,12 +473,12 @@ const bluejay = (function () {
 	'use strict';	
 	
 	uiApp.addModule('collapseData');
-	const selector = '.collapse-data-header-icon';	
+	const selector = '.collapse-data-header-icon, .collapse-data-header-icon small';  // header uses <small> for count
 	const dataAttrName = uiApp.getDataAttributeName();
-	let store = []; // store all elements 
-	
+	let store = []; // store instances 
+
 	/**
-	* @class 
+	* @class
 	* @param {DOMElement} elem
 	* @private
 	*/
@@ -517,7 +517,9 @@ const bluejay = (function () {
 	* @param {event} event
 	*/
 	const userClick = (event) => {
-		let id =  event.target.parentNode.dataset[dataAttrName];
+		let p = event.target.parentNode;
+		// so if the user clicks on <small> in the DOM go up a level! 
+		let id = event.target.matches("small") ? p.parentNode.dataset[dataAttrName]	: p.dataset[dataAttrName];
 		store[id].change();
 	};
 	
@@ -543,7 +545,7 @@ const bluejay = (function () {
 	init();
 	
 	// Regsiter for Events
-	uiApp.registerForClick(selector,userClick);	
+	uiApp.registerForClick(selector,userClick);		
 
 })(bluejay); 
 

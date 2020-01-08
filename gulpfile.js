@@ -95,7 +95,7 @@ var idgDevJS = function(){
 };
 
 var watchJS = function(done){
-	watch(paths.js.input, series(exports.buildJS));
+	watch(paths.idgDev.input, series(exports.buildJS));
 	done();
 };
 
@@ -104,7 +104,7 @@ var watchJS = function(done){
 Export Tasks
 -----------------------------
 */
-exports.buildJS = parallel(distJS,idgDevJS,lintScripts);
+exports.buildJS = series(lintScripts,distJS,idgDevJS);
 
 exports.default = series(
 	cleanDist,

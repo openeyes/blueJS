@@ -6,12 +6,12 @@
 	'use strict';	
 	
 	uiApp.addModule('collapseData');
-	const selector = '.collapse-data-header-icon';	
+	const selector = '.collapse-data-header-icon, .collapse-data-header-icon small';  // header uses <small> for count
 	const dataAttrName = uiApp.getDataAttributeName();
-	let store = []; // store all elements 
-	
+	let store = []; // store instances 
+
 	/**
-	* @class 
+	* @class
 	* @param {DOMElement} elem
 	* @private
 	*/
@@ -50,7 +50,9 @@
 	* @param {event} event
 	*/
 	const userClick = (event) => {
-		let id =  event.target.parentNode.dataset[dataAttrName];
+		let p = event.target.parentNode;
+		// so if the user clicks on <small> in the DOM go up a level! 
+		let id = event.target.matches("small") ? p.parentNode.dataset[dataAttrName]	: p.dataset[dataAttrName];
 		store[id].change();
 	};
 	
@@ -76,6 +78,6 @@
 	init();
 	
 	// Regsiter for Events
-	uiApp.registerForClick(selector,userClick);	
+	uiApp.registerForClick(selector,userClick);		
 
 })(bluejay); 

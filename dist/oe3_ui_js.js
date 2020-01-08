@@ -238,15 +238,15 @@ const bluejay = (function () {
 	*/
 	const getHiddenElemSize = (el) => {
 		// need to render with all the right CSS being applied
-		// show but hidden...
+		// displayed but hidden...
 		el.style.visibility = 'hidden';
-		el.style.display = 'block';		// doesn't work for 'flex'
+		el.style.display = 'block';			// this won't work for 'flex'
 		
 		// ok now calc...
 		let props =  {	w:el.offsetWidth,
 						h:el.offsetHeight }; 	
 		
-		// now hide properly again
+		// and now hide again
 		el.style.visibility = 'inherit';
 		el.style.display = 'none';
 		
@@ -268,7 +268,7 @@ const bluejay = (function () {
 	'use strict';
 	
 	/**
-	Manage all my Modules 
+	Manage Modules 
 	*/
 	const modules = {};
 	
@@ -294,7 +294,7 @@ const bluejay = (function () {
 	};
 	
 	/**
-	 * Get namespace
+	 * Get module namespace
 	 * @param  {String} namespace
 	 * @return {Object} 
 	 */
@@ -324,7 +324,7 @@ const bluejay = (function () {
 		/*
 		Newblue CSS contains some key
 		media query widths, this are found in: config.all.scss
-		Capture the key ones, for JS
+		Story the key ones for JS
 		*/
 		css : {
 			extendedBrowserSize: 1440,
