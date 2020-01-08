@@ -24,6 +24,15 @@
 	};
 	
 	/**
+	* Remove a DOM Element 	
+	* @param {DOM Element} el
+	*/
+	const removeDOM = (el) => {
+		el.parentNode.removeChild(el);
+	};
+	
+
+	/**
 	* Get dimensions of hidden DOM element
 	* only use on 'fixed' or 'absolute'elements
 	* @param {DOM Element} el 	currently out of the document flow
@@ -49,6 +58,7 @@
 	// Extend App
 	uiApp.extend('nodeArray', NodeListToArray);
 	uiApp.extend('appendTo',appendTo);
+	uiApp.extend('removeElement',removeDOM);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
 	
 })(bluejay);
