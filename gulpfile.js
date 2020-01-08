@@ -22,7 +22,7 @@ const paths = {
 					'./src/app/app.js',			// load in the app file first
 					'./src/app/*.js',			// then... 
 					'./src/ui/*.js',			// UI Modules
-					'./src/idg/*.js',			// *** IDG Developement modules - extra development modules
+					'./src/idg-dev/*.js',		// *** IDG Developement modules - extra development modules
 					'./src/events/*.js'],		// finally the events listeners
 		output:	'./idg-dev/',
 	}

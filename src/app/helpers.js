@@ -40,15 +40,15 @@
 	*/
 	const getHiddenElemSize = (el) => {
 		// need to render with all the right CSS being applied
-		// show but hidden...
+		// displayed but hidden...
 		el.style.visibility = 'hidden';
-		el.style.display = 'block';		// doesn't work for 'flex'
+		el.style.display = 'block';			// this won't work for 'flex'
 		
 		// ok now calc...
 		let props =  {	w:el.offsetWidth,
 						h:el.offsetHeight }; 	
 		
-		// now hide properly again
+		// and now hide again
 		el.style.visibility = 'inherit';
 		el.style.display = 'none';
 		

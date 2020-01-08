@@ -6,7 +6,7 @@
 	'use strict';
 	
 	/**
-	Manage all my Modules 
+	Manage Modules 
 	*/
 	const modules = {};
 	
@@ -32,7 +32,7 @@
 	};
 	
 	/**
-	 * Get namespace
+	 * Get module namespace
 	 * @param  {String} namespace
 	 * @return {Object} 
 	 */

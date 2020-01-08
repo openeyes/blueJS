@@ -98,7 +98,6 @@
 		div.className = mainClass;
 		div.style.cssText = "display:none"; // clear all styles
 	};
-
 	
 	// Register/Listen for Events
 	uiApp.registerForClick(selector,userClick);

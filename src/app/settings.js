@@ -9,7 +9,7 @@
 		/*
 		Newblue CSS contains some key
 		media query widths, this are found in: config.all.scss
-		Capture the key ones, for JS
+		Story the key ones for JS
 		*/
 		css : {
 			extendedBrowserSize: 1440,
