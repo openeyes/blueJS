@@ -261,6 +261,35 @@ const bluejay = (function () {
 	
 })(bluejay);
 /**
+* Hidden DOM Elements
+*/
+(function (uiApp) {
+
+	'use strict';
+	
+	/*
+	To avoid a 'flickering' effect
+	DOM elements that need to be 'hidden'
+	on page load need to use "hidden" CSS class
+	when the JS loads it can switch it over
+	*/ 
+	
+	let hidden = uiApp.nodeArray(document.querySelectorAll('.hidden'));
+	if(hidden.length < 1) return; // no elements!
+	
+	hidden.forEach( (elem) => {
+		elem.style.display = "none";
+		elem.classList.remove('hidden');
+	});
+
+	
+	
+	$('.hidden').hide().removeClass('hidden');
+
+	
+	
+})();
+/**
 * Namespace controller within App for Modules
 */
 (function (uiApp) {
@@ -518,7 +547,7 @@ const bluejay = (function () {
 	*/
 	const userClick = (event) => {
 		let p = event.target.parentNode;
-		// so if the user clicks on <small> in the DOM go up a level! 
+		// so if the user clicks on <small> in the DOM go up a level!
 		let id = event.target.matches("small") ? p.parentNode.dataset[dataAttrName]	: p.dataset[dataAttrName];
 		store[id].change();
 	};

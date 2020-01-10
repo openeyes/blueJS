@@ -51,7 +51,7 @@
 	*/
 	const userClick = (event) => {
 		let p = event.target.parentNode;
-		// so if the user clicks on <small> in the DOM go up a level! 
+		// so if the user clicks on <small> in the DOM go up a level!
 		let id = event.target.matches("small") ? p.parentNode.dataset[dataAttrName]	: p.dataset[dataAttrName];
 		store[id].change();
 	};
