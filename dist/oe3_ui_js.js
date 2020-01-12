@@ -281,14 +281,8 @@ const bluejay = (function () {
 		elem.style.display = "none";
 		elem.classList.remove('hidden');
 	});
-
 	
-	
-	$('.hidden').hide().removeClass('hidden');
-
-	
-	
-})();
+})(bluejay);
 /**
 * Namespace controller within App for Modules
 */
@@ -407,6 +401,7 @@ const bluejay = (function () {
 	
 	/**
 	* Window Resize 
+	* innerWidth forces a reflow, only update when necessary
 	*/
 	const resize = () => winWidth = window.innerWidth;
 	

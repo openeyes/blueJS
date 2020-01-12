@@ -18,18 +18,16 @@
 	
 	/**
 	* @class 
-	* @param {DOMElement} elem
+	* @param {DOMElement} flag
+	* @param {DOMElement} content
+	* @param {number} endPos
 	* @private
 	*/
-	function Flag(el, content, scrollEnd){
-		this.userKnows = false; // does user know?
+	function Flag(flag, content, endPos){
+		this.userKnows = false; // aware of scrolled data?
+		this.flag = flag;
 		this.content = content;
-		this.scrollTo = scrollEnd;
-		this.flag = document.createElement('div');
-		this.flag.className = flagClass;
-		this.flag.setAttribute('data-'+dataAttrName, store.length);
-		el.appendChild(this.flag); // reflow in loop, but should be OK
-		// watch for scrolling
+		this.scrollEndPos = endPos;
 		this.content.addEventListener("scroll",() => this.scroll(), {once:true});
 	}
 
@@ -41,7 +39,7 @@
 		// note! Either animation OR user scrolling will fire this!
 		this.userKnows = true; 
 		this.flag.className += " fade-out"; 
-		setTimeout(() => uiApp.removeElement(this.flag), 500); 	// CSS fade-out lasts 0.2s
+		setTimeout(() => uiApp.removeElement(this.flag), 400); 	// CSS fade-out animation lasts 0.2s
 	};
 
 	/**
@@ -50,16 +48,15 @@
 	*/ 
 	Flag.prototype.userClick = function(){
 		if(this.userKnows) return;
-		animateScroll(this); // note! this will fire the scroll event
+		animateScroll(this.content,this.scrollEndPos); // this will fire the scroll eventListener
 	};
 		
 	/**
 	* Simple scroll animation
-	* @param {DOMElement} elem
-	* @param {numnber} scrollTop position for end of scroll
-	* @returns {number} the setInterval ID
+	* @param {DOMElement} content
+	* @param {numnber} endPos of scrolling
 	*/		
-	const animateScroll = (flag) => {
+	const animateScroll = (content,endPos) => {
 		const easeOutQuad = (t) => t * (2 - t);
 		const duration = 200; // num of steps
 		let step = 1;	
@@ -67,7 +64,7 @@
 		// set up the animation		
 		let id = setInterval(() => {
 			time = Math.min(1, (step/duration));
-			flag.content.scrollTop = Math.ceil((easeOutQuad(time) * flag.scrollTo));
+			content.scrollTop = Math.ceil((easeOutQuad(time) * endPos));
 			step = step + 1; // increment animation
 			if(time == 1) clearInterval(id); 
 		}, 2);
@@ -82,22 +79,45 @@
 		flag.userClick();
 	};
 	
+
 	/**
-	* Initialise, setup DOM Elements
-	* wrapped in case it needs calling on a UI update
+	* Initialise: setup DOM Elements
+	* wrapped as it might need calling on a UI update
 	*/
 	const init = () => {
 		let restrictedData = uiApp.nodeArray(document.querySelectorAll('.restrict-data-shown'));
-		if(restrictedData.length < 1) return; // no elements!
+		if(restrictedData.length < 1) return; // no elements! 
 		
-		restrictedData.forEach( (el) => {
-			let content = el.querySelector('.restrict-data-content');
-			let elemHeight = el.clientHeight; // reflow
-			let scrollHeight = content.scrollHeight; // reflow
+		/*
+		Set up a DOM fragment for Elements	
+		*/
+		const fragment = document.createDocumentFragment();
+		const div = document.createElement("div");
+	    div.className = flagClass; 
+	    fragment.appendChild(div);
+	    
+		/*
+		Check Elements to see if do scroll
+		If they do then set up the UI Flag	
+		*/
+		restrictedData.forEach( (elem) => {
+			let content = elem.querySelector('.restrict-data-content');
+			let elemHeight = elem.clientHeight; 
+			let scrollHeight = content.scrollHeight; 
 			
-			// is data hidden by a scroll? Flag it.
+			// does it scroll?
 	 		if(scrollHeight > elemHeight && content.scrollTop === 0){
-		 		store.push( new Flag(el, content, scrollHeight - elemHeight) );
+				/*
+				Overflow, clone the fragment and pass to Flag
+				*/
+				let clone = fragment.cloneNode(true);
+				let elemDiv = clone.firstChild; 
+				elemDiv.setAttribute('data-'+dataAttrName, store.length);
+				elem.appendChild(clone);
+				
+		 		store.push( new Flag( 	elemDiv, 
+		 								content, 
+		 								scrollHeight - elemHeight) );
 	 		}
 		});
 	};

@@ -20,6 +20,7 @@
 	
 	/**
 	* Window Resize 
+	* innerWidth forces a reflow, only update when necessary
 	*/
 	const resize = () => winWidth = window.innerWidth;
 	

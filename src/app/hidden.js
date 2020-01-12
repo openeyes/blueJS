@@ -19,11 +19,5 @@
 		elem.style.display = "none";
 		elem.classList.remove('hidden');
 	});
-
 	
-	
-	$('.hidden').hide().removeClass('hidden');
-
-	
-	
-})();
+})(bluejay);
