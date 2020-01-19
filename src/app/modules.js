@@ -20,7 +20,7 @@
 		// check for unique namespace
 		if (!(name in modules)){
 			
-			uiApp.log('[Module] added: '+name);
+			uiApp.log('[Module] '+name);
 			modules[name] = {};
 			return modules[name];
 	

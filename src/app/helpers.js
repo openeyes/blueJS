@@ -15,12 +15,14 @@
 	};
 	
 	/**
-	* Provide a consistent approach to appending DOM Element to <body>, 	
-	* @param {DOM Element} el
+	* Provide a consistent approach to appending DOM Elements,
+	* @param {String} selector  	
+	* @param {DOM Element} el - to attach
+	* @param {DOMElement} doc - start point for search (optional)
 	*/
-	const appendTo = (dom,el) => {
-		let body = document.querySelector(dom);
-		body.appendChild(el);
+	const appendTo = (selector,el,doc) => {
+		let dom = (doc || document).querySelector(selector);
+		dom.appendChild(el);
 	};
 	
 	/**
@@ -31,6 +33,33 @@
 		el.parentNode.removeChild(el);
 	};
 	
+	/**
+	* XMLHttpRequest 
+	* @param {string} url
+	* @param {Function} cb - callback
+	* @retuns {String} responseText
+	*/
+	const xhr = (url,cb) => {
+		uiApp.log('[XHR] - '+url);
+		let xReq = new XMLHttpRequest();
+		xReq.onreadystatechange = function(){
+			
+			if(xReq.readyState !== 4) return; // only run if request is DONE 
+			
+			if(xReq.status >= 200 && xReq.status < 300){
+				uiApp.log('[XHR] - Success');
+				cb(xReq.responseText);
+				// success
+			} else {
+				// failure
+				uiApp.log('[XHR] - Failed');
+				return false;
+			}			
+		};
+		// open and send request
+		xReq.open("GET",url);
+		xReq.send();
+	};
 
 	/**
 	* Get dimensions of hidden DOM element
@@ -59,6 +88,7 @@
 	uiApp.extend('nodeArray', NodeListToArray);
 	uiApp.extend('appendTo',appendTo);
 	uiApp.extend('removeElement',removeDOM);
+	uiApp.extend('xhr',xhr);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
 	
 })(bluejay);

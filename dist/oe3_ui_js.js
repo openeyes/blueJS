@@ -32,7 +32,7 @@ const bluejay = (function () {
 		*/
 		if(!fn.id && !(name in methods)){
 			// ok, extend		
-			bluejay.log('extending app: '+ name + '()');
+			bluejay.log('method: '+ name + '()');
 			fn.id = extendID++;
 			methods[name] = fn;
 			return true;
@@ -74,8 +74,8 @@ const bluejay = (function () {
 	*/
 	const listeners = {
 		click:[],		// mousedown
-		hover:[],		// mouseover
-		exit:[],		// mouseout
+		hover:[],		// mouseenter
+		exit:[],		// mouseleave
 		scroll:[],		// scroll
 		resize:[],		// window resize
 		update:[],		// UI updated (something added)
@@ -124,8 +124,8 @@ const bluejay = (function () {
 	* @param {Event} 
 	*/
 	const userClick = (event) => checkListeners(listeners.click,event);		// 'mousedown'
-	const userHover = (event) => checkListeners(listeners.hover,event);		// 'mouseover'
-	const userExit = (event) => checkListeners(listeners.exit,event);		// 'mouseout'
+	const userHover = (event) => checkListeners(listeners.hover,event);		// 'mouseenter'
+	const userExit = (event) => checkListeners(listeners.exit,event);		// 'mouseleave'
 	
 	/**
 	* Scroll & Resize 
@@ -213,12 +213,14 @@ const bluejay = (function () {
 	};
 	
 	/**
-	* Provide a consistent approach to appending DOM Element to <body>, 	
-	* @param {DOM Element} el
+	* Provide a consistent approach to appending DOM Elements,
+	* @param {String} selector  	
+	* @param {DOM Element} el - to attach
+	* @param {DOMElement} doc - start point for search (optional)
 	*/
-	const appendTo = (dom,el) => {
-		let body = document.querySelector(dom);
-		body.appendChild(el);
+	const appendTo = (selector,el,doc) => {
+		let dom = (doc || document).querySelector(selector);
+		dom.appendChild(el);
 	};
 	
 	/**
@@ -229,6 +231,33 @@ const bluejay = (function () {
 		el.parentNode.removeChild(el);
 	};
 	
+	/**
+	* XMLHttpRequest 
+	* @param {string} url
+	* @param {Function} cb - callback
+	* @retuns {String} responseText
+	*/
+	const xhr = (url,cb) => {
+		uiApp.log('[XHR] - '+url);
+		let xReq = new XMLHttpRequest();
+		xReq.onreadystatechange = function(){
+			
+			if(xReq.readyState !== 4) return; // only run if request is DONE 
+			
+			if(xReq.status >= 200 && xReq.status < 300){
+				uiApp.log('[XHR] - Success');
+				cb(xReq.responseText);
+				// success
+			} else {
+				// failure
+				uiApp.log('[XHR] - Failed');
+				return false;
+			}			
+		};
+		// open and send request
+		xReq.open("GET",url);
+		xReq.send();
+	};
 
 	/**
 	* Get dimensions of hidden DOM element
@@ -257,6 +286,7 @@ const bluejay = (function () {
 	uiApp.extend('nodeArray', NodeListToArray);
 	uiApp.extend('appendTo',appendTo);
 	uiApp.extend('removeElement',removeDOM);
+	uiApp.extend('xhr',xhr);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
 	
 })(bluejay);
@@ -305,7 +335,7 @@ const bluejay = (function () {
 		// check for unique namespace
 		if (!(name in modules)){
 			
-			uiApp.log('[Module] added: '+name);
+			uiApp.log('[Module] '+name);
 			modules[name] = {};
 			return modules[name];
 	
@@ -388,14 +418,18 @@ const bluejay = (function () {
 	'use strict';
 	
 	uiApp.addModule('tooltip');
+	
 	const selector = ".js-has-tooltip";
-	const mainClass = "oe-tooltip";
+	const css = {
+		tooltip: "oe-tooltip",
+	};
+
 	let showing = false;
 	let winWidth = window.innerWidth; // forces reflow
 		
 	// create DOM (keep out of reflow)
 	let div = document.createElement('div');
-	div.className = mainClass;
+	div.className = css.tooltip;
 	div.style.display = "none";
 	uiApp.appendTo('body',div);
 	
@@ -429,7 +463,7 @@ const bluejay = (function () {
 		let offsetH = 8; // visual offset, allows for the arrow
 		let css = ""; // classes to position the arrows correct
 		
-		// can't get the height without some tricky...
+		// can't get the height without some trickery...
 		let h = uiApp.getHiddenElemSize(div).h;
 						
 		/*
@@ -462,7 +496,7 @@ const bluejay = (function () {
 		} 
 		
 		// update DOM and show the tooltip
-		div.className = mainClass + " " + css;
+		div.className = css.tooltip + " " + css;
 		div.style.top = top;
 		div.style.left = (center - offsetW) + 'px';
 		div.style.display = "block";
@@ -473,11 +507,11 @@ const bluejay = (function () {
 	* @param {Event}
 	*/
 	const hide = (event) => {
-		if(showing === false) return;
+		if(!showing) return;
 		showing = false;
 		
 		div.innerHTML = "";
-		div.className = mainClass;
+		div.className = css.tooltip;
 		div.style.cssText = "display:none"; // clear all styles
 	};
 	
@@ -501,9 +535,9 @@ const bluejay = (function () {
 	useCapture rather than waiting for the bubbling
 	*/
 	
-	document.addEventListener('mouseover',	uiApp.onHoverEvent,		true);
-	document.addEventListener('mousedown',	uiApp.onClickEvent,		true); 
-	document.addEventListener('mouseout',	uiApp.onExitEvent,		true);
+	document.addEventListener('mouseenter',	uiApp.onHoverEvent,		true);
+	document.addEventListener('mousedown',	uiApp.onClickEvent,		false); 
+	document.addEventListener('mouseleave',	uiApp.onExitEvent,		true);
 	 
 	// these are handled a bit differently
 	window.addEventListener('scroll', uiApp.onWindowScroll,	true);

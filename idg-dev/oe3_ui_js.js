@@ -32,7 +32,7 @@ const bluejay = (function () {
 		*/
 		if(!fn.id && !(name in methods)){
 			// ok, extend		
-			bluejay.log('extending app: '+ name + '()');
+			bluejay.log('method: '+ name + '()');
 			fn.id = extendID++;
 			methods[name] = fn;
 			return true;
@@ -74,8 +74,8 @@ const bluejay = (function () {
 	*/
 	const listeners = {
 		click:[],		// mousedown
-		hover:[],		// mouseover
-		exit:[],		// mouseout
+		hover:[],		// mouseenter
+		exit:[],		// mouseleave
 		scroll:[],		// scroll
 		resize:[],		// window resize
 		update:[],		// UI updated (something added)
@@ -124,8 +124,8 @@ const bluejay = (function () {
 	* @param {Event} 
 	*/
 	const userClick = (event) => checkListeners(listeners.click,event);		// 'mousedown'
-	const userHover = (event) => checkListeners(listeners.hover,event);		// 'mouseover'
-	const userExit = (event) => checkListeners(listeners.exit,event);		// 'mouseout'
+	const userHover = (event) => checkListeners(listeners.hover,event);		// 'mouseenter'
+	const userExit = (event) => checkListeners(listeners.exit,event);		// 'mouseleave'
 	
 	/**
 	* Scroll & Resize 
@@ -213,12 +213,14 @@ const bluejay = (function () {
 	};
 	
 	/**
-	* Provide a consistent approach to appending DOM Element to <body>, 	
-	* @param {DOM Element} el
+	* Provide a consistent approach to appending DOM Elements,
+	* @param {String} selector  	
+	* @param {DOM Element} el - to attach
+	* @param {DOMElement} doc - start point for search (optional)
 	*/
-	const appendTo = (dom,el) => {
-		let body = document.querySelector(dom);
-		body.appendChild(el);
+	const appendTo = (selector,el,doc) => {
+		let dom = (doc || document).querySelector(selector);
+		dom.appendChild(el);
 	};
 	
 	/**
@@ -229,6 +231,33 @@ const bluejay = (function () {
 		el.parentNode.removeChild(el);
 	};
 	
+	/**
+	* XMLHttpRequest 
+	* @param {string} url
+	* @param {Function} cb - callback
+	* @retuns {String} responseText
+	*/
+	const xhr = (url,cb) => {
+		uiApp.log('[XHR] - '+url);
+		let xReq = new XMLHttpRequest();
+		xReq.onreadystatechange = function(){
+			
+			if(xReq.readyState !== 4) return; // only run if request is DONE 
+			
+			if(xReq.status >= 200 && xReq.status < 300){
+				uiApp.log('[XHR] - Success');
+				cb(xReq.responseText);
+				// success
+			} else {
+				// failure
+				uiApp.log('[XHR] - Failed');
+				return false;
+			}			
+		};
+		// open and send request
+		xReq.open("GET",url);
+		xReq.send();
+	};
 
 	/**
 	* Get dimensions of hidden DOM element
@@ -257,6 +286,7 @@ const bluejay = (function () {
 	uiApp.extend('nodeArray', NodeListToArray);
 	uiApp.extend('appendTo',appendTo);
 	uiApp.extend('removeElement',removeDOM);
+	uiApp.extend('xhr',xhr);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
 	
 })(bluejay);
@@ -305,7 +335,7 @@ const bluejay = (function () {
 		// check for unique namespace
 		if (!(name in modules)){
 			
-			uiApp.log('[Module] added: '+name);
+			uiApp.log('[Module] '+name);
 			modules[name] = {};
 			return modules[name];
 	
@@ -388,14 +418,18 @@ const bluejay = (function () {
 	'use strict';
 	
 	uiApp.addModule('tooltip');
+	
 	const selector = ".js-has-tooltip";
-	const mainClass = "oe-tooltip";
+	const css = {
+		tooltip: "oe-tooltip",
+	};
+
 	let showing = false;
 	let winWidth = window.innerWidth; // forces reflow
 		
 	// create DOM (keep out of reflow)
 	let div = document.createElement('div');
-	div.className = mainClass;
+	div.className = css.tooltip;
 	div.style.display = "none";
 	uiApp.appendTo('body',div);
 	
@@ -429,7 +463,7 @@ const bluejay = (function () {
 		let offsetH = 8; // visual offset, allows for the arrow
 		let css = ""; // classes to position the arrows correct
 		
-		// can't get the height without some tricky...
+		// can't get the height without some trickery...
 		let h = uiApp.getHiddenElemSize(div).h;
 						
 		/*
@@ -462,7 +496,7 @@ const bluejay = (function () {
 		} 
 		
 		// update DOM and show the tooltip
-		div.className = mainClass + " " + css;
+		div.className = css.tooltip + " " + css;
 		div.style.top = top;
 		div.style.left = (center - offsetW) + 'px';
 		div.style.display = "block";
@@ -473,11 +507,11 @@ const bluejay = (function () {
 	* @param {Event}
 	*/
 	const hide = (event) => {
-		if(showing === false) return;
+		if(!showing) return;
 		showing = false;
 		
 		div.innerHTML = "";
-		div.className = mainClass;
+		div.className = css.tooltip;
 		div.style.cssText = "display:none"; // clear all styles
 	};
 	
@@ -490,6 +524,187 @@ const bluejay = (function () {
 	
 })(bluejay); 
 /**
+* Attachments Thumbnails
+* Open up a fullscreen popup up of PNG or PDF
+*/
+(function (uiApp) {
+
+	'use strict';
+	
+	uiApp.addModule('attachmentThumbnail');
+	const css = {
+		thumb: "oe-attachment-thumbnail",
+	};
+	
+	let div,open = false;
+		
+	/*
+	Pretty sure, these won't be dynamically loaded later...
+	*/
+	let thumbs = uiApp.nodeArray(document.querySelectorAll('.'+css.thumb));
+	if(thumbs.length < 1) return; // no elements, bail.
+	
+	/**
+	* Show file attachment
+	* @param {JSON object} 
+	*/
+	const showAttachment = (json) => {
+		open = true;
+		// create DOM (keep out of reflow)
+		div = document.createElement('div');
+		div.className = "oe-popup-wrap";
+		
+		/*
+		The popup attachment in it's basic form
+		shows the file attachment (PNG or PDF)
+		If PDF then the browser will handle it, 
+		if PNG provide scale options.
+		
+		"Annotation" mode (edit) adds Element inputs
+		and adjust the layout to fit everything in
+		*/
+	
+		// basic DOM template
+		let html = '<div class="oe-popup-attachment">';
+		html += '<div class="title">'+json.title+'</div>';
+		html += '<div class="close-icon-btn"><i class="oe-i remove-circle pro-theme"></i></div>';
+		html += '<div class="file-attachment-content"></div>';
+		html += '<div class="file-size-controls"></div>';
+		html += '</div>';	
+			
+		div.innerHTML = html;
+		
+		
+		if(json.stack){
+			// create a image "date" stack demo
+			let stack = document.createElement('div');
+			stack.className = "attachment-stack";
+			
+			let title = json.title.split(' - ');
+			
+			let options = "Timeline: <select>";
+			options += '<option>'+json.title+'</option>';
+			for(let i=json.stack;i;i--){
+				options += '<option>' + title[0] + ' - (' + i +' Jan 1975 09:30)</option>';
+			}
+			options += '</select>';
+			
+			stack.innerHTML = options;
+			
+			uiApp.appendTo('.oe-popup-attachment',stack,div);
+		}
+		
+		
+		// html += '<div class="attachment-annotation"></div>';
+		let attachment = div.querySelector('.file-attachment-content');
+		let controls =  div.querySelector('.file-size-controls');
+	
+		
+		// add buttons depending on type
+		let buttons = '<button id="oe-att-fit" class="pro-theme selected">Fit to screen</button>';
+		buttons += '<button id="oe-att-actual" class="pro-theme">Actual Size</button>';
+		
+		if(json.type == 'pdf') buttons = '<button class="pro-theme selected">PDF</button>';
+				
+		// in Annotation mode?
+		if(json.annotate){
+			attachment.classList.add('annotation');
+			
+			let notes = document.createElement('div');
+			notes.className = "attachment-annotation";
+			uiApp.appendTo('.oe-popup-attachment',notes,div);
+			
+			buttons += '<button class="green hint">Save annotations</button>';
+			
+			// load in PHP using XHR	
+			uiApp.xhr(json.idgPHP,(html) => {
+				notes.innerHTML = html;
+				// IDG demo eyelat inputs... 
+				if(json.eyelat == "L")	notes.querySelector('#annotation-right').style.visibility = "hidden"; // maintain layout?
+				if(json.eyelat == "R")	notes.querySelector('#annotation-left').style.visibility = "hidden";
+			});
+			
+		}
+		
+		/*
+		Set up buttons based on state
+		*/
+		controls.innerHTML = buttons;
+
+		
+		if(json.type === "png"){
+			// show all (use background)
+			attachment.style.backgroundImage = "url('"+json.file+"')";
+			// actual size
+			attachment.innerHTML = '<img src="'+json.file+'" style="display:none"/>';
+		
+			// set up functionality 
+			let fitBtn =  div.querySelector('#oe-att-fit');
+			let actualBtn = div.querySelector('#oe-att-actual');
+			let img = div.querySelector('img');
+			
+			const changeImgState = (bg,display,selectedBtn,resetBtn) => {
+				attachment.style.backgroundImage = bg;
+				img.style.display = display;
+				selectedBtn.classList.add('selected');
+				resetBtn.classList.remove('selected');
+			};
+			
+			// change image size buttons
+			actualBtn.addEventListener("mousedown",(e) => {
+				e.stopPropagation();
+				changeImgState("none","block",actualBtn,fitBtn);
+			});
+			
+			fitBtn.addEventListener("mousedown",(e) => {
+				e.stopPropagation();
+				changeImgState("url('"+json.file+"')","none",fitBtn,actualBtn);
+			});
+			
+		} else {
+			// PDF
+			attachment.innerHTML = '<embed src="'+json.file+'" width="100%" height="100%"></embed>';
+		}
+	
+		// close icon btn
+		let closeBtn = div.querySelector('.close-icon-btn');
+		closeBtn.addEventListener("mousedown",() => removeAttachment(), {once:true});
+		
+		// reflow DOM
+		uiApp.appendTo('body',div);
+	}; 
+	
+	/**
+	* Remmove popup DOM and reset
+	*/
+	const removeAttachment = () => {
+		uiApp.removeElement(div);
+		open = false;
+	};
+	
+	
+	/**
+	* Callback for Event
+	* @param {event} event
+	*/
+	const userClick = (event) => {
+		if(open) return;
+		showAttachment(	JSON.parse(event.target.dataset.attachment ));
+	};	
+	
+	// register for Event delegation
+	uiApp.registerForClick('.' + css.thumb, userClick);
+	
+	/*
+	If there is an "Annotate" button under the thumbail
+	*/
+	if(document.querySelectorAll('.js-annotate-attachment')){
+		uiApp.registerForClick('.js-annotate-attachment',userClick); 
+	}
+	
+		
+})(bluejay); 
+/**
 * Collapse/Expand (show/hide) Data 
 */
 (function (uiApp) {
@@ -497,43 +712,43 @@ const bluejay = (function () {
 	'use strict';	
 	
 	uiApp.addModule('collapseData');
-	const selector = '.collapse-data-header-icon, .collapse-data-header-icon small';  // header uses <small> for count
+
+	const css = {
+		btn: "collapse-data-header-icon", 	// header and icon
+		content:"collapse-data-content",	// content
+	};
+
 	const dataAttrName = uiApp.getDataAttributeName();
 	let store = []; // store instances 
 
 	/**
 	* @class
-	* @param {DOMElement} elem
+	* @param {Element} btn
+	* @param {Element} content
 	* @private
 	*/
-	function CollapseExpander(elem){
-		this.btn = elem.querySelector('.' + this.btnClass);
-		this.content = elem.querySelector('.collapse-data-content');
+	function CollapseExpander(btn,content){
+		this.btn = btn;
+		this.content = content;
 		this.collapsed = true;
 	}
-	
-	/**
-	* Defaults
-	*/	
-	CollapseExpander.prototype.btnClass = "collapse-data-header-icon";
-	
+
 	/**
 	* change state of content
 	* @method 
 	*/
 	CollapseExpander.prototype.change = function(){
-		let display = "none";
-		let css = "expand";
-		let collapsed = this.collapsed;
-		if(collapsed){
-			display = "block";
-			css = "collapse";
+		
+		if(this.collapsed){
+			this.content.style.display = "block";
+			this.btn.className = css.btn + " collapse";	
 			uiApp.triggerCustomEvent("collapse-data-revealed",{content:this.content});		
-		} 
-		// update DOM
-		this.content.style.display = display;
-		this.btn.className = this.btnClass + " " + css;
-		this.collapsed = !collapsed;
+		} else {
+			this.content.style.display = "none";
+			this.btn.className = css.btn + " expand";
+		}
+		
+		this.collapsed = !this.collapsed;
 	};
 	
 	/**
@@ -541,9 +756,8 @@ const bluejay = (function () {
 	* @param {event} event
 	*/
 	const userClick = (event) => {
-		let p = event.target.parentNode;
-		// so if the user clicks on <small> in the DOM go up a level!
-		let id = event.target.matches("small") ? p.parentNode.dataset[dataAttrName]	: p.dataset[dataAttrName];
+		console.log(event.target);
+		let id = event.target.parentNode.dataset[dataAttrName];
 		store[id].change();
 	};
 	
@@ -556,11 +770,15 @@ const bluejay = (function () {
 		if(collapseData.length < 1) return; // no elements!
 		
 		collapseData.forEach( (elem) => {
-			// check to see if elem is already set up
-			if(elem.hasAttribute('data-'+dataAttrName) === false){
-				// store ID on DOM data-attribute and store Instance		
+			/*
+			store ref to instance on data-attribute, unless already setup
+			*/
+			if(elem.hasAttribute('data-'+dataAttrName) === false){	
+				
 				elem.setAttribute('data-'+dataAttrName, store.length);
-				store.push( new CollapseExpander(elem) );				
+				store.push( new CollapseExpander(	elem.querySelector('.' + css.btn),
+													elem.querySelector('.' + css.content) ));	
+																
 			}
 		});
 	};
@@ -569,7 +787,7 @@ const bluejay = (function () {
 	init();
 	
 	// Regsiter for Events
-	uiApp.registerForClick(selector,userClick);		
+	uiApp.registerForClick('.' + css.btn, userClick);		
 
 })(bluejay); 
 
@@ -586,9 +804,13 @@ const bluejay = (function () {
 	'use strict';
 	
 	uiApp.addModule('restrictDataHeightFlag');
+	
+	const css = {
+		flag: 'restrict-data-shown-flag'
+	};
+	
 	const dataAttrName = uiApp.getDataAttributeName();
-	const flagClass = 'restrict-data-shown-flag';
-	const store = []; // store Flag instances
+	const store = []; // store instances
 	
 	/**
 	* @class 
@@ -598,7 +820,7 @@ const bluejay = (function () {
 	* @private
 	*/
 	function Flag(flag, content, endPos){
-		this.userKnows = false; // aware of scrolled data?
+		this.hasScrolled = false; // aware of scrolled data?
 		this.flag = flag;
 		this.content = content;
 		this.scrollEndPos = endPos;
@@ -611,7 +833,7 @@ const bluejay = (function () {
 	*/
 	Flag.prototype.scroll = function(e){
 		// note! Either animation OR user scrolling will fire this!
-		this.userKnows = true; 
+		this.hasScrolled = true; 
 		this.flag.className += " fade-out"; 
 		setTimeout(() => uiApp.removeElement(this.flag), 400); 	// CSS fade-out animation lasts 0.2s
 	};
@@ -621,7 +843,7 @@ const bluejay = (function () {
 	* @method
 	*/ 
 	Flag.prototype.userClick = function(){
-		if(this.userKnows) return;
+		if(this.hasScrolled) return;
 		animateScroll(this.content,this.scrollEndPos); // this will fire the scroll eventListener
 	};
 		
@@ -653,7 +875,6 @@ const bluejay = (function () {
 		flag.userClick();
 	};
 	
-
 	/**
 	* Initialise: setup DOM Elements
 	* wrapped as it might need calling on a UI update
@@ -667,7 +888,7 @@ const bluejay = (function () {
 		*/
 		const fragment = document.createDocumentFragment();
 		const div = document.createElement("div");
-	    div.className = flagClass; 
+	    div.className = css.flag; 
 	    fragment.appendChild(div);
 	    
 		/*
@@ -700,7 +921,7 @@ const bluejay = (function () {
 	init();
 	
 	// register Events
-	uiApp.registerForClick('.'+flagClass, userClicksFlag);
+	uiApp.registerForClick('.'+css.flag, userClicksFlag);
 	
 	
 })(bluejay); 
@@ -716,9 +937,9 @@ const bluejay = (function () {
 	useCapture rather than waiting for the bubbling
 	*/
 	
-	document.addEventListener('mouseover',	uiApp.onHoverEvent,		true);
-	document.addEventListener('mousedown',	uiApp.onClickEvent,		true); 
-	document.addEventListener('mouseout',	uiApp.onExitEvent,		true);
+	document.addEventListener('mouseenter',	uiApp.onHoverEvent,		true);
+	document.addEventListener('mousedown',	uiApp.onClickEvent,		false); 
+	document.addEventListener('mouseleave',	uiApp.onExitEvent,		true);
 	 
 	// these are handled a bit differently
 	window.addEventListener('scroll', uiApp.onWindowScroll,	true);

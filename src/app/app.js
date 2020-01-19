@@ -25,7 +25,7 @@ const bluejay = (function () {
 		*/
 		if(!fn.id && !(name in methods)){
 			// ok, extend		
-			bluejay.log('extending app: '+ name + '()');
+			bluejay.log('method: '+ name + '()');
 			fn.id = extendID++;
 			methods[name] = fn;
 			return true;

@@ -12,9 +12,13 @@
 	'use strict';
 	
 	uiApp.addModule('restrictDataHeightFlag');
+	
+	const css = {
+		flag: 'restrict-data-shown-flag'
+	};
+	
 	const dataAttrName = uiApp.getDataAttributeName();
-	const flagClass = 'restrict-data-shown-flag';
-	const store = []; // store Flag instances
+	const store = []; // store instances
 	
 	/**
 	* @class 
@@ -24,7 +28,7 @@
 	* @private
 	*/
 	function Flag(flag, content, endPos){
-		this.userKnows = false; // aware of scrolled data?
+		this.hasScrolled = false; // aware of scrolled data?
 		this.flag = flag;
 		this.content = content;
 		this.scrollEndPos = endPos;
@@ -37,7 +41,7 @@
 	*/
 	Flag.prototype.scroll = function(e){
 		// note! Either animation OR user scrolling will fire this!
-		this.userKnows = true; 
+		this.hasScrolled = true; 
 		this.flag.className += " fade-out"; 
 		setTimeout(() => uiApp.removeElement(this.flag), 400); 	// CSS fade-out animation lasts 0.2s
 	};
@@ -47,7 +51,7 @@
 	* @method
 	*/ 
 	Flag.prototype.userClick = function(){
-		if(this.userKnows) return;
+		if(this.hasScrolled) return;
 		animateScroll(this.content,this.scrollEndPos); // this will fire the scroll eventListener
 	};
 		
@@ -79,7 +83,6 @@
 		flag.userClick();
 	};
 	
-
 	/**
 	* Initialise: setup DOM Elements
 	* wrapped as it might need calling on a UI update
@@ -93,7 +96,7 @@
 		*/
 		const fragment = document.createDocumentFragment();
 		const div = document.createElement("div");
-	    div.className = flagClass; 
+	    div.className = css.flag; 
 	    fragment.appendChild(div);
 	    
 		/*
@@ -126,7 +129,7 @@
 	init();
 	
 	// register Events
-	uiApp.registerForClick('.'+flagClass, userClicksFlag);
+	uiApp.registerForClick('.'+css.flag, userClicksFlag);
 	
 	
 })(bluejay); 

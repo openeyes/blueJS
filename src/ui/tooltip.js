@@ -7,14 +7,18 @@
 	'use strict';
 	
 	uiApp.addModule('tooltip');
+	
 	const selector = ".js-has-tooltip";
-	const mainClass = "oe-tooltip";
+	const css = {
+		tooltip: "oe-tooltip",
+	};
+
 	let showing = false;
 	let winWidth = window.innerWidth; // forces reflow
 		
 	// create DOM (keep out of reflow)
 	let div = document.createElement('div');
-	div.className = mainClass;
+	div.className = css.tooltip;
 	div.style.display = "none";
 	uiApp.appendTo('body',div);
 	
@@ -48,7 +52,7 @@
 		let offsetH = 8; // visual offset, allows for the arrow
 		let css = ""; // classes to position the arrows correct
 		
-		// can't get the height without some tricky...
+		// can't get the height without some trickery...
 		let h = uiApp.getHiddenElemSize(div).h;
 						
 		/*
@@ -81,7 +85,7 @@
 		} 
 		
 		// update DOM and show the tooltip
-		div.className = mainClass + " " + css;
+		div.className = css.tooltip + " " + css;
 		div.style.top = top;
 		div.style.left = (center - offsetW) + 'px';
 		div.style.display = "block";
@@ -92,11 +96,11 @@
 	* @param {Event}
 	*/
 	const hide = (event) => {
-		if(showing === false) return;
+		if(!showing) return;
 		showing = false;
 		
 		div.innerHTML = "";
-		div.className = mainClass;
+		div.className = css.tooltip;
 		div.style.cssText = "display:none"; // clear all styles
 	};
 	

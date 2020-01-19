@@ -6,43 +6,43 @@
 	'use strict';	
 	
 	uiApp.addModule('collapseData');
-	const selector = '.collapse-data-header-icon, .collapse-data-header-icon small';  // header uses <small> for count
+
+	const css = {
+		btn: "collapse-data-header-icon", 	// header and icon
+		content:"collapse-data-content",	// content
+	};
+
 	const dataAttrName = uiApp.getDataAttributeName();
 	let store = []; // store instances 
 
 	/**
 	* @class
-	* @param {DOMElement} elem
+	* @param {Element} btn
+	* @param {Element} content
 	* @private
 	*/
-	function CollapseExpander(elem){
-		this.btn = elem.querySelector('.' + this.btnClass);
-		this.content = elem.querySelector('.collapse-data-content');
+	function CollapseExpander(btn,content){
+		this.btn = btn;
+		this.content = content;
 		this.collapsed = true;
 	}
-	
-	/**
-	* Defaults
-	*/	
-	CollapseExpander.prototype.btnClass = "collapse-data-header-icon";
-	
+
 	/**
 	* change state of content
 	* @method 
 	*/
 	CollapseExpander.prototype.change = function(){
-		let display = "none";
-		let css = "expand";
-		let collapsed = this.collapsed;
-		if(collapsed){
-			display = "block";
-			css = "collapse";
+		
+		if(this.collapsed){
+			this.content.style.display = "block";
+			this.btn.className = css.btn + " collapse";	
 			uiApp.triggerCustomEvent("collapse-data-revealed",{content:this.content});		
-		} 
-		// update DOM
-		this.content.style.display = display;
-		this.btn.className = this.btnClass + " " + css;
-		this.collapsed = !collapsed;
+		} else {
+			this.content.style.display = "none";
+			this.btn.className = css.btn + " expand";
+		}
+		
+		this.collapsed = !this.collapsed;
 	};
 	
 	/**
@@ -50,9 +50,8 @@
 	* @param {event} event
 	*/
 	const userClick = (event) => {
-		let p = event.target.parentNode;
-		// so if the user clicks on <small> in the DOM go up a level!
-		let id = event.target.matches("small") ? p.parentNode.dataset[dataAttrName]	: p.dataset[dataAttrName];
+		console.log(event.target);
+		let id = event.target.parentNode.dataset[dataAttrName];
 		store[id].change();
 	};
 	
@@ -65,11 +64,15 @@
 		if(collapseData.length < 1) return; // no elements!
 		
 		collapseData.forEach( (elem) => {
-			// check to see if elem is already set up
-			if(elem.hasAttribute('data-'+dataAttrName) === false){
-				// store ID on DOM data-attribute and store Instance		
+			/*
+			store ref to instance on data-attribute, unless already setup
+			*/
+			if(elem.hasAttribute('data-'+dataAttrName) === false){	
+				
 				elem.setAttribute('data-'+dataAttrName, store.length);
-				store.push( new CollapseExpander(elem) );				
+				store.push( new CollapseExpander(	elem.querySelector('.' + css.btn),
+													elem.querySelector('.' + css.content) ));	
+																
 			}
 		});
 	};
@@ -78,6 +81,6 @@
 	init();
 	
 	// Regsiter for Events
-	uiApp.registerForClick(selector,userClick);		
+	uiApp.registerForClick('.' + css.btn, userClick);		
 
 })(bluejay); 

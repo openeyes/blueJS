@@ -11,8 +11,8 @@
 	*/
 	const listeners = {
 		click:[],		// mousedown
-		hover:[],		// mouseover
-		exit:[],		// mouseout
+		hover:[],		// mouseenter
+		exit:[],		// mouseleave
 		scroll:[],		// scroll
 		resize:[],		// window resize
 		update:[],		// UI updated (something added)
@@ -61,8 +61,8 @@
 	* @param {Event} 
 	*/
 	const userClick = (event) => checkListeners(listeners.click,event);		// 'mousedown'
-	const userHover = (event) => checkListeners(listeners.hover,event);		// 'mouseover'
-	const userExit = (event) => checkListeners(listeners.exit,event);		// 'mouseout'
+	const userHover = (event) => checkListeners(listeners.hover,event);		// 'mouseenter'
+	const userExit = (event) => checkListeners(listeners.exit,event);		// 'mouseleave'
 	
 	/**
 	* Scroll & Resize 
