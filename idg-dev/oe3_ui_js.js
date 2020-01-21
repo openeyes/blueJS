@@ -216,10 +216,10 @@ const bluejay = (function () {
 	* Provide a consistent approach to appending DOM Elements,
 	* @param {String} selector  	
 	* @param {DOM Element} el - to attach
-	* @param {DOMElement} doc - start point for search (optional)
+	* @param {DOMElement} base - base Element for search (optional)
 	*/
-	const appendTo = (selector,el,doc) => {
-		let dom = (doc || document).querySelector(selector);
+	const appendTo = (selector,el,base) => {
+		let dom = (base || document).querySelector(selector);
 		dom.appendChild(el);
 	};
 	
@@ -537,6 +537,7 @@ const bluejay = (function () {
 	};
 	
 	let div,open = false;
+	const btn = {};
 		
 	/*
 	Pretty sure, these won't be dynamically loaded later...
@@ -555,93 +556,51 @@ const bluejay = (function () {
 		div.className = "oe-popup-wrap";
 		
 		/*
-		The popup attachment in it's basic form
-		shows the file attachment (PNG or PDF)
-		If PDF then the browser will handle it, 
-		if PNG provide scale options.
-		
-		"Annotation" mode (edit) adds Element inputs
-		and adjust the layout to fit everything in
+		The popup attachment in it's basic form shows the file attachment (PNG or PDF)
+		If PDF then the browser will handle it, if PNG provide re-scale options.
+		"Annotation" mode (edit) adds Element inputs and adjust the layout to fit everything in
 		*/
 	
-		// basic DOM template
+		// DOM template
 		let html = '<div class="oe-popup-attachment">';
 		html += '<div class="title">'+json.title+'</div>';
 		html += '<div class="close-icon-btn"><i class="oe-i remove-circle pro-theme"></i></div>';
 		html += '<div class="file-attachment-content"></div>';
 		html += '<div class="file-size-controls"></div>';
 		html += '</div>';	
-			
+		
 		div.innerHTML = html;
-		
-		
-		if(json.stack){
-			// create a image "date" stack demo
-			let stack = document.createElement('div');
-			stack.className = "attachment-stack";
-			
-			let title = json.title.split(' - ');
-			
-			let options = "Timeline: <select>";
-			options += '<option>'+json.title+'</option>';
-			for(let i=json.stack;i;i--){
-				options += '<option>' + title[0] + ' - (' + i +' Jan 1975 09:30)</option>';
-			}
-			options += '</select>';
-			
-			stack.innerHTML = options;
-			
-			uiApp.appendTo('.oe-popup-attachment',stack,div);
-		}
-		
-		
-		// html += '<div class="attachment-annotation"></div>';
-		let attachment = div.querySelector('.file-attachment-content');
-		let controls =  div.querySelector('.file-size-controls');
 	
+		const attachment = div.querySelector('.file-attachment-content');
+		const controls =  div.querySelector('.file-size-controls');
 		
-		// add buttons depending on type
-		let buttons = '<button id="oe-att-fit" class="pro-theme selected">Fit to screen</button>';
-		buttons += '<button id="oe-att-actual" class="pro-theme">Actual Size</button>';
-		
-		if(json.type == 'pdf') buttons = '<button class="pro-theme selected">PDF</button>';
-				
-		// in Annotation mode?
-		if(json.annotate){
-			attachment.classList.add('annotation');
-			
-			let notes = document.createElement('div');
-			notes.className = "attachment-annotation";
-			uiApp.appendTo('.oe-popup-attachment',notes,div);
-			
-			buttons += '<button class="green hint">Save annotations</button>';
-			
-			// load in PHP using XHR	
-			uiApp.xhr(json.idgPHP,(html) => {
-				notes.innerHTML = html;
-				// IDG demo eyelat inputs... 
-				if(json.eyelat == "L")	notes.querySelector('#annotation-right').style.visibility = "hidden"; // maintain layout?
-				if(json.eyelat == "R")	notes.querySelector('#annotation-left').style.visibility = "hidden";
-			});
-			
-		}
+		// build btns
+		const btnFragment = new DocumentFragment();
+		const addBtn = (text,css,id=false) => {
+			let myBtn = document.createElement('button');
+			myBtn.className = css;
+			if(id) myBtn.id = id;
+			myBtn.textContent = text;
+			btnFragment.appendChild(myBtn);
+			return myBtn;
+		};	
 		
 		/*
-		Set up buttons based on state
+		Load in PNG or PDF
+		PNG needs the resize options
 		*/
-		controls.innerHTML = buttons;
-
-		
 		if(json.type === "png"){
-			// show all (use background)
-			attachment.style.backgroundImage = "url('"+json.file+"')";
-			// actual size
+			/*
+			Load PNG as a background AND as an IMG
+			*/
+			let bgImgUrl = "url('"+json.file+"')";
+			attachment.style.backgroundImage = bgImgUrl;
 			attachment.innerHTML = '<img src="'+json.file+'" style="display:none"/>';
-		
-			// set up functionality 
-			let fitBtn =  div.querySelector('#oe-att-fit');
-			let actualBtn = div.querySelector('#oe-att-actual');
-			let img = div.querySelector('img');
+			const img = div.querySelector('img');
+			
+			// set up resize functionality 
+			const fitToScreen = addBtn("Fit to screen","pro-theme selected","oe-att-fit");
+			const actualSize = addBtn("Actual size","pro-theme","oe-att-actual");
 			
 			const changeImgState = (bg,display,selectedBtn,resetBtn) => {
 				attachment.style.backgroundImage = bg;
@@ -651,24 +610,75 @@ const bluejay = (function () {
 			};
 			
 			// change image size buttons
-			actualBtn.addEventListener("mousedown",(e) => {
+			actualSize.addEventListener("mousedown",(e) => {
 				e.stopPropagation();
-				changeImgState("none","block",actualBtn,fitBtn);
+				changeImgState("none","block",actualSize,fitToScreen);
 			});
 			
-			fitBtn.addEventListener("mousedown",(e) => {
+			fitToScreen.addEventListener("mousedown",(e) => {
 				e.stopPropagation();
-				changeImgState("url('"+json.file+"')","none",fitBtn,actualBtn);
+				changeImgState(bgImgUrl,"none",fitToScreen,actualSize);
 			});
 			
 		} else {
-			// PDF
+			// PDF, easy, let Browser handle it
 			attachment.innerHTML = '<embed src="'+json.file+'" width="100%" height="100%"></embed>';
+			addBtn("PDF","pro-theme selected");
+		}
+		
+		/*
+		Annotate mode (edit)
+		*/
+		if(json.annotate){
+			attachment.classList.add('annotation');
+			
+			let notes = document.createElement('div');
+			notes.className = "attachment-annotation";
+			uiApp.appendTo('.oe-popup-attachment',notes,div);
+		
+			// load in PHP using XHR	
+			uiApp.xhr(json.idgPHP,(html) => {
+				notes.innerHTML = html;
+				// IDG demo eyelat inputs... 
+				if(json.eyelat == "L")	notes.querySelector('#annotation-right').style.visibility = "hidden"; // maintain layout?
+				if(json.eyelat == "R")	notes.querySelector('#annotation-left').style.visibility = "hidden";
+			});
+			
+			// add annotation btns
+			btn.save = addBtn("Save annotations","green hint");
+			btn.cancel = addBtn("Cancel","red hint");
+			btn.save.addEventListener("mousedown",removeAttachment, {once:true});
+			btn.cancel.addEventListener("mousedown",removeAttachment, {once:true});	
+		}
+		
+		/*
+		Is there an image stack?
+		Demo how to Choose Report dropdown
+		*/
+		if(json.stack){
+			// for demo, use the title to create fake report linksv
+			let title = json.title.split(' - ');
+			
+			// build fake report options for <select>
+			let options = '<option>'+json.title+'</option>';
+			for(let i=json.stack;i;i--){
+				options += '<option>' + title[0] + ' - (' + i +' Jan 1975 09:30)</option>';
+			}
+			
+			// create a image "date" stack demo
+			let stack = document.createElement('div');
+			stack.className = "attachment-stack";
+			stack.innerHTML = 'Choose report: <select class="pro-theme">' + options + '</select>';
+			
+			uiApp.appendTo('.oe-popup-attachment',stack,div);
 		}
 	
-		// close icon btn
-		let closeBtn = div.querySelector('.close-icon-btn');
-		closeBtn.addEventListener("mousedown",() => removeAttachment(), {once:true});
+		// setup close icon btn
+		btn.close = div.querySelector('.close-icon-btn');
+		btn.close.addEventListener("mousedown",removeAttachment, {once:true});
+		
+		// Add all required buttons
+		controls.appendChild(btnFragment);
 		
 		// reflow DOM
 		uiApp.appendTo('body',div);
@@ -678,6 +688,13 @@ const bluejay = (function () {
 	* Remmove popup DOM and reset
 	*/
 	const removeAttachment = () => {
+		// clean up Eventlisteners
+		btn.close.removeEventListener("mousedown",removeAttachment);
+		if(btn.save){
+			btn.save.removeEventListener("mousedown",removeAttachment);
+			btn.cancel.removeEventListener("mousedown",removeAttachment);
+		}
+		// clear DOM
 		uiApp.removeElement(div);
 		open = false;
 	};

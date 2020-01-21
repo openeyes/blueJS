@@ -18,10 +18,10 @@
 	* Provide a consistent approach to appending DOM Elements,
 	* @param {String} selector  	
 	* @param {DOM Element} el - to attach
-	* @param {DOMElement} doc - start point for search (optional)
+	* @param {DOMElement} base - base Element for search (optional)
 	*/
-	const appendTo = (selector,el,doc) => {
-		let dom = (doc || document).querySelector(selector);
+	const appendTo = (selector,el,base) => {
+		let dom = (base || document).querySelector(selector);
 		dom.appendChild(el);
 	};
 	
