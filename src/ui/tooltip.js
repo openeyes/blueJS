@@ -1,30 +1,26 @@
 /**
 * Tooltips (on icons)
-* These may be loaded after intial DOM  load (asynchronously)
 */
 (function (uiApp) {
-
+	
 	'use strict';
 	
-	uiApp.addModule('tooltip');
+	uiApp.addModule('tooltip'); // flag 
 	
 	const selector = ".js-has-tooltip";
-	const css = {
-		tooltip: "oe-tooltip",
-	};
+	const cssTooltip = "oe-tooltip";
 
 	let showing = false;
 	let winWidth = window.innerWidth; // forces reflow
 		
-	// create DOM (keep out of reflow)
+	// create DOM
 	let div = document.createElement('div');
-	div.className = css.tooltip;
+	div.className = cssTooltip;
 	div.style.display = "none";
 	uiApp.appendTo('body',div);
 	
 	/**
-	* Window Resize 
-	* innerWidth forces a reflow, only update when necessary
+	* Resize Windoe - as innerWidth forces a reflow, only update when necessary
 	*/
 	const resize = () => winWidth = window.innerWidth;
 	
@@ -85,7 +81,7 @@
 		} 
 		
 		// update DOM and show the tooltip
-		div.className = css.tooltip + " " + css;
+		div.className = cssTooltip + " " + css;
 		div.style.top = top;
 		div.style.left = (center - offsetW) + 'px';
 		div.style.display = "block";
@@ -100,7 +96,7 @@
 		showing = false;
 		
 		div.innerHTML = "";
-		div.className = css.tooltip;
+		div.className = cssTooltip;
 		div.style.cssText = "display:none"; // clear all styles
 	};
 	

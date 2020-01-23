@@ -13,8 +13,7 @@ const paths = {
 		input:	[	'./src/polyfills/*.js',		// to ensure concat order is correct
 					'./src/app/app.js',			// load in the app file first
 					'./src/app/*.js',			// then... 
-					'./src/ui/*.js',			// UI modules
-					'./src/events/*.js'],		// finally the events listeners
+					'./src/ui/*.js'],			// UI modules
 		output:	'./dist/',
 	},
 	idgDev: {
@@ -22,8 +21,7 @@ const paths = {
 					'./src/app/app.js',			// load in the app file first
 					'./src/app/*.js',			// then... 
 					'./src/ui/*.js',			// UI Modules
-					'./src/idg-dev/*.js',		// *** IDG Developement modules - extra development modules
-					'./src/events/*.js'],		// finally the events listeners
+					'./src/idg-dev/*.js'],		// *** IDG Developement modules - extra development modules
 		output:	'./idg-dev/',
 	}
 };
