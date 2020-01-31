@@ -62,7 +62,7 @@ const bluejay = (function () {
 
 })();
 /**
-* DOM Events
+* DOM Event Delegation
 */
 (function (uiApp) {
 
@@ -94,7 +94,7 @@ const bluejay = (function () {
 	* @param {Event}  event 
 	* @param {Array}  Listeners
 	*/
-	const checkListeners = (event,listeners,useMatch=true) => {
+	const checkListeners = (event,listeners) => {
 		if(event.target === document) return;
 		listeners.forEach((item) => {
 			if(event.target.matches(item.selector)){
@@ -140,12 +140,14 @@ const bluejay = (function () {
 	/**
 	To improve performance delegate Event handling to the document
 	*/
-	document.addEventListener('mouseenter',	(event) => checkListeners(event,hover),		true);
-	document.addEventListener('mousedown',	(event) => checkListeners(event,click),		false);  // need to use bubbling for "click"
-	document.addEventListener('mouseleave',	(event) => checkListeners(event,exit),		true);
-	// Throttle high rate events
-	window.addEventListener('scroll', () => scrollThrottle(), true); 
-	window.onresize = () => resizeThrottle(); 
+	document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('mouseenter',	(event) => checkListeners(event,hover),		true);
+		document.addEventListener('mousedown',	(event) => checkListeners(event,click),		false);  // need to use bubbling for "click"
+		document.addEventListener('mouseleave',	(event) => checkListeners(event,exit),		true);
+		// Throttle high rate events
+		window.addEventListener('scroll', () => scrollThrottle(), true); 
+		window.onresize = () => resizeThrottle(); 
+    });
 	
 	// extend App
 	uiApp.extend('registerForHover',	(selector,cb) => addListener(hover,selector,cb));
@@ -217,30 +219,33 @@ const bluejay = (function () {
 	/**
 	* XMLHttpRequest 
 	* @param {string} url
-	* @param {Function} cb - callback
-	* @retuns {String} responseText
+	* @returns {Promise} resolve(responseText) or reject(errorMsg)
 	*/
-	const xhr = (url,cb) => {
+	const xhr = (url) => {
 		uiApp.log('[XHR] - '+url);
-		let xReq = new XMLHttpRequest();
-		xReq.onreadystatechange = function(){
-			
-			if(xReq.readyState !== 4) return; // only run if request is DONE 
-			
-			if(xReq.status >= 200 && xReq.status < 300){
-				uiApp.log('[XHR] - Success');
-				cb(xReq.responseText);
-				// success
-			} else {
-				// failure
-				uiApp.log('[XHR] - Failed');
-				return false;
-			}			
-		};
-		// open and send request
-		xReq.open("GET",url);
-		xReq.send();
+		
+		return new Promise((resolve,reject) => {
+			let xReq = new XMLHttpRequest();
+			xReq.open("GET",url);
+			xReq.onreadystatechange = function(){
+				
+				if(xReq.readyState !== 4) return; // only run if request is DONE 
+				
+				if(xReq.status >= 200 && xReq.status < 300){
+					uiApp.log('[XHR] - Success');
+					resolve(xReq.responseText);
+					// success
+				} else {
+					// failure
+					uiApp.log('[XHR] - Failed');
+					reject(this.status + " " + this.statusText);
+				}			
+			};
+			// open and send request
+			xReq.send();
+		});
 	};
+	
 
 	/**
 	* Get dimensions of hidden DOM element

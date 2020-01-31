@@ -36,30 +36,33 @@
 	/**
 	* XMLHttpRequest 
 	* @param {string} url
-	* @param {Function} cb - callback
-	* @retuns {String} responseText
+	* @returns {Promise} resolve(responseText) or reject(errorMsg)
 	*/
-	const xhr = (url,cb) => {
+	const xhr = (url) => {
 		uiApp.log('[XHR] - '+url);
-		let xReq = new XMLHttpRequest();
-		xReq.onreadystatechange = function(){
-			
-			if(xReq.readyState !== 4) return; // only run if request is DONE 
-			
-			if(xReq.status >= 200 && xReq.status < 300){
-				uiApp.log('[XHR] - Success');
-				cb(xReq.responseText);
-				// success
-			} else {
-				// failure
-				uiApp.log('[XHR] - Failed');
-				return false;
-			}			
-		};
-		// open and send request
-		xReq.open("GET",url);
-		xReq.send();
+		
+		return new Promise((resolve,reject) => {
+			let xReq = new XMLHttpRequest();
+			xReq.open("GET",url);
+			xReq.onreadystatechange = function(){
+				
+				if(xReq.readyState !== 4) return; // only run if request is DONE 
+				
+				if(xReq.status >= 200 && xReq.status < 300){
+					uiApp.log('[XHR] - Success');
+					resolve(xReq.responseText);
+					// success
+				} else {
+					// failure
+					uiApp.log('[XHR] - Failed');
+					reject(this.status + " " + this.statusText);
+				}			
+			};
+			// open and send request
+			xReq.send();
+		});
 	};
+	
 
 	/**
 	* Get dimensions of hidden DOM element

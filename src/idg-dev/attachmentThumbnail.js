@@ -111,13 +111,14 @@
 			notes.className = "attachment-annotation";
 			uiApp.appendTo('.oe-popup-attachment',notes,div);
 		
-			// load in PHP using XHR	
-			uiApp.xhr(json.idgPHP,(html) => {
-				notes.innerHTML = html;
-				// IDG demo eyelat inputs... 
-				if(json.eyelat == "L")	notes.querySelector('#annotation-right').style.visibility = "hidden"; // maintain layout?
-				if(json.eyelat == "R")	notes.querySelector('#annotation-left').style.visibility = "hidden";
-			});
+			// load in PHP using XHR (returns a Promise)	
+			uiApp.xhr(json.idgPHP)
+				.then( html => {	notes.innerHTML = html;
+									// IDG demo eyelat inputs...
+									if(json.eyelat == "L")	notes.querySelector('#annotation-right').style.visibility = "hidden"; // maintain layout?
+									if(json.eyelat == "R")	notes.querySelector('#annotation-left').style.visibility = "hidden";
+								})
+				.catch( e => console.log("XHR failed: ",e) );
 			
 			// add annotation btns
 			btn.save = addBtn("Save annotations","green hint");

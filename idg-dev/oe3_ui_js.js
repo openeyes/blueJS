@@ -62,7 +62,7 @@ const bluejay = (function () {
 
 })();
 /**
-* DOM Events
+* DOM Event Delegation
 */
 (function (uiApp) {
 
@@ -94,7 +94,7 @@ const bluejay = (function () {
 	* @param {Event}  event 
 	* @param {Array}  Listeners
 	*/
-	const checkListeners = (event,listeners,useMatch=true) => {
+	const checkListeners = (event,listeners) => {
 		if(event.target === document) return;
 		listeners.forEach((item) => {
 			if(event.target.matches(item.selector)){
@@ -140,12 +140,14 @@ const bluejay = (function () {
 	/**
 	To improve performance delegate Event handling to the document
 	*/
-	document.addEventListener('mouseenter',	(event) => checkListeners(event,hover),		true);
-	document.addEventListener('mousedown',	(event) => checkListeners(event,click),		false);  // need to use bubbling for "click"
-	document.addEventListener('mouseleave',	(event) => checkListeners(event,exit),		true);
-	// Throttle high rate events
-	window.addEventListener('scroll', () => scrollThrottle(), true); 
-	window.onresize = () => resizeThrottle(); 
+	document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('mouseenter',	(event) => checkListeners(event,hover),		true);
+		document.addEventListener('mousedown',	(event) => checkListeners(event,click),		false);  // need to use bubbling for "click"
+		document.addEventListener('mouseleave',	(event) => checkListeners(event,exit),		true);
+		// Throttle high rate events
+		window.addEventListener('scroll', () => scrollThrottle(), true); 
+		window.onresize = () => resizeThrottle(); 
+    });
 	
 	// extend App
 	uiApp.extend('registerForHover',	(selector,cb) => addListener(hover,selector,cb));
@@ -217,30 +219,33 @@ const bluejay = (function () {
 	/**
 	* XMLHttpRequest 
 	* @param {string} url
-	* @param {Function} cb - callback
-	* @retuns {String} responseText
+	* @returns {Promise} resolve(responseText) or reject(errorMsg)
 	*/
-	const xhr = (url,cb) => {
+	const xhr = (url) => {
 		uiApp.log('[XHR] - '+url);
-		let xReq = new XMLHttpRequest();
-		xReq.onreadystatechange = function(){
-			
-			if(xReq.readyState !== 4) return; // only run if request is DONE 
-			
-			if(xReq.status >= 200 && xReq.status < 300){
-				uiApp.log('[XHR] - Success');
-				cb(xReq.responseText);
-				// success
-			} else {
-				// failure
-				uiApp.log('[XHR] - Failed');
-				return false;
-			}			
-		};
-		// open and send request
-		xReq.open("GET",url);
-		xReq.send();
+		
+		return new Promise((resolve,reject) => {
+			let xReq = new XMLHttpRequest();
+			xReq.open("GET",url);
+			xReq.onreadystatechange = function(){
+				
+				if(xReq.readyState !== 4) return; // only run if request is DONE 
+				
+				if(xReq.status >= 200 && xReq.status < 300){
+					uiApp.log('[XHR] - Success');
+					resolve(xReq.responseText);
+					// success
+				} else {
+					// failure
+					uiApp.log('[XHR] - Failed');
+					reject(this.status + " " + this.statusText);
+				}			
+			};
+			// open and send request
+			xReq.send();
+		});
 	};
+	
 
 	/**
 	* Get dimensions of hidden DOM element
@@ -503,6 +508,31 @@ const bluejay = (function () {
 	
 })(bluejay); 
 /**
+* Common UI patterns
+*/
+(function (uiApp){
+	
+	/**
+	* Close Btn for any open popup 
+	*/ 
+/*
+	const closeBtn = {
+		name:"common",
+		popup: {
+			// note: // Parenthesize the body of a function to return an object literal expression!
+			closeBtn: () => ({ 
+				close:function(){
+					console.log("close?",this.name);
+				}						
+			}),
+		}
+	};
+*/
+	
+	
+	
+})(bluejay);
+/**
 * Attachments Thumbnails
 * Open up a fullscreen popup up of PNG or PDF
 */
@@ -615,13 +645,14 @@ const bluejay = (function () {
 			notes.className = "attachment-annotation";
 			uiApp.appendTo('.oe-popup-attachment',notes,div);
 		
-			// load in PHP using XHR	
-			uiApp.xhr(json.idgPHP,(html) => {
-				notes.innerHTML = html;
-				// IDG demo eyelat inputs... 
-				if(json.eyelat == "L")	notes.querySelector('#annotation-right').style.visibility = "hidden"; // maintain layout?
-				if(json.eyelat == "R")	notes.querySelector('#annotation-left').style.visibility = "hidden";
-			});
+			// load in PHP using XHR (returns a Promise)	
+			uiApp.xhr(json.idgPHP)
+				.then( html => {	notes.innerHTML = html;
+									// IDG demo eyelat inputs...
+									if(json.eyelat == "L")	notes.querySelector('#annotation-right').style.visibility = "hidden"; // maintain layout?
+									if(json.eyelat == "R")	notes.querySelector('#annotation-left').style.visibility = "hidden";
+								})
+				.catch( e => console.log("XHR failed: ",e) );
 			
 			// add annotation btns
 			btn.save = addBtn("Save annotations","green hint");
@@ -752,7 +783,6 @@ const bluejay = (function () {
 	* @param {event} event
 	*/
 	const userClick = (event) => {
-		console.log(event.target);
 		let id = event.target.parentNode.dataset[dataAttrName];
 		store[id].change();
 	};
@@ -766,12 +796,11 @@ const bluejay = (function () {
 		if(collapseData.length < 1) return; // no elements!
 		
 		collapseData.forEach( (elem) => {
-			/*
-			store ref to instance on data-attribute, unless already setup
-			*/
 			if(elem.hasAttribute('data-'+dataAttrName) === false){	
-				
-				elem.setAttribute('data-'+dataAttrName, store.length);
+				/*
+				Capture the array ref on the DOM target element, then push to store
+				*/
+				elem.setAttribute('data-'+dataAttrName, store.length);	
 				store.push( new CollapseExpander(	elem.querySelector('.' + css.btn),
 													elem.querySelector('.' + css.content) ));	
 																
@@ -785,6 +814,71 @@ const bluejay = (function () {
 	// Regsiter for Events
 	uiApp.registerForClick('.' + css.btn, userClick);		
 
+})(bluejay); 
+/**
+* Overlay Popup
+*/
+(function (uiApp) {
+
+	'use strict';
+	
+	/*
+	Pretty simple. Click on something (id), load in PHP content, selector to close
+	*/
+	const pops = [ 	{id:'#js-change-context-btn', php:'change-context.php', close:'.close-icon-btn' },	// change context (firm)
+					{id:'#copy-edit-history-btn', php:'previous-history-elements.php', close:'.close-icon-btn' }, // duplicate history element
+					{id:'#copy-edit-anterior-segment-btn', php:'previous-ed-anterior.php', close:'.close-icon-btn' }, // duplicate history element ED
+					{id:'#js-virtual-clinic-btn', php:'virtual-clinic.php', close:'.close-icon-btn' }, // virtual clinic change:
+					{id:'#js-delete-event-btn', php:'delete-event.php', close:'.js-demo-cancel-btn' }, // Delete Event generic example:
+					{id:'#js-close-element-btn', php:'close-element.php', close:'.js-demo-cancel-btn' }, // Remove element confirmation
+					{id:'#js-add-new-event', php:'add-new-event.php', close:'.close-icon-btn' }, // Add New Event in SEM view mode
+					{id:'#js-idg-preview-correspondence', php:'letter-preview.php', close:'.close-icon-btn' }, // duplicate history element
+					{id:'#js-idg-exam-complog', php:'exam-va-COMPlog.php', close:'.close-icon-btn' }, // Duplicate Event
+					{id:'#js-duplicate-event-btn', php:'duplicate-event-warning.php', close:'.close-icon-btn' }, 
+					{id:'#js-idg-worklist-ps-add', php:'worklist-PS.php', close:'.close-icon-btn' }, // Worklist PSD / PSG	
+					{id:'#analytics-change-filters', php:'analytics-filters.php', close:'.close-icon-btn' }, // Analytics Custom Filters	
+					{id:'#js-idg-add-new-contact-popup', php:'add-new-contact.php', close:'.close-icon-btn' }, // Add new contact
+					];
+	
+	
+	const overlayPopup = (id,php,closeSelector) => {
+		
+		const showPopup = () => {
+			// xhr returns a Promise... 
+			uiApp.xhr('/idg-php/v3/_load/' + php)
+				.then( html => {
+					const div = document.createElement('div');
+					div.className = "oe-popup-wrap";
+					div.innerHTML = html;
+					div.querySelector(closeSelector).addEventListener("mousedown", (ev) => {
+						ev.stopPropagation();
+						uiApp.removeElement(div);
+					}, {once:true} );
+					
+					// reflow DOM
+					uiApp.appendTo('body',div);
+				})
+				.catch(e => console.log('overlay failed to load',e));
+		};
+		
+		// register Events
+		uiApp.registerForClick(id,showPopup);
+	};
+	
+	/*
+	Init IDG popup overlay demos
+	*/
+	
+	for(let i=0,len=pops.length;i<len;i++){
+		let p = pops[i];
+		let el = document.querySelector(p.id);
+		if(el !== null){
+			overlayPopup(	p.id,
+							p.php,
+							p.close);
+		}
+	}
+			
 })(bluejay); 
 
 /**

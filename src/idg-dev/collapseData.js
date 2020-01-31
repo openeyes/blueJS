@@ -50,7 +50,6 @@
 	* @param {event} event
 	*/
 	const userClick = (event) => {
-		console.log(event.target);
 		let id = event.target.parentNode.dataset[dataAttrName];
 		store[id].change();
 	};
@@ -64,12 +63,11 @@
 		if(collapseData.length < 1) return; // no elements!
 		
 		collapseData.forEach( (elem) => {
-			/*
-			store ref to instance on data-attribute, unless already setup
-			*/
 			if(elem.hasAttribute('data-'+dataAttrName) === false){	
-				
-				elem.setAttribute('data-'+dataAttrName, store.length);
+				/*
+				Capture the array ref on the DOM target element, then push to store
+				*/
+				elem.setAttribute('data-'+dataAttrName, store.length);	
 				store.push( new CollapseExpander(	elem.querySelector('.' + css.btn),
 													elem.querySelector('.' + css.content) ));	
 																

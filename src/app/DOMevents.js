@@ -1,5 +1,5 @@
 /**
-* DOM Events
+* DOM Event Delegation
 */
 (function (uiApp) {
 
@@ -31,7 +31,7 @@
 	* @param {Event}  event 
 	* @param {Array}  Listeners
 	*/
-	const checkListeners = (event,listeners,useMatch=true) => {
+	const checkListeners = (event,listeners) => {
 		if(event.target === document) return;
 		listeners.forEach((item) => {
 			if(event.target.matches(item.selector)){
@@ -77,12 +77,14 @@
 	/**
 	To improve performance delegate Event handling to the document
 	*/
-	document.addEventListener('mouseenter',	(event) => checkListeners(event,hover),		true);
-	document.addEventListener('mousedown',	(event) => checkListeners(event,click),		false);  // need to use bubbling for "click"
-	document.addEventListener('mouseleave',	(event) => checkListeners(event,exit),		true);
-	// Throttle high rate events
-	window.addEventListener('scroll', () => scrollThrottle(), true); 
-	window.onresize = () => resizeThrottle(); 
+	document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('mouseenter',	(event) => checkListeners(event,hover),		true);
+		document.addEventListener('mousedown',	(event) => checkListeners(event,click),		false);  // need to use bubbling for "click"
+		document.addEventListener('mouseleave',	(event) => checkListeners(event,exit),		true);
+		// Throttle high rate events
+		window.addEventListener('scroll', () => scrollThrottle(), true); 
+		window.onresize = () => resizeThrottle(); 
+    });
 	
 	// extend App
 	uiApp.extend('registerForHover',	(selector,cb) => addListener(hover,selector,cb));
