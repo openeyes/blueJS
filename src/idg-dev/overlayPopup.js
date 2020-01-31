@@ -6,7 +6,7 @@
 	'use strict';
 	
 	/*
-	Pretty simple. Click on something (id), load in PHP content, selector to close
+	Pretty simple. Click on something (by id), load in some PHP demo content, assign a selector to close
 	*/
 	const pops = [ 	{id:'#js-change-context-btn', php:'change-context.php', close:'.close-icon-btn' },	// change context (firm)
 					{id:'#copy-edit-history-btn', php:'previous-history-elements.php', close:'.close-icon-btn' }, // duplicate history element
@@ -41,7 +41,7 @@
 					// reflow DOM
 					uiApp.appendTo('body',div);
 				})
-				.catch(e => console.log('overlay failed to load',e));
+				.catch(e => console.log('overlayPopup failed to load',e));  // maybe output this to UI at somepoint, but for now... 
 		};
 		
 		// register Events
@@ -49,7 +49,7 @@
 	};
 	
 	/*
-	Init IDG popup overlay demos
+	Init IDG popup overlay demos, if element is in the DOM
 	*/
 	
 	for(let i=0,len=pops.length;i<len;i++){
