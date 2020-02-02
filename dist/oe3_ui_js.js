@@ -32,7 +32,6 @@ const bluejay = (function () {
 		*/
 		if(!fn.id && !(name in methods)){
 			// ok, extend		
-			bluejay.log('method: '+ name + '()');
 			fn.id = extendID++;
 			methods[name] = fn;
 			return true;
@@ -51,12 +50,24 @@ const bluejay = (function () {
 	*/
 	methods.log = function (msg) {
 		if(debug){
-			console.log('[bluejay] ' + msg);
+			console.log('[blue] ' + msg);
 		}
 	};
 	
-	methods.log('OE JS UI layer... Setting up');
-	
+	/**
+	* Provide set up feedback whilst debugging
+	*/
+	if(debug){
+		methods.log('OE JS UI layer... ready');
+		methods.log('DEBUG MODE');
+		document.addEventListener('DOMContentLoaded', () => {
+			// list API methods 
+			let apiMethods = [];
+			for(const name in methods)	apiMethods.push(name); 
+			methods.log('[API] ' + apiMethods.join(', ') );	
+		},{once:true});
+	}
+
 	// Return public methods object
 	return methods;
 
@@ -99,6 +110,7 @@ const bluejay = (function () {
 		listeners.forEach((item) => {
 			if(event.target.matches(item.selector)){
 				item.cb(event);
+				event.stopPropagation();
 			}
 		});
 	};
@@ -357,7 +369,7 @@ const bluejay = (function () {
 	*/
 	const domDataAttribute = (suffix = false) => {
 		let attr = suffix === false ? 'oeui' : 'oeui-' + suffix;
-		return attr;
+		return 'data-' + attr;
 	};
 	
 	/**

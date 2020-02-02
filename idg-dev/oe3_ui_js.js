@@ -32,7 +32,6 @@ const bluejay = (function () {
 		*/
 		if(!fn.id && !(name in methods)){
 			// ok, extend		
-			bluejay.log('method: '+ name + '()');
 			fn.id = extendID++;
 			methods[name] = fn;
 			return true;
@@ -51,12 +50,24 @@ const bluejay = (function () {
 	*/
 	methods.log = function (msg) {
 		if(debug){
-			console.log('[bluejay] ' + msg);
+			console.log('[blue] ' + msg);
 		}
 	};
 	
-	methods.log('OE JS UI layer... Setting up');
-	
+	/**
+	* Provide set up feedback whilst debugging
+	*/
+	if(debug){
+		methods.log('OE JS UI layer... ready');
+		methods.log('DEBUG MODE');
+		document.addEventListener('DOMContentLoaded', () => {
+			// list API methods 
+			let apiMethods = [];
+			for(const name in methods)	apiMethods.push(name); 
+			methods.log('[API] ' + apiMethods.join(', ') );	
+		},{once:true});
+	}
+
 	// Return public methods object
 	return methods;
 
@@ -99,6 +110,7 @@ const bluejay = (function () {
 		listeners.forEach((item) => {
 			if(event.target.matches(item.selector)){
 				item.cb(event);
+				event.stopPropagation();
 			}
 		});
 	};
@@ -357,7 +369,7 @@ const bluejay = (function () {
 	*/
 	const domDataAttribute = (suffix = false) => {
 		let attr = suffix === false ? 'oeui' : 'oeui-' + suffix;
-		return attr;
+		return 'data-' + attr;
 	};
 	
 	/**
@@ -507,31 +519,6 @@ const bluejay = (function () {
 	uiApp.listenForResize(resize);
 	
 })(bluejay); 
-/**
-* Common UI patterns
-*/
-(function (uiApp){
-	
-	/**
-	* Close Btn for any open popup 
-	*/ 
-/*
-	const closeBtn = {
-		name:"common",
-		popup: {
-			// note: // Parenthesize the body of a function to return an object literal expression!
-			closeBtn: () => ({ 
-				close:function(){
-					console.log("close?",this.name);
-				}						
-			}),
-		}
-	};
-*/
-	
-	
-	
-})(bluejay);
 /**
 * Attachments Thumbnails
 * Open up a fullscreen popup up of PNG or PDF
@@ -742,11 +729,9 @@ const bluejay = (function () {
 
 	const css = {
 		btn: "collapse-data-header-icon", 	// header and icon
-		content:"collapse-data-content",	// content
 	};
 
-	const dataAttrName = uiApp.getDataAttributeName();
-	let store = []; // store instances 
+	const states = []; // store instances states 
 
 	/**
 	* @class
@@ -754,10 +739,11 @@ const bluejay = (function () {
 	* @param {Element} content
 	* @private
 	*/
-	function CollapseExpander(btn,content){
+	function CollapseExpander(btn){
 		this.btn = btn;
-		this.content = content;
+		this.content = btn.parentNode.querySelector('.collapse-data-content');
 		this.collapsed = true;
+		this.change(); // because initiated by click event
 	}
 
 	/**
@@ -767,50 +753,50 @@ const bluejay = (function () {
 	CollapseExpander.prototype.change = function(){
 		
 		if(this.collapsed){
-			this.content.style.display = "block";
-			this.btn.className = css.btn + " collapse";	
-			uiApp.triggerCustomEvent("collapse-data-revealed",{content:this.content});		
+			this.view("block","collapse");		
 		} else {
-			this.content.style.display = "none";
-			this.btn.className = css.btn + " expand";
+			this.view("none","expand");	
 		}
 		
 		this.collapsed = !this.collapsed;
 	};
 	
 	/**
-	* Callback for Event (header btn)
-	* @param {event} event
+	* udpate view state
+	* @param {string} display style
+	* @param {string} icon class
+	* @method 
 	*/
-	const userClick = (event) => {
-		let id = event.target.parentNode.dataset[dataAttrName];
-		store[id].change();
+	CollapseExpander.prototype.view = function(display,icon){
+		this.content.style.display = display;
+		this.btn.className = css.btn + icon;	
 	};
 	
 	/**
-	* Initialise DOM Elements
-	* setup up wrapped in case it needs calling later
+	* Callback for Event (header btn)
+	* @param {event} event
 	*/
-	const init = () => {
-		let collapseData = uiApp.nodeArray(document.querySelectorAll('.collapse-data'));
-		if(collapseData.length < 1) return; // no elements!
+	const userClick = (ev) => {
+		/*
+		DOM Structure: 
+		.collapse-data
+		- .collapse-data-header-icon (expand/collapse)
+		- .collapse-data-content
+		*/
+		let btn = ev.target;
+		let dataAttr = uiApp.getDataAttributeName();
 		
-		collapseData.forEach( (elem) => {
-			if(elem.hasAttribute('data-'+dataAttrName) === false){	
-				/*
-				Capture the array ref on the DOM target element, then push to store
-				*/
-				elem.setAttribute('data-'+dataAttrName, store.length);	
-				store.push( new CollapseExpander(	elem.querySelector('.' + css.btn),
-													elem.querySelector('.' + css.content) ));	
-																
-			}
-		});
+		// does DOM needs a state setting up? 
+		if(btn.hasAttribute(dataAttr) === false){
+			// yep, no state, set up
+			btn.setAttribute(dataAttr, states.length);									
+			states.push(new CollapseExpander(btn));
+		} else {
+			let stateID = btn.dataset[dataAttr.substring(5)];
+			states[stateID].change();
+		}
 	};
-	
-	// init DOM Elements
-	init();
-	
+
 	// Regsiter for Events
 	uiApp.registerForClick('.' + css.btn, userClick);		
 
@@ -822,8 +808,10 @@ const bluejay = (function () {
 
 	'use strict';
 	
+	uiApp.addModule('overlayPopup');
+	
 	/*
-	Pretty simple. Click on something (id), load in PHP content, selector to close
+	Pretty simple. Click on something (by id), load in some PHP demo content, assign a selector to close
 	*/
 	const pops = [ 	{id:'#js-change-context-btn', php:'change-context.php', close:'.close-icon-btn' },	// change context (firm)
 					{id:'#copy-edit-history-btn', php:'previous-history-elements.php', close:'.close-icon-btn' }, // duplicate history element
@@ -858,7 +846,7 @@ const bluejay = (function () {
 					// reflow DOM
 					uiApp.appendTo('body',div);
 				})
-				.catch(e => console.log('overlay failed to load',e));
+				.catch(e => console.log('overlayPopup failed to load',e));  // maybe output this to UI at somepoint, but for now... 
 		};
 		
 		// register Events
@@ -866,7 +854,7 @@ const bluejay = (function () {
 	};
 	
 	/*
-	Init IDG popup overlay demos
+	Init IDG popup overlay demos, if element is in the DOM
 	*/
 	
 	for(let i=0,len=pops.length;i<len;i++){
@@ -879,6 +867,180 @@ const bluejay = (function () {
 		}
 	}
 			
+})(bluejay); 
+/**
+* Pro View Expand / Collapse
+*/
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('proView');	
+	
+	/**
+	Generally Pro view has 2 states: Collapsed (pro) list and Exapanded (normal) of the SAME data
+	However, there are situations where the Pro view remains open and more data is shown by expanding 
+	AND the View change is controlled BILATERALY! ... e.g. PCR Risks 
+	*/
+	
+	const dataAttr = uiApp.getDataAttributeName();
+	const states = []; // store UI states
+	
+	/*
+	Build ProView through compostion
+	*/
+	const _hideShow = () => ({
+		/**
+		* hide/show content areas
+		* @param {HTMLElement} to hide 
+		* @param {HTMLElement} to show
+		*/
+		hideShow: function(hide,show){
+			if(hide) hide.style.display = "none";
+			if(show) show.style.display = "block";
+		}	
+	});
+	
+	const _icon = () => ({
+		/**
+		* Update icon state
+		* @param {string}  
+		* @param {string} 
+		*/
+		icon: function(find,replace){
+			this.oei.classList.replace(find,replace);
+		}	
+	});
+	
+	const _change = () => ({
+		/**
+		* Change state 
+		*/
+		change: function(){
+			if(this.inPro){
+				this.hideShow(this.pro,this.standard);
+				this.icon('expand','collapse');
+			} else {
+				this.hideShow(this.standard,this.pro);
+				this.icon('collapse','expand');
+			}
+			
+			if(this.linked){
+				this.linkedProView.change();
+			}
+			
+			this.inPro = !this.inPro;
+		}	
+	});
+	
+	const _changeContent = () => ({
+		/**
+		* Basic state change, 
+		* only changes content and only used by LinkedProView
+		*/
+		change: function(){
+			if(this.inPro){
+				this.hideShow(this.pro,this.standard);
+			} else {
+				this.hideShow(this.standard,this.pro);
+			}
+			this.inPro = !this.inPro;
+		}	
+	});
+	
+	const _options = (json) => ({
+		/**
+		* Customise based on JSON settings in the DOM
+		* @param {Obj} json
+		*/
+		options: function(json){
+			/*
+			Lock Pro view open?
+			i.e. Standard data expands data shown (PCR Risk)
+			*/
+			if(json.lock) this.pro = null;	// hide/show will ignore it
+			 
+			/*
+			DOM will provide ID for linked ProView 
+			then this ProView will control 2 ProViews (Bilateral)
+			*/
+			if(json.linkID != false){
+				this.linked = true; 
+				this.linkedProView = LinkedProView( document.querySelector('#' + json.linkID));
+				if(json.lock) this.linkedProView.pro = null; // set up to behave the same
+			}
+		}
+	});
+	
+	/**
+	* @Class 
+	* @param {Node} .pro-data-view
+	*/
+	const ProView = (parentNode) => {
+		
+		if(!parentNode.classList.contains('pro-data-view')) return;	
+		
+		let btn = parentNode.querySelector('.pro-view-btn');
+		let pro = parentNode.querySelector('.data-pro-view');
+		let standard = parentNode.querySelector('.data-standard-view');
+		
+		let me = {	btn: btn,
+					oei: btn.querySelector('.oe-i'),
+					pro: pro,
+					standard: standard,		
+					inPro: true,
+					linked: false };
+		
+		return Object.assign(	me,
+								_change(),
+								_hideShow(),
+								_icon(),
+								_options() );
+	};
+	
+	/**
+	* @Class
+	* Provide a basic version of ProView for when they are 'linked'
+	* This will be controlled through the ProView instance
+	* @param {Node} .pro-data-view
+	*/
+	const LinkedProView = (parentNode) => {
+		let me = {	pro: parentNode.querySelector('.data-pro-view'),
+					standard: parentNode.querySelector('.data-standard-view'),		
+					inPro: true };
+					
+		return Object.assign(	me,
+								_changeContent(),
+								_hideShow() );
+	};
+	
+	
+
+	/**
+	* Callback for Event (header btn)
+	* @param {event} event
+	*/
+	const userClick = (ev) => {
+		const btn = ev.target;
+		
+		// does DOM needs a state setting up? 
+		if(btn.hasAttribute(dataAttr) === false){
+			// yep, no state, set up
+			btn.setAttribute(dataAttr, states.length);	
+			let pro = ProView( btn.parentNode );
+			pro.options( JSON.parse(btn.dataset.proview) );
+			pro.change();		// update UI (because this a click)
+			states.push(pro);	// store 
+		} else {
+			let stateID = btn.dataset[dataAttr.substring(5)];
+			states[stateID].change();
+		}
+	};
+
+	// Regsiter for Events
+	uiApp.registerForClick('.pro-view-btn', userClick);
+
+
 })(bluejay); 
 
 /**
@@ -961,7 +1123,7 @@ const bluejay = (function () {
 	* @param {Event} event
 	*/
 	const userClicksFlag = (event) => {
-		let flag = store[event.target.getAttribute('data-'+dataAttrName)];
+		let flag = store[event.target.getAttribute(dataAttrName)];
 		flag.userClick();
 	};
 	
@@ -997,7 +1159,7 @@ const bluejay = (function () {
 				*/
 				let clone = fragment.cloneNode(true);
 				let elemDiv = clone.firstChild; 
-				elemDiv.setAttribute('data-'+dataAttrName, store.length);
+				elemDiv.setAttribute(dataAttrName, store.length);
 				elem.appendChild(clone);
 				
 		 		store.push( new Flag( 	elemDiv, 
@@ -1014,4 +1176,21 @@ const bluejay = (function () {
 	uiApp.registerForClick('.'+css.flag, userClicksFlag);
 	
 	
+})(bluejay); 
+/**
+* Textarea Resize on type
+*/
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('textAreaResize');	
+
+	document.addEventListener('input', (ev) => {
+		if(ev.target.matches('textarea')){
+			ev.target.style.height = 'auto';
+			ev.target.style.height = ev.target.scrollHeight + 'px';
+		}
+	},true);
+
 })(bluejay); 

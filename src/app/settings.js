@@ -24,7 +24,7 @@
 	*/
 	const domDataAttribute = (suffix = false) => {
 		let attr = suffix === false ? 'oeui' : 'oeui-' + suffix;
-		return attr;
+		return 'data-' + attr;
 	};
 	
 	/**

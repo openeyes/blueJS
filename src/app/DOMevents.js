@@ -36,6 +36,7 @@
 		listeners.forEach((item) => {
 			if(event.target.matches(item.selector)){
 				item.cb(event);
+				event.stopPropagation();
 			}
 		});
 	};

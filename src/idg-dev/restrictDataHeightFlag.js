@@ -79,7 +79,7 @@
 	* @param {Event} event
 	*/
 	const userClicksFlag = (event) => {
-		let flag = store[event.target.getAttribute('data-'+dataAttrName)];
+		let flag = store[event.target.getAttribute(dataAttrName)];
 		flag.userClick();
 	};
 	
@@ -115,7 +115,7 @@
 				*/
 				let clone = fragment.cloneNode(true);
 				let elemDiv = clone.firstChild; 
-				elemDiv.setAttribute('data-'+dataAttrName, store.length);
+				elemDiv.setAttribute(dataAttrName, store.length);
 				elem.appendChild(clone);
 				
 		 		store.push( new Flag( 	elemDiv, 

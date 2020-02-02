@@ -9,11 +9,9 @@
 
 	const css = {
 		btn: "collapse-data-header-icon", 	// header and icon
-		content:"collapse-data-content",	// content
 	};
 
-	const dataAttrName = uiApp.getDataAttributeName();
-	let store = []; // store instances 
+	const states = []; // store instances states 
 
 	/**
 	* @class
@@ -21,10 +19,11 @@
 	* @param {Element} content
 	* @private
 	*/
-	function CollapseExpander(btn,content){
+	function CollapseExpander(btn){
 		this.btn = btn;
-		this.content = content;
+		this.content = btn.parentNode.querySelector('.collapse-data-content');
 		this.collapsed = true;
+		this.change(); // because initiated by click event
 	}
 
 	/**
@@ -34,50 +33,50 @@
 	CollapseExpander.prototype.change = function(){
 		
 		if(this.collapsed){
-			this.content.style.display = "block";
-			this.btn.className = css.btn + " collapse";	
-			uiApp.triggerCustomEvent("collapse-data-revealed",{content:this.content});		
+			this.view("block","collapse");		
 		} else {
-			this.content.style.display = "none";
-			this.btn.className = css.btn + " expand";
+			this.view("none","expand");	
 		}
 		
 		this.collapsed = !this.collapsed;
 	};
 	
 	/**
-	* Callback for Event (header btn)
-	* @param {event} event
+	* udpate view state
+	* @param {string} display style
+	* @param {string} icon class
+	* @method 
 	*/
-	const userClick = (event) => {
-		let id = event.target.parentNode.dataset[dataAttrName];
-		store[id].change();
+	CollapseExpander.prototype.view = function(display,icon){
+		this.content.style.display = display;
+		this.btn.className = css.btn + icon;	
 	};
 	
 	/**
-	* Initialise DOM Elements
-	* setup up wrapped in case it needs calling later
+	* Callback for Event (header btn)
+	* @param {event} event
 	*/
-	const init = () => {
-		let collapseData = uiApp.nodeArray(document.querySelectorAll('.collapse-data'));
-		if(collapseData.length < 1) return; // no elements!
+	const userClick = (ev) => {
+		/*
+		DOM Structure: 
+		.collapse-data
+		- .collapse-data-header-icon (expand/collapse)
+		- .collapse-data-content
+		*/
+		let btn = ev.target;
+		let dataAttr = uiApp.getDataAttributeName();
 		
-		collapseData.forEach( (elem) => {
-			if(elem.hasAttribute('data-'+dataAttrName) === false){	
-				/*
-				Capture the array ref on the DOM target element, then push to store
-				*/
-				elem.setAttribute('data-'+dataAttrName, store.length);	
-				store.push( new CollapseExpander(	elem.querySelector('.' + css.btn),
-													elem.querySelector('.' + css.content) ));	
-																
-			}
-		});
+		// does DOM needs a state setting up? 
+		if(btn.hasAttribute(dataAttr) === false){
+			// yep, no state, set up
+			btn.setAttribute(dataAttr, states.length);									
+			states.push(new CollapseExpander(btn));
+		} else {
+			let stateID = btn.dataset[dataAttr.substring(5)];
+			states[stateID].change();
+		}
 	};
-	
-	// init DOM Elements
-	init();
-	
+
 	// Regsiter for Events
 	uiApp.registerForClick('.' + css.btn, userClick);		
 

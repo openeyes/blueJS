@@ -5,6 +5,8 @@
 
 	'use strict';
 	
+	uiApp.addModule('overlayPopup');
+	
 	/*
 	Pretty simple. Click on something (by id), load in some PHP demo content, assign a selector to close
 	*/
