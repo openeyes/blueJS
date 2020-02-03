@@ -732,44 +732,58 @@ const bluejay = (function () {
 	};
 
 	const states = []; // store instances states 
-
-	/**
-	* @class
-	* @param {Element} btn
-	* @param {Element} content
-	* @private
-	*/
-	function CollapseExpander(btn){
-		this.btn = btn;
-		this.content = btn.parentNode.querySelector('.collapse-data-content');
-		this.collapsed = true;
-		this.change(); // because initiated by click event
-	}
-
-	/**
-	* change state of content
-	* @method 
-	*/
-	CollapseExpander.prototype.change = function(){
-		
-		if(this.collapsed){
-			this.view("block","collapse");		
-		} else {
-			this.view("none","expand");	
-		}
-		
-		this.collapsed = !this.collapsed;
-	};
 	
-	/**
-	* udpate view state
-	* @param {string} display style
-	* @param {string} icon class
-	* @method 
+	/*
+	Methods	
 	*/
-	CollapseExpander.prototype.view = function(display,icon){
-		this.content.style.display = display;
-		this.btn.className = css.btn + icon;	
+	const _change = () => ({
+		/**
+		* Change state 
+		*/		
+		change: function(){	
+			if(this.collapsed){
+				this.view("block","collapse");		
+			} else {
+				this.view("none","expand");	
+			}
+			
+			this.collapsed = !this.collapsed;
+		}
+	});
+	
+	const _view = () => ({
+		/**
+		* Update View
+		* @param {string} display
+		* @param {string} icon CSS class
+		*/	
+		view: function(display,icon){
+			this.content.style.display = display;
+			this.btn.className = [css.btn,icon].join(" ");	
+		}
+	});
+	
+
+	/**
+	* @Class
+	* @param {HTMLElement} parentNode (.collapse-data)
+	*/
+	const CollapseExpander = (parentNode) => {
+		/*
+		DOM: 
+		.collapse-data
+		- .collapse-data-header-icon (expand/collapse)
+		- .collapse-data-content
+		*/
+		let me = {
+			btn: parentNode.querySelector('.collapse-data-header-icon'),
+			content: parentNode.querySelector('.collapse-data-content'),
+			collapsed:true,
+		};
+		
+		return Object.assign(	me, 
+								_change(),
+								_view() );
 	};
 	
 	/**
@@ -777,20 +791,17 @@ const bluejay = (function () {
 	* @param {event} event
 	*/
 	const userClick = (ev) => {
-		/*
-		DOM Structure: 
-		.collapse-data
-		- .collapse-data-header-icon (expand/collapse)
-		- .collapse-data-content
-		*/
+		
 		let btn = ev.target;
 		let dataAttr = uiApp.getDataAttributeName();
 		
-		// does DOM needs a state setting up? 
+		// does DOM need a state setting up? 
 		if(btn.hasAttribute(dataAttr) === false){
 			// yep, no state, set up
-			btn.setAttribute(dataAttr, states.length);									
-			states.push(new CollapseExpander(btn));
+			btn.setAttribute(dataAttr, states.length);
+			let expander = CollapseExpander( btn.parentNode );
+			expander.change();		// click, update view						
+			states.push(expander);	// store state
 		} else {
 			let stateID = btn.dataset[dataAttr.substring(5)];
 			states[stateID].change();
@@ -800,6 +811,160 @@ const bluejay = (function () {
 	// Regsiter for Events
 	uiApp.registerForClick('.' + css.btn, userClick);		
 
+})(bluejay); 
+/**
+* Collapse/Expand (show/hide) Groups 
+*/
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('collapseGroup');
+
+	const css = {
+		selector: ".collapse-group > .header-icon",
+		btn: "header-icon",
+	};
+
+	const states = []; // store instances states 
+	
+	/*
+	Methods	
+	*/
+	const _change = () => ({
+		/**
+		* Change state 
+		*/		
+		change: function(){	
+			if(this.collapsed){
+				this.view("block","collapse");		
+			} else {
+				this.view("none","expand");	
+			}
+			
+			this.collapsed = !this.collapsed;
+		}
+	});
+	
+	const _view = () => ({
+		/**
+		* Update View
+		* @param {string} display
+		* @param {string} icon CSS class
+		*/	
+		view: function(display,icon){
+			this.content.style.display = display;
+			this.btn.className = [css.btn,icon].join(" ");	
+		}
+	});
+	
+	const _checkDefaultState = () => ({
+		/**
+		* Check the DOM default state
+		* @param {boolean} collapsed
+		*/
+		checkDefaultState: function(collapsed){
+			this.collapsed = collapsed;	
+		}
+	});
+	
+
+	/**
+	* @Class
+	* @param {HTMLElement} parentNode (.collapse-data)
+	*/
+	const CollapseExpander = (parentNode) => {
+		/*
+		DOM: 
+		.collapse-data
+		- .collapse-data-header-icon (expand/collapse)
+		- .collapse-data-content
+		*/
+		let me = {
+			btn: parentNode.querySelector('.header-icon'),
+			content: parentNode.querySelector('.collapse-group-content'),
+			collapsed:true,
+		};
+		
+		return Object.assign(	me, 
+								_change(),
+								_view(),
+								_checkDefaultState() );
+	};
+	
+	/**
+	* Callback for Event (header btn)
+	* @param {event} event
+	*/
+	const userClick = (ev) => {
+		
+		let btn = ev.target;
+		let dataAttr = uiApp.getDataAttributeName();
+		
+		// does DOM need a state setting up? 
+		if(btn.hasAttribute(dataAttr) === false){
+			// yep, no state, set up
+			btn.setAttribute(dataAttr, states.length);
+			let expander = CollapseExpander( btn.parentNode );
+			expander.checkDefaultState( btn.parentNode.dataset.collapsed );
+			expander.change();		// click, update view						
+			states.push(expander);	// store state
+		} else {
+			let stateID = btn.dataset[dataAttr.substring(5)];
+			states[stateID].change();
+		}
+	};
+
+	// Regsiter for Events
+	uiApp.registerForClick(css.selector, userClick);		
+
+})(bluejay); 
+/**
+* Element Selector 2.0
+*/
+(function (uiApp) {
+
+	'use strict';
+	
+	uiApp.addModule('elementSelector');
+	
+	/*
+	Copying the OverlayPop approach for this
+	*/
+	
+	const elements = (selector,css,php) => {
+		
+		const btn = document.querySelector(selector);
+		if(btn == null) return;
+	
+		const showElements = () => {
+			// xhr returns a Promise... 
+			uiApp.xhr('/idg-php/v3/_load/sidebar/'+php)
+				.then( html => {
+					const nav = document.createElement('nav');
+					nav.className = css;
+					nav.innerHTML = html;
+					btn.classList.add('selected');
+					btn.addEventListener("mousedown", (ev) => {
+						ev.stopPropagation();
+						uiApp.removeElement(nav);
+						btn.classList.remove('selected');
+					}, {once:true} );
+					
+					// reflow DOM
+					uiApp.appendTo('body',nav);
+				})
+				.catch(e => console.log('elementSelector failed to load',e));  // maybe output this to UI at somepoint, but for now... 
+		};	
+		
+		// register Events
+		uiApp.registerForClick(selector,showElements);	
+	};
+	
+	// Two Elements Btns
+	elements('#js-manage-elements-btn','oe-element-selector','element-selector.php');
+	elements('#js-element-structure-btn','sidebar element-overlay','examination-elements.php'); // old skool sidebar nav!
+	
 })(bluejay); 
 /**
 * Overlay Popup
@@ -887,7 +1052,7 @@ const bluejay = (function () {
 	const states = []; // store UI states
 	
 	/*
-	Build ProView through compostion
+	Methods	
 	*/
 	const _hideShow = () => ({
 		/**

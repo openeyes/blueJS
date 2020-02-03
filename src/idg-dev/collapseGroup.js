@@ -1,14 +1,15 @@
 /**
-* Collapse/Expand (show/hide) Data 
+* Collapse/Expand (show/hide) Groups 
 */
 (function (uiApp) {
 
 	'use strict';	
 	
-	uiApp.addModule('collapseData');
+	uiApp.addModule('collapseGroup');
 
 	const css = {
-		btn: "collapse-data-header-icon", 	// header and icon
+		selector: ".collapse-group > .header-icon",
+		btn: "header-icon",
 	};
 
 	const states = []; // store instances states 
@@ -43,6 +44,16 @@
 		}
 	});
 	
+	const _checkDefaultState = () => ({
+		/**
+		* Check the DOM default state
+		* @param {boolean} collapsed
+		*/
+		checkDefaultState: function(collapsed){
+			this.collapsed = collapsed;	
+		}
+	});
+	
 
 	/**
 	* @Class
@@ -56,14 +67,15 @@
 		- .collapse-data-content
 		*/
 		let me = {
-			btn: parentNode.querySelector('.collapse-data-header-icon'),
-			content: parentNode.querySelector('.collapse-data-content'),
+			btn: parentNode.querySelector('.header-icon'),
+			content: parentNode.querySelector('.collapse-group-content'),
 			collapsed:true,
 		};
 		
 		return Object.assign(	me, 
 								_change(),
-								_view() );
+								_view(),
+								_checkDefaultState() );
 	};
 	
 	/**
@@ -80,6 +92,7 @@
 			// yep, no state, set up
 			btn.setAttribute(dataAttr, states.length);
 			let expander = CollapseExpander( btn.parentNode );
+			expander.checkDefaultState( btn.parentNode.dataset.collapsed );
 			expander.change();		// click, update view						
 			states.push(expander);	// store state
 		} else {
@@ -89,6 +102,6 @@
 	};
 
 	// Regsiter for Events
-	uiApp.registerForClick('.' + css.btn, userClick);		
+	uiApp.registerForClick(css.selector, userClick);		
 
 })(bluejay); 

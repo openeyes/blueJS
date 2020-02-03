@@ -17,7 +17,7 @@
 	const states = []; // store UI states
 	
 	/*
-	Build ProView through compostion
+	Methods	
 	*/
 	const _hideShow = () => ({
 		/**
