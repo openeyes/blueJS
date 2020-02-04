@@ -741,7 +741,7 @@ const bluejay = (function () {
 	const data = {
 		selector: ".collapse-data-header-icon",
 		btn: "collapse-data-header-icon",
-		content: "collapse-data-content"
+		content: ".collapse-data-content"
 	};
 
 	/*
@@ -806,16 +806,21 @@ const bluejay = (function () {
 		if(btn.hasAttribute(dataAttr) === false){
 			/*
 			Set up	
-			user data-collapsed="true" attribute if expanded by default
+			set data-collapsed="true" attribute on DOM if expanded by default
 			*/
-			let collpased = btn.parentNode.dataset.collapsed ? true : false;  		
+			let collapsed = true;
+			if(btn.parentNode.dataset.collapsed !== undefined){
+				collapsed = btn.parentNode.dataset.collapsed;
+			}
+ 		
 			let expander = CollapseExpander( {	btn: btn,
 												btnCSS: defaults.btn,
 												content: btn.parentNode.querySelector( defaults.content ),
-												collapsed:collpased}  );
-			expander.change(); 								// as user has clicked, update view						
-			states.push(expander); 							// store state
-			btn.setAttribute(dataAttr, states.length-1); 	// store ref on DOM
+												collapsed:collapsed });
+			// user has clicked, update view	
+			expander.change(); 													
+			states.push(expander); // store state							
+			btn.setAttribute(dataAttr, states.length-1); // store state ref on DOM
 		} else {
 			/*
 			Already set up! update state	
