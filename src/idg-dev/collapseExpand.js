@@ -69,6 +69,7 @@
 	/**
 	* @Class
 	* @param {Object} me 
+	* @returns new Object
 	*/
 	const CollapseExpander = (me) => {
 		return Object.assign(	me, 

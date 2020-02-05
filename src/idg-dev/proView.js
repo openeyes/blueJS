@@ -105,6 +105,7 @@
 	/**
 	* @Class 
 	* @param {Node} .pro-data-view
+	* @returns new Object
 	*/
 	const ProView = (parentNode) => {
 		
@@ -133,6 +134,7 @@
 	* Provide a basic version of ProView for when they are 'linked'
 	* This will be controlled through the ProView instance
 	* @param {Node} .pro-data-view
+	* @returns new Objec
 	*/
 	const LinkedProView = (parentNode) => {
 		let me = {	pro: parentNode.querySelector('.data-pro-view'),
