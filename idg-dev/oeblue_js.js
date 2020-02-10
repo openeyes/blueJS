@@ -17,7 +17,7 @@ const bluejay = (function () {
 
 	const methods = {}; 	// Create a public methods object 
 	const debug = true;		// Output debug to console
-	let extendID = 1;		// Method IDs
+	let extendID = 1;		// Method ID
 
 	/**
 	* Extend the public methods
@@ -138,9 +138,7 @@ const bluejay = (function () {
 			
 			broadcast(listeners); // broadcast at start
 			
-			// throttle events
-			let timerID = setTimeout( () => {
-				clearTimeout(timerID);
+			setTimeout( () => {
 				throttle = false;
 			},320);  // 16ms * 20
 		};
@@ -386,6 +384,119 @@ const bluejay = (function () {
 	uiApp.extend('getDataAttributeName',domDataAttribute);
 
 })(bluejay);
+/**
+* Collapse/Expand (show/hide) 
+* (Collapse) Data & (Collapse) Groups 
+*/
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('collapseExpand');
+	
+	// store state ref on DOM data-attributes
+	const dataAttr = uiApp.getDataAttributeName();
+	const states = [];
+	
+	/*
+	DOM: 
+	.collapse-data
+	- .collapse-data-header-icon (expand/collapse)
+	- .collapse-data-content
+	*/
+	const data = {
+		selector: ".collapse-data-header-icon",
+		btn: "collapse-data-header-icon",
+		content: ".collapse-data-content"
+	};
+
+	/*
+	DOM: 
+	.collapse-group
+	- .header-icon (expand/collapse)
+	- .collapse-group-content
+	*/
+	const group = {
+		selector: ".collapse-group > .header-icon",  
+		btn: "header-icon",
+		content: ".collapse-group-content"
+	};
+
+	/*
+	Methods	
+	*/
+	const _change = () => ({
+		/**
+		* Change state 
+		*/		
+		change: function(){	
+			if(this.collapsed){
+				this.view("block","collapse");		
+			} else {
+				this.view("none","expand");	
+			}
+			
+			this.collapsed = !this.collapsed;
+		}
+	});
+	
+	const _view = () => ({
+		/**
+		* Update View
+		* @param {string} display
+		* @param {string} icon CSS class
+		*/	
+		view: function(display,icon){
+			this.content.style.display = display;
+			this.btn.className = [this.btnCSS,icon].join(" ");	
+		}
+	});
+	
+	/**
+	* @Class
+	* @param {Object} me 
+	* @returns new Object
+	*/
+	const CollapseExpander = (me) => {
+		return Object.assign(	me, 
+								_change(),
+								_view() );
+	};
+
+	/**
+	* Callback for Event (header btn)
+	* @param {event} event
+	*/
+	const userClick = (ev, defaults) => {
+		let btn = ev.target;
+		// If there is no dataAttr on DOM, it needs setting up
+		if(btn.hasAttribute(dataAttr) === false){
+			/*
+			Collapsed Data is generally collapsed (hidden)
+			But this can be set directly in the DOM if needed
+			*/
+			let expander = CollapseExpander( {	btn: btn,
+												btnCSS: defaults.btn,
+												content: btn.parentNode.querySelector( defaults.content ),
+												collapsed:btn.classList.contains('expand') });
+			// user has clicked, update view	
+			expander.change(); 													
+			states.push(expander); // store state							
+			btn.setAttribute(dataAttr, states.length-1); // store state ref on DOM
+		} else {
+			/*
+			Already set up! update state	
+			*/
+			let stateID = btn.dataset[dataAttr.substring(5)];
+			states[stateID].change();
+		}
+	};
+	
+	// Regsiter for Events
+	uiApp.registerForClick( data.selector, 	ev => userClick(ev, data) );
+	uiApp.registerForClick( group.selector, ev => userClick(ev, group) );
+
+})(bluejay); 
 /**
 * Hidden DOM Elements
 */
@@ -719,124 +830,6 @@ const bluejay = (function () {
 		
 })(bluejay); 
 /**
-* Collapse/Expand (show/hide) 
-* (Collapse) Data & (Collapse) Groups 
-*/
-(function (uiApp) {
-
-	'use strict';	
-	
-	uiApp.addModule('collapseExpand');
-	
-	// store state ref on DOM data-attributes
-	const dataAttr = uiApp.getDataAttributeName();
-	const states = [];
-	
-	/*
-	DOM: 
-	.collapse-data
-	- .collapse-data-header-icon (expand/collapse)
-	- .collapse-data-content
-	*/
-	const data = {
-		selector: ".collapse-data-header-icon",
-		btn: "collapse-data-header-icon",
-		content: ".collapse-data-content"
-	};
-
-	/*
-	DOM: 
-	.collapse-group
-	- .header-icon (expand/collapse)
-	- .collapse-group-content
-	*/
-	const group = {
-		selector: ".collapse-group > .header-icon",  
-		btn: "header-icon",
-		content: ".collapse-group-content"
-	};
-
-	/*
-	Methods	
-	*/
-	const _change = () => ({
-		/**
-		* Change state 
-		*/		
-		change: function(){	
-			if(this.collapsed){
-				this.view("block","collapse");		
-			} else {
-				this.view("none","expand");	
-			}
-			
-			this.collapsed = !this.collapsed;
-		}
-	});
-	
-	const _view = () => ({
-		/**
-		* Update View
-		* @param {string} display
-		* @param {string} icon CSS class
-		*/	
-		view: function(display,icon){
-			this.content.style.display = display;
-			this.btn.className = [this.btnCSS,icon].join(" ");	
-		}
-	});
-	
-	/**
-	* @Class
-	* @param {Object} me 
-	* @returns new Object
-	*/
-	const CollapseExpander = (me) => {
-		return Object.assign(	me, 
-								_change(),
-								_view() );
-	};
-
-	/**
-	* Callback for Event (header btn)
-	* @param {event} event
-	*/
-	const userClick = (ev, defaults) => {
-		let btn = ev.target;
-		// If there is no dataAttr on DOM, it needs setting up
-		if(btn.hasAttribute(dataAttr) === false){
-			/*
-			Set up	
-			set data-collapsed="true" attribute on DOM if expanded by default
-			*/
-			let collapsed = true;
-			if(btn.parentNode.dataset.collapsed !== undefined){
-				collapsed = btn.parentNode.dataset.collapsed;
-			}
- 		
-			let expander = CollapseExpander( {	btn: btn,
-												btnCSS: defaults.btn,
-												content: btn.parentNode.querySelector( defaults.content ),
-												collapsed:collapsed });
-			// user has clicked, update view	
-			expander.change(); 													
-			states.push(expander); // store state							
-			btn.setAttribute(dataAttr, states.length-1); // store state ref on DOM
-		} else {
-			/*
-			Already set up! update state	
-			*/
-			let stateID = btn.dataset[dataAttr.substring(5)];
-			states[stateID].change();
-		}
-	};
-	
-	// Regsiter for Events
-	uiApp.registerForClick( data.selector, 	ev => userClick(ev, data) );
-	uiApp.registerForClick( group.selector, ev => userClick(ev, group) );
-
-})(bluejay); 
-/**
 * Element Selector 2.0
 * Manage and Sidebar
 */
@@ -925,6 +918,74 @@ const bluejay = (function () {
 		uiApp.registerForClick('.oe-element-selector .close-icon-btn button', () => manager.close() );
 		uiApp.registerForClick('#js-element-structure-btn', (ev) => sidebar.change(ev) );
 	}
+
+})(bluejay); 
+/**
+* Textarea Resize on type
+*/
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('notificationBanner');	
+	
+	if(document.querySelector('#oe-admin-notifcation') === null) return;
+	
+	const selector = '#oe-admin-notifcation .oe-i';
+
+	/*
+	2 types of notification
+	#notification-short - short description 
+	#notification-full - long description
+	*/
+	const shortInfo = document.querySelector('#notification-short');
+	const longInfo = document.querySelector('#notification-full');
+	
+	/*
+	Login Page?
+	Show the full notification, no interaction!
+	*/
+	if(document.querySelector('.oe-login') !== null){
+		shortInfo.style.display = "none";
+		longInfo.style.display = "block";
+		document.querySelector(selector).style.display = "none";	
+		return; 	
+	}
+	
+	/*
+	Set up interaction on the 'info' icon
+	*/
+	// abstraction
+	let defaultDisplay = shortInfo, 
+		otherDisplay = longInfo,
+		shortDesc = true;
+		
+	/**
+	* show hide switcher
+	* @param {HTMLELement} a - show
+	* @param {HTMLELement} b - hide
+	*/	
+	const showHide = (a,b) => {
+		a.style.display = "block";
+		b.style.display = "none";
+	};
+	
+	/*
+	Events
+	*/
+	const changeDefault = () => {
+		// clicking changes the default state "view" state
+		defaultDisplay 	= shortDesc ? longInfo : shortInfo;
+		otherDisplay 	= shortDesc ? shortInfo : longInfo;
+		shortDesc = !shortDesc;
+		
+		// Update View (may not change view but is now default IS updated)
+		showHide(defaultDisplay,otherDisplay);
+	};
+	
+	uiApp.registerForHover(	selector,	() => showHide(otherDisplay,defaultDisplay) );
+	uiApp.registerForExit(	selector,	() => showHide(defaultDisplay,otherDisplay) );	
+	uiApp.registerForClick(	selector,	changeDefault );
 
 })(bluejay); 
 /**

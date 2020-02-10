@@ -86,18 +86,13 @@
 		// If there is no dataAttr on DOM, it needs setting up
 		if(btn.hasAttribute(dataAttr) === false){
 			/*
-			Set up	
-			set data-collapsed="true" attribute on DOM if expanded by default
+			Collapsed Data is generally collapsed (hidden)
+			But this can be set directly in the DOM if needed
 			*/
-			let collapsed = true;
-			if(btn.parentNode.dataset.collapsed !== undefined){
-				collapsed = btn.parentNode.dataset.collapsed;
-			}
- 		
 			let expander = CollapseExpander( {	btn: btn,
 												btnCSS: defaults.btn,
 												content: btn.parentNode.querySelector( defaults.content ),
-												collapsed:collapsed });
+												collapsed:btn.classList.contains('expand') });
 			// user has clicked, update view	
 			expander.change(); 													
 			states.push(expander); // store state							

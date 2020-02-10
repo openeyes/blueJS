@@ -5,7 +5,7 @@ blueJS OE UI JS (JS) - Gulp generates:
 */
 
 const config = {
-	jsPrefix:	'oe3_ui_js',
+	jsPrefix:	'oeblue_js',
 }
 
 const paths = {
@@ -78,6 +78,7 @@ Task helpers
 var cleanDist = function (done) {
 	// Clean the dist folder
 	del.sync([ paths.js.output ]);
+	del.sync([ paths.idgDev.output ]);
 	// Signal completion
 	done();
 };

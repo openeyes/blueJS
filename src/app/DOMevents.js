@@ -64,9 +64,7 @@
 			
 			broadcast(listeners); // broadcast at start
 			
-			// throttle events
-			let timerID = setTimeout( () => {
-				clearTimeout(timerID);
+			setTimeout( () => {
 				throttle = false;
 			},320);  // 16ms * 20
 		};

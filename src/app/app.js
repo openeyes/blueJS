@@ -10,7 +10,7 @@ const bluejay = (function () {
 
 	const methods = {}; 	// Create a public methods object 
 	const debug = true;		// Output debug to console
-	let extendID = 1;		// Method IDs
+	let extendID = 1;		// Method ID
 
 	/**
 	* Extend the public methods
