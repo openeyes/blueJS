@@ -22,7 +22,7 @@ const paths = {
 					'./src/app/*.js',			// app bits, then... 
 					'./src/ui/**/*.js',			// UI Modules
 					'./src/idg-dev/*.js'],		// *** IDG Developement modules - extra development modules
-		output:	'./idg-dev/',
+		output:	'./dist-idg/',
 	}
 };
 

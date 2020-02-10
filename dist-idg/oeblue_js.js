@@ -921,7 +921,48 @@ const bluejay = (function () {
 
 })(bluejay); 
 /**
-* Textarea Resize on type
+* Exam Element Search (pre OE 3.0)
+*/
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('examElementSearch');	
+	
+	/*
+	IDG basic demo. DOM is included
+	*/
+	
+	if(document.querySelector('#js-search-in-event-popup') === null) return;
+
+	const userClick = (ev) => {
+		const	hdBtn = ev.target,
+				popup = document.querySelector('#js-search-in-event-popup'),
+				mainEvent = document.querySelector('.main-event'),
+				closeBtn = popup.querySelector('.close-icon-btn');
+		
+		hdBtn.classList.add('selected');
+		popup.style.display = "block";
+		// the pop will overlay the Event.. add this class to push the Exam content down
+		mainEvent.classList.add('examination-search-active');
+		
+		closeBtn.addEventListener('mousedown',(ev) => {
+			ev.stopPropagation();
+			mainEvent.classList.remove('examination-search-active');
+			popup.style.display = "none";
+			hdBtn.classList.remove('selected');
+			
+		},{once:true});		
+	};
+	
+	/*
+	Events
+	*/
+	uiApp.registerForClick(	'#js-search-in-event',	userClick );
+
+})(bluejay); 
+/**
+* Notification Banner (Flag) bottom right UI tag
 */
 (function (uiApp) {
 
@@ -932,36 +973,29 @@ const bluejay = (function () {
 	if(document.querySelector('#oe-admin-notifcation') === null) return;
 	
 	const selector = '#oe-admin-notifcation .oe-i';
-
-	/*
-	2 types of notification
-	#notification-short - short description 
-	#notification-full - long description
-	*/
 	const shortInfo = document.querySelector('#notification-short');
 	const longInfo = document.querySelector('#notification-full');
 	
 	/*
-	Login Page?
+	*** Login Page?
 	Show the full notification, no interaction!
 	*/
 	if(document.querySelector('.oe-login') !== null){
 		shortInfo.style.display = "none";
 		longInfo.style.display = "block";
 		document.querySelector(selector).style.display = "none";	
-		return; 	
+		return; // exit!
 	}
 	
 	/*
 	Set up interaction on the 'info' icon
 	*/
-	// abstraction
 	let defaultDisplay = shortInfo, 
 		otherDisplay = longInfo,
 		shortDesc = true;
 		
 	/**
-	* show hide switcher
+	* show/hide switcher
 	* @param {HTMLELement} a - show
 	* @param {HTMLELement} b - hide
 	*/	

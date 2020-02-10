@@ -1,5 +1,5 @@
 /**
-* Textarea Resize on type
+* Notification Banner (Flag) bottom right UI tag
 */
 (function (uiApp) {
 
@@ -10,24 +10,18 @@
 	if(document.querySelector('#oe-admin-notifcation') === null) return;
 	
 	const selector = '#oe-admin-notifcation .oe-i';
-
-	/*
-	2 types of notification
-	#notification-short - short description 
-	#notification-full - long description
-	*/
 	const shortInfo = document.querySelector('#notification-short');
 	const longInfo = document.querySelector('#notification-full');
 	
 	/*
-	Login Page?
+	*** Login Page?
 	Show the full notification, no interaction!
 	*/
 	if(document.querySelector('.oe-login') !== null){
 		shortInfo.style.display = "none";
 		longInfo.style.display = "block";
 		document.querySelector(selector).style.display = "none";	
-		return; 	
+		return; // exit!
 	}
 	
 	/*
