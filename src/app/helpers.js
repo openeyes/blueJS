@@ -34,6 +34,38 @@
 	};
 	
 	/**
+	* getParent - search UP the DOM (restrict to body) 
+	* @param {HTMLElement} el
+	* @parent {String} class to match
+	* @returns {HTMLElement} or False
+	*/
+	const getParent = (el,selector) => {
+		while( !el.matches('body') ){
+			if(el.matches(selector)) return el; // found it!
+			el = el.parentNode;
+		}
+		return false;
+	};
+	
+	/**
+	* getSetDataAttr - a common pattern due to Delegating Events
+	* Either get or set the custom data-attribute on the DOM
+	* the 'state' array ref is stored on the DOM Element
+	* @param {HTMLElement} el - el to check/store on
+	* @param {Number} stateArrayRef - abstract state ref
+	*/
+	const getSetDataAttr = (el,stateArrayRef) => {
+		const dataAttr = uiApp.getDataAttributeName();
+		if(el.hasAttribute(dataAttr)){
+			return parseFloat(el.getAttribute(dataAttr));
+		} else {
+			el.setAttribute(dataAttr,stateArrayRef); 
+			return null;
+		}
+	};
+	
+	
+	/**
 	* XMLHttpRequest 
 	* @param {string} url
 	* @returns {Promise} resolve(responseText) or reject(errorMsg)
@@ -90,7 +122,9 @@
 	// Extend App
 	uiApp.extend('nodeArray', NodeListToArray);
 	uiApp.extend('appendTo',appendTo);
+	uiApp.extend('getParent',getParent);
 	uiApp.extend('removeElement',removeDOM);
+	uiApp.extend('getSetDataAttr',getSetDataAttr);
 	uiApp.extend('xhr',xhr);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
 	

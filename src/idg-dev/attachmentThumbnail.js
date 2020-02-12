@@ -1,12 +1,14 @@
-/**
-* Attachments Thumbnails
-* Open up a fullscreen popup up of PNG or PDF
-*/
 (function (uiApp) {
 
 	'use strict';
 	
 	uiApp.addModule('attachmentThumbnail');
+	
+	/*
+	Attachments Thumbnails
+	Open up a fullscreen popup up of PNG or PDF
+	*/
+	
 	const css = {
 		thumb: "oe-attachment-thumbnail",
 	};

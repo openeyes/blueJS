@@ -1,18 +1,13 @@
-/**
-* Collapse/Expand (show/hide) 
-* (Collapse) Data & (Collapse) Groups 
-*/
 (function (uiApp) {
 
 	'use strict';	
 	
 	uiApp.addModule('collapseExpand');
 	
-	// store state ref on DOM data-attributes
-	const dataAttr = uiApp.getDataAttributeName();
 	const states = [];
 	
 	/*
+	(Collapse) Data 
 	DOM: 
 	.collapse-data
 	- .collapse-data-header-icon (expand/collapse)
@@ -25,6 +20,7 @@
 	};
 
 	/*
+	(Collapse) Groups
 	DOM: 
 	.collapse-group
 	- .header-icon (expand/collapse)
@@ -83,8 +79,14 @@
 	*/
 	const userClick = (ev, defaults) => {
 		let btn = ev.target;
-		// If there is no dataAttr on DOM, it needs setting up
-		if(btn.hasAttribute(dataAttr) === false){
+		let dataAttr = uiApp.getSetDataAttr(btn,states.length);
+		
+		if(Number.isInteger(dataAttr)){
+			/*
+			Setup already, change it's state
+			*/
+			states[dataAttr].change();
+		} else {
 			/*
 			Collapsed Data is generally collapsed (hidden)
 			But this can be set directly in the DOM if needed
@@ -93,16 +95,9 @@
 												btnCSS: defaults.btn,
 												content: btn.parentNode.querySelector( defaults.content ),
 												collapsed:btn.classList.contains('expand') });
-			// user has clicked, update view	
-			expander.change(); 													
-			states.push(expander); // store state							
-			btn.setAttribute(dataAttr, states.length-1); // store state ref on DOM
-		} else {
-			/*
-			Already set up! update state	
-			*/
-			let stateID = btn.dataset[dataAttr.substring(5)];
-			states[stateID].change();
+				
+			expander.change(); // user has clicked, update view												
+			states.push(expander); // store state			
 		}
 	};
 	

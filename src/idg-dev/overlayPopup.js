@@ -1,6 +1,3 @@
-/**
-* Overlay Popup
-*/
 (function (uiApp) {
 
 	'use strict';

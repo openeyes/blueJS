@@ -1,6 +1,3 @@
-/**
-* Exam Element Search (pre OE 3.0)
-*/
 (function (uiApp) {
 
 	'use strict';	
@@ -8,6 +5,7 @@
 	uiApp.addModule('examElementSearch');	
 	
 	/*
+	Exam Element Search (pre OE 3.0
 	IDG basic demo. DOM is included
 	*/
 	

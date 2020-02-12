@@ -1,6 +1,3 @@
-/**
-* Pro View Expand / Collapse
-*/
 (function (uiApp) {
 
 	'use strict';	
@@ -12,8 +9,7 @@
 	However, there are situations where the Pro view remains open and more data is shown by expanding 
 	AND the View change is controlled BILATERALY! ... e.g. PCR Risks 
 	*/
-	
-	const dataAttr = uiApp.getDataAttributeName();
+
 	const states = []; // store UI states
 	
 	/*
@@ -109,8 +105,6 @@
 	*/
 	const ProView = (parentNode) => {
 		
-		if(!parentNode.classList.contains('pro-data-view')) return;	
-		
 		let btn = parentNode.querySelector('.pro-view-btn');
 		let pro = parentNode.querySelector('.data-pro-view');
 		let standard = parentNode.querySelector('.data-standard-view');
@@ -154,18 +148,22 @@
 	*/
 	const userClick = (ev) => {
 		const btn = ev.target;
+		let dataAttr = uiApp.getSetDataAttr(btn,states.length);
 		
-		// does DOM needs a state setting up? 
-		if(btn.hasAttribute(dataAttr) === false){
-			// yep, no state, set up
-			btn.setAttribute(dataAttr, states.length);	
-			let pro = ProView( btn.parentNode );
+		if(Number.isInteger(dataAttr)){
+			/*
+			Setup already, change it's state
+			*/
+			states[dataAttr].change();
+		} else {
+			/*
+			No DOM attribute, needs setting up
+			note: it's been clicked! 
+			*/
+			let pro = ProView( uiApp.getParent(btn,'.pro-data-view') );
 			pro.options( JSON.parse(btn.dataset.proview) );
 			pro.change();		// update UI (because this a click)
 			states.push(pro);	// store 
-		} else {
-			let stateID = btn.dataset[dataAttr.substring(5)];
-			states[stateID].change();
 		}
 	};
 

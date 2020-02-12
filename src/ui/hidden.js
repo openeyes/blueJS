@@ -1,6 +1,3 @@
-/**
-* Hidden DOM Elements
-*/
 (function (uiApp) {
 
 	'use strict';

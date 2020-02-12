@@ -1,6 +1,3 @@
-/**
-* Tooltips (on icons)
-*/
 (function (uiApp) {
 	
 	'use strict';

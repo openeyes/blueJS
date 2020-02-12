@@ -227,6 +227,38 @@ const bluejay = (function () {
 	};
 	
 	/**
+	* getParent - search UP the DOM (restrict to body) 
+	* @param {HTMLElement} el
+	* @parent {String} class to match
+	* @returns {HTMLElement} or False
+	*/
+	const getParent = (el,selector) => {
+		while( !el.matches('body') ){
+			if(el.matches(selector)) return el; // found it!
+			el = el.parentNode;
+		}
+		return false;
+	};
+	
+	/**
+	* getSetDataAttr - a common pattern due to Delegating Events
+	* Either get or set the custom data-attribute on the DOM
+	* the 'state' array ref is stored on the DOM Element
+	* @param {HTMLElement} el - el to check/store on
+	* @param {Number} stateArrayRef - abstract state ref
+	*/
+	const getSetDataAttr = (el,stateArrayRef) => {
+		const dataAttr = uiApp.getDataAttributeName();
+		if(el.hasAttribute(dataAttr)){
+			return parseFloat(el.getAttribute(dataAttr));
+		} else {
+			el.setAttribute(dataAttr,stateArrayRef); 
+			return null;
+		}
+	};
+	
+	
+	/**
 	* XMLHttpRequest 
 	* @param {string} url
 	* @returns {Promise} resolve(responseText) or reject(errorMsg)
@@ -283,7 +315,9 @@ const bluejay = (function () {
 	// Extend App
 	uiApp.extend('nodeArray', NodeListToArray);
 	uiApp.extend('appendTo',appendTo);
+	uiApp.extend('getParent',getParent);
 	uiApp.extend('removeElement',removeDOM);
+	uiApp.extend('getSetDataAttr',getSetDataAttr);
 	uiApp.extend('xhr',xhr);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
 	
@@ -384,21 +418,16 @@ const bluejay = (function () {
 	uiApp.extend('getDataAttributeName',domDataAttribute);
 
 })(bluejay);
-/**
-* Collapse/Expand (show/hide) 
-* (Collapse) Data & (Collapse) Groups 
-*/
 (function (uiApp) {
 
 	'use strict';	
 	
 	uiApp.addModule('collapseExpand');
 	
-	// store state ref on DOM data-attributes
-	const dataAttr = uiApp.getDataAttributeName();
 	const states = [];
 	
 	/*
+	(Collapse) Data 
 	DOM: 
 	.collapse-data
 	- .collapse-data-header-icon (expand/collapse)
@@ -411,6 +440,7 @@ const bluejay = (function () {
 	};
 
 	/*
+	(Collapse) Groups
 	DOM: 
 	.collapse-group
 	- .header-icon (expand/collapse)
@@ -469,8 +499,14 @@ const bluejay = (function () {
 	*/
 	const userClick = (ev, defaults) => {
 		let btn = ev.target;
-		// If there is no dataAttr on DOM, it needs setting up
-		if(btn.hasAttribute(dataAttr) === false){
+		let dataAttr = uiApp.getSetDataAttr(btn,states.length);
+		
+		if(Number.isInteger(dataAttr)){
+			/*
+			Setup already, change it's state
+			*/
+			states[dataAttr].change();
+		} else {
 			/*
 			Collapsed Data is generally collapsed (hidden)
 			But this can be set directly in the DOM if needed
@@ -479,16 +515,9 @@ const bluejay = (function () {
 												btnCSS: defaults.btn,
 												content: btn.parentNode.querySelector( defaults.content ),
 												collapsed:btn.classList.contains('expand') });
-			// user has clicked, update view	
-			expander.change(); 													
-			states.push(expander); // store state							
-			btn.setAttribute(dataAttr, states.length-1); // store state ref on DOM
-		} else {
-			/*
-			Already set up! update state	
-			*/
-			let stateID = btn.dataset[dataAttr.substring(5)];
-			states[stateID].change();
+				
+			expander.change(); // user has clicked, update view												
+			states.push(expander); // store state			
 		}
 	};
 	
@@ -497,9 +526,6 @@ const bluejay = (function () {
 	uiApp.registerForClick( group.selector, ev => userClick(ev, group) );
 
 })(bluejay); 
-/**
-* Hidden DOM Elements
-*/
 (function (uiApp) {
 
 	'use strict';
@@ -520,9 +546,6 @@ const bluejay = (function () {
 	});
 	
 })(bluejay);
-/**
-* Tooltips (on icons)
-*/
 (function (uiApp) {
 	
 	'use strict';

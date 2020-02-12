@@ -227,6 +227,38 @@ const bluejay = (function () {
 	};
 	
 	/**
+	* getParent - search UP the DOM (restrict to body) 
+	* @param {HTMLElement} el
+	* @parent {String} class to match
+	* @returns {HTMLElement} or False
+	*/
+	const getParent = (el,selector) => {
+		while( !el.matches('body') ){
+			if(el.matches(selector)) return el; // found it!
+			el = el.parentNode;
+		}
+		return false;
+	};
+	
+	/**
+	* getSetDataAttr - a common pattern due to Delegating Events
+	* Either get or set the custom data-attribute on the DOM
+	* the 'state' array ref is stored on the DOM Element
+	* @param {HTMLElement} el - el to check/store on
+	* @param {Number} stateArrayRef - abstract state ref
+	*/
+	const getSetDataAttr = (el,stateArrayRef) => {
+		const dataAttr = uiApp.getDataAttributeName();
+		if(el.hasAttribute(dataAttr)){
+			return parseFloat(el.getAttribute(dataAttr));
+		} else {
+			el.setAttribute(dataAttr,stateArrayRef); 
+			return null;
+		}
+	};
+	
+	
+	/**
 	* XMLHttpRequest 
 	* @param {string} url
 	* @returns {Promise} resolve(responseText) or reject(errorMsg)
@@ -283,7 +315,9 @@ const bluejay = (function () {
 	// Extend App
 	uiApp.extend('nodeArray', NodeListToArray);
 	uiApp.extend('appendTo',appendTo);
+	uiApp.extend('getParent',getParent);
 	uiApp.extend('removeElement',removeDOM);
+	uiApp.extend('getSetDataAttr',getSetDataAttr);
 	uiApp.extend('xhr',xhr);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
 	
@@ -384,21 +418,16 @@ const bluejay = (function () {
 	uiApp.extend('getDataAttributeName',domDataAttribute);
 
 })(bluejay);
-/**
-* Collapse/Expand (show/hide) 
-* (Collapse) Data & (Collapse) Groups 
-*/
 (function (uiApp) {
 
 	'use strict';	
 	
 	uiApp.addModule('collapseExpand');
 	
-	// store state ref on DOM data-attributes
-	const dataAttr = uiApp.getDataAttributeName();
 	const states = [];
 	
 	/*
+	(Collapse) Data 
 	DOM: 
 	.collapse-data
 	- .collapse-data-header-icon (expand/collapse)
@@ -411,6 +440,7 @@ const bluejay = (function () {
 	};
 
 	/*
+	(Collapse) Groups
 	DOM: 
 	.collapse-group
 	- .header-icon (expand/collapse)
@@ -469,8 +499,14 @@ const bluejay = (function () {
 	*/
 	const userClick = (ev, defaults) => {
 		let btn = ev.target;
-		// If there is no dataAttr on DOM, it needs setting up
-		if(btn.hasAttribute(dataAttr) === false){
+		let dataAttr = uiApp.getSetDataAttr(btn,states.length);
+		
+		if(Number.isInteger(dataAttr)){
+			/*
+			Setup already, change it's state
+			*/
+			states[dataAttr].change();
+		} else {
 			/*
 			Collapsed Data is generally collapsed (hidden)
 			But this can be set directly in the DOM if needed
@@ -479,16 +515,9 @@ const bluejay = (function () {
 												btnCSS: defaults.btn,
 												content: btn.parentNode.querySelector( defaults.content ),
 												collapsed:btn.classList.contains('expand') });
-			// user has clicked, update view	
-			expander.change(); 													
-			states.push(expander); // store state							
-			btn.setAttribute(dataAttr, states.length-1); // store state ref on DOM
-		} else {
-			/*
-			Already set up! update state	
-			*/
-			let stateID = btn.dataset[dataAttr.substring(5)];
-			states[stateID].change();
+				
+			expander.change(); // user has clicked, update view												
+			states.push(expander); // store state			
 		}
 	};
 	
@@ -497,9 +526,6 @@ const bluejay = (function () {
 	uiApp.registerForClick( group.selector, ev => userClick(ev, group) );
 
 })(bluejay); 
-/**
-* Hidden DOM Elements
-*/
 (function (uiApp) {
 
 	'use strict';
@@ -520,9 +546,6 @@ const bluejay = (function () {
 	});
 	
 })(bluejay);
-/**
-* Tooltips (on icons)
-*/
 (function (uiApp) {
 	
 	'use strict';
@@ -630,15 +653,17 @@ const bluejay = (function () {
 	uiApp.listenForResize(resize);
 	
 })(bluejay); 
-/**
-* Attachments Thumbnails
-* Open up a fullscreen popup up of PNG or PDF
-*/
 (function (uiApp) {
 
 	'use strict';
 	
 	uiApp.addModule('attachmentThumbnail');
+	
+	/*
+	Attachments Thumbnails
+	Open up a fullscreen popup up of PNG or PDF
+	*/
+	
 	const css = {
 		thumb: "oe-attachment-thumbnail",
 	};
@@ -829,15 +854,16 @@ const bluejay = (function () {
 	
 		
 })(bluejay); 
-/**
-* Element Selector 2.0
-* Manage and Sidebar
-*/
 (function (uiApp) {
 
 	'use strict';
 	
 	uiApp.addModule('elementSelector');
+	
+	/*
+	Element Selector 2.0
+	Manager & Sidebar Nav
+	*/
 
 	const _loadPHP = () => ({
 		/**
@@ -920,9 +946,157 @@ const bluejay = (function () {
 	}
 
 })(bluejay); 
-/**
-* Exam Element Search (pre OE 3.0)
-*/
+(function (uiApp) {
+
+	'use strict';
+	
+	uiApp.addModule('elementTiles');
+	
+	/*
+	Tile Elements
+	As a row they can be collapsed
+	They are also height restricted and if data
+	overflows this needs flagging using "restrictDataFlag"
+	*/
+	
+	const states = [];
+	
+	/*
+	DOM
+	- element-tile-group
+	-- element view tile
+	--- element-data
+	---- tile-data-overflow (CSS set at max-height 160px)
+	-- collapse-tile-group
+	*/
+	
+	/*
+	Methods	
+	*/
+	const _showTile = () => ({
+		/**
+		* Show the tile content (data)
+		*/
+		show: function(){
+			this.h3.textContent = this.title;
+			this.content.style.display = "block";
+		}
+	});
+	
+	const _hideTile = () => ({
+		/**
+		* Hide the tile content (data)
+		*/
+		hide: function(){
+			this.h3.innerHTML = this.title + " <small>["+ this.count +"]</small>";
+			this.content.style.display = "none";
+		}
+	});
+
+	/**
+	* @Class 
+	* @param {Node} .element
+	* @returns new Object
+	*/
+	const Tile = (el) => {
+		// set up Tile
+		const	h3 = el.querySelector('.element-title'),
+				title = h3.textContent,
+				content = el.querySelector('.element-data'),
+				dataRows = content.querySelectorAll('tbody tr').length;
+	
+		return Object.assign(	{	h3: h3,
+									title: title,
+									content: content,
+									count: dataRows.toString(),
+								},
+								_showTile(),
+								_hideTile() );
+	};
+	
+	/*
+	Methods	
+	*/
+	const _changeGroup = () => ({
+		/**
+		* Change the group state (Expand or Collapse)
+		*/
+		change:function(){
+			this.tiles.forEach((tile) => {
+				if(this.collapsed){
+					this.btn.classList.replace('increase-height','reduce-height');
+					tile.show();
+				} else {
+					this.btn.classList.replace('reduce-height','increase-height');
+					tile.hide();
+				}
+			});
+			
+			this.collapsed = !this.collapsed;
+		}
+	});
+	
+	const _addTile = () => ({
+		/**
+		* addTile
+		* @param {Tile} tile - instanceOf Tile
+		*/
+		addTile:function(tile){
+			this.tiles.push(tile);
+		}
+	});
+	
+	/**
+	* @Class 
+	* @param {Node} .element-tile-group
+	* @returns new Object
+	*/
+	const Group = (btn) => {
+		return Object.assign({ 	tiles:[],
+								btn:btn,
+								collapsed:false,
+							},
+							_addTile(),
+							_changeGroup() );
+	};
+	
+	
+	/*
+	Events
+	*/	
+	const userClick = (ev) => {
+		let parent = uiApp.getParent(ev.target,'.element-tile-group');
+		let dataAttr = uiApp.getSetDataAttr(parent,states.length);
+		
+		if(Number.isInteger(dataAttr)){
+			/*
+			Setup already, change it's state
+			*/
+			states[dataAttr].change();
+		} else {
+			/*
+			No DOM attribute, needs setting up
+			note: it's been clicked! 
+			*/
+			let group = Group(ev.target);
+			// get all Tile Elements in groups
+			let elements = uiApp.nodeArray(parent.querySelectorAll('.element.tile'));
+			elements.forEach((item) => {
+				group.addTile(Tile(item));
+			});
+			
+			group.change(); 	// a click! so change
+			states.push(group); // store new state	
+		}
+		
+	};
+	
+
+	// Regsiter for Events
+	uiApp.registerForClick('.collapse-tile-group .oe-i', userClick);
+	
+	
+})(bluejay); 
 (function (uiApp) {
 
 	'use strict';	
@@ -930,6 +1104,7 @@ const bluejay = (function () {
 	uiApp.addModule('examElementSearch');	
 	
 	/*
+	Exam Element Search (pre OE 3.0
 	IDG basic demo. DOM is included
 	*/
 	
@@ -961,9 +1136,6 @@ const bluejay = (function () {
 	uiApp.registerForClick(	'#js-search-in-event',	userClick );
 
 })(bluejay); 
-/**
-* Notification Banner (Flag) bottom right UI tag
-*/
 (function (uiApp) {
 
 	'use strict';	
@@ -1022,9 +1194,6 @@ const bluejay = (function () {
 	uiApp.registerForClick(	selector,	changeDefault );
 
 })(bluejay); 
-/**
-* Overlay Popup
-*/
 (function (uiApp) {
 
 	'use strict';
@@ -1089,9 +1258,6 @@ const bluejay = (function () {
 	}
 			
 })(bluejay); 
-/**
-* Pro View Expand / Collapse
-*/
 (function (uiApp) {
 
 	'use strict';	
@@ -1103,8 +1269,7 @@ const bluejay = (function () {
 	However, there are situations where the Pro view remains open and more data is shown by expanding 
 	AND the View change is controlled BILATERALY! ... e.g. PCR Risks 
 	*/
-	
-	const dataAttr = uiApp.getDataAttributeName();
+
 	const states = []; // store UI states
 	
 	/*
@@ -1200,8 +1365,6 @@ const bluejay = (function () {
 	*/
 	const ProView = (parentNode) => {
 		
-		if(!parentNode.classList.contains('pro-data-view')) return;	
-		
 		let btn = parentNode.querySelector('.pro-view-btn');
 		let pro = parentNode.querySelector('.data-pro-view');
 		let standard = parentNode.querySelector('.data-standard-view');
@@ -1245,18 +1408,22 @@ const bluejay = (function () {
 	*/
 	const userClick = (ev) => {
 		const btn = ev.target;
+		let dataAttr = uiApp.getSetDataAttr(btn,states.length);
 		
-		// does DOM needs a state setting up? 
-		if(btn.hasAttribute(dataAttr) === false){
-			// yep, no state, set up
-			btn.setAttribute(dataAttr, states.length);	
-			let pro = ProView( btn.parentNode );
+		if(Number.isInteger(dataAttr)){
+			/*
+			Setup already, change it's state
+			*/
+			states[dataAttr].change();
+		} else {
+			/*
+			No DOM attribute, needs setting up
+			note: it's been clicked! 
+			*/
+			let pro = ProView( uiApp.getParent(btn,'.pro-data-view') );
 			pro.options( JSON.parse(btn.dataset.proview) );
 			pro.change();		// update UI (because this a click)
 			states.push(pro);	// store 
-		} else {
-			let stateID = btn.dataset[dataAttr.substring(5)];
-			states[stateID].change();
 		}
 	};
 
@@ -1265,20 +1432,183 @@ const bluejay = (function () {
 
 
 })(bluejay); 
+(function (uiApp) {
 
-/**
-* Restrict Data Height User Flag 
-* Tile Element data (in SEM) and "Past Appointments"
-* can be very long lists. There high is restricted by 
-* CSS but the data overflow needs visually flagged so 
-* as not to be missed.
-* CSS restricts height by 'rows' e.g. 'rows-10','rows-5'
-*/
+	'use strict';
+	
+	uiApp.addModule('problemsPlans');
+
+	/*
+	Assumes that the "problems-plans-sortable"	<ul>
+	is already in the DOM and not dynamically loaded. 
+	Note: in Patient Overview the same list is editable in
+	TWO places the popup and in main page area.
+	*/
+
+	const pps = uiApp.nodeArray(document.querySelectorAll('.problems-plans-sortable'));
+	if(pps.length < 1) return; 
+	
+	/*
+	list state for Problems and Plans Lists
+	(this can be JSON'd back to server)
+	*/
+	const listMap = [];
+	/*
+	only need to use FIRST list to set up 
+	as if more (two) they should be identical!
+	*/
+	uiApp.nodeArray(pps[0].querySelectorAll('li')).forEach((li)=>{
+		listMap.push(	{ 	text:li.textContent,
+							info:li.querySelector('.info').getAttribute('data-tooltip-content') });
+	});
+
+	/**
+	* update list map based on the last drag event
+	* @param {String} a - Source textContent
+	* @param {String} b - textContent of Element switched with
+	*/
+	const swapListItems = (a,b) => {
+		let indexA = listMap.findIndex( e => e.text.localeCompare(a) === 0 );
+		let indexB = listMap.findIndex( e => e.text.localeCompare(b) === 0 );
+		listMap[indexA] = listMap.splice(indexB,1,listMap[indexA])[0];
+		
+		if(pps.length > 1) reorderLists();
+	};
+	
+	
+	const reorderLists = () => {
+		pps.forEach((list) => {
+			let listNodes = list.querySelectorAll('li');
+			for(let i=0, len=listMap.length;i<len;i++){
+				if(listMap[i].text !== listNodes[i].textContent){
+					listNodes[i].innerHTML = domString(listMap[i].text,listMap[i].info);
+				}
+			}
+		});
+	};
+	
+	const domString = (text,info) => {
+		return [	'<span class="drag-handle"><i class="oe-i menu medium pro-theme"></i></span>',
+					text,
+					'<div class="metadata">',
+					'<i class="oe-i info small pro-theme js-has-tooltip" data-tooltip-content="',
+					info,
+					'"></i></div>',
+					'<div class="remove"><i class="oe-i remove-circle small pro-theme pad"></i></div>'
+					].join('');
+	};
+
+	/*
+	Drag n Drop List
+	*/
+	let dragSourceElement = null;
+	// add to <ul> on dragstart and restrict drops to this class
+	let listDragCSSFlag = "js-sorting-list"; 
+
+	/**
+	* handle start of drag
+	* @param {Event} 
+	*/
+	const handleStart = (e) => {
+		dragSourceElement = e.target;
+		e.target.parentNode.classList.add(listDragCSSFlag);
+		/*
+		setData using a custom 'type' as only for this app. however, might need 
+		to provide a fallback of "text/plain"; Using "text/html" adds a <meta>!?
+		*/
+		e.dataTransfer.setData('source', dragSourceElement.innerHTML);
+	};
+	
+	/**
+	* handle enter of drag 
+	* @param {Event} - target Element
+	*/
+	const handleEnter = (e) => {
+		// use browser API effects
+		e.dataTransfer.effectAllowed = 'move';
+		e.dataTransfer.dropEffect = 'move';
+	};
+	
+	/**
+	* handle over of drag 
+	* @param {Event} - target Element
+	*/
+	const handleOver = (e) => {
+		// To allow a drop, must prevent default handling  (as most areas don't allow a drop)	
+		if(e.preventDefault) e.preventDefault(); // Necessary. Allows Drop (if it's a link or somethink clickable!)
+		return false; // good practice
+	};
+	
+	
+	const handleDrop = (e) => {
+		if(e.stopPropagation) e.stopPropagation(); // stops the browser from redirecting.
+		
+		/*
+		Without this it would be possible to mix up 2 P'n'P list items!
+		*/
+		if(e.target.parentNode.classList.contains(listDragCSSFlag) === false) return;
+		e.target.parentNode.classList.remove(listDragCSSFlag);
+
+		// Make sure we are not dropping it on ourself...
+		if (dragSourceElement !=  e.target) {
+			// Set the source column's HTML to the HTML of the column we dropped on.
+			
+			dragSourceElement.innerHTML = e.target.innerHTML;
+			e.target.innerHTML = e.dataTransfer.getData('source');
+			
+			// update listMap
+			swapListItems(dragSourceElement.textContent,e.target.textContent);
+		}
+
+		return false;
+	};
+	
+	/**
+	* handle end of drag 
+	* @param {Event} - the same Element that received "dragstart";
+	*/
+	const handleEnd = (e) => {
+	  // this/e.target is the source node.
+	  // clean up after dragging about!
+	};
+
+
+	
+	/*
+	'dragenter' & 'dragover' events are used to indicate valid drop targets.
+	As the rest of the App is not a valid place to "drop" list item, 
+	EventListeners need to be targeted to specific elements	
+	
+	Set up each <li> DOM to allow Drag n Drop
+	*/
+	pps.forEach((list)=>{
+		uiApp.nodeArray(list.querySelectorAll('li')).forEach((li)=>{
+			li.setAttribute('draggable','true');
+			li.addEventListener('dragstart',handleStart, false);
+			li.addEventListener('dragenter',handleEnter, false);
+			li.addEventListener('dragover',handleOver, false);
+			li.addEventListener('drop',handleDrop, false);
+			//li.addEventListener('dragend', handleEnd,false);	
+		});
+	});
+	
+	
+			
+})(bluejay); 
 (function (uiApp) {
 
 	'use strict';
 	
 	uiApp.addModule('restrictDataHeightFlag');
+	
+	/*
+	Restrict Data Height User Flag 
+	Tile Element data (in SEM) and "Past Appointments"
+	can be very long lists. There high is restricted by 
+	CSS but the data overflow needs visually flagged so 
+	as not to be missed.
+	CSS restricts height by 'rows' e.g. 'rows-10','rows-5'
+	*/
 	
 	const css = {
 		flag: 'restrict-data-shown-flag'
@@ -1400,20 +1730,38 @@ const bluejay = (function () {
 	
 	
 })(bluejay); 
-/**
-* Textarea Resize on type
-*/
 (function (uiApp) {
 
 	'use strict';	
 	
 	uiApp.addModule('textAreaResize');	
+	
+	/**
+	* Resize textarea 
+	* @param {HTMLElement} <textarea>
+	*/ 
+	const resize = (textArea) => {
+		textArea.style.height = 'auto';
+		textArea.style.height = textArea.scrollHeight + 'px';
+	};
 
+	/**
+	* Resize textarea on inputs
+	*/
 	document.addEventListener('input', (ev) => {
 		if(ev.target.matches('textarea')){
-			ev.target.style.height = 'auto';
-			ev.target.style.height = ev.target.scrollHeight + 'px';
+			resize(ev.target);
 		}
 	},true);
+	
+	/**
+	* Expand textareas that are overflowing onLoad
+	*/
+	document.addEventListener('DOMContentLoaded', () => {
+		let all = uiApp.nodeArray( document.querySelectorAll('textarea') );
+		all.forEach((t)=>{
+			resize(t);
+		});
+	});
 
 })(bluejay); 

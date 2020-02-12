@@ -1,12 +1,13 @@
-/**
-* Element Selector 2.0
-* Manage and Sidebar
-*/
 (function (uiApp) {
 
 	'use strict';
 	
 	uiApp.addModule('elementSelector');
+	
+	/*
+	Element Selector 2.0
+	Manager & Sidebar Nav
+	*/
 
 	const _loadPHP = () => ({
 		/**

@@ -1,6 +1,3 @@
-/**
-* Notification Banner (Flag) bottom right UI tag
-*/
 (function (uiApp) {
 
 	'use strict';	

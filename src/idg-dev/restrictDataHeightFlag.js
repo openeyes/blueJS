@@ -1,17 +1,17 @@
-
-/**
-* Restrict Data Height User Flag 
-* Tile Element data (in SEM) and "Past Appointments"
-* can be very long lists. There high is restricted by 
-* CSS but the data overflow needs visually flagged so 
-* as not to be missed.
-* CSS restricts height by 'rows' e.g. 'rows-10','rows-5'
-*/
 (function (uiApp) {
 
 	'use strict';
 	
 	uiApp.addModule('restrictDataHeightFlag');
+	
+	/*
+	Restrict Data Height User Flag 
+	Tile Element data (in SEM) and "Past Appointments"
+	can be very long lists. There high is restricted by 
+	CSS but the data overflow needs visually flagged so 
+	as not to be missed.
+	CSS restricts height by 'rows' e.g. 'rows-10','rows-5'
+	*/
 	
 	const css = {
 		flag: 'restrict-data-shown-flag'
