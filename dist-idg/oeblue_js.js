@@ -15,6 +15,8 @@ const bluejay = (function () {
 
 	'use strict';
 
+	console.time('***bluejay***');
+
 	const methods = {}; 	// Create a public methods object 
 	const debug = true;		// Output debug to console
 	let extendID = 1;		// Method ID
@@ -157,6 +159,8 @@ const bluejay = (function () {
 		// Throttle high rate events
 		window.addEventListener('scroll', () => scrollThrottle(), true); 
 		window.onresize = () => resizeThrottle(); 
+		
+		console.timeEnd('***bluejay***');
     });
 	
 	// extend App
@@ -1444,7 +1448,6 @@ const bluejay = (function () {
 	Note: in Patient Overview the same list is editable in
 	TWO places the popup and in main page area.
 	*/
-
 	const pps = uiApp.nodeArray(document.querySelectorAll('.problems-plans-sortable'));
 	if(pps.length < 1) return; 
 	
@@ -1467,15 +1470,16 @@ const bluejay = (function () {
 	* @param {String} a - Source textContent
 	* @param {String} b - textContent of Element switched with
 	*/
-	const swapListItems = (a,b) => {
-		let indexA = listMap.findIndex( e => e.text.localeCompare(a) === 0 );
-		let indexB = listMap.findIndex( e => e.text.localeCompare(b) === 0 );
-		listMap[indexA] = listMap.splice(indexB,1,listMap[indexA])[0];
-		
+	const updateListOrder = (aStr,bStr) => {
+		let a = listMap.findIndex( e => e.text.localeCompare(aStr) === 0 );
+		let b = listMap.findIndex( e => e.text.localeCompare(bStr) === 0 );
+		listMap[a] = listMap.splice(b,1,listMap[a])[0];
 		if(pps.length > 1) reorderLists();
 	};
 	
-	
+	/**
+	* loop through and check DOM against listMap 
+	*/
 	const reorderLists = () => {
 		pps.forEach((list) => {
 			let listNodes = list.querySelectorAll('li');
@@ -1487,6 +1491,24 @@ const bluejay = (function () {
 		});
 	};
 	
+	/**
+	* Add new List item to the DOM(s)
+	* @param {DocFragment} frag - new <li>
+	*/
+	const addToDOM = (frag) => {
+		pps.forEach((list) => {
+			let clone = frag.cloneNode(true);
+			list.appendChild(clone);
+			makeDraggable(list.lastChild); // now it's inserted in the DOM, set up listeners
+		});
+	};
+	
+	/**
+	* Build list item domString to insert
+	* @param {String} text - <li> text to show
+	* @param {String} info - text for the info icon tooltip
+	* @returns {String}
+	*/
 	const domString = (text,info) => {
 		return [	'<span class="drag-handle"><i class="oe-i menu medium pro-theme"></i></span>',
 					text,
@@ -1498,20 +1520,82 @@ const bluejay = (function () {
 					].join('');
 	};
 
+
+	/**
+	* Callback for 'click' on <button> next to input field
+	* @param {Event} ev
+	*/
+	const addListItem = (ev) => {
+		ev.preventDefault(); // as <button>
+		let parent = uiApp.getParent(ev.target,'.create-new-problem-plan');
+		let input = parent.querySelector('input');
+		if(input.value.length < 2) return; 
+		
+		let add = {	text:input.value,
+					info:"Added now!" };
+					
+		listMap.push(add); // update listMap
+		
+		let fragment = new DocumentFragment();
+		let li = document.createElement('li');
+		li.innerHTML = domString(add.text,add.info);
+		fragment.appendChild(li);
+		addToDOM(fragment);	// update DOM
+	};
+
+	
+	/**
+	* Callback for 'click' on remove-circle icon
+	* @param {Event} ev
+	*/
+	const removeListItem = (ev) => {
+		/*
+		Because of the DOM structure for <ul>, simply find 
+		the node index and then remove it	
+		*/
+		let li = uiApp.getParent(ev.target,'li');
+		let i = 0;
+		while( (li = li.previousSibling) !== null ) i++;
+		
+		// update DOM
+		pps.forEach((list) => {
+			uiApp.removeElement(list.childNodes[i]);
+		});
+		
+		// update listMap
+		listMap.splice(i,1);
+	};
+
+
+	/* 
+	Events
+	*/
+	uiApp.registerForClick('.create-new-problem-plan button', addListItem);
+	uiApp.registerForClick('.problems-plans-sortable .remove-circle', removeListItem);
+	
+	document.addEventListener('DOMContentLoaded', () => {
+		pps.forEach((list)=>{
+			uiApp.nodeArray(list.querySelectorAll('li')).forEach((li)=>{
+				makeDraggable(li);
+			});
+		});
+	});
+	
+
 	/*
-	Drag n Drop List
+	********************************
+	Drag n Drop
 	*/
 	let dragSourceElement = null;
-	// add to <ul> on dragstart and restrict drops to this class
-	let listDragCSSFlag = "js-sorting-list"; 
+	let listDragCSSFlag = "js-sorting-list";  // add to <ul> on dragstart and restrict drops to this class
 
 	/**
 	* handle start of drag
 	* @param {Event} 
 	*/
 	const handleStart = (e) => {
-		dragSourceElement = e.target;
-		e.target.parentNode.classList.add(listDragCSSFlag);
+		dragSourceElement = e.target; // remove source target to swap on drop
+		e.target.parentNode.classList.add(listDragCSSFlag); // flag used to control 'drop' area
 		/*
 		setData using a custom 'type' as only for this app. however, might need 
 		to provide a fallback of "text/plain"; Using "text/html" adds a <meta>!?
@@ -1519,80 +1603,63 @@ const bluejay = (function () {
 		e.dataTransfer.setData('source', dragSourceElement.innerHTML);
 	};
 	
-	/**
-	* handle enter of drag 
-	* @param {Event} - target Element
-	*/
 	const handleEnter = (e) => {
-		// use browser API effects
-		e.dataTransfer.effectAllowed = 'move';
+		e.dataTransfer.effectAllowed = 'move';	// use browser API effects
 		e.dataTransfer.dropEffect = 'move';
 	};
 	
-	/**
-	* handle over of drag 
-	* @param {Event} - target Element
-	*/
 	const handleOver = (e) => {
-		// To allow a drop, must prevent default handling  (as most areas don't allow a drop)	
+		// To allow a drop, you must prevent default handling  (as most areas don't allow a drop)	
 		if(e.preventDefault) e.preventDefault(); // Necessary. Allows Drop (if it's a link or somethink clickable!)
 		return false; // good practice
 	};
 	
-	
+	/**
+	* handle drop
+	* @param {Event} 
+	*/
 	const handleDrop = (e) => {
 		if(e.stopPropagation) e.stopPropagation(); // stops the browser from redirecting.
-		
 		/*
-		Without this it would be possible to mix up 2 P'n'P list items!
+		Without this it would be possible to mix up 2 P'n'P lists!
 		*/
 		if(e.target.parentNode.classList.contains(listDragCSSFlag) === false) return;
 		e.target.parentNode.classList.remove(listDragCSSFlag);
 
 		// Make sure we are not dropping it on ourself...
 		if (dragSourceElement !=  e.target) {
-			// Set the source column's HTML to the HTML of the column we dropped on.
-			
-			dragSourceElement.innerHTML = e.target.innerHTML;
+			dragSourceElement.innerHTML = e.target.innerHTML;       // switch them around
 			e.target.innerHTML = e.dataTransfer.getData('source');
 			
 			// update listMap
-			swapListItems(dragSourceElement.textContent,e.target.textContent);
+			updateListOrder(dragSourceElement.textContent,e.target.textContent);
 		}
-
 		return false;
 	};
 	
-	/**
-	* handle end of drag 
-	* @param {Event} - the same Element that received "dragstart";
-	*/
-	const handleEnd = (e) => {
-	  // this/e.target is the source node.
-	  // clean up after dragging about!
-	};
-
-
-	
 	/*
-	'dragenter' & 'dragover' events are used to indicate valid drop targets.
-	As the rest of the App is not a valid place to "drop" list item, 
-	EventListeners need to be targeted to specific elements	
-	
-	Set up each <li> DOM to allow Drag n Drop
+	const handleEnd = (e) => {
+	  // this/e.target is the source node. clean up after dragging about!
+	};
 	*/
-	pps.forEach((list)=>{
-		uiApp.nodeArray(list.querySelectorAll('li')).forEach((li)=>{
-			li.setAttribute('draggable','true');
-			li.addEventListener('dragstart',handleStart, false);
-			li.addEventListener('dragenter',handleEnter, false);
-			li.addEventListener('dragover',handleOver, false);
-			li.addEventListener('drop',handleDrop, false);
-			//li.addEventListener('dragend', handleEnd,false);	
-		});
-	});
-	
-	
+
+	const makeDraggable = (li) => {
+		/*
+		List items are not draggable by default
+		*/
+		li.setAttribute('draggable','true');
+		li.addEventListener('dragstart',handleStart, false);
+		/*
+		'dragenter' & 'dragover' events are used to indicate valid drop targets.
+		As the rest of the App is not a valid place to "drop" list item, 
+		EventListeners need to be targeted to specific elements		
+		Set up each <li> DOM to allow Drag n Drop
+		*/
+		li.addEventListener('dragenter',handleEnter, false);
+		li.addEventListener('dragover',handleOver, false);
+		li.addEventListener('drop',handleDrop, false);
+		//li.addEventListener('dragend', handleEnd,false);	
+	};
 			
 })(bluejay); 
 (function (uiApp) {

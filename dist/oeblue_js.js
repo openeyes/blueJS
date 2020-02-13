@@ -15,6 +15,8 @@ const bluejay = (function () {
 
 	'use strict';
 
+	console.time('***bluejay***');
+
 	const methods = {}; 	// Create a public methods object 
 	const debug = true;		// Output debug to console
 	let extendID = 1;		// Method ID
@@ -157,6 +159,8 @@ const bluejay = (function () {
 		// Throttle high rate events
 		window.addEventListener('scroll', () => scrollThrottle(), true); 
 		window.onresize = () => resizeThrottle(); 
+		
+		console.timeEnd('***bluejay***');
     });
 	
 	// extend App

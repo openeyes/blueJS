@@ -83,6 +83,8 @@
 		// Throttle high rate events
 		window.addEventListener('scroll', () => scrollThrottle(), true); 
 		window.onresize = () => resizeThrottle(); 
+		
+		console.timeEnd('***bluejay***');
     });
 	
 	// extend App

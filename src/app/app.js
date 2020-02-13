@@ -8,6 +8,8 @@ const bluejay = (function () {
 
 	'use strict';
 
+	console.time('***bluejay***');
+
 	const methods = {}; 	// Create a public methods object 
 	const debug = true;		// Output debug to console
 	let extendID = 1;		// Method ID
