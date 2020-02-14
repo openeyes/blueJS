@@ -17,18 +17,19 @@
 	uiApp.appendTo('body',div);
 	
 	/**
-	* Resize Windoe - as innerWidth forces a reflow, only update when necessary
+	* Resize Window - as innerWidth forces a reflow, only update when necessary
 	*/
 	const resize = () => winWidth = window.innerWidth;
 	
 	/**
-	* click - show and hide (unclick)
+	* Callback for 'click'
+	* @param {Event} ev
 	*/
-	const userClick = (event) => showing? hide(event) : show(event);
+	const userClick = (ev) => showing? hide(ev) : show(ev);
 	
 	/**
-	* Show tooltip. Update from Event
-	* @param {Event} event
+	* Callback for 'hover'
+	* @param {Event} ev
 	*/
 	const show = (event) => {
 		if(showing) return;
@@ -85,10 +86,10 @@
 	};
 	
 	/**
-	* Hide tooltip and reset
-	* @param {Event}
+	* Callback for 'exit'
+	* @param {Event} ev
 	*/
-	const hide = (event) => {
+	const hide = (ev) => {
 		if(!showing) return;
 		showing = false;
 		

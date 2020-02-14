@@ -117,14 +117,14 @@
 	Events
 	*/	
 	const userClick = (ev) => {
-		let parent = uiApp.getParent(ev.target,'.element-tile-group');
-		let dataAttr = uiApp.getSetDataAttr(parent,states.length);
+		let parent = uiApp.getParent(ev.target, '.element-tile-group');
+		let dataAttr = uiApp.getDataAttr(parent);
 		
-		if(Number.isInteger(dataAttr)){
+		if(dataAttr){
 			/*
 			Setup already, change it's state
 			*/
-			states[dataAttr].change();
+			states[parstFloat(dataAttr)].change();
 		} else {
 			/*
 			No DOM attribute, needs setting up
@@ -138,6 +138,7 @@
 			});
 			
 			group.change(); 	// a click! so change
+			uiApp.getDataAttr(parent, states.length);
 			states.push(group); // store new state	
 		}
 		

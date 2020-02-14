@@ -9,8 +9,10 @@
 	* @param {HTMLElement} <textarea>
 	*/ 
 	const resize = (textArea) => {
+		let h = textArea.scrollHeight;
+		if(h < 20) return;
 		textArea.style.height = 'auto';
-		textArea.style.height = textArea.scrollHeight + 'px';
+		textArea.style.height = h + 'px';
 	};
 
 	/**

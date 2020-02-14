@@ -66,7 +66,7 @@ const bluejay = (function () {
 			// list API methods 
 			let apiMethods = [];
 			for(const name in methods)	apiMethods.push(name); 
-			methods.log('[API] ' + apiMethods.join(', ') );	
+			methods.log('[API] Methods: ' + apiMethods.join(', ') );	
 		},{once:true});
 	}
 
@@ -245,24 +245,6 @@ const bluejay = (function () {
 	};
 	
 	/**
-	* getSetDataAttr - a common pattern due to Delegating Events
-	* Either get or set the custom data-attribute on the DOM
-	* the 'state' array ref is stored on the DOM Element
-	* @param {HTMLElement} el - el to check/store on
-	* @param {Number} stateArrayRef - abstract state ref
-	*/
-	const getSetDataAttr = (el,stateArrayRef) => {
-		const dataAttr = uiApp.getDataAttributeName();
-		if(el.hasAttribute(dataAttr)){
-			return parseFloat(el.getAttribute(dataAttr));
-		} else {
-			el.setAttribute(dataAttr,stateArrayRef); 
-			return null;
-		}
-	};
-	
-	
-	/**
 	* XMLHttpRequest 
 	* @param {string} url
 	* @returns {Promise} resolve(responseText) or reject(errorMsg)
@@ -321,7 +303,6 @@ const bluejay = (function () {
 	uiApp.extend('appendTo',appendTo);
 	uiApp.extend('getParent',getParent);
 	uiApp.extend('removeElement',removeDOM);
-	uiApp.extend('getSetDataAttr',getSetDataAttr);
 	uiApp.extend('xhr',xhr);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
 	
@@ -399,6 +380,15 @@ const bluejay = (function () {
 	};
 	
 	/**
+	 * Get settings
+	 * @param  {String} key The setting key (optional)
+	 * @return {*}          The setting
+	 */
+	var getSetting = function (key) {
+		return settings[key];
+	};
+	
+	/**
 	* Standardise data-attributes names
 	* @param {String} suffix optional
 	* @returns {Sting} 
@@ -409,17 +399,33 @@ const bluejay = (function () {
 	};
 	
 	/**
-	 * Get settings
-	 * @param  {String} key The setting key (optional)
-	 * @return {*}          The setting
-	 */
-	var getSetting = function (key) {
-		return settings[key];
+	* set Data Attribute on DOM 
+	* @param {HTMLElement} el - el to store on
+	* @param {String} value
+	*/
+	const setDataAttr = (el,value) => {
+		el.setAttribute(uiApp.getDataAttributeName(), value); 
 	};
 	
+	/**
+	* get Data Attribute on DOM 
+	* @param {HTMLElement} el - el to check
+	* @returns {String||null} 
+	*/
+	const getDataAttr = (el) => {
+		const dataAttr = uiApp.getDataAttributeName();
+		if(el.hasAttribute(dataAttr)){
+			return el.getAttribute(dataAttr);
+		} else { 
+			return null;
+		}
+	};
+
 	// Extend App
 	uiApp.extend('getSetting',getSetting);
 	uiApp.extend('getDataAttributeName',domDataAttribute);
+	uiApp.extend('setDataAttr',setDataAttr);
+	uiApp.extend('getDataAttr',getDataAttr);
 
 })(bluejay);
 (function (uiApp) {
@@ -503,13 +509,12 @@ const bluejay = (function () {
 	*/
 	const userClick = (ev, defaults) => {
 		let btn = ev.target;
-		let dataAttr = uiApp.getSetDataAttr(btn,states.length);
-		
-		if(Number.isInteger(dataAttr)){
+		let dataAttr = uiApp.getDataAttr(btn);
+		if(dataAttr){
 			/*
 			Setup already, change it's state
 			*/
-			states[dataAttr].change();
+			states[parseFloat(dataAttr)].change();
 		} else {
 			/*
 			Collapsed Data is generally collapsed (hidden)
@@ -520,7 +525,8 @@ const bluejay = (function () {
 												content: btn.parentNode.querySelector( defaults.content ),
 												collapsed:btn.classList.contains('expand') });
 				
-			expander.change(); // user has clicked, update view												
+			expander.change(); // user has clicked, update view	
+			uiApp.setDataAttr(btn, states.length); // flag on DOM										
 			states.push(expander); // store state			
 		}
 	};
@@ -569,18 +575,19 @@ const bluejay = (function () {
 	uiApp.appendTo('body',div);
 	
 	/**
-	* Resize Windoe - as innerWidth forces a reflow, only update when necessary
+	* Resize Window - as innerWidth forces a reflow, only update when necessary
 	*/
 	const resize = () => winWidth = window.innerWidth;
 	
 	/**
-	* click - show and hide (unclick)
+	* Callback for 'click'
+	* @param {Event} ev
 	*/
-	const userClick = (event) => showing? hide(event) : show(event);
+	const userClick = (ev) => showing? hide(ev) : show(ev);
 	
 	/**
-	* Show tooltip. Update from Event
-	* @param {Event} event
+	* Callback for 'hover'
+	* @param {Event} ev
 	*/
 	const show = (event) => {
 		if(showing) return;
@@ -637,10 +644,10 @@ const bluejay = (function () {
 	};
 	
 	/**
-	* Hide tooltip and reset
-	* @param {Event}
+	* Callback for 'exit'
+	* @param {Event} ev
 	*/
-	const hide = (event) => {
+	const hide = (ev) => {
 		if(!showing) return;
 		showing = false;
 		
@@ -860,6 +867,36 @@ const bluejay = (function () {
 })(bluejay); 
 (function (uiApp) {
 
+	'use strict';	
+	
+	uiApp.addModule('comments');	
+	
+	
+	/**
+	Comments icon is clicked on to reveal 
+	comments input field. Either:
+	1) Textarea switches places with icon button
+	2) Textarea is shown in different DOM placement  
+	**/
+	
+	const userClick = (ev) => {
+		const btn = ev.target;
+		const comments = document.querySelector('#'+btn.dataset.input);
+		btn.style.display = "none";
+		comments.style.display = "block";
+		comments.querySelector('textarea').focus();
+		comments.querySelector('.js-remove-add-comments').addEventListener('mousedown', ()=>{
+			btn.style.display = "inline-block";
+			comments.style.display = "none";
+		},{once:true});	
+	};
+	
+	
+	uiApp.registerForClick('.js-add-comments', userClick );
+	
+})(bluejay); 
+(function (uiApp) {
+
 	'use strict';
 	
 	uiApp.addModule('elementSelector');
@@ -1069,14 +1106,14 @@ const bluejay = (function () {
 	Events
 	*/	
 	const userClick = (ev) => {
-		let parent = uiApp.getParent(ev.target,'.element-tile-group');
-		let dataAttr = uiApp.getSetDataAttr(parent,states.length);
+		let parent = uiApp.getParent(ev.target, '.element-tile-group');
+		let dataAttr = uiApp.getDataAttr(parent);
 		
-		if(Number.isInteger(dataAttr)){
+		if(dataAttr){
 			/*
 			Setup already, change it's state
 			*/
-			states[dataAttr].change();
+			states[parstFloat(dataAttr)].change();
 		} else {
 			/*
 			No DOM attribute, needs setting up
@@ -1090,6 +1127,7 @@ const bluejay = (function () {
 			});
 			
 			group.change(); 	// a click! so change
+			uiApp.getDataAttr(parent, states.length);
 			states.push(group); // store new state	
 		}
 		
@@ -1100,6 +1138,62 @@ const bluejay = (function () {
 	uiApp.registerForClick('.collapse-tile-group .oe-i', userClick);
 	
 	
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('eventAuditTrial');	
+	
+	/*
+	Only 1 of these per Event page
+	*/
+	const selector = '#js-event-audit-trail-btn';
+	const icon = document.querySelector(selector);
+	if(icon === null) return; 
+	
+	/*
+	'popup' content should be loaded in the DOM
+	*/
+	const popup = document.querySelector('#js-event-audit-trail');
+	if(popup === null) uiApp.log('Audit Trail content not available in DOM?');
+	
+	let showing = false;
+	
+	/**
+	* Callback for 'click'
+	* @param {Event} ev
+	*/
+	const userClick = (ev) => showing ? hide(ev) : show(ev);
+
+	/**
+	* Callback for 'hover'
+	* @param {Event} ev
+	*/
+	const show = (ev) => {
+		popup.style.display = "block";
+		icon.classList.add('active');
+		showing = true;
+	};
+	
+	/**
+	* Callback for 'ext'
+	* @param {Event} ev
+	*/
+	const hide = (ev) => {
+		popup.style.display = "none";
+		icon.classList.remove('active');
+		showing = false;
+	};
+	
+	/*
+	Events	
+	*/
+	uiApp.registerForClick(selector,userClick);
+	uiApp.registerForHover(selector,show);
+	uiApp.registerForExit(selector,hide);
+
+
 })(bluejay); 
 (function (uiApp) {
 
@@ -1412,21 +1506,22 @@ const bluejay = (function () {
 	*/
 	const userClick = (ev) => {
 		const btn = ev.target;
-		let dataAttr = uiApp.getSetDataAttr(btn,states.length);
+		let dataAttr = uiApp.getDataAttr(btn);
 		
-		if(Number.isInteger(dataAttr)){
+		if(dataAttr){
 			/*
 			Setup already, change it's state
 			*/
-			states[dataAttr].change();
+			states[parseFloat(dataAttr)].change();
 		} else {
 			/*
 			No DOM attribute, needs setting up
 			note: it's been clicked! 
 			*/
-			let pro = ProView( uiApp.getParent(btn,'.pro-data-view') );
+			let pro = ProView( uiApp.getParent(btn, '.pro-data-view') );
 			pro.options( JSON.parse(btn.dataset.proview) );
 			pro.change();		// update UI (because this a click)
+			uiApp.setDataAttr(btn, states.length); // flag on DOM
 			states.push(pro);	// store 
 		}
 	};
@@ -1456,24 +1551,38 @@ const bluejay = (function () {
 	(this can be JSON'd back to server)
 	*/
 	const listMap = [];
+	const mapObj = (id,text,info) => ({id:id,text:text,info:info});
 	/*
-	only need to use FIRST list to set up 
-	as if more (two) they should be identical!
+	only need to use first list to set up 
+	if more (two) they should be identical!
 	*/
 	uiApp.nodeArray(pps[0].querySelectorAll('li')).forEach((li)=>{
-		listMap.push(	{ 	text:li.textContent,
-							info:li.querySelector('.info').getAttribute('data-tooltip-content') });
+		listMap.push( mapObj(	listMap.length,
+								li.textContent,
+								li.querySelector('.info').getAttribute('data-tooltip-content') 
+							)
+		);
 	});
+	
+	// updated DOM with uniqueIDs
+	pps.forEach((list) => {
+		uiApp.nodeArray(list.querySelectorAll('li')).forEach((li,index) => {
+			uiApp.setDataAttr(li,index);
+		});
+	});
+	
+	// use a unique id for each new DOM list, use this for basic DOM diffing 
+	let listUID = listMap.length+1;  
 
 	/**
 	* update list map based on the last drag event
 	* @param {String} a - Source textContent
 	* @param {String} b - textContent of Element switched with
 	*/
-	const updateListOrder = (aStr,bStr) => {
-		let a = listMap.findIndex( e => e.text.localeCompare(aStr) === 0 );
-		let b = listMap.findIndex( e => e.text.localeCompare(bStr) === 0 );
-		listMap[a] = listMap.splice(b,1,listMap[a])[0];
+	const updateListOrder = (aNum,bNum) => {
+		let a = listMap.findIndex( e => e.id == aNum );
+		let b = listMap.findIndex( e => e.id == bNum );
+		listMap[a] = listMap.splice(b,1,listMap[a])[0];		
 		if(pps.length > 1) reorderLists();
 	};
 	
@@ -1483,9 +1592,16 @@ const bluejay = (function () {
 	const reorderLists = () => {
 		pps.forEach((list) => {
 			let listNodes = list.querySelectorAll('li');
-			for(let i=0, len=listMap.length;i<len;i++){
-				if(listMap[i].text !== listNodes[i].textContent){
-					listNodes[i].innerHTML = domString(listMap[i].text,listMap[i].info);
+			for(let i=0, len=listMap.length; i<len; i++){
+				let map = listMap[i];
+				let li = listNodes[i];
+				
+				// check list<ap and dom match up
+				if(map.id != uiApp.getDataAttr(li)){
+					// nope, update DOM attribute
+					uiApp.setDataAttr(li, map.id);
+					// update list content 
+					li.innerHTML = domString(map.text, map.info);
 				}
 			}
 		});
@@ -1494,17 +1610,17 @@ const bluejay = (function () {
 	/**
 	* Add new List item to the DOM(s)
 	* @param {DocFragment} frag - new <li>
+	* @param {Number} id - unique List id 
 	*/
-	const addToDOM = (frag) => {
+	const addToDOM = (frag, id) => {
 		pps.forEach((list) => {
-			let clone = frag.cloneNode(true);
-			list.appendChild(clone);
-			makeDraggable(list.lastChild); // now it's inserted in the DOM, set up listeners
+			list.appendChild(frag.cloneNode(true));
+			makeDraggable(list.lastChild);  // now it's inserted in the DOM, set up listeners
 		});
 	};
 	
 	/**
-	* Build list item domString to insert
+	* Build <li> innerHTML domString
 	* @param {String} text - <li> text to show
 	* @param {String} info - text for the info icon tooltip
 	* @returns {String}
@@ -1519,7 +1635,22 @@ const bluejay = (function () {
 					'<div class="remove"><i class="oe-i remove-circle small pro-theme pad"></i></div>'
 					].join('');
 	};
-
+	
+	
+	/**
+	* Create New <li> Fragment for insertion
+	* @param {Object} obj - new listMap Obj 
+	* @returns {DOMFragment}
+	*/
+	const domFragment = (obj) => {
+		const fragment = new DocumentFragment();
+		const li = document.createElement('li');
+		li.innerHTML = domString(obj.text, obj.info);
+		uiApp.setDataAttr(li, obj.id); 
+		fragment.appendChild(li);
+		
+		return fragment;
+	};
 
 	/**
 	* Callback for 'click' on <button> next to input field
@@ -1529,18 +1660,11 @@ const bluejay = (function () {
 		ev.preventDefault(); // as <button>
 		let parent = uiApp.getParent(ev.target,'.create-new-problem-plan');
 		let input = parent.querySelector('input');
-		if(input.value.length < 2) return; 
+		if(!input || input.value.length < 2) return; 
 		
-		let add = {	text:input.value,
-					info:"Added now!" };
-					
-		listMap.push(add); // update listMap
-		
-		let fragment = new DocumentFragment();
-		let li = document.createElement('li');
-		li.innerHTML = domString(add.text,add.info);
-		fragment.appendChild(li);
-		addToDOM(fragment);	// update DOM
+		let newListItem = mapObj(listUID++, input.value, "Added now!");					
+		listMap.push(newListItem); // update listMap
+		addToDOM(domFragment(newListItem));	// update DOM
 	};
 
 	
@@ -1585,6 +1709,7 @@ const bluejay = (function () {
 	/*
 	********************************
 	Drag n Drop
+	********************************
 	*/
 	let dragSourceElement = null;
 	let listDragCSSFlag = "js-sorting-list";  // add to <ul> on dragstart and restrict drops to this class
@@ -1632,7 +1757,7 @@ const bluejay = (function () {
 			e.target.innerHTML = e.dataTransfer.getData('source');
 			
 			// update listMap
-			updateListOrder(dragSourceElement.textContent,e.target.textContent);
+			updateListOrder( uiApp.getDataAttr(dragSourceElement), uiApp.getDataAttr(e.target) );
 		}
 		return false;
 	};
@@ -1661,6 +1786,75 @@ const bluejay = (function () {
 		//li.addEventListener('dragend', handleEnd,false);	
 	};
 			
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('reduceElementHeight');	
+	
+	const states = [];
+	
+	/*
+	Methods	
+	*/
+	const _change = () => ({
+		/**
+		* Change state 
+		*/		
+		change: function(){	
+			if(this.reduced){
+				this.elem.classList.remove('reduced-height');
+				this.icon.classList.replace('increase-height-orange','reduce-height');	
+			} else {
+				this.elem.classList.add('reduced-height');
+				this.icon.classList.replace('reduce-height','increase-height-orange');
+			}
+			
+			this.reduced = !this.reduced;
+		}
+	});
+	
+	/**
+	* @Class
+	* @param {Object} me 
+	* @returns new Object
+	*/
+	const ReduceHeight = (me) => {
+		me.reduced = false;
+		return Object.assign(	me, 
+								_change() );
+	};
+
+	/**
+	* Callback for Event (header btn)
+	* @param {event} event
+	*/
+	const userClick = (ev, defaults) => {
+		let icon = ev.target;
+		let dataAttr = uiApp.getDataAttr(icon);
+		
+		if(dataAttr){
+			/*
+			Setup already, change it's state
+			*/
+			states[dataAttr].change();
+		} else {
+			/*
+			Collapsed Data is generally collapsed (hidden)
+			But this can be set directly in the DOM if needed
+			*/
+			let reducer = ReduceHeight( {	elem: uiApp.getParent(icon,'.element'),
+											icon: icon });
+				
+			reducer.change(); 		// user has clicked, update view
+			uiApp.getDataAttr(icon, states.length);											
+			states.push(reducer); 	// store state			
+		}
+	};
+
+	uiApp.registerForClick('.element .js-elem-reduce .oe-i', userClick );
+	
 })(bluejay); 
 (function (uiApp) {
 
@@ -1808,8 +2002,10 @@ const bluejay = (function () {
 	* @param {HTMLElement} <textarea>
 	*/ 
 	const resize = (textArea) => {
+		let h = textArea.scrollHeight;
+		if(h < 20) return;
 		textArea.style.height = 'auto';
-		textArea.style.height = textArea.scrollHeight + 'px';
+		textArea.style.height = h + 'px';
 	};
 
 	/**

@@ -48,24 +48,6 @@
 	};
 	
 	/**
-	* getSetDataAttr - a common pattern due to Delegating Events
-	* Either get or set the custom data-attribute on the DOM
-	* the 'state' array ref is stored on the DOM Element
-	* @param {HTMLElement} el - el to check/store on
-	* @param {Number} stateArrayRef - abstract state ref
-	*/
-	const getSetDataAttr = (el,stateArrayRef) => {
-		const dataAttr = uiApp.getDataAttributeName();
-		if(el.hasAttribute(dataAttr)){
-			return parseFloat(el.getAttribute(dataAttr));
-		} else {
-			el.setAttribute(dataAttr,stateArrayRef); 
-			return null;
-		}
-	};
-	
-	
-	/**
 	* XMLHttpRequest 
 	* @param {string} url
 	* @returns {Promise} resolve(responseText) or reject(errorMsg)
@@ -124,7 +106,6 @@
 	uiApp.extend('appendTo',appendTo);
 	uiApp.extend('getParent',getParent);
 	uiApp.extend('removeElement',removeDOM);
-	uiApp.extend('getSetDataAttr',getSetDataAttr);
 	uiApp.extend('xhr',xhr);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
 	

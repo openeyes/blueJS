@@ -59,7 +59,7 @@ const bluejay = (function () {
 			// list API methods 
 			let apiMethods = [];
 			for(const name in methods)	apiMethods.push(name); 
-			methods.log('[API] ' + apiMethods.join(', ') );	
+			methods.log('[API] Methods: ' + apiMethods.join(', ') );	
 		},{once:true});
 	}
 

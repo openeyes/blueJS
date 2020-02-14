@@ -148,21 +148,22 @@
 	*/
 	const userClick = (ev) => {
 		const btn = ev.target;
-		let dataAttr = uiApp.getSetDataAttr(btn,states.length);
+		let dataAttr = uiApp.getDataAttr(btn);
 		
-		if(Number.isInteger(dataAttr)){
+		if(dataAttr){
 			/*
 			Setup already, change it's state
 			*/
-			states[dataAttr].change();
+			states[parseFloat(dataAttr)].change();
 		} else {
 			/*
 			No DOM attribute, needs setting up
 			note: it's been clicked! 
 			*/
-			let pro = ProView( uiApp.getParent(btn,'.pro-data-view') );
+			let pro = ProView( uiApp.getParent(btn, '.pro-data-view') );
 			pro.options( JSON.parse(btn.dataset.proview) );
 			pro.change();		// update UI (because this a click)
+			uiApp.setDataAttr(btn, states.length); // flag on DOM
 			states.push(pro);	// store 
 		}
 	};

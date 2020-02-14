@@ -18,6 +18,15 @@
 	};
 	
 	/**
+	 * Get settings
+	 * @param  {String} key The setting key (optional)
+	 * @return {*}          The setting
+	 */
+	var getSetting = function (key) {
+		return settings[key];
+	};
+	
+	/**
 	* Standardise data-attributes names
 	* @param {String} suffix optional
 	* @returns {Sting} 
@@ -28,16 +37,32 @@
 	};
 	
 	/**
-	 * Get settings
-	 * @param  {String} key The setting key (optional)
-	 * @return {*}          The setting
-	 */
-	var getSetting = function (key) {
-		return settings[key];
+	* set Data Attribute on DOM 
+	* @param {HTMLElement} el - el to store on
+	* @param {String} value
+	*/
+	const setDataAttr = (el,value) => {
+		el.setAttribute(uiApp.getDataAttributeName(), value); 
 	};
 	
+	/**
+	* get Data Attribute on DOM 
+	* @param {HTMLElement} el - el to check
+	* @returns {String||null} 
+	*/
+	const getDataAttr = (el) => {
+		const dataAttr = uiApp.getDataAttributeName();
+		if(el.hasAttribute(dataAttr)){
+			return el.getAttribute(dataAttr);
+		} else { 
+			return null;
+		}
+	};
+
 	// Extend App
 	uiApp.extend('getSetting',getSetting);
 	uiApp.extend('getDataAttributeName',domDataAttribute);
+	uiApp.extend('setDataAttr',setDataAttr);
+	uiApp.extend('getDataAttr',getDataAttr);
 
 })(bluejay);

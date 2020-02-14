@@ -66,7 +66,7 @@ const bluejay = (function () {
 			// list API methods 
 			let apiMethods = [];
 			for(const name in methods)	apiMethods.push(name); 
-			methods.log('[API] ' + apiMethods.join(', ') );	
+			methods.log('[API] Methods: ' + apiMethods.join(', ') );	
 		},{once:true});
 	}
 
@@ -245,24 +245,6 @@ const bluejay = (function () {
 	};
 	
 	/**
-	* getSetDataAttr - a common pattern due to Delegating Events
-	* Either get or set the custom data-attribute on the DOM
-	* the 'state' array ref is stored on the DOM Element
-	* @param {HTMLElement} el - el to check/store on
-	* @param {Number} stateArrayRef - abstract state ref
-	*/
-	const getSetDataAttr = (el,stateArrayRef) => {
-		const dataAttr = uiApp.getDataAttributeName();
-		if(el.hasAttribute(dataAttr)){
-			return parseFloat(el.getAttribute(dataAttr));
-		} else {
-			el.setAttribute(dataAttr,stateArrayRef); 
-			return null;
-		}
-	};
-	
-	
-	/**
 	* XMLHttpRequest 
 	* @param {string} url
 	* @returns {Promise} resolve(responseText) or reject(errorMsg)
@@ -321,7 +303,6 @@ const bluejay = (function () {
 	uiApp.extend('appendTo',appendTo);
 	uiApp.extend('getParent',getParent);
 	uiApp.extend('removeElement',removeDOM);
-	uiApp.extend('getSetDataAttr',getSetDataAttr);
 	uiApp.extend('xhr',xhr);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
 	
@@ -399,6 +380,15 @@ const bluejay = (function () {
 	};
 	
 	/**
+	 * Get settings
+	 * @param  {String} key The setting key (optional)
+	 * @return {*}          The setting
+	 */
+	var getSetting = function (key) {
+		return settings[key];
+	};
+	
+	/**
 	* Standardise data-attributes names
 	* @param {String} suffix optional
 	* @returns {Sting} 
@@ -409,17 +399,33 @@ const bluejay = (function () {
 	};
 	
 	/**
-	 * Get settings
-	 * @param  {String} key The setting key (optional)
-	 * @return {*}          The setting
-	 */
-	var getSetting = function (key) {
-		return settings[key];
+	* set Data Attribute on DOM 
+	* @param {HTMLElement} el - el to store on
+	* @param {String} value
+	*/
+	const setDataAttr = (el,value) => {
+		el.setAttribute(uiApp.getDataAttributeName(), value); 
 	};
 	
+	/**
+	* get Data Attribute on DOM 
+	* @param {HTMLElement} el - el to check
+	* @returns {String||null} 
+	*/
+	const getDataAttr = (el) => {
+		const dataAttr = uiApp.getDataAttributeName();
+		if(el.hasAttribute(dataAttr)){
+			return el.getAttribute(dataAttr);
+		} else { 
+			return null;
+		}
+	};
+
 	// Extend App
 	uiApp.extend('getSetting',getSetting);
 	uiApp.extend('getDataAttributeName',domDataAttribute);
+	uiApp.extend('setDataAttr',setDataAttr);
+	uiApp.extend('getDataAttr',getDataAttr);
 
 })(bluejay);
 (function (uiApp) {
@@ -503,13 +509,12 @@ const bluejay = (function () {
 	*/
 	const userClick = (ev, defaults) => {
 		let btn = ev.target;
-		let dataAttr = uiApp.getSetDataAttr(btn,states.length);
-		
-		if(Number.isInteger(dataAttr)){
+		let dataAttr = uiApp.getDataAttr(btn);
+		if(dataAttr){
 			/*
 			Setup already, change it's state
 			*/
-			states[dataAttr].change();
+			states[parseFloat(dataAttr)].change();
 		} else {
 			/*
 			Collapsed Data is generally collapsed (hidden)
@@ -520,7 +525,8 @@ const bluejay = (function () {
 												content: btn.parentNode.querySelector( defaults.content ),
 												collapsed:btn.classList.contains('expand') });
 				
-			expander.change(); // user has clicked, update view												
+			expander.change(); // user has clicked, update view	
+			uiApp.setDataAttr(btn, states.length); // flag on DOM										
 			states.push(expander); // store state			
 		}
 	};
@@ -569,18 +575,19 @@ const bluejay = (function () {
 	uiApp.appendTo('body',div);
 	
 	/**
-	* Resize Windoe - as innerWidth forces a reflow, only update when necessary
+	* Resize Window - as innerWidth forces a reflow, only update when necessary
 	*/
 	const resize = () => winWidth = window.innerWidth;
 	
 	/**
-	* click - show and hide (unclick)
+	* Callback for 'click'
+	* @param {Event} ev
 	*/
-	const userClick = (event) => showing? hide(event) : show(event);
+	const userClick = (ev) => showing? hide(ev) : show(ev);
 	
 	/**
-	* Show tooltip. Update from Event
-	* @param {Event} event
+	* Callback for 'hover'
+	* @param {Event} ev
 	*/
 	const show = (event) => {
 		if(showing) return;
@@ -637,10 +644,10 @@ const bluejay = (function () {
 	};
 	
 	/**
-	* Hide tooltip and reset
-	* @param {Event}
+	* Callback for 'exit'
+	* @param {Event} ev
 	*/
-	const hide = (event) => {
+	const hide = (ev) => {
 		if(!showing) return;
 		showing = false;
 		

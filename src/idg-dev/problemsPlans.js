@@ -18,24 +18,38 @@
 	(this can be JSON'd back to server)
 	*/
 	const listMap = [];
+	const mapObj = (id,text,info) => ({id:id,text:text,info:info});
 	/*
-	only need to use FIRST list to set up 
-	as if more (two) they should be identical!
+	only need to use first list to set up 
+	if more (two) they should be identical!
 	*/
 	uiApp.nodeArray(pps[0].querySelectorAll('li')).forEach((li)=>{
-		listMap.push(	{ 	text:li.textContent,
-							info:li.querySelector('.info').getAttribute('data-tooltip-content') });
+		listMap.push( mapObj(	listMap.length,
+								li.textContent,
+								li.querySelector('.info').getAttribute('data-tooltip-content') 
+							)
+		);
 	});
+	
+	// updated DOM with uniqueIDs
+	pps.forEach((list) => {
+		uiApp.nodeArray(list.querySelectorAll('li')).forEach((li,index) => {
+			uiApp.setDataAttr(li,index);
+		});
+	});
+	
+	// use a unique id for each new DOM list, use this for basic DOM diffing 
+	let listUID = listMap.length+1;  
 
 	/**
 	* update list map based on the last drag event
 	* @param {String} a - Source textContent
 	* @param {String} b - textContent of Element switched with
 	*/
-	const updateListOrder = (aStr,bStr) => {
-		let a = listMap.findIndex( e => e.text.localeCompare(aStr) === 0 );
-		let b = listMap.findIndex( e => e.text.localeCompare(bStr) === 0 );
-		listMap[a] = listMap.splice(b,1,listMap[a])[0];
+	const updateListOrder = (aNum,bNum) => {
+		let a = listMap.findIndex( e => e.id == aNum );
+		let b = listMap.findIndex( e => e.id == bNum );
+		listMap[a] = listMap.splice(b,1,listMap[a])[0];		
 		if(pps.length > 1) reorderLists();
 	};
 	
@@ -45,9 +59,16 @@
 	const reorderLists = () => {
 		pps.forEach((list) => {
 			let listNodes = list.querySelectorAll('li');
-			for(let i=0, len=listMap.length;i<len;i++){
-				if(listMap[i].text !== listNodes[i].textContent){
-					listNodes[i].innerHTML = domString(listMap[i].text,listMap[i].info);
+			for(let i=0, len=listMap.length; i<len; i++){
+				let map = listMap[i];
+				let li = listNodes[i];
+				
+				// check list<ap and dom match up
+				if(map.id != uiApp.getDataAttr(li)){
+					// nope, update DOM attribute
+					uiApp.setDataAttr(li, map.id);
+					// update list content 
+					li.innerHTML = domString(map.text, map.info);
 				}
 			}
 		});
@@ -56,17 +77,17 @@
 	/**
 	* Add new List item to the DOM(s)
 	* @param {DocFragment} frag - new <li>
+	* @param {Number} id - unique List id 
 	*/
-	const addToDOM = (frag) => {
+	const addToDOM = (frag, id) => {
 		pps.forEach((list) => {
-			let clone = frag.cloneNode(true);
-			list.appendChild(clone);
-			makeDraggable(list.lastChild); // now it's inserted in the DOM, set up listeners
+			list.appendChild(frag.cloneNode(true));
+			makeDraggable(list.lastChild);  // now it's inserted in the DOM, set up listeners
 		});
 	};
 	
 	/**
-	* Build list item domString to insert
+	* Build <li> innerHTML domString
 	* @param {String} text - <li> text to show
 	* @param {String} info - text for the info icon tooltip
 	* @returns {String}
@@ -81,7 +102,22 @@
 					'<div class="remove"><i class="oe-i remove-circle small pro-theme pad"></i></div>'
 					].join('');
 	};
-
+	
+	
+	/**
+	* Create New <li> Fragment for insertion
+	* @param {Object} obj - new listMap Obj 
+	* @returns {DOMFragment}
+	*/
+	const domFragment = (obj) => {
+		const fragment = new DocumentFragment();
+		const li = document.createElement('li');
+		li.innerHTML = domString(obj.text, obj.info);
+		uiApp.setDataAttr(li, obj.id); 
+		fragment.appendChild(li);
+		
+		return fragment;
+	};
 
 	/**
 	* Callback for 'click' on <button> next to input field
@@ -91,18 +127,11 @@
 		ev.preventDefault(); // as <button>
 		let parent = uiApp.getParent(ev.target,'.create-new-problem-plan');
 		let input = parent.querySelector('input');
-		if(input.value.length < 2) return; 
+		if(!input || input.value.length < 2) return; 
 		
-		let add = {	text:input.value,
-					info:"Added now!" };
-					
-		listMap.push(add); // update listMap
-		
-		let fragment = new DocumentFragment();
-		let li = document.createElement('li');
-		li.innerHTML = domString(add.text,add.info);
-		fragment.appendChild(li);
-		addToDOM(fragment);	// update DOM
+		let newListItem = mapObj(listUID++, input.value, "Added now!");					
+		listMap.push(newListItem); // update listMap
+		addToDOM(domFragment(newListItem));	// update DOM
 	};
 
 	
@@ -147,6 +176,7 @@
 	/*
 	********************************
 	Drag n Drop
+	********************************
 	*/
 	let dragSourceElement = null;
 	let listDragCSSFlag = "js-sorting-list";  // add to <ul> on dragstart and restrict drops to this class
@@ -194,7 +224,7 @@
 			e.target.innerHTML = e.dataTransfer.getData('source');
 			
 			// update listMap
-			updateListOrder(dragSourceElement.textContent,e.target.textContent);
+			updateListOrder( uiApp.getDataAttr(dragSourceElement), uiApp.getDataAttr(e.target) );
 		}
 		return false;
 	};

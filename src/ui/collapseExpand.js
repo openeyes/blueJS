@@ -79,13 +79,12 @@
 	*/
 	const userClick = (ev, defaults) => {
 		let btn = ev.target;
-		let dataAttr = uiApp.getSetDataAttr(btn,states.length);
-		
-		if(Number.isInteger(dataAttr)){
+		let dataAttr = uiApp.getDataAttr(btn);
+		if(dataAttr){
 			/*
 			Setup already, change it's state
 			*/
-			states[dataAttr].change();
+			states[parseFloat(dataAttr)].change();
 		} else {
 			/*
 			Collapsed Data is generally collapsed (hidden)
@@ -96,7 +95,8 @@
 												content: btn.parentNode.querySelector( defaults.content ),
 												collapsed:btn.classList.contains('expand') });
 				
-			expander.change(); // user has clicked, update view												
+			expander.change(); // user has clicked, update view	
+			uiApp.setDataAttr(btn, states.length); // flag on DOM										
 			states.push(expander); // store state			
 		}
 	};
