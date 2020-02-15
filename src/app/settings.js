@@ -9,21 +9,10 @@
 		/*
 		Newblue CSS contains some key
 		media query widths, this are found in: config.all.scss
-		Story the key ones for JS
+		Store the key ones for JS
 		*/
-		css : {
-			extendedBrowserSize: 1440,
-			browserHotlistFixSize: 1890,
-		},
-	};
-	
-	/**
-	 * Get settings
-	 * @param  {String} key The setting key (optional)
-	 * @return {*}          The setting
-	 */
-	var getSetting = function (key) {
-		return settings[key];
+		get cssExtendBrowserSize(){ return 1890; },
+		get cssBrowserHotlistFixSize(){ return 1440; }
 	};
 	
 	/**
@@ -32,7 +21,7 @@
 	* @returns {Sting} 
 	*/
 	const domDataAttribute = (suffix = false) => {
-		let attr = suffix === false ? 'oeui' : 'oeui-' + suffix;
+		let attr = !suffix ? 'bluejay' : 'bluejay-' + suffix;
 		return 'data-' + attr;
 	};
 	
@@ -42,7 +31,7 @@
 	* @param {String} value
 	*/
 	const setDataAttr = (el,value) => {
-		el.setAttribute(uiApp.getDataAttributeName(), value); 
+		el.setAttribute(domDataAttribute(), value); 
 	};
 	
 	/**
@@ -51,7 +40,7 @@
 	* @returns {String||null} 
 	*/
 	const getDataAttr = (el) => {
-		const dataAttr = uiApp.getDataAttributeName();
+		const dataAttr = domDataAttribute();
 		if(el.hasAttribute(dataAttr)){
 			return el.getAttribute(dataAttr);
 		} else { 
@@ -60,7 +49,7 @@
 	};
 
 	// Extend App
-	uiApp.extend('getSetting',getSetting);
+	uiApp.extend('settings',settings);
 	uiApp.extend('getDataAttributeName',domDataAttribute);
 	uiApp.extend('setDataAttr',setDataAttr);
 	uiApp.extend('getDataAttr',getDataAttr);

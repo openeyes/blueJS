@@ -60,7 +60,7 @@
 		let top = domRect.top - h - offsetH + 'px';
 	
 		// watch out for the hotlist
-		let extendedBrowser = uiApp.getSetting('css').extendedBrowserSize;
+		let extendedBrowser = uiApp.settings.cssExtendBrowserSize;
 		let maxRightPos = winWidth > extendedBrowser ? extendedBrowser : winWidth;
 		
 		// Icon too near either side?

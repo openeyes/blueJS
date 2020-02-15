@@ -31,32 +31,20 @@
 		);
 	});
 	
-	// updated DOM with uniqueIDs
+	// updated all DOM <li>'s with uniqueIDs
 	pps.forEach((list) => {
 		uiApp.nodeArray(list.querySelectorAll('li')).forEach((li,index) => {
 			uiApp.setDataAttr(li,index);
 		});
 	});
 	
-	// use a unique id for each new DOM list, use this for basic DOM diffing 
+	// use a unique id for each new DOM list added, using this for basic DOM diffing 
 	let listUID = listMap.length+1;  
-
-	/**
-	* update list map based on the last drag event
-	* @param {String} a - Source textContent
-	* @param {String} b - textContent of Element switched with
-	*/
-	const updateListOrder = (aNum,bNum) => {
-		let a = listMap.findIndex( e => e.id == aNum );
-		let b = listMap.findIndex( e => e.id == bNum );
-		listMap[a] = listMap.splice(b,1,listMap[a])[0];		
-		if(pps.length > 1) reorderLists();
-	};
 	
 	/**
 	* loop through and check DOM against listMap 
 	*/
-	const reorderLists = () => {
+	const reorderDOM = () => {
 		pps.forEach((list) => {
 			let listNodes = list.querySelectorAll('li');
 			for(let i=0, len=listMap.length; i<len; i++){
@@ -103,7 +91,6 @@
 					].join('');
 	};
 	
-	
 	/**
 	* Create New <li> Fragment for insertion
 	* @param {Object} obj - new listMap Obj 
@@ -117,6 +104,19 @@
 		fragment.appendChild(li);
 		
 		return fragment;
+	};
+	
+	/**
+	* Callback for 'drop', update listMap based on the last drag'n'drop
+	* @param {String} a - Source textContent
+	* @param {String} b - textContent of Element switched with
+	*/
+	const updateListOrder = (aNum,bNum) => {
+		let a = listMap.findIndex( e => e.id == aNum );
+		let b = listMap.findIndex( e => e.id == bNum );
+		listMap[a] = listMap.splice(b,1,listMap[a])[0];	
+		// other lists to reorder?	
+		if(pps.length > 1) reorderDOM();
 	};
 
 	/**
@@ -157,7 +157,6 @@
 		listMap.splice(i,1);
 	};
 
-
 	/* 
 	Events
 	*/
@@ -171,7 +170,6 @@
 			});
 		});
 	});
-	
 
 	/*
 	********************************

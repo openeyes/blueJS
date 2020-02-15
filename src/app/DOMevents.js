@@ -33,6 +33,14 @@
 	*/
 	const checkListeners = (event,listeners) => {
 		if(event.target === document) return;
+/*
+		
+		if(event.type === "mousedown"){
+			console.log(event.target);
+			console.log(event);	
+		}
+		
+*/
 		listeners.forEach((item) => {
 			if(event.target.matches(item.selector)){
 				item.cb(event);
@@ -77,9 +85,9 @@
 	To improve performance delegate Event handling to the document
 	*/
 	document.addEventListener('DOMContentLoaded', () => {
-        document.addEventListener('mouseenter',	(event) => checkListeners(event,hover),		true);
-		document.addEventListener('mousedown',	(event) => checkListeners(event,click),		false);  // need to use bubbling for "click"
-		document.addEventListener('mouseleave',	(event) => checkListeners(event,exit),		true);
+        document.addEventListener('mouseenter',	(event) => checkListeners(event,hover),		{capture:true} );
+		document.addEventListener('mousedown',	(event) => checkListeners(event,click),		{capture:true} ); 
+		document.addEventListener('mouseleave',	(event) => checkListeners(event,exit),		{capture:true} );
 		// Throttle high rate events
 		window.addEventListener('scroll', () => scrollThrottle(), true); 
 		window.onresize = () => resizeThrottle(); 

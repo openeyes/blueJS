@@ -109,6 +109,14 @@ const bluejay = (function () {
 	*/
 	const checkListeners = (event,listeners) => {
 		if(event.target === document) return;
+/*
+		
+		if(event.type === "mousedown"){
+			console.log(event.target);
+			console.log(event);	
+		}
+		
+*/
 		listeners.forEach((item) => {
 			if(event.target.matches(item.selector)){
 				item.cb(event);
@@ -153,9 +161,9 @@ const bluejay = (function () {
 	To improve performance delegate Event handling to the document
 	*/
 	document.addEventListener('DOMContentLoaded', () => {
-        document.addEventListener('mouseenter',	(event) => checkListeners(event,hover),		true);
-		document.addEventListener('mousedown',	(event) => checkListeners(event,click),		false);  // need to use bubbling for "click"
-		document.addEventListener('mouseleave',	(event) => checkListeners(event,exit),		true);
+        document.addEventListener('mouseenter',	(event) => checkListeners(event,hover),		{capture:true} );
+		document.addEventListener('mousedown',	(event) => checkListeners(event,click),		{capture:true} ); 
+		document.addEventListener('mouseleave',	(event) => checkListeners(event,exit),		{capture:true} );
 		// Throttle high rate events
 		window.addEventListener('scroll', () => scrollThrottle(), true); 
 		window.onresize = () => resizeThrottle(); 
@@ -371,21 +379,10 @@ const bluejay = (function () {
 		/*
 		Newblue CSS contains some key
 		media query widths, this are found in: config.all.scss
-		Story the key ones for JS
+		Store the key ones for JS
 		*/
-		css : {
-			extendedBrowserSize: 1440,
-			browserHotlistFixSize: 1890,
-		},
-	};
-	
-	/**
-	 * Get settings
-	 * @param  {String} key The setting key (optional)
-	 * @return {*}          The setting
-	 */
-	var getSetting = function (key) {
-		return settings[key];
+		get cssExtendBrowserSize(){ return 1890; },
+		get cssBrowserHotlistFixSize(){ return 1440; }
 	};
 	
 	/**
@@ -394,7 +391,7 @@ const bluejay = (function () {
 	* @returns {Sting} 
 	*/
 	const domDataAttribute = (suffix = false) => {
-		let attr = suffix === false ? 'oeui' : 'oeui-' + suffix;
+		let attr = !suffix ? 'bluejay' : 'bluejay-' + suffix;
 		return 'data-' + attr;
 	};
 	
@@ -404,7 +401,7 @@ const bluejay = (function () {
 	* @param {String} value
 	*/
 	const setDataAttr = (el,value) => {
-		el.setAttribute(uiApp.getDataAttributeName(), value); 
+		el.setAttribute(domDataAttribute(), value); 
 	};
 	
 	/**
@@ -413,7 +410,7 @@ const bluejay = (function () {
 	* @returns {String||null} 
 	*/
 	const getDataAttr = (el) => {
-		const dataAttr = uiApp.getDataAttributeName();
+		const dataAttr = domDataAttribute();
 		if(el.hasAttribute(dataAttr)){
 			return el.getAttribute(dataAttr);
 		} else { 
@@ -422,7 +419,7 @@ const bluejay = (function () {
 	};
 
 	// Extend App
-	uiApp.extend('getSetting',getSetting);
+	uiApp.extend('settings',settings);
 	uiApp.extend('getDataAttributeName',domDataAttribute);
 	uiApp.extend('setDataAttr',setDataAttr);
 	uiApp.extend('getDataAttr',getDataAttr);
@@ -618,7 +615,7 @@ const bluejay = (function () {
 		let top = domRect.top - h - offsetH + 'px';
 	
 		// watch out for the hotlist
-		let extendedBrowser = uiApp.getSetting('css').extendedBrowserSize;
+		let extendedBrowser = uiApp.settings.cssExtendBrowserSize;
 		let maxRightPos = winWidth > extendedBrowser ? extendedBrowser : winWidth;
 		
 		// Icon too near either side?

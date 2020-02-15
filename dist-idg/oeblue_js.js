@@ -109,6 +109,14 @@ const bluejay = (function () {
 	*/
 	const checkListeners = (event,listeners) => {
 		if(event.target === document) return;
+/*
+		
+		if(event.type === "mousedown"){
+			console.log(event.target);
+			console.log(event);	
+		}
+		
+*/
 		listeners.forEach((item) => {
 			if(event.target.matches(item.selector)){
 				item.cb(event);
@@ -153,9 +161,9 @@ const bluejay = (function () {
 	To improve performance delegate Event handling to the document
 	*/
 	document.addEventListener('DOMContentLoaded', () => {
-        document.addEventListener('mouseenter',	(event) => checkListeners(event,hover),		true);
-		document.addEventListener('mousedown',	(event) => checkListeners(event,click),		false);  // need to use bubbling for "click"
-		document.addEventListener('mouseleave',	(event) => checkListeners(event,exit),		true);
+        document.addEventListener('mouseenter',	(event) => checkListeners(event,hover),		{capture:true} );
+		document.addEventListener('mousedown',	(event) => checkListeners(event,click),		{capture:true} ); 
+		document.addEventListener('mouseleave',	(event) => checkListeners(event,exit),		{capture:true} );
 		// Throttle high rate events
 		window.addEventListener('scroll', () => scrollThrottle(), true); 
 		window.onresize = () => resizeThrottle(); 
@@ -371,21 +379,10 @@ const bluejay = (function () {
 		/*
 		Newblue CSS contains some key
 		media query widths, this are found in: config.all.scss
-		Story the key ones for JS
+		Store the key ones for JS
 		*/
-		css : {
-			extendedBrowserSize: 1440,
-			browserHotlistFixSize: 1890,
-		},
-	};
-	
-	/**
-	 * Get settings
-	 * @param  {String} key The setting key (optional)
-	 * @return {*}          The setting
-	 */
-	var getSetting = function (key) {
-		return settings[key];
+		get cssExtendBrowserSize(){ return 1890; },
+		get cssBrowserHotlistFixSize(){ return 1440; }
 	};
 	
 	/**
@@ -394,7 +391,7 @@ const bluejay = (function () {
 	* @returns {Sting} 
 	*/
 	const domDataAttribute = (suffix = false) => {
-		let attr = suffix === false ? 'oeui' : 'oeui-' + suffix;
+		let attr = !suffix ? 'bluejay' : 'bluejay-' + suffix;
 		return 'data-' + attr;
 	};
 	
@@ -404,7 +401,7 @@ const bluejay = (function () {
 	* @param {String} value
 	*/
 	const setDataAttr = (el,value) => {
-		el.setAttribute(uiApp.getDataAttributeName(), value); 
+		el.setAttribute(domDataAttribute(), value); 
 	};
 	
 	/**
@@ -413,7 +410,7 @@ const bluejay = (function () {
 	* @returns {String||null} 
 	*/
 	const getDataAttr = (el) => {
-		const dataAttr = uiApp.getDataAttributeName();
+		const dataAttr = domDataAttribute();
 		if(el.hasAttribute(dataAttr)){
 			return el.getAttribute(dataAttr);
 		} else { 
@@ -422,7 +419,7 @@ const bluejay = (function () {
 	};
 
 	// Extend App
-	uiApp.extend('getSetting',getSetting);
+	uiApp.extend('settings',settings);
 	uiApp.extend('getDataAttributeName',domDataAttribute);
 	uiApp.extend('setDataAttr',setDataAttr);
 	uiApp.extend('getDataAttr',getDataAttr);
@@ -618,7 +615,7 @@ const bluejay = (function () {
 		let top = domRect.top - h - offsetH + 'px';
 	
 		// watch out for the hotlist
-		let extendedBrowser = uiApp.getSetting('css').extendedBrowserSize;
+		let extendedBrowser = uiApp.settings.cssExtendBrowserSize;
 		let maxRightPos = winWidth > extendedBrowser ? extendedBrowser : winWidth;
 		
 		// Icon too near either side?
@@ -1238,6 +1235,331 @@ const bluejay = (function () {
 
 	'use strict';	
 	
+	uiApp.addModule('navHotlist');
+			
+	const cssActive = 'active';
+	const cssOpen = 'open';
+	
+	/*
+	Methods	
+	*/
+	const _over = () => ({
+		over: function(){
+			if(this.isFixed) return;
+			this.btn.classList.add( cssActive );
+			this.show();
+		}	
+	});
+	
+	const _changeState = () => ({
+		changeState:function(){
+			if(this.isFixed) return;
+			if(!this.open){
+				this.makeLocked();
+				this.over();
+			} else {
+				if(this.isLocked){
+					this.isLocked = false;
+					this.hide();
+				} else {
+					this.makeLocked();
+				}
+			}
+		}
+	});
+	
+	const _makeLocked = () => ({
+		makeLocked: function(){
+			this.isLocked = true; 
+			this.btn.classList.add( cssOpen );
+		}
+	});
+	
+	const _fixedOpen= () => ({
+		fixedOpen: function(b){
+			this.isFixed = b; 
+			if(b){
+				this.isLocked = false;
+				this.btn.classList.add( cssOpen );
+				this.btn.classList.remove( cssActive );
+				this.show();
+			} else {
+				this.hide();
+			}
+		}
+	});
+
+	
+	const _show = () => ({
+		show:function(){
+			if(this.open) return;
+			this.open = true;
+			
+			this.content.style.display = "block";
+			this.mouseOutWrapper();
+		}	
+	});
+	
+	const _hide = () => ({
+		hide:function(){
+			if(this.open === false || this.isLocked || this.isFixed ) return;
+			this.open = false;
+			
+			this.btn.classList.remove( cssActive, cssOpen );
+			this.content.style.display = "none";
+		}
+	});
+	
+	const _mouseOutWrapper = () => ({
+		mouseOutWrapper: function(){
+			this.wrapper.addEventListener('mouseleave',(ev) => {
+				ev.stopPropagation();
+				this.hide();
+			},{once:true});
+		}
+	});
+	
+
+	const hotlist = (() => {
+		const me = {
+			btn: document.querySelector('#js-nav-hotlist-btn'),
+			content: document.querySelector('#js-hotlist-panel'),
+			wrapper: document.querySelector('#js-hotlist-panel-wrapper'),
+			open: false,
+			isLocked: false,
+			isFixed: false,
+		};
+		
+		return Object.assign( 	me,
+								_changeState(),
+								_over(),
+								_mouseOutWrapper(),
+								_makeLocked(),
+								_show(),
+								_hide(),
+								_fixedOpen() );
+	})();
+	
+	uiApp.registerForClick('#js-nav-hotlist-btn', () => hotlist.changeState() );			
+	uiApp.registerForHover('#js-nav-hotlist-btn', () => hotlist.over() );
+	
+	
+	/*
+	Hotlist can be Locked open if: 
+	1) The browser is wide enough
+	2) The content area allows it
+	*/
+	const checkBrowserWidth = () => {
+		let btn = document.querySelector('#js-nav-hotlist-btn');
+		if(btn.dataset.fixable){
+			if(window.innerWidth > uiApp.settings.cssExtendBrowserSize){
+				hotlist.fixedOpen(true);
+			} else {
+				hotlist.fixedOpen(false);
+			}
+		}
+	};
+	
+	uiApp.listenForResize(checkBrowserWidth);
+	
+
+
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('navLogo');
+	
+	const cssActive = 'active';
+	const cssOpen = 'open';
+	const selector = '#js-openeyes-btn';
+	
+	/*
+	Methods	
+	*/
+
+	const _change = () => ({
+		/**
+		* Callback for 'click'
+		*/
+		change: function(){
+			if(this.open)	this.hide();
+			else			this.show();
+		}
+	});
+
+	const _over = () => ({
+		/**
+		* Callback for 'hover'
+		*/
+		over: function(){
+			this.btn.classList.add( cssActive );
+		}	
+	});
+	
+	const _out = () => ({
+		/**
+		* Callback for 'exit'
+		*/
+		out: function(){
+			this.btn.classList.remove( cssActive );
+		}	
+	});
+
+	const _show = () => ({
+		/**
+		* Show content
+		*/
+		show:function(){
+			if(this.open) return;
+			this.open = true;
+			this.btn.classList.add( cssOpen );
+			this.content.style.display = "block";
+			this.mouseOutHide();
+		}	
+	});
+	
+	const _hide = () => ({
+		/**
+		* Hide content
+		*/
+		hide:function(){
+			if(this.open === false) return;
+			this.open = false;
+			this.btn.classList.remove( cssOpen, cssActive );
+			this.content.style.display = "none";			
+		}
+	});
+	
+	const _mouseOutHide = () => ({
+		/**
+		* Enhanced behaviour for mouse/trackpad
+		*/
+		mouseOutHide: function(){
+			this.wrapper.addEventListener('mouseleave',(ev) => {
+				ev.stopPropagation();
+				this.hide();
+			},{once:true});
+		}
+	});
+	
+	/**
+	* oelogo 
+	* (using IIFE to maintain code pattern)
+	*/
+	const oelogo = (() => {
+		let btn = document.querySelector(selector);
+		return Object.assign( 	{	btn: btn,
+									content: document.querySelector('#js-openeyes-info'),
+									wrapper: uiApp.getParent(btn, '.openeyes-brand'),
+									open: false
+								},
+								_over(),
+								_out(),
+								_change(),
+								_show(),
+								_hide(),
+								_mouseOutHide() );
+	})();
+	
+	/*
+	Events
+	*/
+	uiApp.registerForClick(selector, () => oelogo.change());			
+	uiApp.registerForHover(selector, () => oelogo.over());
+	uiApp.registerForExit(selector, () => oelogo.out());
+	
+
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('navShortcuts');
+	
+	const cssActive = 'active';
+	const selector = '#js-nav-shortcuts-btn';
+	const btn = document.querySelector(selector);
+	if(btn === null) return;
+		
+	/*
+	Methods	
+	*/
+	
+	const _change = () => ({
+		/**
+		* Callback for 'click'
+		*/
+		change: function(){
+			if(this.open)	this.hide();
+			else			this.show();
+		}
+	});
+	
+	const _show = () => ({
+		/**
+		* Callback for 'hover'
+		* Enhanced behaviour for mouse/trackpad
+		*/
+		show:function(){
+			if(this.open) return;
+			this.open = true;
+			this.btn.classList.add( cssActive );
+			this.content.style.display = "block";
+			this.mouseOutHide();
+		}	
+	});
+	
+	const _hide = () => ({
+		/**
+		* Hide content
+		*/
+		hide:function(){
+			if(this.open === false) return;
+			this.open = false;
+			this.btn.classList.remove( cssActive );
+			this.content.style.display = "none";
+		}
+	});
+	
+	const _mouseOutHide = () => ({
+		/**
+		* Enhanced behaviour for mouse/trackpad
+		*/
+		mouseOutHide: function(){
+			this.wrapper.addEventListener('mouseleave',(ev) => {
+				ev.stopPropagation();
+				this.hide();
+			},{once:true});
+		}
+	});
+	
+	
+	const shortcuts = (() => {
+		return Object.assign(	{	btn:btn,
+									content: document.querySelector('#js-nav-shortcuts-subnav'),
+									wrapper: document.querySelector('#js-nav-shortcuts'),
+									open: false 
+								},
+								_change(),
+								_show(),
+								_hide(),
+								_mouseOutHide() );
+	})();
+	
+	/*
+	Events 
+	*/
+	uiApp.registerForClick(selector, () => shortcuts.change() );			
+	uiApp.registerForHover(selector, () => shortcuts.show() );
+	
+
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
 	uiApp.addModule('notificationBanner');	
 	
 	if(document.querySelector('#oe-admin-notifcation') === null) return;
@@ -1564,32 +1886,20 @@ const bluejay = (function () {
 		);
 	});
 	
-	// updated DOM with uniqueIDs
+	// updated all DOM <li>'s with uniqueIDs
 	pps.forEach((list) => {
 		uiApp.nodeArray(list.querySelectorAll('li')).forEach((li,index) => {
 			uiApp.setDataAttr(li,index);
 		});
 	});
 	
-	// use a unique id for each new DOM list, use this for basic DOM diffing 
+	// use a unique id for each new DOM list added, using this for basic DOM diffing 
 	let listUID = listMap.length+1;  
-
-	/**
-	* update list map based on the last drag event
-	* @param {String} a - Source textContent
-	* @param {String} b - textContent of Element switched with
-	*/
-	const updateListOrder = (aNum,bNum) => {
-		let a = listMap.findIndex( e => e.id == aNum );
-		let b = listMap.findIndex( e => e.id == bNum );
-		listMap[a] = listMap.splice(b,1,listMap[a])[0];		
-		if(pps.length > 1) reorderLists();
-	};
 	
 	/**
 	* loop through and check DOM against listMap 
 	*/
-	const reorderLists = () => {
+	const reorderDOM = () => {
 		pps.forEach((list) => {
 			let listNodes = list.querySelectorAll('li');
 			for(let i=0, len=listMap.length; i<len; i++){
@@ -1636,7 +1946,6 @@ const bluejay = (function () {
 					].join('');
 	};
 	
-	
 	/**
 	* Create New <li> Fragment for insertion
 	* @param {Object} obj - new listMap Obj 
@@ -1650,6 +1959,19 @@ const bluejay = (function () {
 		fragment.appendChild(li);
 		
 		return fragment;
+	};
+	
+	/**
+	* Callback for 'drop', update listMap based on the last drag'n'drop
+	* @param {String} a - Source textContent
+	* @param {String} b - textContent of Element switched with
+	*/
+	const updateListOrder = (aNum,bNum) => {
+		let a = listMap.findIndex( e => e.id == aNum );
+		let b = listMap.findIndex( e => e.id == bNum );
+		listMap[a] = listMap.splice(b,1,listMap[a])[0];	
+		// other lists to reorder?	
+		if(pps.length > 1) reorderDOM();
 	};
 
 	/**
@@ -1690,7 +2012,6 @@ const bluejay = (function () {
 		listMap.splice(i,1);
 	};
 
-
 	/* 
 	Events
 	*/
@@ -1704,7 +2025,6 @@ const bluejay = (function () {
 			});
 		});
 	});
-	
 
 	/*
 	********************************
