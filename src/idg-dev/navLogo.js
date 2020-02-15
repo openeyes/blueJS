@@ -78,7 +78,7 @@
 	});
 	
 	/**
-	* oelogo 
+	* oelogo singleton 
 	* (using IIFE to maintain code pattern)
 	*/
 	const oelogo = (() => {

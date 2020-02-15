@@ -381,6 +381,7 @@ const bluejay = (function () {
 		media query widths, this are found in: config.all.scss
 		Store the key ones for JS
 		*/
+		get cssTopBarHeight(){ return 60; },
 		get cssExtendBrowserSize(){ return 1890; },
 		get cssBrowserHotlistFixSize(){ return 1440; }
 	};

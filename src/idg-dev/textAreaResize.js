@@ -15,6 +15,8 @@
 		textArea.style.height = h + 'px';
 	};
 
+	uiApp.extend('resizeTextArea',resize);	
+	
 	/**
 	* Resize textarea on inputs
 	*/
@@ -33,5 +35,7 @@
 			resize(t);
 		});
 	});
-
+	
+	
+	
 })(bluejay); 
