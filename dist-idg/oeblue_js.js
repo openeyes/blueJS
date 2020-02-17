@@ -1298,6 +1298,36 @@ const bluejay = (function () {
 
 	'use strict';	
 	
+	uiApp.addModule('messagePreview');	
+	
+	/*
+	Message hub... view all the message
+	*/
+	if( document.querySelector('.home-messages') === null ) return;
+	
+	
+	const userClick = (ev) => {
+		let icon = ev.target;
+		let message = uiApp.getParent(icon,'tr').querySelector('.message');
+		if(icon.classList.contains('expand')){
+			message.classList.add('expand');
+			icon.classList.replace('expand','collapse');
+		} else {
+			message.classList.remove('expand');
+			icon.classList.replace('collapse','expand');
+		}		
+	};
+
+	/*
+	Events
+	*/
+	uiApp.registerForClick(	'.js-expand-message',	userClick );
+
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
 	uiApp.addModule('navHotlist');
 			
 	const cssActive = 'active';
@@ -2723,4 +2753,37 @@ const bluejay = (function () {
 	
 	
 	
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('vcScratchPad');	
+	
+	const scratchPad = document.querySelector('#oe-vc-scratchpad');
+	if(scratchPad === null) return;
+	
+	let offsetX, offsetY;
+
+	const handleStart = (e) => {
+		e.dataTransfer.dropEffect = "move";
+		let rect = e.target.getBoundingClientRect();
+		offsetX = e.clientX - rect.left;
+		offsetY = e.clientY - rect.top;
+	};
+	
+	const handleEnd = (e) => {
+		let top = Math.round(e.clientY - offsetY);
+		let left = Math.round(e.clientX - offsetX);
+		// stop it being dragged off screen
+		top = top < 1 ? 1 : top;
+		left = left < 1 ? 1 : left;
+		scratchPad.style.top = top + "px";
+		scratchPad.style.left = left + "px";
+	};
+
+	scratchPad.addEventListener("dragstart", handleStart, false);
+	scratchPad.addEventListener("dragend", handleEnd, false);
+	
+
 })(bluejay); 
