@@ -61,7 +61,10 @@
 		}
 	});
 	
-	
+	/**
+	* shortcuts singleton 
+	* (using IIFE to maintain code pattern)
+	*/
 	const shortcuts = (() => {
 		return Object.assign(	{	btn:btn,
 									content: document.querySelector('#js-nav-shortcuts-subnav'),

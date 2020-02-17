@@ -33,18 +33,9 @@
 	*/
 	const checkListeners = (event,listeners) => {
 		if(event.target === document) return;
-/*
-		
-		if(event.type === "mousedown"){
-			console.log(event.target);
-			console.log(event);	
-		}
-		
-*/
 		listeners.forEach((item) => {
 			if(event.target.matches(item.selector)){
 				item.cb(event);
-				event.stopPropagation();
 			}
 		});
 	};
@@ -56,6 +47,7 @@
 	const broadcast = (listeners) => {
 		listeners.forEach((item) => {
 			item.cb(event);
+			event.stopPropagation();
 		});
 	};
 
@@ -86,14 +78,12 @@
 	*/
 	document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener('mouseenter',	(event) => checkListeners(event,hover),		{capture:true} );
-		document.addEventListener('mousedown',	(event) => checkListeners(event,click),		{capture:true} ); 
+		document.addEventListener('mousedown',	(event) => checkListeners(event,click),		{capture:false} ); 
 		document.addEventListener('mouseleave',	(event) => checkListeners(event,exit),		{capture:true} );
 		// Throttle high rate events
 		window.addEventListener('scroll', () => scrollThrottle(), true); 
 		window.onresize = () => resizeThrottle(); 
-		
-		console.timeEnd('***bluejay***');
-    });
+    },{once:true});
 	
 	// extend App
 	uiApp.extend('registerForHover',	(selector,cb) => addListener(hover,selector,cb));

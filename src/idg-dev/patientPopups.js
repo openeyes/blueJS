@@ -96,8 +96,9 @@
 	
 
 	/**
-	* hotlist singleton 
-	* (using IIFE to maintain code pattern)
+	* @class
+	* PatientPopups
+	* @param {object} me - set up
 	*/
 	const PatientPopup = (me) => {
 		me.open = false;
@@ -112,15 +113,22 @@
 								_makeHidden() );
 	};
 
-
+	
+	/**
+	* group control all popups
+	*/
+	const all = [];
 	const hideOtherPopups = (showing) => {
-		allPopups.forEach((popup)=>{
+		all.forEach((popup)=>{
 			if(popup != showing){
 				popup.makeHidden();
 			}
 		});
 	};
 	
+	/**
+	* Init
+	*/
 	const popupMap = [
 		{btn:'#js-quicklook-btn', popup:'#patient-summary-quicklook' },
 		{btn:'#js-demographics-btn', popup:'#patient-popup-demographics'},
@@ -130,19 +138,17 @@
 		{btn:'#js-patient-extra-btn', popup:'#patient-popup-trials'},
 	];
 	
-	
-	const allPopups = [];
-	
 	popupMap.forEach((item)=>{
-		let popup = PatientPopup(	{	btn:document.querySelector(item.btn),
-										popup:document.querySelector(item.popup)
-									});
-		
-		uiApp.registerForClick(item.btn, () => popup.changeState());
-		uiApp.registerForHover(item.btn, () => popup.over());
-		uiApp.registerForExit(item.btn, () => popup.out());
-		
-		allPopups.push(popup);
+		let btn = document.querySelector(item.btn);
+		if(btn !== null){
+			let popup = PatientPopup({	btn:document.querySelector(item.btn),
+										popup:document.querySelector(item.popup) });
+										
+			uiApp.registerForClick(item.btn, () => popup.changeState());
+			uiApp.registerForHover(item.btn, () => popup.over());
+			uiApp.registerForExit(item.btn, () => popup.out());
+			all.push(popup);
+		}	
 	});
 	
 

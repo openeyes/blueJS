@@ -109,7 +109,6 @@
 		}
 	});
 	
-
 	/**
 	* hotlist singleton 
 	* (using IIFE to maintain code pattern)

@@ -15,7 +15,7 @@ const bluejay = (function () {
 
 	'use strict';
 
-	console.time('***bluejay***');
+	console.time('[blue] Ready');
 
 	const methods = {}; 	// Create a public methods object 
 	const debug = true;		// Output debug to console
@@ -32,9 +32,9 @@ const bluejay = (function () {
 		only extend if not already added 
 		and if the name is available
 		*/
-		if(!fn.id && !(name in methods)){
+		if(!fn._app && !(name in methods)){
 			// ok, extend		
-			fn.id = extendID++;
+			fn._app = extendID++;
 			methods[name] = fn;
 			return true;
 			
@@ -60,13 +60,14 @@ const bluejay = (function () {
 	* Provide set up feedback whilst debugging
 	*/
 	if(debug){
-		methods.log('OE JS UI layer... ready');
+		methods.log('OE JS UI layer... starting');
 		methods.log('DEBUG MODE');
 		document.addEventListener('DOMContentLoaded', () => {
 			// list API methods 
 			let apiMethods = [];
 			for(const name in methods)	apiMethods.push(name); 
-			methods.log('[API] Methods: ' + apiMethods.join(', ') );	
+			methods.log('[API] [Helper Methods] ' + apiMethods.join(', ') );
+			console.timeEnd('[blue] Ready');
 		},{once:true});
 	}
 
@@ -109,18 +110,9 @@ const bluejay = (function () {
 	*/
 	const checkListeners = (event,listeners) => {
 		if(event.target === document) return;
-/*
-		
-		if(event.type === "mousedown"){
-			console.log(event.target);
-			console.log(event);	
-		}
-		
-*/
 		listeners.forEach((item) => {
 			if(event.target.matches(item.selector)){
 				item.cb(event);
-				event.stopPropagation();
 			}
 		});
 	};
@@ -132,6 +124,7 @@ const bluejay = (function () {
 	const broadcast = (listeners) => {
 		listeners.forEach((item) => {
 			item.cb(event);
+			event.stopPropagation();
 		});
 	};
 
@@ -162,14 +155,12 @@ const bluejay = (function () {
 	*/
 	document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener('mouseenter',	(event) => checkListeners(event,hover),		{capture:true} );
-		document.addEventListener('mousedown',	(event) => checkListeners(event,click),		{capture:true} ); 
+		document.addEventListener('mousedown',	(event) => checkListeners(event,click),		{capture:false} ); 
 		document.addEventListener('mouseleave',	(event) => checkListeners(event,exit),		{capture:true} );
 		// Throttle high rate events
 		window.addEventListener('scroll', () => scrollThrottle(), true); 
 		window.onresize = () => resizeThrottle(); 
-		
-		console.timeEnd('***bluejay***');
-    });
+    },{once:true});
 	
 	// extend App
 	uiApp.extend('registerForHover',	(selector,cb) => addListener(hover,selector,cb));

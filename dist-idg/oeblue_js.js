@@ -15,7 +15,7 @@ const bluejay = (function () {
 
 	'use strict';
 
-	console.time('***bluejay***');
+	console.time('[blue] Ready');
 
 	const methods = {}; 	// Create a public methods object 
 	const debug = true;		// Output debug to console
@@ -32,9 +32,9 @@ const bluejay = (function () {
 		only extend if not already added 
 		and if the name is available
 		*/
-		if(!fn.id && !(name in methods)){
+		if(!fn._app && !(name in methods)){
 			// ok, extend		
-			fn.id = extendID++;
+			fn._app = extendID++;
 			methods[name] = fn;
 			return true;
 			
@@ -60,13 +60,14 @@ const bluejay = (function () {
 	* Provide set up feedback whilst debugging
 	*/
 	if(debug){
-		methods.log('OE JS UI layer... ready');
+		methods.log('OE JS UI layer... starting');
 		methods.log('DEBUG MODE');
 		document.addEventListener('DOMContentLoaded', () => {
 			// list API methods 
 			let apiMethods = [];
 			for(const name in methods)	apiMethods.push(name); 
-			methods.log('[API] Methods: ' + apiMethods.join(', ') );	
+			methods.log('[API] [Helper Methods] ' + apiMethods.join(', ') );
+			console.timeEnd('[blue] Ready');
 		},{once:true});
 	}
 
@@ -109,18 +110,9 @@ const bluejay = (function () {
 	*/
 	const checkListeners = (event,listeners) => {
 		if(event.target === document) return;
-/*
-		
-		if(event.type === "mousedown"){
-			console.log(event.target);
-			console.log(event);	
-		}
-		
-*/
 		listeners.forEach((item) => {
 			if(event.target.matches(item.selector)){
 				item.cb(event);
-				event.stopPropagation();
 			}
 		});
 	};
@@ -132,6 +124,7 @@ const bluejay = (function () {
 	const broadcast = (listeners) => {
 		listeners.forEach((item) => {
 			item.cb(event);
+			event.stopPropagation();
 		});
 	};
 
@@ -162,14 +155,12 @@ const bluejay = (function () {
 	*/
 	document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener('mouseenter',	(event) => checkListeners(event,hover),		{capture:true} );
-		document.addEventListener('mousedown',	(event) => checkListeners(event,click),		{capture:true} ); 
+		document.addEventListener('mousedown',	(event) => checkListeners(event,click),		{capture:false} ); 
 		document.addEventListener('mouseleave',	(event) => checkListeners(event,exit),		{capture:true} );
 		// Throttle high rate events
 		window.addEventListener('scroll', () => scrollThrottle(), true); 
 		window.onresize = () => resizeThrottle(); 
-		
-		console.timeEnd('***bluejay***');
-    });
+    },{once:true});
 	
 	// extend App
 	uiApp.extend('registerForHover',	(selector,cb) => addListener(hover,selector,cb));
@@ -1414,7 +1405,6 @@ const bluejay = (function () {
 		}
 	});
 	
-
 	/**
 	* hotlist singleton 
 	* (using IIFE to maintain code pattern)
@@ -1626,7 +1616,10 @@ const bluejay = (function () {
 		}
 	});
 	
-	
+	/**
+	* shortcuts singleton 
+	* (using IIFE to maintain code pattern)
+	*/
 	const shortcuts = (() => {
 		return Object.assign(	{	btn:btn,
 									content: document.querySelector('#js-nav-shortcuts-subnav'),
@@ -1727,6 +1720,7 @@ const bluejay = (function () {
 					{id:'#js-idg-worklist-ps-add', php:'worklist-PS.php', close:'.close-icon-btn' }, // Worklist PSD / PSG	
 					{id:'#analytics-change-filters', php:'analytics-filters.php', close:'.close-icon-btn' }, // Analytics Custom Filters	
 					{id:'#js-idg-add-new-contact-popup', php:'add-new-contact.php', close:'.close-icon-btn' }, // Add new contact
+					{id:'#js-idg-admin-queset-demo',php:'admin-add-queue.php',close:'.close-icon-btn'}
 					];
 	
 	
@@ -1867,8 +1861,9 @@ const bluejay = (function () {
 	
 
 	/**
-	* hotlist singleton 
-	* (using IIFE to maintain code pattern)
+	* @class
+	* PatientPopups
+	* @param {object} me - set up
 	*/
 	const PatientPopup = (me) => {
 		me.open = false;
@@ -1883,15 +1878,22 @@ const bluejay = (function () {
 								_makeHidden() );
 	};
 
-
+	
+	/**
+	* group control all popups
+	*/
+	const all = [];
 	const hideOtherPopups = (showing) => {
-		allPopups.forEach((popup)=>{
+		all.forEach((popup)=>{
 			if(popup != showing){
 				popup.makeHidden();
 			}
 		});
 	};
 	
+	/**
+	* Init
+	*/
 	const popupMap = [
 		{btn:'#js-quicklook-btn', popup:'#patient-summary-quicklook' },
 		{btn:'#js-demographics-btn', popup:'#patient-popup-demographics'},
@@ -1901,19 +1903,17 @@ const bluejay = (function () {
 		{btn:'#js-patient-extra-btn', popup:'#patient-popup-trials'},
 	];
 	
-	
-	const allPopups = [];
-	
 	popupMap.forEach((item)=>{
-		let popup = PatientPopup(	{	btn:document.querySelector(item.btn),
-										popup:document.querySelector(item.popup)
-									});
-		
-		uiApp.registerForClick(item.btn, () => popup.changeState());
-		uiApp.registerForHover(item.btn, () => popup.over());
-		uiApp.registerForExit(item.btn, () => popup.out());
-		
-		allPopups.push(popup);
+		let btn = document.querySelector(item.btn);
+		if(btn !== null){
+			let popup = PatientPopup({	btn:document.querySelector(item.btn),
+										popup:document.querySelector(item.popup) });
+										
+			uiApp.registerForClick(item.btn, () => popup.changeState());
+			uiApp.registerForHover(item.btn, () => popup.over());
+			uiApp.registerForExit(item.btn, () => popup.out());
+			all.push(popup);
+		}	
 	});
 	
 
@@ -2549,6 +2549,138 @@ const bluejay = (function () {
 	// register Events
 	uiApp.registerForClick('.'+css.flag, userClicksFlag);
 	
+	
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('sidebarQuicklookView');
+	
+	/*
+	sidebar event list - DOM
+	<ul> .events 
+	- <li> .event
+	-- .tooltip.quicklook (hover info for event type)
+	-- <a> (Event data)
+	--- .event-type (data attributes all in here for quickView)
+	
+	Remember!: the event sidebar can be re-oredered and filtered
+	*/
+	
+	/*
+	Quicklook (in DOM)
+	*/
+	
+	if( document.querySelector('ul.events') === null ) return;
+
+	let active = null;
+	
+	const findQuickLook = (eventType) => {
+		let li = uiApp.getParent(eventType, 'li');
+		return li.querySelector('.quicklook');
+	};
+
+	const hideQuickLook = () => {
+		if(active != null){
+			findQuickLook(active).classList.remove('fade-in');
+			active = null;
+		}
+	};
+
+	const showQuickLook = (newActive) => {
+		findQuickLook(newActive).classList.add('fade-in');
+		active = newActive;
+	};
+	
+	/*
+	QuickView 
+	DOM built dymnamically and content is loaded from PHP
+	*/
+
+	const _show = () => ({
+		/**
+		* Callback for 'hover'
+		* Enhanced behaviour for mouse/trackpad
+		*/
+		show:function(target){
+			const json = JSON.parse(target.dataset.quickview);
+			this.icon.className = "oe-i-e large " + json.icon;
+			this.titleDate.textContent = json.title + " - " + json.date;
+			
+			// returns a promise
+			uiApp.xhr('/idg-php/v3/_load/sidebar/quick-view/' + json.php)
+				.then( html => {
+					this.content.innerHTML = html;
+					this.div.classList.remove('fade-out');
+					this.div.classList.add("fade-in");
+				})
+				.catch(e => console.log('PHP failed to load',e));  // maybe output this to UI at somepoint, but for now...
+			
+		}	
+	});
+	
+	const _hide = () => ({
+		/**
+		* Hide content
+		*/
+		hide:function(){
+			this.div.classList.add('fade-out');
+			this.div.classList.remove("fade-in");
+		}
+	});
+	
+	/**
+	* quickView singleton 
+	* (using IIFE to maintain code pattern)
+	*/
+	const quickView = (() => {	
+		const div = document.createElement('div');
+		div.className = "oe-event-quick-view";
+		div.id = "js-event-quick-view";
+		div.innerHTML = [
+			'<div class="event-icon"><i class="oe-i-e large"></i></div>',
+			'<div class="title-date">Title - DD Mth YYYY</div>',
+			'<div class="audit-trail">Michael Morgan</div>',
+			'<div class="quick-view-content"></div>'].join('');
+		
+		uiApp.appendTo('body',div);
+		
+		return Object.assign(	{	div: div,
+									titleDate: div.querySelector('.title-date'),
+									icon: div.querySelector('.event-icon > .oe-i-e'),
+									content: div.querySelector('.quick-view-content'),
+								},
+								_show(),
+								_hide() );
+	})();
+	
+	/*
+	Events 
+	*/
+	uiApp.registerForHover('.event .event-type', (ev) => {	showQuickLook(ev.target);
+															quickView.show(ev.target);	});	
+																				
+	uiApp.registerForExit('.event .event-type', (ev) => {	hideQuickLook(); 
+															quickView.hide();	});
+	
+	/*
+	No click events?! Why?
+	Event sidebar is a list of <a> links, historically (and semantically)
+	they  are simply the way to navigate through the Events. Quicklook popup was
+	added later as a desktop (hover) enhancement. Then QuickView was added 
+	but it should STILL be only a hover enhancement (at least for now).
+	
+	If 'click' to lock OR touch support is required this will handle default <a> click:
+	document.addEventListener('click',(e) => {
+		if(e.target.matches('.event .event-type')){
+			e.preventDefault();
+			e.stopImmediatePropagation();
+			console.log('phew');
+		}
+	},{capture:true})
+	*/
+
 	
 })(bluejay); 
 (function (uiApp) {

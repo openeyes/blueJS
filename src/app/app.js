@@ -8,7 +8,7 @@ const bluejay = (function () {
 
 	'use strict';
 
-	console.time('***bluejay***');
+	console.time('[blue] Ready');
 
 	const methods = {}; 	// Create a public methods object 
 	const debug = true;		// Output debug to console
@@ -25,9 +25,9 @@ const bluejay = (function () {
 		only extend if not already added 
 		and if the name is available
 		*/
-		if(!fn.id && !(name in methods)){
+		if(!fn._app && !(name in methods)){
 			// ok, extend		
-			fn.id = extendID++;
+			fn._app = extendID++;
 			methods[name] = fn;
 			return true;
 			
@@ -53,13 +53,14 @@ const bluejay = (function () {
 	* Provide set up feedback whilst debugging
 	*/
 	if(debug){
-		methods.log('OE JS UI layer... ready');
+		methods.log('OE JS UI layer... starting');
 		methods.log('DEBUG MODE');
 		document.addEventListener('DOMContentLoaded', () => {
 			// list API methods 
 			let apiMethods = [];
 			for(const name in methods)	apiMethods.push(name); 
-			methods.log('[API] Methods: ' + apiMethods.join(', ') );	
+			methods.log('[API] [Helper Methods] ' + apiMethods.join(', ') );
+			console.timeEnd('[blue] Ready');
 		},{once:true});
 	}
 
