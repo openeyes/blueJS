@@ -49,7 +49,7 @@
 			/*
 			Setup already, change it's state
 			*/
-			states[dataAttr].change();
+			states[parseFloat(dataAttr)].change();
 		} else {
 			/*
 			Collapsed Data is generally collapsed (hidden)
@@ -59,7 +59,7 @@
 											icon: icon });
 				
 			reducer.change(); 		// user has clicked, update view
-			uiApp.getDataAttr(icon, states.length);											
+			uiApp.setDataAttr(icon, states.length);											
 			states.push(reducer); 	// store state			
 		}
 	};

@@ -13,16 +13,16 @@ const paths = {
 		input:	[	'./src/polyfills/*.js',		// to ensure concat order is correct
 					'./src/app/app.js',			// load in the app file first
 					'./src/app/*.js',			// app bits, then... 
-					'./src/ui/**/*.js'],		// UI modules
+					'./src/openeyes/**/*.js'],		// UI modules
 		output:	'./dist/',
 	},
 	idgDev: {
 		input:	[	'./src/polyfills/*.js',		// to ensure concat order is correct
 					'./src/app/app.js',			// load in the app file first
 					'./src/app/*.js',			// app bits, then... 
-					'./src/ui/**/*.js',			// UI Modules
-					'./src/idg-dev/*.js'],		// *** IDG Developement modules - extra development modules
-		output:	'./dist-idg/',
+					'./src/openeyes/**/*.js',			// UI Modules
+					'./src/idg/*.js'],		// *** IDG Developement modules - extra development modules
+		output:	'./idg-dev/',
 	}
 };
 

@@ -24,7 +24,7 @@
 		if(ev.target.matches('textarea')){
 			resize(ev.target);
 		}
-	},true);
+	},{capture:true});
 	
 	/**
 	* Expand textareas that are overflowing onLoad

@@ -124,7 +124,7 @@
 			/*
 			Setup already, change it's state
 			*/
-			states[parstFloat(dataAttr)].change();
+			states[parseFloat(dataAttr)].change();
 		} else {
 			/*
 			No DOM attribute, needs setting up
@@ -138,7 +138,7 @@
 			});
 			
 			group.change(); 	// a click! so change
-			uiApp.getDataAttr(parent, states.length);
+			uiApp.setDataAttr(parent, states.length);
 			states.push(group); // store new state	
 		}
 		

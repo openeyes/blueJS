@@ -9,6 +9,8 @@
 	const selector = '#js-nav-hotlist-btn';
 	const btn = document.querySelector(selector);
 	
+	if(btn === null) return;
+	
 	/*
 	Methods	
 	*/

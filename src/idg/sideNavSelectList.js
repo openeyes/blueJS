@@ -53,8 +53,7 @@
 			link.classList.add('selected');
 			updateListView(link.dataset.list);
 			activeFilter.classList.remove('selected');
-			activeFilter = link;
-			
+			activeFilter = link;	
 		});
 	});
  		

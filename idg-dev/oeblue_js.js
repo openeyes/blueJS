@@ -1173,7 +1173,7 @@ const bluejay = (function () {
 			/*
 			Setup already, change it's state
 			*/
-			states[parstFloat(dataAttr)].change();
+			states[parseFloat(dataAttr)].change();
 		} else {
 			/*
 			No DOM attribute, needs setting up
@@ -1187,7 +1187,7 @@ const bluejay = (function () {
 			});
 			
 			group.change(); 	// a click! so change
-			uiApp.getDataAttr(parent, states.length);
+			uiApp.setDataAttr(parent, states.length);
 			states.push(group); // store new state	
 		}
 		
@@ -1298,6 +1298,154 @@ const bluejay = (function () {
 
 	'use strict';	
 	
+	uiApp.addModule('filterOptions');
+	
+	/*
+	Filter options is kinda like the Adder 
+	but it's a filter icon and it postions smarter 
+	it can anchor to any of the four corners and the content
+	updates appropriately	
+	*/
+	
+	const states = [];
+	const cssActive = 'active';
+	const allFilterOptions = uiApp.nodeArray(document.querySelectorAll('.oe-filter-options'));
+	if(allFilterOptions.length < 1) return;
+	
+	/*
+	Methods	
+	*/
+	
+	const _change = () => ({
+		/**
+		* Callback for 'click'
+		*/
+		change: function(){
+			if(this.open)	this.hide();
+			else			this.show();
+		}
+	});
+	
+	const _show = () => ({
+		/**
+		* Callback for 'hover'
+		* Enhanced behaviour for mouse/trackpad
+		*/
+		show:function(){
+			if(this.open) return;
+			this.open = true;
+			this.btn.classList.add( cssActive );
+			this.positionContent();
+			this.content.style.display = "block";
+			this.mouseOutHide();
+		}	
+	});
+	
+	const _hide = () => ({
+		/**
+		* Hide content
+		*/
+		hide:function(){
+			if(this.open === false) return;
+			this.open = false;
+			this.btn.classList.remove( cssActive );
+			this.content.style.display = "none";
+		}
+	});
+	
+	const _mouseOutHide = () => ({
+		/**
+		* Enhanced behaviour for mouse/trackpad
+		*/
+		mouseOutHide: function(){
+			this.wrapper.addEventListener('mouseleave',(ev) => {
+				ev.stopPropagation();
+				this.hide();
+			},{once:true});
+		}
+	});
+	
+	const _positionContent = () => ({
+		positionContent:function(){
+			this.defaultCSS = this.defaultCSS || this.content.className;
+
+			// CSS needs setting up to sort UI layout
+			let btn = this.btn.getBoundingClientRect();
+			let content = uiApp.getHiddenElemSize(this.content);
+			let css,top,left;
+	
+			if(btn.top < 400){
+				css = "top";
+				top =  btn.top;
+			} else {
+				css ="bottom";
+				top = btn.bottom - content.h; 
+			}
+			
+			if(btn.left < 500){
+				css += "-left";
+				left = btn.left;
+			} else {
+				css += "-right";
+				left = btn.right - content.w;
+			}
+			
+			this.content.className = this.defaultCSS + " " + css;
+			this.content.style.top = top + 'px';
+			this.content.style.left = left + 'px'; 
+		}		
+	});
+	
+	/**
+	* shortcuts singleton 
+	* (using IIFE to maintain code pattern)
+	*/
+	const FilterOption = (me) => {
+		return Object.assign(	me,
+								_change(),
+								_show(),
+								_hide(),
+								_mouseOutHide(),
+								_positionContent() );
+	};
+
+
+	/**
+	* Callback for Event (header btn)
+	* @param {event} event
+	*/
+	const userClick = (ev) => {
+		let btn = ev.target;
+		let parent = uiApp.getParent(btn, '.oe-filter-options');
+		let dataAttr = uiApp.getDataAttr(btn);
+		if(dataAttr){
+			/*
+			Setup already, change it's state
+			*/
+			states[parseFloat(dataAttr)].change();
+		} else {
+			/*
+			Collapsed Data is generally collapsed (hidden)
+			But this can be set directly in the DOM if needed
+			*/
+			let filter = FilterOption({	btn: btn,
+										wrapper: parent,
+										content: parent.querySelector('.filter-options-popup') });
+				
+			filter.show(); // user has clicked, update view	
+			uiApp.setDataAttr(btn, states.length); // flag on DOM										
+			states.push(filter); // store state			
+		}
+	};
+	
+	// Regsiter for Events
+	uiApp.registerForClick('.oe-filter-options .oe-filter-btn', ev => userClick(ev) );	
+	
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
 	uiApp.addModule('messagePreview');	
 	
 	/*
@@ -1328,12 +1476,99 @@ const bluejay = (function () {
 
 	'use strict';	
 	
+	uiApp.addModule('multiPageScroll');
+	
+	/*
+	Mulit Page Scroll Widget. 
+	Used in Correspondence VIEW and Lightning Viewer for Letters 
+	... and maybe other places too.
+	Currently only an IDG thing tho.
+	*/
+	
+	let multiPageScroll = uiApp.nodeArray(document.querySelectorAll('.lightning-multipage-scroll'));
+	if( multiPageScroll.length ===  0 ) return;	
+
+
+	const _animateScrollTo = () => ({
+		animateScrollTo:function(pageNum){
+			const easeInOutQuad = t => t<0.5 ? 2*t*t : -1+(4-2*t)*t;
+			const duration = 80; // num of animation steps
+			let step = 1;	
+			let time = 0;
+			let startPos = this.stack.scrollTop;
+			let endPos = (this.pageH * pageNum) - startPos;
+			// first clear any running animation
+			clearInterval(this.animateID);
+			// set up the animation		
+			this.animateID = setInterval(() => {
+				time = Math.min(1, (step/duration));
+				this.stack.scrollTop = Math.ceil((easeInOutQuad(time) * endPos)) + startPos;
+				step = step + 1; // increment animation
+				if(time == 1) clearInterval(this.animateID); 
+			}, 2);
+		}
+	});
+	
+	const _pageBtn = () => ({
+		pageBtn:function(btn){
+			if(btn.matches('.page-num-btn')){
+				this.animateScrollTo(parseFloat(btn.dataset.page));
+			}
+		}
+	});
+
+	const PageScroller = (me) => {
+		me.numOfImgs = me.stack.querySelectorAll('img').length;
+		/*
+		Get first IMG height Attribute to work out page scrolling.
+		Note: CSS adds 10px padding to the (bottom) of all images !
+		*/
+		me.pageH = parseFloat(me.stack.querySelector('img').height + 10);
+		me.animateID = null;
+		/*
+		Build Page Nav Page scroll btns
+		e.g. <div class="page-num-btn">1/4</div>
+		*/	
+		let frag = new DocumentFragment();
+
+		for(let i = 0; i < me.numOfImgs; i++){
+			let btn = document.createElement('div');
+			btn.className = "page-num-btn";
+			btn.setAttribute('data-page', i);
+			btn.textContent = (i+1) + "/" + me.numOfImgs;
+			frag.appendChild(btn);
+		}
+		
+		me.nav.appendChild(frag);
+		me.nav.addEventListener('mouseenter', (ev) => me.pageBtn(ev.target), {capture:true});
+		me.nav.addEventListener('mousedown', (ev) => me.pageBtn(ev.target), {capture:true});
+
+		return Object.assign(	me,
+								_pageBtn(),
+								_animateScrollTo() );
+	};
+
+	multiPageScroll.forEach((mps) => {
+		PageScroller({	nav: mps.querySelector('.multipage-nav'),
+						stack: mps.querySelector('.multipage-stack')
+		});	
+	});
+	
+	
+	
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
 	uiApp.addModule('navHotlist');
 			
 	const cssActive = 'active';
 	const cssOpen = 'open';
 	const selector = '#js-nav-hotlist-btn';
 	const btn = document.querySelector(selector);
+	
+	if(btn === null) return;
 	
 	/*
 	Methods	
@@ -1952,6 +2187,204 @@ const bluejay = (function () {
 
 	'use strict';	
 	
+	uiApp.addModule('patientQuickMeta');	
+	
+	/*
+	DOM check	
+	*/
+	let quickIconBtns = document.querySelectorAll('.js-patient-quick-overview');
+	if( quickIconBtns.length == 0) return; 
+	
+	/*
+	Vars	
+	*/
+	const iconBtns = Array.prototype.slice.call( quickIconBtns );
+	const qBtns = {};
+	
+	let clickLock = false; 
+	let currentQuickBtn = null; 
+	
+
+	/*
+	Methods
+	*/
+	function reset(){
+		clickLock = false;
+		currentQuickBtn = null;
+	}
+	
+	/*
+	Constructors
+	*/
+	function QuickBtn( btn, id ){	
+		this.id = id+1; // avoid 0
+		
+		function show(){
+			quick.show( btn.dataset, btn.getBoundingClientRect() );
+		}
+	
+		function userRequest(e) {
+			e.stopPropagation();
+			e.preventDefault();
+			if(e.type == "mouseenter" 	&& !clickLock)		show();	 
+			if(e.type == "mouseleave"	&& !clickLock)		quick.hide();
+			if(e.type == "click"){
+				if( currentQuickBtn === this) {
+					// must be an unclick
+					clickLock = false;
+					quick.hide();
+					currentQuickBtn = null;
+				} else {
+					// new click 
+					clickLock = true; 
+					show();
+					currentQuickBtn = this;
+				}
+			}
+		}
+		
+		/* Events */
+		btn.addEventListener("click", 	 	userRequest.bind(this), false); // touch only
+		btn.addEventListener("mouseenter", 	userRequest.bind(this), false); // mouse/trackpad enhancements
+		btn.addEventListener("mouseleave", 	userRequest.bind(this), false);
+		
+	}
+	
+	function ShowQuick(){
+		/*
+		Vars
+		*/
+		const CSSwrap = "oe-patient-quick-overview";
+		let lastPHP = null; 		// to avoid loading content twice
+		let content = null;			// need to build the DOM then assign
+		let spinnerID = null;		// spin loader is timed
+		
+		/*
+		API
+		*/
+		this.show = ( dataSet, btnDomRect ) => {
+
+			let mode = dataSet.mode;
+			let php = dataSet.php;
+			let patient = JSON.parse( dataSet.patient );
+			
+			/*
+			set up patient meta
+			*/
+			div.querySelector('.patient-surname').textContent = patient.surname;
+			div.querySelector('.patient-firstname').textContent = patient.first;
+			div.querySelector('.hospital-number').innerHTML = '<span>ID</span> '+ patient.id;
+			div.querySelector('.nhs-number').innerHTML = '<span>NHS</span> '+ patient.nhs;
+			div.querySelector('.patient-gender').innerHTML = '<em>Gen</em> '+ patient.gender;
+			div.querySelector('.patient-age').innerHTML = '<em>Age</em> '+ patient.age;
+			
+			
+			/*
+			CSS can handle a mode of "side"
+			it will lock the panel to the RHS
+			just "side-panel"...
+			However, mode = "float" requires a 
+			JS positioning relative to the icon.
+			*/ 
+			if( mode == "side"){
+				div.style.top = div.style.left = null;
+				div.className = CSSwrap + " side-panel"; 
+			} else {
+				/*
+				floating fixed, calculate position
+				in relation to the icon,
+				*/
+				div.className = CSSwrap; 
+				
+				let wh = document.documentElement.clientHeight;
+				// quick position for testing... 
+				div.style.top 	= (btnDomRect.y + btnDomRect.height + 5) + "px";
+				div.style.left 	= (btnDomRect.x - 250 +  btnDomRect.width/2)  + "px";			
+			}
+					
+			this.update(php);
+			// now show. 
+			div.style.display = "block";
+		}	
+		
+		
+		this.hide = () => {
+			reset();
+			div.style.top = div.style.left = null;
+			div.style.display = "none";
+		}
+		
+	
+		this.update = ( php ) => {
+			if(php == lastPHP) return; // ignore
+
+			lastPHP = php;
+			content.innerHTML = "";
+
+			/*
+			Load in IDG PHP file.
+			*/
+			clearTimeout( spinnerID );
+			spinnerID = setTimeout( () => {
+				content.innerHTML = '<i class="spinner"></i>'; // indicate loading
+				clearTimeout( spinnerID );
+			} , 500);			
+			
+			
+			let xhr = new XMLHttpRequest();
+			xhr.onreadystatechange = () => {
+				if(xhr.readyState !== 4) return;
+				if(xhr.status >= 200 && xhr.status < 300){
+					clearTimeout( spinnerID );
+					content.innerHTML = xhr.responseText; // dump in the PHP file ;)
+				} 
+			}
+			
+			xhr.open('GET',idg.paths.PHPLOAD + php);
+			xhr.send();
+		}
+		
+		/*
+		Init & Events
+		*/
+		// build DOM template
+		let template =  '<div class="close-icon-btn"><i class="oe-i remove-circle medium"></i></div>';
+		template += '<div class="oe-patient-meta"><div class="patient-name"><a href="/v3-SEM/patient-overview"><span class="patient-surname">SURNAME</span>, <span class="patient-firstname">First (M.)</span></a></div><div class="patient-details"><div class="hospital-number"><span>ID</span>0000000</div><div class="nhs-number"><span>NHS</span>111 222 3333</div><div class="patient-gender"><em>Gen</em>Male</div><div class="patient-age"><em>Age</em>00y</div></div></div>';
+		template += '<div class="quick-overview-content"></div>';
+		
+		
+		const div = document.createElement('div');
+		div.className = CSSwrap;
+		div.innerHTML = template;
+		div.style.display = "none";	
+		document.querySelector('body').appendChild(div);
+		
+		// store reference to the content
+		content = div.querySelector('.quick-overview-content');
+		
+		// Events
+		div.querySelector(".close-icon-btn").addEventListener("click", this.hide, false);		
+	}
+
+	
+	/*
+	Init & Events	
+	*/
+	const quick = new ShowQuick( document.createElement('div') );
+	iconBtns.forEach( ( item, index, array ) => {
+		let qb = new QuickBtn( item, index );
+		console.log(qb);
+		qBtns[qb.id] = qb;
+	});
+	
+	
+	
+	
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
 	uiApp.addModule('proView');	
 	
 	/**
@@ -2428,7 +2861,7 @@ const bluejay = (function () {
 			/*
 			Setup already, change it's state
 			*/
-			states[dataAttr].change();
+			states[parseFloat(dataAttr)].change();
 		} else {
 			/*
 			Collapsed Data is generally collapsed (hidden)
@@ -2438,7 +2871,7 @@ const bluejay = (function () {
 											icon: icon });
 				
 			reducer.change(); 		// user has clicked, update view
-			uiApp.getDataAttr(icon, states.length);											
+			uiApp.setDataAttr(icon, states.length);											
 			states.push(reducer); 	// store state			
 		}
 	};
@@ -2636,12 +3069,98 @@ const bluejay = (function () {
 			link.classList.add('selected');
 			updateListView(link.dataset.list);
 			activeFilter.classList.remove('selected');
-			activeFilter = link;
-			
+			activeFilter = link;	
 		});
 	});
  		
 
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('sidebarEventFilter');
+	
+	const cssActive = 'active';
+	const selector = '#js-sidebar-filter-btn';
+	const btn = document.querySelector(selector);
+	if(btn === null) return;
+
+	/*
+	Methods	
+	*/
+	
+	const _change = () => ({
+		/**
+		* Callback for 'click'
+		*/
+		change: function(){
+			if(this.open)	this.hide();
+			else			this.show();
+		}
+	});
+	
+	const _show = () => ({
+		/**
+		* Callback for 'hover'
+		* Enhanced behaviour for mouse/trackpad
+		*/
+		show:function(){
+			if(this.open) return;
+			this.open = true;
+			this.btn.classList.add( cssActive );
+			this.content.style.display = "block";
+			this.mouseOutHide();
+		}	
+	});
+	
+	const _hide = () => ({
+		/**
+		* Hide content
+		*/
+		hide:function(){
+			if(this.open === false) return;
+			this.open = false;
+			this.btn.classList.remove( cssActive );
+			this.content.style.display = "none";
+		}
+	});
+	
+	const _mouseOutHide = () => ({
+		/**
+		* Enhanced behaviour for mouse/trackpad
+		*/
+		mouseOutHide: function(){
+			this.wrapper.addEventListener('mouseleave',(ev) => {
+				ev.stopPropagation();
+				this.hide();
+			},{once:true});
+		}
+	});
+	
+	/**
+	* shortcuts singleton 
+	* (using IIFE to maintain code pattern)
+	*/
+	const eventFilter = (() => {
+		return Object.assign(	{	btn:btn,
+									content: document.querySelector('#js-sidebar-filter-options'),
+									wrapper: document.querySelector('#js-sidebar-filter'),
+									open: false 
+								},
+								_change(),
+								_show(),
+								_hide(),
+								_mouseOutHide() );
+	})();
+	
+	/*
+	Events 
+	*/
+	uiApp.registerForClick(selector, () => eventFilter.change() );			
+	uiApp.registerForHover(selector, () => eventFilter.show() );
+
+	
 })(bluejay); 
 (function (uiApp) {
 
@@ -2801,7 +3320,7 @@ const bluejay = (function () {
 		if(ev.target.matches('textarea')){
 			resize(ev.target);
 		}
-	},true);
+	},{capture:true});
 	
 	/**
 	* Expand textareas that are overflowing onLoad
@@ -2812,6 +3331,38 @@ const bluejay = (function () {
 			resize(t);
 		});
 	});
+	
+	
+	
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('userPIN');	
+	
+	/*
+	Little PIN entry demo, see:
+	Drugs Administered (User can only use PSD Sets)
+	Clinic steps and Patient actions steps in WS
+	*/
+	
+	const demoInput = (input) => {
+		let pin = input.value;
+		let div = input.parentNode;
+		div.classList.remove('accepted-pin','wrong-pin');
+		
+		if(pin.length === 4){
+			if (pin == '1234')	div.classList.add('accepted-pin');
+			else 				div.classList.add('wrong-pin');
+		}
+	}
+	
+	document.addEventListener('input', (ev) => {
+		if(ev.target.matches('.user-pin-entry')){
+			demoInput(ev.target);
+		}
+	},{capture:true});
 	
 	
 	
