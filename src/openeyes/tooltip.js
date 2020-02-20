@@ -17,15 +17,10 @@
 	uiApp.appendTo('body',div);
 	
 	/**
-	* Resize Window - as innerWidth forces a reflow, only update when necessary
-	*/
-	const resize = () => winWidth = window.innerWidth;
-	
-	/**
 	* Callback for 'click'
 	* @param {Event} ev
 	*/
-	const userClick = (ev) => showing? hide(ev) : show(ev);
+	const userClick = (ev) => showing ? hide(ev) : show(ev);
 	
 	/**
 	* Callback for 'hover'
@@ -83,6 +78,9 @@
 		div.style.top = top;
 		div.style.left = (center - offsetW) + 'px';
 		div.style.display = "block";
+		
+		// hide if user scrolls
+		window.addEventListener('scroll', hide, {capture:true, once:true});
 	};
 	
 	/**
@@ -102,7 +100,7 @@
 	uiApp.registerForClick(selector,userClick);
 	uiApp.registerForHover(selector,show);
 	uiApp.registerForExit(selector,hide);
-	uiApp.listenForScroll(hide);
-	uiApp.listenForResize(resize);
+	// innerWidth forces a reflow, only update when necessary
+	uiApp.listenForResize(() => winWidth = window.innerWidth);
 	
 })(bluejay); 

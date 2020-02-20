@@ -21,7 +21,7 @@ const paths = {
 					'./src/app/app.js',			// load in the app file first
 					'./src/app/*.js',			// app bits, then... 
 					'./src/openeyes/**/*.js',			// UI Modules
-					'./src/idg/*.js'],		// *** IDG Developement modules - extra development modules
+					'./src/idg/**/*.js'],		// *** IDG Developement modules - extra development modules
 		output:	'./idg-dev/',
 	}
 };

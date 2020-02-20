@@ -12,7 +12,6 @@
 	const click = [];	// mousedown
 	const hover = [];	// mouseenter
 	const exit = [];	// mouseleave
-	const scroll = [];	// window (any) scroll
 	const resize = [];	// window resize
 
 	/**
@@ -41,13 +40,12 @@
 	};
 	
 	/**
-	* Basic broadcaster for Scroll and Resize
+	* Basic broadcaster for Resize
 	* @param {Array}  Listeners
 	*/
 	const broadcast = (listeners) => {
 		listeners.forEach((item) => {
-			item.cb(event);
-			event.stopPropagation();
+			item.cb();
 		});
 	};
 
@@ -61,12 +59,10 @@
 		return () => {
 			if(throttle) return;
 			throttle = true;
-			
-			broadcast(listeners); // broadcast at start
-			
 			setTimeout( () => {
 				throttle = false;
-			},320);  // 16ms * 20
+				broadcast(listeners); // broadcast to listeners
+			},160);  // 16ms * 10
 		};
 	}
 	
@@ -75,22 +71,21 @@
 	
 	/**
 	To improve performance delegate Event handling to the document
+	setup Event listeners... 
 	*/
 	document.addEventListener('DOMContentLoaded', () => {
-        document.addEventListener('mouseenter',	(event) => checkListeners(event,hover),		{capture:true} );
-		document.addEventListener('mousedown',	(event) => checkListeners(event,click),		{capture:false} ); 
-		document.addEventListener('mouseleave',	(event) => checkListeners(event,exit),		{capture:true} );
+        document.addEventListener('mouseenter', (event) => checkListeners(event,hover), {capture:true} );
+		document.addEventListener('mousedown', (event) => checkListeners(event,click), {capture:true} ); 
+		document.addEventListener('mouseleave', (event) => checkListeners(event,exit), {capture:true} );
 		// Throttle high rate events
-		window.addEventListener('scroll', () => scrollThrottle(), true); 
 		window.onresize = () => resizeThrottle(); 
     },{once:true});
 	
 	// extend App
-	uiApp.extend('registerForHover',	(selector,cb) => addListener(hover,selector,cb));
-	uiApp.extend('registerForClick',	(selector,cb) => addListener(click,selector,cb));
-	uiApp.extend('registerForExit',		(selector,cb) => addListener(exit,selector,cb));
-	uiApp.extend('listenForScroll',		(cb) => addListener(scroll,null,cb));
-	uiApp.extend('listenForResize',		(cb) => addListener(resize,null,cb));
+	uiApp.extend('registerForHover', (selector,cb) => addListener(hover,selector,cb));
+	uiApp.extend('registerForClick', (selector,cb) => addListener(click,selector,cb));
+	uiApp.extend('registerForExit', (selector,cb) => addListener(exit,selector,cb));
+	uiApp.extend('listenForResize', (cb) => addListener(resize,null,cb));
 
 
 })(bluejay);

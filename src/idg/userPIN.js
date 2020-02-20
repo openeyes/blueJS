@@ -16,10 +16,13 @@
 		div.classList.remove('accepted-pin','wrong-pin');
 		
 		if(pin.length === 4){
-			if (pin == '1234')	div.classList.add('accepted-pin');
-			else 				div.classList.add('wrong-pin');
+			if (pin == '1234'){
+				div.classList.add('accepted-pin');
+			} else {
+				div.classList.add('wrong-pin');
+			} 	
 		}
-	}
+	};
 	
 	document.addEventListener('input', (ev) => {
 		if(ev.target.matches('.user-pin-entry')){
@@ -27,6 +30,5 @@
 		}
 	},{capture:true});
 	
-	
-	
+
 })(bluejay); 

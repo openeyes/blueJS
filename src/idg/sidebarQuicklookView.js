@@ -51,6 +51,7 @@
 		* Enhanced behaviour for mouse/trackpad
 		*/
 		show:function(target){
+			this.open = true;
 			const json = JSON.parse(target.dataset.quickview);
 			this.icon.className = "oe-i-e large " + json.icon;
 			this.titleDate.textContent = json.title + " - " + json.date;
@@ -58,6 +59,8 @@
 			// returns a promise
 			uiApp.xhr('/idg-php/v3/_load/sidebar/quick-view/' + json.php)
 				.then( html => {
+					if(this.open === false) return;
+					this.open = true;
 					this.content.innerHTML = html;
 					this.div.classList.remove('fade-out');
 					this.div.classList.add("fade-in");
@@ -72,6 +75,7 @@
 		* Hide content
 		*/
 		hide:function(){
+			this.open = false;
 			this.div.classList.add('fade-out');
 			this.div.classList.remove("fade-in");
 		}
@@ -97,6 +101,7 @@
 									titleDate: div.querySelector('.title-date'),
 									icon: div.querySelector('.event-icon > .oe-i-e'),
 									content: div.querySelector('.quick-view-content'),
+									open:false,
 								},
 								_show(),
 								_hide() );
@@ -116,7 +121,7 @@
 	Event sidebar is a list of <a> links, historically (and semantically)
 	they  are simply the way to navigate through the Events. Quicklook popup was
 	added later as a desktop (hover) enhancement. Then QuickView was added 
-	but it should STILL be only a hover enhancement (at least for now).
+	but it should STILL be only a hover enhancement (at least for now on IDG).
 	
 	If 'click' to lock OR touch support is required this will handle default <a> click:
 	document.addEventListener('click',(e) => {

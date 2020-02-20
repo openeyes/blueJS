@@ -89,7 +89,6 @@ const bluejay = (function () {
 	const click = [];	// mousedown
 	const hover = [];	// mouseenter
 	const exit = [];	// mouseleave
-	const scroll = [];	// window (any) scroll
 	const resize = [];	// window resize
 
 	/**
@@ -118,13 +117,12 @@ const bluejay = (function () {
 	};
 	
 	/**
-	* Basic broadcaster for Scroll and Resize
+	* Basic broadcaster for Resize
 	* @param {Array}  Listeners
 	*/
 	const broadcast = (listeners) => {
 		listeners.forEach((item) => {
-			item.cb(event);
-			event.stopPropagation();
+			item.cb();
 		});
 	};
 
@@ -138,12 +136,10 @@ const bluejay = (function () {
 		return () => {
 			if(throttle) return;
 			throttle = true;
-			
-			broadcast(listeners); // broadcast at start
-			
 			setTimeout( () => {
 				throttle = false;
-			},320);  // 16ms * 20
+				broadcast(listeners); // broadcast to listeners
+			},160);  // 16ms * 10
 		};
 	}
 	
@@ -152,22 +148,21 @@ const bluejay = (function () {
 	
 	/**
 	To improve performance delegate Event handling to the document
+	setup Event listeners... 
 	*/
 	document.addEventListener('DOMContentLoaded', () => {
-        document.addEventListener('mouseenter',	(event) => checkListeners(event,hover),		{capture:true} );
-		document.addEventListener('mousedown',	(event) => checkListeners(event,click),		{capture:false} ); 
-		document.addEventListener('mouseleave',	(event) => checkListeners(event,exit),		{capture:true} );
+        document.addEventListener('mouseenter', (event) => checkListeners(event,hover), {capture:true} );
+		document.addEventListener('mousedown', (event) => checkListeners(event,click), {capture:true} ); 
+		document.addEventListener('mouseleave', (event) => checkListeners(event,exit), {capture:true} );
 		// Throttle high rate events
-		window.addEventListener('scroll', () => scrollThrottle(), true); 
 		window.onresize = () => resizeThrottle(); 
     },{once:true});
 	
 	// extend App
-	uiApp.extend('registerForHover',	(selector,cb) => addListener(hover,selector,cb));
-	uiApp.extend('registerForClick',	(selector,cb) => addListener(click,selector,cb));
-	uiApp.extend('registerForExit',		(selector,cb) => addListener(exit,selector,cb));
-	uiApp.extend('listenForScroll',		(cb) => addListener(scroll,null,cb));
-	uiApp.extend('listenForResize',		(cb) => addListener(resize,null,cb));
+	uiApp.extend('registerForHover', (selector,cb) => addListener(hover,selector,cb));
+	uiApp.extend('registerForClick', (selector,cb) => addListener(click,selector,cb));
+	uiApp.extend('registerForExit', (selector,cb) => addListener(exit,selector,cb));
+	uiApp.extend('listenForResize', (cb) => addListener(resize,null,cb));
 
 
 })(bluejay);
@@ -368,13 +363,12 @@ const bluejay = (function () {
 
 	const settings = {
 		/*
-		Newblue CSS contains some key
-		media query widths, this are found in: config.all.scss
-		Store the key ones for JS
+		For newblue CSS media query widths see: config.all.scss
 		*/
 		get cssTopBarHeight(){ return 60; },
 		get cssExtendBrowserSize(){ return 1890; },
-		get cssBrowserHotlistFixSize(){ return 1440; }
+		get cssBrowserHotlistFixSize(){ return 1440; },
+		get PHPLOAD(){ return '/idg-php/v3/_load/'; }
 	};
 	
 	/**
@@ -564,15 +558,10 @@ const bluejay = (function () {
 	uiApp.appendTo('body',div);
 	
 	/**
-	* Resize Window - as innerWidth forces a reflow, only update when necessary
-	*/
-	const resize = () => winWidth = window.innerWidth;
-	
-	/**
 	* Callback for 'click'
 	* @param {Event} ev
 	*/
-	const userClick = (ev) => showing? hide(ev) : show(ev);
+	const userClick = (ev) => showing ? hide(ev) : show(ev);
 	
 	/**
 	* Callback for 'hover'
@@ -630,6 +619,9 @@ const bluejay = (function () {
 		div.style.top = top;
 		div.style.left = (center - offsetW) + 'px';
 		div.style.display = "block";
+		
+		// hide if user scrolls
+		window.addEventListener('scroll', hide, {capture:true, once:true});
 	};
 	
 	/**
@@ -649,7 +641,7 @@ const bluejay = (function () {
 	uiApp.registerForClick(selector,userClick);
 	uiApp.registerForHover(selector,show);
 	uiApp.registerForExit(selector,hide);
-	uiApp.listenForScroll(hide);
-	uiApp.listenForResize(resize);
+	// innerWidth forces a reflow, only update when necessary
+	uiApp.listenForResize(() => winWidth = window.innerWidth);
 	
 })(bluejay); 

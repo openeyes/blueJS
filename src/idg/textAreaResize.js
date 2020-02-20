@@ -14,11 +14,15 @@
 		textArea.style.height = 'auto';
 		textArea.style.height = h + 'px';
 	};
-
-	uiApp.extend('resizeTextArea',resize);	
 	
 	/**
-	* Resize textarea on inputs
+	Make resize available for comments that reveal a textarea
+	*/
+	uiApp.extend('resizeTextArea',resize);	
+	
+
+	/**
+	* Resize textarea on 'input'
 	*/
 	document.addEventListener('input', (ev) => {
 		if(ev.target.matches('textarea')){

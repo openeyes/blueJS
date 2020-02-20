@@ -7,13 +7,12 @@
 
 	const settings = {
 		/*
-		Newblue CSS contains some key
-		media query widths, this are found in: config.all.scss
-		Store the key ones for JS
+		For newblue CSS media query widths see: config.all.scss
 		*/
 		get cssTopBarHeight(){ return 60; },
 		get cssExtendBrowserSize(){ return 1890; },
-		get cssBrowserHotlistFixSize(){ return 1440; }
+		get cssBrowserHotlistFixSize(){ return 1440; },
+		get PHPLOAD(){ return '/idg-php/v3/_load/'; }
 	};
 	
 	/**
