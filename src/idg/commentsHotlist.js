@@ -23,7 +23,7 @@
 		icon is relative positioned by CSS to '.parent-activity'
 		offset of 21px allows for the height of the <tr>
 		*/
-		let relativeTo = uiApp.getParent(icon,'.patient-activity');
+		let relativeTo = uiApp.getParent(icon, '.patient-activity');
 		let top = icon.getBoundingClientRect().top - relativeTo.getBoundingClientRect().top + 21;
 	
 		if(icon.classList.contains('comments-added')){
@@ -42,30 +42,14 @@
 	const userClick = (ev) => {
 		const icon = ev.target;
 		const comments = getComments(icon);
-		const trComments = uiApp.getParent(icon,'tr').nextSibling;
+		const trComments = uiApp.getParent(icon, 'tr').nextSibling;
 		const textArea = trComments.querySelector('textarea');
 		trComments.style.display = "table-row";
 		uiApp.resizeTextArea(textArea);
-		
-		// update the icon based on the textarea
 	};
 	
 	uiApp.registerForClick(selector, userClick);
 	uiApp.registerForHover(selector,quickOver);
 	uiApp.registerForExit(selector,quickOut);
-	
-	/*
-		if(textArea.val() == ""){
-			if($(this).hasClass("comments-added")){
-				$(this).removeClass("comments-added active");
-				$(this).addClass("comments");
-			}
-		} else {
-			if($(this).hasClass("comments")){
-				$(this).removeClass("comments");
-				$(this).addClass("comments-added active")
-			}
-		};
-	*/
 	
 })(bluejay); 

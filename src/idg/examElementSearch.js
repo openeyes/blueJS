@@ -6,7 +6,7 @@
 	
 	/*
 	Exam Element Search (pre OE 3.0
-	IDG basic demo. DOM is included
+	IDG basic demo. DOM is pre-loaded
 	*/
 	
 	if(document.querySelector('#js-search-in-event-popup') === null) return;

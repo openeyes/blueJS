@@ -27,7 +27,7 @@
 					this.btn.classList.add('selected');		
 					uiApp.appendTo('body',this.nav);		
 				})
-				.catch(e => console.log('PHP failed to load',e));  // maybe output this to UI at somepoint, but for now...
+				.catch(e => console.log('PHP failed to load', e));  // maybe output this to UI at somepoint, but for now...
 		}
 	});
 	
@@ -49,7 +49,8 @@
 		* @param {Object} Event
 		*/
 		change:function(ev){
-			if(this.btn === null)	this.btn = ev.target;
+			if(this.btn === null)	
+				this.btn = ev.target;
 
 			if(this.open){
 				this.close();

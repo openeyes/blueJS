@@ -20,7 +20,7 @@
 	* @param {DOM Element} el - to attach
 	* @param {DOMElement} base - base Element for search (optional)
 	*/
-	const appendTo = (selector,el,base) => {
+	const appendTo = (selector, el, base) => {
 		let dom = (base || document).querySelector(selector);
 		dom.appendChild(el);
 	};
@@ -39,10 +39,13 @@
 	* @parent {String} class to match
 	* @returns {HTMLElement} or False
 	*/
-	const getParent = (el,selector) => {
-		while( !el.matches('body') ){
-			if(el.matches(selector)) return el; // found it!
-			el = el.parentNode;
+	const getParent = (el, selector) => {
+		while(!el.matches('body')){
+			if(el.matches(selector)){
+				return el; // found it!
+			} else {
+				el = el.parentNode; // keep looking...
+			}
 		}
 		return false;
 	};
@@ -55,12 +58,12 @@
 	const xhr = (url) => {
 		uiApp.log('[XHR] - '+url);
 		
-		return new Promise((resolve,reject) => {
+		return new Promise((resolve, reject) => {
 			let xReq = new XMLHttpRequest();
-			xReq.open("GET",url);
+			xReq.open("GET", url);
 			xReq.onreadystatechange = function(){
 				
-				if(xReq.readyState !== 4) return; // only run if request is DONE 
+				if(xReq.readyState !== 4) return; // only run if request is fully complete 
 				
 				if(xReq.status >= 200 && xReq.status < 300){
 					uiApp.log('[XHR] - Success');
@@ -76,7 +79,6 @@
 			xReq.send();
 		});
 	};
-	
 
 	/**
 	* Get dimensions of hidden DOM element
@@ -90,11 +92,13 @@
 		el.style.visibility = 'hidden';
 		el.style.display = 'block';			// this won't work for 'flex'
 		
-		// ok now calc...
-		let props =  {	w:el.offsetWidth,
-						h:el.offsetHeight }; 	
+		// get props...
+		let props = {	
+			w: el.offsetWidth,
+			h: el.offsetHeight 
+		}; 	
 		
-		// and now hide again
+		// ...and hide again
 		el.style.visibility = 'inherit';
 		el.style.display = 'none';
 		
@@ -103,10 +107,10 @@
 
 	// Extend App
 	uiApp.extend('nodeArray', NodeListToArray);
-	uiApp.extend('appendTo',appendTo);
-	uiApp.extend('getParent',getParent);
-	uiApp.extend('removeElement',removeDOM);
-	uiApp.extend('xhr',xhr);
+	uiApp.extend('appendTo', appendTo);
+	uiApp.extend('getParent', getParent);
+	uiApp.extend('removeElement', removeDOM);
+	uiApp.extend('xhr', xhr);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
 	
 })(bluejay);

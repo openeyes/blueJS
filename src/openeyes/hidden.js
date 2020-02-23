@@ -6,10 +6,10 @@
 	To avoid a 'flickering' effect
 	DOM elements that need to be 'hidden'
 	on page load need to use "hidden" CSS class
-	when the JS loads it can switch it over
+	after JS loads it switches it over
 	*/ 
 	
-	let hidden = uiApp.nodeArray(document.querySelectorAll('.hidden'));
+	const hidden = uiApp.nodeArray(document.querySelectorAll('.hidden'));
 	if(hidden.length < 1) return; // no elements!
 	
 	hidden.forEach( (elem) => {

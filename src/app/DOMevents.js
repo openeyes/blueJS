@@ -20,9 +20,8 @@
 	* @param {String} CSS selector to match
 	* @param {Function} callback 
 	*/
-	const addListener = (arr,selector,cb) => {
-		arr.push({	selector:selector, 
-					cb:cb });
+	const addListener = (arr, selector, cb) => {
+		arr.push({selector:selector, cb:cb});
 	};
 
 	/**
@@ -30,8 +29,9 @@
 	* @param {Event}  event 
 	* @param {Array}  Listeners
 	*/
-	const checkListeners = (event,listeners) => {
+	const checkListeners = (event, listeners) => {
 		if(event.target === document) return;
+		
 		listeners.forEach((item) => {
 			if(event.target.matches(item.selector)){
 				item.cb(event);
@@ -66,7 +66,6 @@
 		};
 	}
 	
-	const scrollThrottle = EventThrottler(scroll);
 	const resizeThrottle = EventThrottler(resize);
 	
 	/**
@@ -74,9 +73,9 @@
 	setup Event listeners... 
 	*/
 	document.addEventListener('DOMContentLoaded', () => {
-        document.addEventListener('mouseenter', (event) => checkListeners(event,hover), {capture:true} );
-		document.addEventListener('mousedown', (event) => checkListeners(event,click), {capture:true} ); 
-		document.addEventListener('mouseleave', (event) => checkListeners(event,exit), {capture:true} );
+        document.addEventListener('mouseenter', (event) => checkListeners(event,hover), {capture:true});
+		document.addEventListener('mousedown', (event) => checkListeners(event,click), {capture:true}); 
+		document.addEventListener('mouseleave', (event) => checkListeners(event,exit), {capture:true});
 		// Throttle high rate events
 		window.onresize = () => resizeThrottle(); 
     },{once:true});

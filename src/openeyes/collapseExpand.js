@@ -4,105 +4,93 @@
 	
 	uiApp.addModule('collapseExpand');
 	
-	const states = [];
-	
 	/*
-	(Collapse) Data 
-	DOM: 
+	(Collapse) Data & Group DOMs: 
 	.collapse-data
 	- .collapse-data-header-icon (expand/collapse)
 	- .collapse-data-content
-	*/
-	const data = {
-		selector: ".collapse-data-header-icon",
-		btn: "collapse-data-header-icon",
-		content: ".collapse-data-content"
-	};
-
-	/*
-	(Collapse) Groups
-	DOM: 
+	
 	.collapse-group
 	- .header-icon (expand/collapse)
 	- .collapse-group-content
 	*/
-	const group = {
-		selector: ".collapse-group > .header-icon",  
-		btn: "header-icon",
-		content: ".collapse-group-content"
-	};
+	const states = [];
 
 	/*
 	Methods	
 	*/
 	const _change = () => ({
-		/**
-		* Change state 
-		*/		
-		change: function(){	
-			if(this.collapsed){
-				this.view("block","collapse");		
-			} else {
-				this.view("none","expand");	
-			}
-			
-			this.collapsed = !this.collapsed;
+		change: function(){
+			if(this.open)	this.hide();
+			else			this.show();
 		}
 	});
 	
-	const _view = () => ({
-		/**
-		* Update View
-		* @param {string} display
-		* @param {string} icon CSS class
-		*/	
-		view: function(display,icon){
-			this.content.style.display = display;
-			this.btn.className = [this.btnCSS,icon].join(" ");	
+	const _show = () => ({
+		show: function(){
+			this.content.style.display = "block";
+			this.btn.classList.replace('expand','collapse');
+			this.open = true;
+		}
+	});
+	
+	const _hide = () => ({
+		hide: function(){
+			this.content.style.display = "none";
+			this.btn.classList.replace('collapse','expand');
+			this.open = false;
 		}
 	});
 	
 	/**
 	* @Class
-	* @param {Object} me 
+	* @param {Object} me - initialise
 	* @returns new Object
 	*/
-	const CollapseExpander = (me) => {
+	const Expander = (me) => {
 		return Object.assign(	me, 
 								_change(),
-								_view() );
+								_show(),
+								_hide() );
 	};
 
 	/**
-	* Callback for Event (header btn)
+	* Callback for 'Click' (header btn)
 	* @param {event} event
 	*/
-	const userClick = (ev, defaults) => {
+	const userClick = (ev, type) => {
 		let btn = ev.target;
-		let dataAttr = uiApp.getDataAttr(btn);
-		if(dataAttr){
-			/*
-			Setup already, change it's state
-			*/
-			states[parseFloat(dataAttr)].change();
+		let stateRef = uiApp.getDataAttr(btn);
+		if(stateRef){
+			// DOM already setup, change it's current state
+			states[parseFloat(stateRef)].change();
 		} else {
+			// ...not set up yet, record state ref in DOM
+			uiApp.setDataAttr(btn, states.length); 
 			/*
-			Collapsed Data is generally collapsed (hidden)
-			But this can be set directly in the DOM if needed
+			Data/Group are generally collapsed by default
+			but can be set in the DOM to be expanded, check 
+			this by the class used on the btn
 			*/
-			let expander = CollapseExpander( {	btn: btn,
-												btnCSS: defaults.btn,
-												content: btn.parentNode.querySelector( defaults.content ),
-												collapsed:btn.classList.contains('expand') });
-				
-			expander.change(); // user has clicked, update view	
-			uiApp.setDataAttr(btn, states.length); // flag on DOM										
-			states.push(expander); // store state			
+			let me = {
+				btn: btn,
+				content: btn.parentNode.querySelector('.collapse-' + type + '-content'),
+				open: btn.classList.contains('collapse')
+			};
+			
+			// create new Expander
+			let expander = Expander(me);
+			expander.change(); 	
+			
+			// store state							
+			states.push(expander); 			
 		}
 	};
-	
-	// Regsiter for Events
-	uiApp.registerForClick( data.selector, 	ev => userClick(ev, data) );
-	uiApp.registerForClick( group.selector, ev => userClick(ev, group) );
+
+	/*
+	Events
+	*/
+	uiApp.registerForClick( ".collapse-data-header-icon", ev => userClick(ev, "data"));
+	uiApp.registerForClick( ".collapse-group > .header-icon", ev => userClick(ev, "group"));
 
 })(bluejay); 

@@ -129,7 +129,7 @@
 	init();
 	
 	// register Events
-	uiApp.registerForClick('.'+css.flag, userClicksFlag);
+	uiApp.registerForClick('.' + css.flag, userClicksFlag);
 	
 	
 })(bluejay); 

@@ -20,7 +20,7 @@ const bluejay = (function () {
 	* @param  {Function} fn   	The method
 	* @returns {boolean}  
 	*/
-	methods.extend = (name,fn) => {
+	methods.extend = (name, fn) => {
 		/*
 		only extend if not already added 
 		and if the name is available
@@ -30,7 +30,6 @@ const bluejay = (function () {
 			fn._app = extendID++;
 			methods[name] = fn;
 			return true;
-			
 		} else {
 			// method already added!
 			bluejay.log('** Err: Can not extend again: "' + name + '"');
@@ -59,7 +58,7 @@ const bluejay = (function () {
 			// list API methods 
 			let apiMethods = [];
 			for(const name in methods)	apiMethods.push(name); 
-			methods.log('[API] [Helper Methods] ' + apiMethods.join(', ') );
+			methods.log('[API] [Helper Methods] ' + apiMethods.join(', '));
 			console.timeEnd('[blue] Ready');
 		},{once:true});
 	}

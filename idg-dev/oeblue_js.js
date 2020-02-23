@@ -27,7 +27,7 @@ const bluejay = (function () {
 	* @param  {Function} fn   	The method
 	* @returns {boolean}  
 	*/
-	methods.extend = (name,fn) => {
+	methods.extend = (name, fn) => {
 		/*
 		only extend if not already added 
 		and if the name is available
@@ -37,7 +37,6 @@ const bluejay = (function () {
 			fn._app = extendID++;
 			methods[name] = fn;
 			return true;
-			
 		} else {
 			// method already added!
 			bluejay.log('** Err: Can not extend again: "' + name + '"');
@@ -66,7 +65,7 @@ const bluejay = (function () {
 			// list API methods 
 			let apiMethods = [];
 			for(const name in methods)	apiMethods.push(name); 
-			methods.log('[API] [Helper Methods] ' + apiMethods.join(', ') );
+			methods.log('[API] [Helper Methods] ' + apiMethods.join(', '));
 			console.timeEnd('[blue] Ready');
 		},{once:true});
 	}
@@ -97,9 +96,8 @@ const bluejay = (function () {
 	* @param {String} CSS selector to match
 	* @param {Function} callback 
 	*/
-	const addListener = (arr,selector,cb) => {
-		arr.push({	selector:selector, 
-					cb:cb });
+	const addListener = (arr, selector, cb) => {
+		arr.push({selector:selector, cb:cb});
 	};
 
 	/**
@@ -107,8 +105,9 @@ const bluejay = (function () {
 	* @param {Event}  event 
 	* @param {Array}  Listeners
 	*/
-	const checkListeners = (event,listeners) => {
+	const checkListeners = (event, listeners) => {
 		if(event.target === document) return;
+		
 		listeners.forEach((item) => {
 			if(event.target.matches(item.selector)){
 				item.cb(event);
@@ -143,7 +142,6 @@ const bluejay = (function () {
 		};
 	}
 	
-	const scrollThrottle = EventThrottler(scroll);
 	const resizeThrottle = EventThrottler(resize);
 	
 	/**
@@ -151,9 +149,9 @@ const bluejay = (function () {
 	setup Event listeners... 
 	*/
 	document.addEventListener('DOMContentLoaded', () => {
-        document.addEventListener('mouseenter', (event) => checkListeners(event,hover), {capture:true} );
-		document.addEventListener('mousedown', (event) => checkListeners(event,click), {capture:true} ); 
-		document.addEventListener('mouseleave', (event) => checkListeners(event,exit), {capture:true} );
+        document.addEventListener('mouseenter', (event) => checkListeners(event,hover), {capture:true});
+		document.addEventListener('mousedown', (event) => checkListeners(event,click), {capture:true}); 
+		document.addEventListener('mouseleave', (event) => checkListeners(event,exit), {capture:true});
 		// Throttle high rate events
 		window.onresize = () => resizeThrottle(); 
     },{once:true});
@@ -179,14 +177,18 @@ const bluejay = (function () {
 	* @param {string} eventType
 	* @param {Object}
 	*/
-	const createEvent = (eventType,eventDetail) => {
-		eventType = "oeui-" + eventType; 
-		const event = new CustomEvent(eventType,{detail:eventDetail});
+	const myEvent = (eventType, eventDetail) => {
+		/*
+		Create unique prefix & dispatch 
+		*/
+		const event = new CustomEvent("blue-" + eventType, {detail: eventDetail});
 		document.dispatchEvent(event);
+		
+		// log for DEBUG
 		bluejay.log('[Custom Event] - "'+eventType+'"');
 	};
 		
-	uiApp.extend('triggerCustomEvent',createEvent);	
+	uiApp.extend('triggerCustomEvent', myEvent);	
 	
 })(bluejay);
 /**
@@ -211,7 +213,7 @@ const bluejay = (function () {
 	* @param {DOM Element} el - to attach
 	* @param {DOMElement} base - base Element for search (optional)
 	*/
-	const appendTo = (selector,el,base) => {
+	const appendTo = (selector, el, base) => {
 		let dom = (base || document).querySelector(selector);
 		dom.appendChild(el);
 	};
@@ -230,10 +232,13 @@ const bluejay = (function () {
 	* @parent {String} class to match
 	* @returns {HTMLElement} or False
 	*/
-	const getParent = (el,selector) => {
-		while( !el.matches('body') ){
-			if(el.matches(selector)) return el; // found it!
-			el = el.parentNode;
+	const getParent = (el, selector) => {
+		while(!el.matches('body')){
+			if(el.matches(selector)){
+				return el; // found it!
+			} else {
+				el = el.parentNode; // keep looking...
+			}
 		}
 		return false;
 	};
@@ -246,12 +251,12 @@ const bluejay = (function () {
 	const xhr = (url) => {
 		uiApp.log('[XHR] - '+url);
 		
-		return new Promise((resolve,reject) => {
+		return new Promise((resolve, reject) => {
 			let xReq = new XMLHttpRequest();
-			xReq.open("GET",url);
+			xReq.open("GET", url);
 			xReq.onreadystatechange = function(){
 				
-				if(xReq.readyState !== 4) return; // only run if request is DONE 
+				if(xReq.readyState !== 4) return; // only run if request is fully complete 
 				
 				if(xReq.status >= 200 && xReq.status < 300){
 					uiApp.log('[XHR] - Success');
@@ -267,7 +272,6 @@ const bluejay = (function () {
 			xReq.send();
 		});
 	};
-	
 
 	/**
 	* Get dimensions of hidden DOM element
@@ -281,11 +285,13 @@ const bluejay = (function () {
 		el.style.visibility = 'hidden';
 		el.style.display = 'block';			// this won't work for 'flex'
 		
-		// ok now calc...
-		let props =  {	w:el.offsetWidth,
-						h:el.offsetHeight }; 	
+		// get props...
+		let props = {	
+			w: el.offsetWidth,
+			h: el.offsetHeight 
+		}; 	
 		
-		// and now hide again
+		// ...and hide again
 		el.style.visibility = 'inherit';
 		el.style.display = 'none';
 		
@@ -294,10 +300,10 @@ const bluejay = (function () {
 
 	// Extend App
 	uiApp.extend('nodeArray', NodeListToArray);
-	uiApp.extend('appendTo',appendTo);
-	uiApp.extend('getParent',getParent);
-	uiApp.extend('removeElement',removeDOM);
-	uiApp.extend('xhr',xhr);
+	uiApp.extend('appendTo', appendTo);
+	uiApp.extend('getParent', getParent);
+	uiApp.extend('removeElement', removeDOM);
+	uiApp.extend('xhr', xhr);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
 	
 })(bluejay);
@@ -321,14 +327,11 @@ const bluejay = (function () {
 	 */
 	let add = (name, methods) => {
 		// check for unique namespace
-		if (!(name in modules)){
-			
+		if(!(name in modules)){
 			uiApp.log('[Module] '+name);
 			modules[name] = {};
 			return modules[name];
-	
 		} else {
-			
 			uiApp.log('** Err: Module aleady added? ' + name);
 			return false;
 		}
@@ -340,18 +343,16 @@ const bluejay = (function () {
 	 * @return {Object} 
 	 */
 	let get = (name) => {
-		
 		if (!(name in modules)){
 			uiApp.log('Module does not exist?: '+name);
 			return;	
 		}
-		
 		return modules[name];
 	};
 	
 	// Extend App
-	uiApp.extend('addModule',add);
-	uiApp.extend('getModule',get);
+	uiApp.extend('addModule', add);
+	uiApp.extend('getModule', get);
 	
 })(bluejay);
 /**
@@ -361,6 +362,7 @@ const bluejay = (function () {
 
 	'use strict';
 
+	// useful global settings
 	const settings = {
 		/*
 		For newblue CSS media query widths see: config.all.scss
@@ -376,7 +378,7 @@ const bluejay = (function () {
 	* @param {String} suffix optional
 	* @returns {Sting} 
 	*/
-	const domDataAttribute = (suffix = false) => {
+	const domDataAttribute = (suffix=false) => {
 		let attr = !suffix ? 'bluejay' : 'bluejay-' + suffix;
 		return 'data-' + attr;
 	};
@@ -386,7 +388,7 @@ const bluejay = (function () {
 	* @param {HTMLElement} el - el to store on
 	* @param {String} value
 	*/
-	const setDataAttr = (el,value) => {
+	const setDataAttr = (el, value) => {
 		el.setAttribute(domDataAttribute(), value); 
 	};
 	
@@ -400,15 +402,15 @@ const bluejay = (function () {
 		if(el.hasAttribute(dataAttr)){
 			return el.getAttribute(dataAttr);
 		} else { 
-			return null;
+			return false;
 		}
 	};
 
 	// Extend App
-	uiApp.extend('settings',settings);
-	uiApp.extend('getDataAttributeName',domDataAttribute);
-	uiApp.extend('setDataAttr',setDataAttr);
-	uiApp.extend('getDataAttr',getDataAttr);
+	uiApp.extend('settings', settings);
+	uiApp.extend('getDataAttributeName', domDataAttribute);
+	uiApp.extend('setDataAttr', setDataAttr);
+	uiApp.extend('getDataAttr', getDataAttr);
 
 })(bluejay);
 (function (uiApp) {
@@ -417,106 +419,94 @@ const bluejay = (function () {
 	
 	uiApp.addModule('collapseExpand');
 	
-	const states = [];
-	
 	/*
-	(Collapse) Data 
-	DOM: 
+	(Collapse) Data & Group DOMs: 
 	.collapse-data
 	- .collapse-data-header-icon (expand/collapse)
 	- .collapse-data-content
-	*/
-	const data = {
-		selector: ".collapse-data-header-icon",
-		btn: "collapse-data-header-icon",
-		content: ".collapse-data-content"
-	};
-
-	/*
-	(Collapse) Groups
-	DOM: 
+	
 	.collapse-group
 	- .header-icon (expand/collapse)
 	- .collapse-group-content
 	*/
-	const group = {
-		selector: ".collapse-group > .header-icon",  
-		btn: "header-icon",
-		content: ".collapse-group-content"
-	};
+	const states = [];
 
 	/*
 	Methods	
 	*/
 	const _change = () => ({
-		/**
-		* Change state 
-		*/		
-		change: function(){	
-			if(this.collapsed){
-				this.view("block","collapse");		
-			} else {
-				this.view("none","expand");	
-			}
-			
-			this.collapsed = !this.collapsed;
+		change: function(){
+			if(this.open)	this.hide();
+			else			this.show();
 		}
 	});
 	
-	const _view = () => ({
-		/**
-		* Update View
-		* @param {string} display
-		* @param {string} icon CSS class
-		*/	
-		view: function(display,icon){
-			this.content.style.display = display;
-			this.btn.className = [this.btnCSS,icon].join(" ");	
+	const _show = () => ({
+		show: function(){
+			this.content.style.display = "block";
+			this.btn.classList.replace('expand','collapse');
+			this.open = true;
+		}
+	});
+	
+	const _hide = () => ({
+		hide: function(){
+			this.content.style.display = "none";
+			this.btn.classList.replace('collapse','expand');
+			this.open = false;
 		}
 	});
 	
 	/**
 	* @Class
-	* @param {Object} me 
+	* @param {Object} me - initialise
 	* @returns new Object
 	*/
-	const CollapseExpander = (me) => {
+	const Expander = (me) => {
 		return Object.assign(	me, 
 								_change(),
-								_view() );
+								_show(),
+								_hide() );
 	};
 
 	/**
-	* Callback for Event (header btn)
+	* Callback for 'Click' (header btn)
 	* @param {event} event
 	*/
-	const userClick = (ev, defaults) => {
+	const userClick = (ev, type) => {
 		let btn = ev.target;
-		let dataAttr = uiApp.getDataAttr(btn);
-		if(dataAttr){
-			/*
-			Setup already, change it's state
-			*/
-			states[parseFloat(dataAttr)].change();
+		let stateRef = uiApp.getDataAttr(btn);
+		if(stateRef){
+			// DOM already setup, change it's current state
+			states[parseFloat(stateRef)].change();
 		} else {
+			// ...not set up yet, record state ref in DOM
+			uiApp.setDataAttr(btn, states.length); 
 			/*
-			Collapsed Data is generally collapsed (hidden)
-			But this can be set directly in the DOM if needed
+			Data/Group are generally collapsed by default
+			but can be set in the DOM to be expanded, check 
+			this by the class used on the btn
 			*/
-			let expander = CollapseExpander( {	btn: btn,
-												btnCSS: defaults.btn,
-												content: btn.parentNode.querySelector( defaults.content ),
-												collapsed:btn.classList.contains('expand') });
-				
-			expander.change(); // user has clicked, update view	
-			uiApp.setDataAttr(btn, states.length); // flag on DOM										
-			states.push(expander); // store state			
+			let me = {
+				btn: btn,
+				content: btn.parentNode.querySelector('.collapse-' + type + '-content'),
+				open: btn.classList.contains('collapse')
+			};
+			
+			// create new Expander
+			let expander = Expander(me);
+			expander.change(); 	
+			
+			// store state							
+			states.push(expander); 			
 		}
 	};
-	
-	// Regsiter for Events
-	uiApp.registerForClick( data.selector, 	ev => userClick(ev, data) );
-	uiApp.registerForClick( group.selector, ev => userClick(ev, group) );
+
+	/*
+	Events
+	*/
+	uiApp.registerForClick( ".collapse-data-header-icon", ev => userClick(ev, "data"));
+	uiApp.registerForClick( ".collapse-group > .header-icon", ev => userClick(ev, "group"));
 
 })(bluejay); 
 (function (uiApp) {
@@ -527,10 +517,10 @@ const bluejay = (function () {
 	To avoid a 'flickering' effect
 	DOM elements that need to be 'hidden'
 	on page load need to use "hidden" CSS class
-	when the JS loads it can switch it over
+	after JS loads it switches it over
 	*/ 
 	
-	let hidden = uiApp.nodeArray(document.querySelectorAll('.hidden'));
+	const hidden = uiApp.nodeArray(document.querySelectorAll('.hidden'));
 	if(hidden.length < 1) return; // no elements!
 	
 	hidden.forEach( (elem) => {
@@ -546,41 +536,69 @@ const bluejay = (function () {
 	uiApp.addModule('tooltip'); // flag 
 	
 	const selector = ".js-has-tooltip";
-	const cssTooltip = "oe-tooltip";
-
+	let div = null;
 	let showing = false;
-	let winWidth = window.innerWidth; // forces reflow
+	let winWidth = window.innerWidth; // forces reflow, only update onResize
 		
-	// create DOM
-	let div = document.createElement('div');
-	div.className = cssTooltip;
-	div.style.display = "none";
-	uiApp.appendTo('body',div);
+	/**
+	Build the Tooltip DOM, once built just update when required. 
+	*/
+	const buildDOM = () => {
+		div = document.createElement('div');
+		uiApp.appendTo('body',div);
+		resetToolTip();
+		return div;
+	};
+	
+	/**
+	Reset Tooltip content and hide it 
+	*/
+	const resetToolTip = () => {
+		div.innerHTML = "";
+		div.className = "oe-tooltip"; // clear all CSS classes
+		div.style.cssText = "display:none"; // clear all styles
+	};
 	
 	/**
 	* Callback for 'click'
 	* @param {Event} ev
 	*/
-	const userClick = (ev) => showing ? hide(ev) : show(ev);
+	const userClick = (ev) => showing ? out() : show(ev);
+	
+	/**
+	* Callback for 'exit'
+	*/
+	const out = () => {
+		if(!showing) return; showing = false;
+		resetToolTip();
+	};
 	
 	/**
 	* Callback for 'hover'
 	* @param {Event} ev
 	*/
 	const show = (event) => {
-		if(showing) return;
-		showing = true;
-						
-		const icon = event.target; // always an icon	
-		div.innerHTML = icon.dataset.tooltipContent; // could contain HTML
+		if(showing) return; showing = true;
+		
+		// always an icon <i>				
+		const icon = event.target; 
+		
+		// build the DOM if not done already
+		div = div || buildDOM();
 		
 		/*
-		tooltip could be anything check the tooltip height
+		content is stored in: data-tootip-content
+		which could contain HTML tags
+		*/
+		div.innerHTML = icon.dataset.tooltipContent; 
+		
+		/*
+		Check the tooltip height
 		width is restricted in the CSS to 200px;	
 		*/
-		let offsetW = 100; // toptip is 200px
-		let offsetH = 8; // visual offset, allows for the arrow
-		let css = ""; // classes to position the arrows correct
+		const tipWidth = 200; 
+		let offsetW = tipWidth/2; 
+		let offsetH = 8; // visual offset, which allows for the arrow
 		
 		// can't get the height without some trickery...
 		let h = uiApp.getHiddenElemSize(div).h;
@@ -593,56 +611,53 @@ const bluejay = (function () {
 		*/
 		let domRect = icon.getBoundingClientRect();
 		let center = domRect.right - (domRect.width/2);
-		let top = domRect.top - h - offsetH + 'px';
+		let top = domRect.top - h - offsetH;
 	
-		// watch out for the hotlist
+		// watch out for the hotlist, which may overlay the tooltip content
 		let extendedBrowser = uiApp.settings.cssExtendBrowserSize;
 		let maxRightPos = winWidth > extendedBrowser ? extendedBrowser : winWidth;
 		
-		// Icon too near either side?
+		/*
+		setup CSS classes to visually position the 
+		arrow correctly based on it's positon
+		*/
+		
+		// too close to the left?
 		if(center <= offsetW){
-			offsetW = 20; 			// position right of icon, needs to match CSS arrow position
-			css = "offset-right";
-		} else if (center > (maxRightPos - offsetW)) {
-			offsetW = 180; 			// position left of icon, needs to match CSS arrow position
-			css = "offset-left";
+			offsetW = 20; 			// position to the right of icon, needs to match CSS arrow position
+			div.classList.add("offset-right");
+		}
+		
+		// too close to the right?
+		if (center > (maxRightPos - offsetW)) {
+			offsetW = 180; 			// position to the left of icon, needs to match CSS arrow position
+			div.classList.add("offset-left");
 		}
 		
 		// is there enough space above icon for standard posiitoning?
 		if( domRect.top < h ){
-			top = domRect.bottom + offsetH + 'px'; // nope, invert and position below
-			css = "inverted";
+			top = domRect.bottom + offsetH; // nope, invert and position below
+			div.classList.add("inverted");
 		} 
 		
 		// update DOM and show the tooltip
-		div.className = cssTooltip + " " + css;
-		div.style.top = top;
+		div.style.top = top + 'px';
 		div.style.left = (center - offsetW) + 'px';
 		div.style.display = "block";
 		
 		// hide if user scrolls
-		window.addEventListener('scroll', hide, {capture:true, once:true});
+		window.addEventListener('scroll', out, {capture:true, once:true});
 	};
 	
-	/**
-	* Callback for 'exit'
-	* @param {Event} ev
-	*/
-	const hide = (ev) => {
-		if(!showing) return;
-		showing = false;
-		
-		div.innerHTML = "";
-		div.className = cssTooltip;
-		div.style.cssText = "display:none"; // clear all styles
-	};
 	
 	// Register/Listen for Events
 	uiApp.registerForClick(selector,userClick);
 	uiApp.registerForHover(selector,show);
-	uiApp.registerForExit(selector,hide);
+	uiApp.registerForExit(selector,out);
+	
 	// innerWidth forces a reflow, only update when necessary
 	uiApp.listenForResize(() => winWidth = window.innerWidth);
+	
 	
 })(bluejay); 
 (function (uiApp) {
@@ -862,11 +877,11 @@ const bluejay = (function () {
 	
 	const userClick = (ev) => {
 		const btn = ev.target;
-		const comments = document.querySelector('#'+btn.dataset.input);
+		const comments = document.querySelector('#' + btn.dataset.input);
 		btn.style.display = "none";
 		comments.style.display = "block";
 		comments.querySelector('textarea').focus();
-		comments.querySelector('.js-remove-add-comments').addEventListener('mousedown', ()=>{
+		comments.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
 			btn.style.display = "inline-block";
 			comments.style.display = "none";
 		},{once:true});	
@@ -901,7 +916,7 @@ const bluejay = (function () {
 		icon is relative positioned by CSS to '.parent-activity'
 		offset of 21px allows for the height of the <tr>
 		*/
-		let relativeTo = uiApp.getParent(icon,'.patient-activity');
+		let relativeTo = uiApp.getParent(icon, '.patient-activity');
 		let top = icon.getBoundingClientRect().top - relativeTo.getBoundingClientRect().top + 21;
 	
 		if(icon.classList.contains('comments-added')){
@@ -920,32 +935,68 @@ const bluejay = (function () {
 	const userClick = (ev) => {
 		const icon = ev.target;
 		const comments = getComments(icon);
-		const trComments = uiApp.getParent(icon,'tr').nextSibling;
+		const trComments = uiApp.getParent(icon, 'tr').nextSibling;
 		const textArea = trComments.querySelector('textarea');
 		trComments.style.display = "table-row";
 		uiApp.resizeTextArea(textArea);
-		
-		// update the icon based on the textarea
 	};
 	
 	uiApp.registerForClick(selector, userClick);
 	uiApp.registerForHover(selector,quickOver);
 	uiApp.registerForExit(selector,quickOut);
 	
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('ed3');	
+	
 	/*
-		if(textArea.val() == ""){
-			if($(this).hasClass("comments-added")){
-				$(this).removeClass("comments-added active");
-				$(this).addClass("comments");
-			}
-		} else {
-			if($(this).hasClass("comments")){
-				$(this).removeClass("comments");
-				$(this).addClass("comments-added active")
-			}
-		};
+	Side Nav Select List filtering
+	Used in Worklist, Messages, Trials, etc
+	Anywhere you have a bunch of "lists" that need filtering. 
 	*/
 	
+	let ed3app = false;
+	
+	const buildDOM = () => {
+		let div = document.createElement('div');
+		div.className = "oe-eyedraw-app spinner-loader";
+		uiApp.appendTo('body', div);
+		return div;
+	};
+	
+	const userClick = (ev) => {
+		let btn = ev.target;
+		ed3app = ed3app || buildDOM();
+		/*
+		CSS handles the x (left) positioning but we to position the 
+		popup near the button, rather than centered.	
+		*/
+		let btnY = btn.getBoundingClientRect().bottom;
+		/*
+		ed3 app height fixed at 532px;
+		it can not go above 60px (OE Header)
+		*/
+		let top = btnY - 532;
+		ed3app.style.top = top < 60 ? '60px' : top + "px";
+		ed3app.style.display = "block";
+		
+		// xhr returns a Promise... 
+		uiApp.xhr('/idg-php/v3/_load/ed3/' + btn.dataset.php)
+			.then( html => {
+				ed3app.innerHTML = html;
+				ed3app.querySelector('.close-icon-btn').addEventListener('mousedown', () => {
+					ed3app.style.display = "none";
+				},{once:true});
+			})
+			.catch(e => console.log('ed3app php failed to load', e));  // maybe output this to UI at somepoint, but for now...			
+	};
+	
+
+	uiApp.registerForClick('.js-idg-ed3-app-btn', userClick);
+
 })(bluejay); 
 (function (uiApp) {
 
@@ -976,7 +1027,7 @@ const bluejay = (function () {
 					this.btn.classList.add('selected');		
 					uiApp.appendTo('body',this.nav);		
 				})
-				.catch(e => console.log('PHP failed to load',e));  // maybe output this to UI at somepoint, but for now...
+				.catch(e => console.log('PHP failed to load', e));  // maybe output this to UI at somepoint, but for now...
 		}
 	});
 	
@@ -998,7 +1049,8 @@ const bluejay = (function () {
 		* @param {Object} Event
 		*/
 		change:function(ev){
-			if(this.btn === null)	this.btn = ev.target;
+			if(this.btn === null)	
+				this.btn = ev.target;
 
 			if(this.open){
 				this.close();
@@ -1205,7 +1257,7 @@ const bluejay = (function () {
 	if(icon === null) return; 
 	
 	/*
-	'popup' content should be loaded in the DOM
+	'popup' content should be pre-loaded in the DOM
 	*/
 	const popup = document.querySelector('#js-event-audit-trail');
 	if(popup === null) uiApp.log('Audit Trail content not available in DOM?');
@@ -1255,7 +1307,7 @@ const bluejay = (function () {
 	
 	/*
 	Exam Element Search (pre OE 3.0
-	IDG basic demo. DOM is included
+	IDG basic demo. DOM is pre-loaded
 	*/
 	
 	if(document.querySelector('#js-search-in-event-popup') === null) return;
@@ -1408,7 +1460,6 @@ const bluejay = (function () {
 	*/
 	const userClick = (ev) => {
 		let btn = ev.target;
-		let parent = uiApp.getParent(btn, '.oe-filter-options');
 		let dataAttr = uiApp.getDataAttr(btn);
 		if(dataAttr){
 			/*
@@ -1420,6 +1471,7 @@ const bluejay = (function () {
 			Collapsed Data is generally collapsed (hidden)
 			But this can be set directly in the DOM if needed
 			*/
+			let parent = uiApp.getParent(btn, '.oe-filter-options');
 			let filter = FilterOption({	btn: btn,
 										wrapper: parent,
 										content: parent.querySelector('.filter-options-popup') });
@@ -2437,198 +2489,149 @@ const bluejay = (function () {
 
 	'use strict';	
 	
-	uiApp.addModule('patientQuickMeta');	
+	uiApp.addModule('patientQuickMeta');
 	
-	/*
-	DOM check	
-	*/
-	let quickIconBtns = document.querySelectorAll('.js-patient-quick-overview');
-	if( quickIconBtns.length == 0) return; 
+	let open = false;
+	let fixed = false; 
+	let currentIcon = null; 
+	let div = null;	
+	const text = {};
 	
-	/*
-	Vars	
-	*/
-	const iconBtns = Array.prototype.slice.call( quickIconBtns );
-	const qBtns = {};
-	
-	let clickLock = false; 
-	let currentQuickBtn = null; 
-	
-
-	/*
-	Methods
-	*/
-	function reset(){
-		clickLock = false;
-		currentQuickBtn = null;
-	}
-	
-	/*
-	Constructors
-	*/
-	function QuickBtn( btn, id ){	
-		this.id = id+1; // avoid 0
-		
-		function show(){
-			quick.show( btn.dataset, btn.getBoundingClientRect() );
-		}
-	
-		function userRequest(e) {
-			e.stopPropagation();
-			e.preventDefault();
-			if(e.type == "mouseenter" 	&& !clickLock)		show();	 
-			if(e.type == "mouseleave"	&& !clickLock)		quick.hide();
-			if(e.type == "click"){
-				if( currentQuickBtn === this) {
-					// must be an unclick
-					clickLock = false;
-					quick.hide();
-					currentQuickBtn = null;
-				} else {
-					// new click 
-					clickLock = true; 
-					show();
-					currentQuickBtn = this;
-				}
-			}
-		}
-		
-		/* Events */
-		btn.addEventListener("click", 	 	userRequest.bind(this), false); // touch only
-		btn.addEventListener("mouseenter", 	userRequest.bind(this), false); // mouse/trackpad enhancements
-		btn.addEventListener("mouseleave", 	userRequest.bind(this), false);
-		
-	}
-	
-	function ShowQuick(){
-		/*
-		Vars
-		*/
-		const CSSwrap = "oe-patient-quick-overview";
-		let lastPHP = null; 		// to avoid loading content twice
-		let content = null;			// need to build the DOM then assign
-		let spinnerID = null;		// spin loader is timed
-		
-		/*
-		API
-		*/
-		this.show = ( dataSet, btnDomRect ) => {
-
-			let mode = dataSet.mode;
-			let php = dataSet.php;
-			let patient = JSON.parse( dataSet.patient );
-			
-			/*
-			set up patient meta
-			*/
-			div.querySelector('.patient-surname').textContent = patient.surname;
-			div.querySelector('.patient-firstname').textContent = patient.first;
-			div.querySelector('.hospital-number').innerHTML = '<span>ID</span> '+ patient.id;
-			div.querySelector('.nhs-number').innerHTML = '<span>NHS</span> '+ patient.nhs;
-			div.querySelector('.patient-gender').innerHTML = '<em>Gen</em> '+ patient.gender;
-			div.querySelector('.patient-age').innerHTML = '<em>Age</em> '+ patient.age;
-			
-			
-			/*
-			CSS can handle a mode of "side"
-			it will lock the panel to the RHS
-			just "side-panel"...
-			However, mode = "float" requires a 
-			JS positioning relative to the icon.
-			*/ 
-			if( mode == "side"){
-				div.style.top = div.style.left = null;
-				div.className = CSSwrap + " side-panel"; 
-			} else {
-				/*
-				floating fixed, calculate position
-				in relation to the icon,
-				*/
-				div.className = CSSwrap; 
-				
-				let wh = document.documentElement.clientHeight;
-				// quick position for testing... 
-				div.style.top 	= (btnDomRect.y + btnDomRect.height + 5) + "px";
-				div.style.left 	= (btnDomRect.x - 250 +  btnDomRect.width/2)  + "px";			
-			}
-					
-			this.update(php);
-			// now show. 
-			div.style.display = "block";
-		}	
-		
-		
-		this.hide = () => {
-			reset();
-			div.style.top = div.style.left = null;
-			div.style.display = "none";
-		}
-		
-	
-		this.update = ( php ) => {
-			if(php == lastPHP) return; // ignore
-
-			lastPHP = php;
-			content.innerHTML = "";
-
-			/*
-			Load in IDG PHP file.
-			*/
-			clearTimeout( spinnerID );
-			spinnerID = setTimeout( () => {
-				content.innerHTML = '<i class="spinner"></i>'; // indicate loading
-				clearTimeout( spinnerID );
-			} , 500);			
-			
-			
-			let xhr = new XMLHttpRequest();
-			xhr.onreadystatechange = () => {
-				if(xhr.readyState !== 4) return;
-				if(xhr.status >= 200 && xhr.status < 300){
-					clearTimeout( spinnerID );
-					content.innerHTML = xhr.responseText; // dump in the PHP file ;)
-				} 
-			}
-			
-			xhr.open('GET',idg.paths.PHPLOAD + php);
-			xhr.send();
-		}
-		
-		/*
-		Init & Events
-		*/
-		// build DOM template
-		let template =  '<div class="close-icon-btn"><i class="oe-i remove-circle medium"></i></div>';
-		template += '<div class="oe-patient-meta"><div class="patient-name"><a href="/v3-SEM/patient-overview"><span class="patient-surname">SURNAME</span>, <span class="patient-firstname">First (M.)</span></a></div><div class="patient-details"><div class="hospital-number"><span>ID</span>0000000</div><div class="nhs-number"><span>NHS</span>111 222 3333</div><div class="patient-gender"><em>Gen</em>Male</div><div class="patient-age"><em>Age</em>00y</div></div></div>';
-		template += '<div class="quick-overview-content"></div>';
-		
-		
+	const buildDOM = () => {
 		const div = document.createElement('div');
-		div.className = CSSwrap;
-		div.innerHTML = template;
-		div.style.display = "none";	
-		document.querySelector('body').appendChild(div);
+		div.className = "oe-patient-quick-overview";
+		div.style.display = "none";
+		div.innerHTML = [
+			'<div class="close-icon-btn"><i class="oe-i remove-circle medium"></i></div>',
+			'<div class="oe-patient-meta">',
+			'<div class="patient-name">',
+			'<a href="/v3-SEM/patient-overview"><span class="patient-surname">SURNAME</span>, <span class="patient-firstname">First (M.)</span></a>',
+			'</div><div class="patient-details">',
+			'<div class="hospital-number"><span>ID</span>0000000</div>',
+			'<div class="nhs-number"><span>NHS</span>111 222 3333</div>',
+			'<div class="patient-gender"><em>Gen</em>Male</div>',
+			'<div class="patient-age"><em>Age</em>00y</div>',
+			'<div class="quick-overview-content"></div>',
+			'</div></div>'].join('');
+			
+		uiApp.appendTo('body',div);
 		
-		// store reference to the content
-		content = div.querySelector('.quick-overview-content');
+		text.surname = div.querySelector('.patient-surname');
+		text.first = div.querySelector('.patient-firstname');
+		text.hospital = div.querySelector('.hospital-number');
+		text.nhs = div.querySelector('.nhs-number');
+		text.gender = div.querySelector('.patient-gender');
+		text.age = div.querySelector('.patient-age');
 		
-		// Events
-		div.querySelector(".close-icon-btn").addEventListener("click", this.hide, false);		
-	}
-
+		return div;
+	};
 	
-	/*
-	Init & Events	
+	const hide = () => {
+		div.style.display = "none";
+		open = fixed = false;
+		currentIcon = null;
+	};
+	
+	
+	const show = (dataSet,rect) => {
+		div = div || buildDOM();
+		
+		let mode = dataSet.mode;
+		let php = dataSet.php;
+		let patient = JSON.parse( dataSet.patient );
+		
+		/*
+		set up patient meta
+		*/
+		text.surname.textContent = patient.surname;
+		text.first.textContent = patient.first;
+		text.hospital.innerHTML = '<span>ID</span> '+ patient.id;
+		text.nhs.innerHTML = '<span>NHS</span> '+ patient.nhs;
+		text.gender.innerHTML = '<em>Gen</em> '+ patient.gender;
+		text.age.innerHTML = '<em>Age</em> '+ patient.age;
+		
+		
+		/*
+		CSS can handle a mode of "side"
+		it will lock the panel to the RHS
+		just add "side-panel" class...
+		However, mode = "float" requires a 
+		JS positioning relative to the icon.
+		*/ 
+		if( mode == "side"){
+			div.style.top = div.style.left = null;
+			div.classList.add("side-panel"); 
+		} else {
+			/*
+			floating fixed, calculate position
+			in relation to the icon,
+			*/
+			div.classList.remove("side-panel");
+			
+			let wh = window.innerHeight;
+			// quick position for testing... 
+			div.style.top 	= (rect.y + rect.height + 5) + "px";
+			div.style.left 	= (rect.x - 250 +  rect.width/2)  + "px";			
+		}
+		
+		let content = div.querySelector('.quick-overview-content');
+		content.innerHTML = "";
+		
+		// slow loading??
+		let spinnerID = setTimeout( () => content.innerHTML = '<i class="spinner"></i>', 400);	
+		
+		// xhr returns a Promise... 
+		uiApp.xhr('/idg-php/v3/_load/' + php)
+			.then( html => {
+				clearTimeout(spinnerID);
+				content.innerHTML = html;
+				div.style.display = "block";
+			})
+			.catch(e => console.log('ed3app php failed to load',e));  // maybe output this to UI at somepoint, but for now...
+	};
+	
+	const userClick = (ev) => {
+		let icon = ev.target;
+		if(open){
+			if(fixed && currentIcon === icon) {
+				hide();
+			} else {
+				// new click OR hover
+				fixed = true; 
+				currentIcon = icon;
+				show(icon.dataset, icon.getBoundingClientRect() );
+			}
+		} else {
+			fixed = true;
+			currentIcon = ev.target;
+			show(currentIcon.dataset, currentIcon.getBoundingClientRect() );
+		}
+	};
+	
+	/**
+	* Callback for 'Hover'
+	* @param {event} event
 	*/
-	const quick = new ShowQuick( document.createElement('div') );
-	iconBtns.forEach( ( item, index, array ) => {
-		let qb = new QuickBtn( item, index );
-		console.log(qb);
-		qBtns[qb.id] = qb;
-	});
+	const userHover = (ev) => {
+		if(fixed) return;
+		currentIcon = ev.target;
+		show(currentIcon.dataset, currentIcon.getBoundingClientRect() );
+		open = true;
+	};
 	
+	/**
+	* Callback for 'Exit'
+	* @param {event} event
+	*/
+	const userOut = (ev) => {
+		if(fixed) return;
+		hide();
+	};
 	
-	
+
+	uiApp.registerForClick('.js-patient-quick-overview',userClick);
+	uiApp.registerForHover('.js-patient-quick-overview',userHover);
+	uiApp.registerForExit('.js-patient-quick-overview',userOut);
 	
 })(bluejay); 
 (function (uiApp) {
@@ -2770,7 +2773,8 @@ const bluejay = (function () {
 					
 		return Object.assign(	me,
 								_changeContent(),
-								_hideShow() );
+								_hideShow() 
+							);
 	};
 	
 	
@@ -2782,21 +2786,16 @@ const bluejay = (function () {
 	const userClick = (ev) => {
 		const btn = ev.target;
 		let dataAttr = uiApp.getDataAttr(btn);
-		
 		if(dataAttr){
-			/*
-			Setup already, change it's state
-			*/
+			// DOM already setup, change it's current state
 			states[parseFloat(dataAttr)].change();
 		} else {
-			/*
-			No DOM attribute, needs setting up
-			note: it's been clicked! 
-			*/
-			let pro = ProView( uiApp.getParent(btn, '.pro-data-view') );
-			pro.options( JSON.parse(btn.dataset.proview) );
+			// ...not setup yet, record state ref in DOM
+			uiApp.setDataAttr(btn, states.length);
+			
+			let pro = ProView(uiApp.getParent(btn, '.pro-data-view'));
+			pro.options(JSON.parse(btn.dataset.proview));
 			pro.change();		// update UI (because this a click)
-			uiApp.setDataAttr(btn, states.length); // flag on DOM
 			states.push(pro);	// store 
 		}
 	};
@@ -3260,7 +3259,7 @@ const bluejay = (function () {
 	init();
 	
 	// register Events
-	uiApp.registerForClick('.'+css.flag, userClicksFlag);
+	uiApp.registerForClick('.' + css.flag, userClicksFlag);
 	
 	
 })(bluejay); 
@@ -3492,6 +3491,11 @@ const bluejay = (function () {
 			this.open = false;
 			this.div.classList.add('fade-out');
 			this.div.classList.remove("fade-in");
+			/*
+			Must remove the fade-out class or it will cover
+			the Event and prevent interaction!
+			*/
+			setTimeout(() => this.div.classList.remove('fade-out'), 300); 	// CSS fade-out animation lasts 0.2s
 		}
 	});
 	

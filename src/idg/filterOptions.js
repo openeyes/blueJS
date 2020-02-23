@@ -120,7 +120,6 @@
 	*/
 	const userClick = (ev) => {
 		let btn = ev.target;
-		let parent = uiApp.getParent(btn, '.oe-filter-options');
 		let dataAttr = uiApp.getDataAttr(btn);
 		if(dataAttr){
 			/*
@@ -132,6 +131,7 @@
 			Collapsed Data is generally collapsed (hidden)
 			But this can be set directly in the DOM if needed
 			*/
+			let parent = uiApp.getParent(btn, '.oe-filter-options');
 			let filter = FilterOption({	btn: btn,
 										wrapper: parent,
 										content: parent.querySelector('.filter-options-popup') });

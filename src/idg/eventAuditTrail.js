@@ -12,7 +12,7 @@
 	if(icon === null) return; 
 	
 	/*
-	'popup' content should be loaded in the DOM
+	'popup' content should be pre-loaded in the DOM
 	*/
 	const popup = document.querySelector('#js-event-audit-trail');
 	if(popup === null) uiApp.log('Audit Trail content not available in DOM?');

@@ -78,6 +78,11 @@
 			this.open = false;
 			this.div.classList.add('fade-out');
 			this.div.classList.remove("fade-in");
+			/*
+			Must remove the fade-out class or it will cover
+			the Event and prevent interaction!
+			*/
+			setTimeout(() => this.div.classList.remove('fade-out'), 300); 	// CSS fade-out animation lasts 0.2s
 		}
 	});
 	

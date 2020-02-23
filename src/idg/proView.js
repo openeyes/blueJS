@@ -137,7 +137,8 @@
 					
 		return Object.assign(	me,
 								_changeContent(),
-								_hideShow() );
+								_hideShow() 
+							);
 	};
 	
 	
@@ -149,21 +150,16 @@
 	const userClick = (ev) => {
 		const btn = ev.target;
 		let dataAttr = uiApp.getDataAttr(btn);
-		
 		if(dataAttr){
-			/*
-			Setup already, change it's state
-			*/
+			// DOM already setup, change it's current state
 			states[parseFloat(dataAttr)].change();
 		} else {
-			/*
-			No DOM attribute, needs setting up
-			note: it's been clicked! 
-			*/
-			let pro = ProView( uiApp.getParent(btn, '.pro-data-view') );
-			pro.options( JSON.parse(btn.dataset.proview) );
+			// ...not setup yet, record state ref in DOM
+			uiApp.setDataAttr(btn, states.length);
+			
+			let pro = ProView(uiApp.getParent(btn, '.pro-data-view'));
+			pro.options(JSON.parse(btn.dataset.proview));
 			pro.change();		// update UI (because this a click)
-			uiApp.setDataAttr(btn, states.length); // flag on DOM
 			states.push(pro);	// store 
 		}
 	};

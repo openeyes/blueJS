@@ -14,11 +14,11 @@
 	
 	const userClick = (ev) => {
 		const btn = ev.target;
-		const comments = document.querySelector('#'+btn.dataset.input);
+		const comments = document.querySelector('#' + btn.dataset.input);
 		btn.style.display = "none";
 		comments.style.display = "block";
 		comments.querySelector('textarea').focus();
-		comments.querySelector('.js-remove-add-comments').addEventListener('mousedown', ()=>{
+		comments.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
 			btn.style.display = "inline-block";
 			comments.style.display = "none";
 		},{once:true});	

@@ -5,6 +5,7 @@
 
 	'use strict';
 
+	// useful global settings
 	const settings = {
 		/*
 		For newblue CSS media query widths see: config.all.scss
@@ -20,7 +21,7 @@
 	* @param {String} suffix optional
 	* @returns {Sting} 
 	*/
-	const domDataAttribute = (suffix = false) => {
+	const domDataAttribute = (suffix=false) => {
 		let attr = !suffix ? 'bluejay' : 'bluejay-' + suffix;
 		return 'data-' + attr;
 	};
@@ -30,7 +31,7 @@
 	* @param {HTMLElement} el - el to store on
 	* @param {String} value
 	*/
-	const setDataAttr = (el,value) => {
+	const setDataAttr = (el, value) => {
 		el.setAttribute(domDataAttribute(), value); 
 	};
 	
@@ -44,14 +45,14 @@
 		if(el.hasAttribute(dataAttr)){
 			return el.getAttribute(dataAttr);
 		} else { 
-			return null;
+			return false;
 		}
 	};
 
 	// Extend App
-	uiApp.extend('settings',settings);
-	uiApp.extend('getDataAttributeName',domDataAttribute);
-	uiApp.extend('setDataAttr',setDataAttr);
-	uiApp.extend('getDataAttr',getDataAttr);
+	uiApp.extend('settings', settings);
+	uiApp.extend('getDataAttributeName', domDataAttribute);
+	uiApp.extend('setDataAttr', setDataAttr);
+	uiApp.extend('getDataAttr', getDataAttr);
 
 })(bluejay);
