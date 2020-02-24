@@ -15,8 +15,8 @@
 	Show the full notification, no interaction!
 	*/
 	if(document.querySelector('.oe-login') !== null){
-		shortInfo.style.display = "none";
-		longInfo.style.display = "block";
+		uiApp.hide(shortInfo);
+		uiApp.show(longInfo);
 		document.querySelector(selector).style.display = "none";	
 		return; // exit!
 	}

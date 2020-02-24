@@ -54,7 +54,7 @@
 		show:function(){
 			if(this.open) return;
 			this.open = true;
-			this.content.style.display = "block";
+			uiApp.show(this.content);
 			this.mouseOutHide();
 		}	
 	});
@@ -67,7 +67,7 @@
 			if(this.open === false || this.isLocked || this.isFixed ) return;
 			this.open = false;
 			this.btn.classList.remove( cssActive, cssOpen );
-			this.content.style.display = "none";
+			uiApp.hide(this.content);
 		}
 	});
 	

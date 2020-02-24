@@ -18,14 +18,14 @@
 				closeBtn = popup.querySelector('.close-icon-btn');
 		
 		hdBtn.classList.add('selected');
-		popup.style.display = "block";
+		uiApp.show(popup);
 		// the pop will overlay the Event.. add this class to push the Exam content down
 		mainEvent.classList.add('examination-search-active');
 		
 		closeBtn.addEventListener('mousedown',(ev) => {
 			ev.stopPropagation();
 			mainEvent.classList.remove('examination-search-active');
-			popup.style.display = "none";
+			uiApp.hide(popup);
 			hdBtn.classList.remove('selected');
 			
 		},{once:true});		

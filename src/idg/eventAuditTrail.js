@@ -30,7 +30,7 @@
 	* @param {Event} ev
 	*/
 	const show = (ev) => {
-		popup.style.display = "block";
+		uiApp.show(popup);
 		icon.classList.add('active');
 		showing = true;
 	};
@@ -40,7 +40,7 @@
 	* @param {Event} ev
 	*/
 	const hide = (ev) => {
-		popup.style.display = "none";
+		uiApp.hide(popup);
 		icon.classList.remove('active');
 		showing = false;
 	};

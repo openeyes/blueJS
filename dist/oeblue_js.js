@@ -226,6 +226,24 @@ const bluejay = (function () {
 		el.parentNode.removeChild(el);
 	};
 	
+	
+	/**
+	* Show a DOM Element ()	
+	* @param {DOM Element} el
+	* @param {String} block - "block","flex",'table-row',etc
+	*/
+	const show = (el, block = "block") => {
+		el.style.display = block;
+	};
+	
+	/**
+	* Hide a DOM Element ()	
+	* @param {DOM Element} el
+	*/
+	const hide = (el) => {
+		el.style.display = "none";
+	};
+	
 	/**
 	* getParent - search UP the DOM (restrict to body) 
 	* @param {HTMLElement} el
@@ -303,6 +321,8 @@ const bluejay = (function () {
 	uiApp.extend('appendTo', appendTo);
 	uiApp.extend('getParent', getParent);
 	uiApp.extend('removeElement', removeDOM);
+	uiApp.extend('show', show);
+	uiApp.extend('hide', hide);
 	uiApp.extend('xhr', xhr);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
 	
@@ -443,7 +463,7 @@ const bluejay = (function () {
 	
 	const _show = () => ({
 		show: function(){
-			this.content.style.display = "block";
+			uiApp.show(this.content);
 			this.btn.classList.replace('expand','collapse');
 			this.open = true;
 		}
@@ -451,7 +471,7 @@ const bluejay = (function () {
 	
 	const _hide = () => ({
 		hide: function(){
-			this.content.style.display = "none";
+			uiApp.hide(this.content);
 			this.btn.classList.replace('collapse','expand');
 			this.open = false;
 		}
@@ -524,7 +544,7 @@ const bluejay = (function () {
 	if(hidden.length < 1) return; // no elements!
 	
 	hidden.forEach( (elem) => {
-		elem.style.display = "none";
+		uiApp.hide(elem);
 		elem.classList.remove('hidden');
 	});
 	
@@ -577,11 +597,11 @@ const bluejay = (function () {
 	* Callback for 'hover'
 	* @param {Event} ev
 	*/
-	const show = (event) => {
+	const show = (ev) => {
 		if(showing) return; showing = true;
 		
 		// always an icon <i>				
-		const icon = event.target; 
+		const icon = ev.target; 
 		
 		// build the DOM if not done already
 		div = div || buildDOM();

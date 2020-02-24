@@ -10,18 +10,20 @@ const config = {
 
 const paths = {
 	js: {	
-		input:	[	'./src/polyfills/*.js',		// to ensure concat order is correct
+		input: [	'./src/polyfills/*.js',		// to ensure concat order is correct
 					'./src/app/app.js',			// load in the app file first
 					'./src/app/*.js',			// app bits, then... 
-					'./src/openeyes/**/*.js'],		// UI modules
+					'./src/openeyes/**/*.js'],	// UI modules for use in OE
 		output:	'./dist/',
 	},
 	idgDev: {
 		input:	[	'./src/polyfills/*.js',		// to ensure concat order is correct
 					'./src/app/app.js',			// load in the app file first
 					'./src/app/*.js',			// app bits, then... 
-					'./src/openeyes/**/*.js',			// UI Modules
-					'./src/idg/**/*.js'],		// *** IDG Developement modules - extra development modules
+					'./src/openeyes/**/*.js',	// UI Modules for use in OE
+					'./src/idg/**/*.js',		// IDG only modules - NOT for OE (yet)
+					'./src/add-select-insert/_init.js',
+					'./src/add-select-insert/*.js'],
 		output:	'./idg-dev/',
 	}
 };

@@ -13,7 +13,7 @@
 	if(hidden.length < 1) return; // no elements!
 	
 	hidden.forEach( (elem) => {
-		elem.style.display = "none";
+		uiApp.hide(elem);
 		elem.classList.remove('hidden');
 	});
 	

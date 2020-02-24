@@ -59,7 +59,7 @@
 			if(this.open) return;
 			this.open = true;
 			hideOtherPopups(this);
-			this.popup.style.display = "block";
+			uiApp.show(this.popup);
 		}	
 	});
 	
@@ -71,7 +71,7 @@
 			if(this.open === false || this.isLocked ) return;
 			this.open = false;
 			this.btn.classList.remove( cssActive, cssOpen );
-			this.popup.style.display = "none";
+			uiApp.hide(this.popup);
 		}
 	});
 	

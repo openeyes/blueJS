@@ -33,7 +33,7 @@
 		*/
 		let top = btnY - 532;
 		ed3app.style.top = top < 60 ? '60px' : top + "px";
-		ed3app.style.display = "block";
+		uiApp.show(ed3app);
 		
 		// xhr returns a Promise... 
 		uiApp.xhr('/idg-php/v3/_load/ed3/' + btn.dataset.php)

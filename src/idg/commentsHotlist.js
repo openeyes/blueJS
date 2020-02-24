@@ -14,7 +14,7 @@
 	const quick = document.querySelector('#hotlist-quicklook');
 
 	const quickOut = () => {
-		quick.style.display = 'none';
+		uiApp.hide(quick);
 	};
 	
 	const quickOver = (ev) => {
@@ -29,7 +29,7 @@
 		if(icon.classList.contains('comments-added')){
 			quick.textContent = getComments(icon);
 			quick.style.top = top + 'px';
-			quick.style.display = 'block';
+			uiApp.show(quick);
 		} 
 	};
 	

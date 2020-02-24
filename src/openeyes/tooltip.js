@@ -46,11 +46,11 @@
 	* Callback for 'hover'
 	* @param {Event} ev
 	*/
-	const show = (event) => {
+	const show = (ev) => {
 		if(showing) return; showing = true;
 		
 		// always an icon <i>				
-		const icon = event.target; 
+		const icon = ev.target; 
 		
 		// build the DOM if not done already
 		div = div || buildDOM();

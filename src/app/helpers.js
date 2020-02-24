@@ -33,6 +33,24 @@
 		el.parentNode.removeChild(el);
 	};
 	
+	
+	/**
+	* Show a DOM Element ()	
+	* @param {DOM Element} el
+	* @param {String} block - "block","flex",'table-row',etc
+	*/
+	const show = (el, block = "block") => {
+		el.style.display = block;
+	};
+	
+	/**
+	* Hide a DOM Element ()	
+	* @param {DOM Element} el
+	*/
+	const hide = (el) => {
+		el.style.display = "none";
+	};
+	
 	/**
 	* getParent - search UP the DOM (restrict to body) 
 	* @param {HTMLElement} el
@@ -110,6 +128,8 @@
 	uiApp.extend('appendTo', appendTo);
 	uiApp.extend('getParent', getParent);
 	uiApp.extend('removeElement', removeDOM);
+	uiApp.extend('show', show);
+	uiApp.extend('hide', hide);
 	uiApp.extend('xhr', xhr);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
 	

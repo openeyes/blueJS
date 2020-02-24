@@ -28,7 +28,7 @@
 	
 	const _show = () => ({
 		show: function(){
-			this.content.style.display = "block";
+			uiApp.show(this.content);
 			this.btn.classList.replace('expand','collapse');
 			this.open = true;
 		}
@@ -36,7 +36,7 @@
 	
 	const _hide = () => ({
 		hide: function(){
-			this.content.style.display = "none";
+			uiApp.hide(this.content);
 			this.btn.classList.replace('collapse','expand');
 			this.open = false;
 		}

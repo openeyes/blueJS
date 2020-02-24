@@ -31,7 +31,7 @@
 		*/
 		show: function(){
 			this.h3.textContent = this.title;
-			this.content.style.display = "block";
+			uiApp.show(this.content);
 		}
 	});
 	
@@ -41,7 +41,7 @@
 		*/
 		hide: function(){
 			this.h3.innerHTML = this.title + " <small>["+ this.count +"]</small>";
-			this.content.style.display = "none";
+			uiApp.hide(this.content);
 		}
 	});
 

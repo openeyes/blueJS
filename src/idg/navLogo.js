@@ -48,7 +48,7 @@
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssOpen );
-			this.content.style.display = "block";
+			uiApp.show(this.content);
 			this.mouseOutHide();
 		}	
 	});
@@ -61,7 +61,7 @@
 			if(this.open === false) return;
 			this.open = false;
 			this.btn.classList.remove( cssOpen, cssActive );
-			this.content.style.display = "none";			
+			uiApp.hide(this.content);			
 		}
 	});
 	

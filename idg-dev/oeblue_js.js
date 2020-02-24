@@ -226,6 +226,24 @@ const bluejay = (function () {
 		el.parentNode.removeChild(el);
 	};
 	
+	
+	/**
+	* Show a DOM Element ()	
+	* @param {DOM Element} el
+	* @param {String} block - "block","flex",'table-row',etc
+	*/
+	const show = (el, block = "block") => {
+		el.style.display = block;
+	};
+	
+	/**
+	* Hide a DOM Element ()	
+	* @param {DOM Element} el
+	*/
+	const hide = (el) => {
+		el.style.display = "none";
+	};
+	
 	/**
 	* getParent - search UP the DOM (restrict to body) 
 	* @param {HTMLElement} el
@@ -303,6 +321,8 @@ const bluejay = (function () {
 	uiApp.extend('appendTo', appendTo);
 	uiApp.extend('getParent', getParent);
 	uiApp.extend('removeElement', removeDOM);
+	uiApp.extend('show', show);
+	uiApp.extend('hide', hide);
 	uiApp.extend('xhr', xhr);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
 	
@@ -443,7 +463,7 @@ const bluejay = (function () {
 	
 	const _show = () => ({
 		show: function(){
-			this.content.style.display = "block";
+			uiApp.show(this.content);
 			this.btn.classList.replace('expand','collapse');
 			this.open = true;
 		}
@@ -451,7 +471,7 @@ const bluejay = (function () {
 	
 	const _hide = () => ({
 		hide: function(){
-			this.content.style.display = "none";
+			uiApp.hide(this.content);
 			this.btn.classList.replace('collapse','expand');
 			this.open = false;
 		}
@@ -524,7 +544,7 @@ const bluejay = (function () {
 	if(hidden.length < 1) return; // no elements!
 	
 	hidden.forEach( (elem) => {
-		elem.style.display = "none";
+		uiApp.hide(elem);
 		elem.classList.remove('hidden');
 	});
 	
@@ -577,11 +597,11 @@ const bluejay = (function () {
 	* Callback for 'hover'
 	* @param {Event} ev
 	*/
-	const show = (event) => {
+	const show = (ev) => {
 		if(showing) return; showing = true;
 		
 		// always an icon <i>				
-		const icon = event.target; 
+		const icon = ev.target; 
 		
 		// build the DOM if not done already
 		div = div || buildDOM();
@@ -878,15 +898,14 @@ const bluejay = (function () {
 	const userClick = (ev) => {
 		const btn = ev.target;
 		const comments = document.querySelector('#' + btn.dataset.input);
-		btn.style.display = "none";
-		comments.style.display = "block";
+		uiApp.hide(btn);
+		uiApp.show(comments);
 		comments.querySelector('textarea').focus();
 		comments.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
-			btn.style.display = "inline-block";
-			comments.style.display = "none";
+			uiApp.show(btn,"inline-block");
+			uiApp.hide(comments);
 		},{once:true});	
 	};
-	
 	
 	uiApp.registerForClick('.js-add-comments', userClick );
 	
@@ -907,7 +926,7 @@ const bluejay = (function () {
 	const quick = document.querySelector('#hotlist-quicklook');
 
 	const quickOut = () => {
-		quick.style.display = 'none';
+		uiApp.hide(quick);
 	};
 	
 	const quickOver = (ev) => {
@@ -922,7 +941,7 @@ const bluejay = (function () {
 		if(icon.classList.contains('comments-added')){
 			quick.textContent = getComments(icon);
 			quick.style.top = top + 'px';
-			quick.style.display = 'block';
+			uiApp.show(quick);
 		} 
 	};
 	
@@ -981,7 +1000,7 @@ const bluejay = (function () {
 		*/
 		let top = btnY - 532;
 		ed3app.style.top = top < 60 ? '60px' : top + "px";
-		ed3app.style.display = "block";
+		uiApp.show(ed3app);
 		
 		// xhr returns a Promise... 
 		uiApp.xhr('/idg-php/v3/_load/ed3/' + btn.dataset.php)
@@ -1124,7 +1143,7 @@ const bluejay = (function () {
 		*/
 		show: function(){
 			this.h3.textContent = this.title;
-			this.content.style.display = "block";
+			uiApp.show(this.content);
 		}
 	});
 	
@@ -1134,7 +1153,7 @@ const bluejay = (function () {
 		*/
 		hide: function(){
 			this.h3.innerHTML = this.title + " <small>["+ this.count +"]</small>";
-			this.content.style.display = "none";
+			uiApp.hide(this.content);
 		}
 	});
 
@@ -1275,7 +1294,7 @@ const bluejay = (function () {
 	* @param {Event} ev
 	*/
 	const show = (ev) => {
-		popup.style.display = "block";
+		uiApp.show(popup);
 		icon.classList.add('active');
 		showing = true;
 	};
@@ -1285,7 +1304,7 @@ const bluejay = (function () {
 	* @param {Event} ev
 	*/
 	const hide = (ev) => {
-		popup.style.display = "none";
+		uiApp.hide(popup);
 		icon.classList.remove('active');
 		showing = false;
 	};
@@ -1319,14 +1338,14 @@ const bluejay = (function () {
 				closeBtn = popup.querySelector('.close-icon-btn');
 		
 		hdBtn.classList.add('selected');
-		popup.style.display = "block";
+		uiApp.show(popup);
 		// the pop will overlay the Event.. add this class to push the Exam content down
 		mainEvent.classList.add('examination-search-active');
 		
 		closeBtn.addEventListener('mousedown',(ev) => {
 			ev.stopPropagation();
 			mainEvent.classList.remove('examination-search-active');
-			popup.style.display = "none";
+			uiApp.hide(popup);
 			hdBtn.classList.remove('selected');
 			
 		},{once:true});		
@@ -1380,7 +1399,7 @@ const bluejay = (function () {
 			this.open = true;
 			this.btn.classList.add( cssActive );
 			this.positionContent();
-			this.content.style.display = "block";
+			uiApp.show(this.content);
 			this.mouseOutHide();
 		}	
 	});
@@ -1393,7 +1412,7 @@ const bluejay = (function () {
 			if(this.open === false) return;
 			this.open = false;
 			this.btn.classList.remove( cssActive );
-			this.content.style.display = "none";
+			uiApp.hide(this.content);
 		}
 	});
 	
@@ -1657,7 +1676,7 @@ const bluejay = (function () {
 		show:function(){
 			if(this.open) return;
 			this.open = true;
-			this.content.style.display = "block";
+			uiApp.show(this.content);
 			this.mouseOutHide();
 		}	
 	});
@@ -1670,7 +1689,7 @@ const bluejay = (function () {
 			if(this.open === false || this.isLocked || this.isFixed ) return;
 			this.open = false;
 			this.btn.classList.remove( cssActive, cssOpen );
-			this.content.style.display = "none";
+			uiApp.hide(this.content);
 		}
 	});
 	
@@ -1805,7 +1824,7 @@ const bluejay = (function () {
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssOpen );
-			this.content.style.display = "block";
+			uiApp.show(this.content);
 			this.mouseOutHide();
 		}	
 	});
@@ -1818,7 +1837,7 @@ const bluejay = (function () {
 			if(this.open === false) return;
 			this.open = false;
 			this.btn.classList.remove( cssOpen, cssActive );
-			this.content.style.display = "none";			
+			uiApp.hide(this.content);			
 		}
 	});
 	
@@ -1896,7 +1915,7 @@ const bluejay = (function () {
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssActive );
-			this.content.style.display = "block";
+			uiApp.show(this.content);
 			this.mouseOutHide();
 		}	
 	});
@@ -1909,7 +1928,7 @@ const bluejay = (function () {
 			if(this.open === false) return;
 			this.open = false;
 			this.btn.classList.remove( cssActive );
-			this.content.style.display = "none";
+			uiApp.hide(this.content);
 		}
 	});
 	
@@ -1966,8 +1985,8 @@ const bluejay = (function () {
 	Show the full notification, no interaction!
 	*/
 	if(document.querySelector('.oe-login') !== null){
-		shortInfo.style.display = "none";
-		longInfo.style.display = "block";
+		uiApp.hide(shortInfo);
+		uiApp.show(longInfo);
 		document.querySelector(selector).style.display = "none";	
 		return; // exit!
 	}
@@ -2391,7 +2410,7 @@ const bluejay = (function () {
 			if(this.open) return;
 			this.open = true;
 			hideOtherPopups(this);
-			this.popup.style.display = "block";
+			uiApp.show(this.popup);
 		}	
 	});
 	
@@ -2403,7 +2422,7 @@ const bluejay = (function () {
 			if(this.open === false || this.isLocked ) return;
 			this.open = false;
 			this.btn.classList.remove( cssActive, cssOpen );
-			this.popup.style.display = "none";
+			uiApp.hide(this.popup);
 		}
 	});
 	
@@ -3292,7 +3311,7 @@ const bluejay = (function () {
 			allListsDisplay('block');
 		} else {
 			allListsDisplay('none');
-			document.querySelector('#'+listID).style.display = "block";
+			uiApp.show(document.querySelector('#'+listID));
 		}
 	};
 	
@@ -3322,6 +3341,40 @@ const bluejay = (function () {
 		});
 	});
  		
+
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('sidebarElementList');	
+	
+
+	/*
+	Build sidebar element list in EDIT mode
+	Run through Elements grab there titles and then display them	
+	*/	
+	
+	// get the <UL> wrapper
+	let ul = document.querySelector('.sidebar-eventlist .oe-element-list');
+	
+	// pretty sure only this class is used here
+	let elemTitles = document.querySelectorAll('.element-title');
+	if(elemTitles.length < 1) return;
+	
+	// avoid reflow until necessary
+	let fragment = document.createDocumentFragment();
+	
+	elemTitles.forEach( (function(title){
+		let li = document.createElement('li');
+		li.innerHTML = '<a href="#">'+title.textContent+'</a>';
+		fragment.appendChild(li);		
+	}));
+	
+	// add the DOM list
+	ul.appendChild(fragment);
+
+	
 
 })(bluejay); 
 (function (uiApp) {
@@ -3358,7 +3411,7 @@ const bluejay = (function () {
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssActive );
-			this.content.style.display = "block";
+			uiApp.show(this.content);
 			this.mouseOutHide();
 		}	
 	});
@@ -3371,7 +3424,7 @@ const bluejay = (function () {
 			if(this.open === false) return;
 			this.open = false;
 			this.btn.classList.remove( cssActive );
-			this.content.style.display = "none";
+			uiApp.hide(this.content);
 		}
 	});
 	
@@ -3664,4 +3717,426 @@ const bluejay = (function () {
 	scratchPad.addEventListener("dragend", handleEnd, false);
 	
 
+})(bluejay); 
+/*
+Add Select Search insert Popup (v2)
+Updated to Vanilla JS for IDG
+*/
+
+(function (uiApp) {
+
+	'use strict';	
+	
+	const addSelect = uiApp.addModule('addSelect');	
+	
+	/*
+	keep a track of all popups	
+	*/
+	addSelect.all = [];
+		
+	/*
+	Close all popups. Keep the interface tidy. 
+	Actually there should be a popup controller... but for now:
+	*/
+	addSelect.closeAll = function(){
+		this.all.forEach((popup) => popup.close());
+	};
+		
+	/*
+	initialise	
+	*/
+	addSelect.init = function(){
+			
+			console.log('addSelect - init',this);
+			
+			/*
+			Find all the green + buttons
+			*/
+			const greenBtns = uiApp.nodeArray(document.querySelectorAll('.js-add-select-btn'));
+			if(greenBtns.length < 1) return;
+			
+			greenBtns.forEach((btn) => {
+				let newPopup = new addSelect.Popup(btn);
+				this.all.push(newPopup);
+			});
+	};
+	
+	/*
+	onLoad initialise
+	*/
+	document.addEventListener('DOMContentLoaded', () => addSelect.init(), {once:true});
+	
+		
+})(bluejay); 
+
+/*
+List Options Constructor
+*/
+(function (uiApp) {
+
+	'use strict';	
+	
+	const addSelect = uiApp.getModule('addSelect');	
+	
+	addSelect.ListOption = function (li, parent){
+		
+		let _selected = li.classList.contains('selected'); // check not setup to be selected:
+		let _dependents = false;
+		let json = JSON.parse(li.dataset.insert);
+		
+		
+		/*
+		Does list have any dependency lists?
+		*/
+		if( json.dependents !== undefined ){
+			// build dependents
+			_dependents = new addSelect.OptionDependents(json.dependents, parent.uniqueId);
+		}
+	
+		/*
+		Methods
+		*/ 
+		this.click = function(){
+			this.toggleState();
+			parent.optionClicked( _selected, this );
+	
+			if(_dependents != false){
+				_dependents.show( _selected );
+			}	
+		};
+		
+		this.toggleState = function() {
+			li.classList.toggle('selected'); 
+			_selected = !_selected;
+		};	
+		
+		this.deselect = function(){
+			if( _selected ){
+				this.toggleState();
+			}
+		};
+		
+		
+		Object.defineProperty(this, 'selected',{
+			get: () => {
+				return _selected;
+			},
+			set: (v) => {
+				_selected = v;
+				if(!v){
+					$li.removeClass('selected');
+				}
+			}
+		});
+		
+		Object.defineProperty(this, 'dependents',{
+			get: () => {
+				return _dependents === false ? false : true; 
+			}
+		});
+		
+	
+	
+		/*
+		Events 
+		*/
+		li.addEventListener( "mousedown", this.click.bind( this ) );
+	};
+		
+})(bluejay); 
+/*
+Optional Lists based on List selection
+find group ID: 	"add-to-{uniqueID}-listgroup{n}";
+find list ID: 	"add-to-{uniqueID}-list{n}";
+
+@param dependents: String e.g. "2.1" or "2.1,2.2": 
+*/
+
+(function (uiApp) {
+
+	'use strict';	
+	
+	const addSelect = uiApp.getModule('addSelect');	
+	
+	addSelect.OptionDependents = function( dependents, listId ){
+
+		if(dependents === undefined)  return false;
+		
+		/*
+		List has extra list options	
+		*/
+		const idPrefix = "#add-to-" + listId + "-";
+		let groups = [];
+		
+		/*
+		Can be mulitple list groups.
+		Check string for commas "2.1,2.2" for groups
+		*/
+		dependents.split(',').forEach( group => {
+			
+	
+			let ids = group.split('.'); // could be mutliple list IDs e.g. 2.3.4.5
+			let obj = {};
+			// find group
+			obj.div = document.querySelector(idPrefix + 'listgroup'+ids[0] ); // <div> wrapper for optional lists
+			obj.holder = obj.div.querySelector('.optional-placeholder'); // default placeholder for Optional Lists
+	
+			/*
+			Does it have lists, or show default text?
+			e.g. 2.0
+			*/
+			if( ids[1] == 0 ){
+				obj.showDefaultText = true;
+			} else {
+				obj.showDefaultText = false;
+				/*
+				Not a ZERO... so:
+				Loop through option lists required
+				e.g. 2.4.5 (two lists in group '2')
+				*/
+				obj.lists = [];
+				for(let i=1;i<ids.length;i++ ){
+					obj.lists.push( document.querySelector(idPrefix + 'list' + ids[i]));
+				}
+			}
+			
+			groups.push(obj);
+		});
+	
+		/*
+		Methods
+		*/
+		this.show = function( show ){
+			if(show){
+				/*
+				hide ALL optional lists
+				$('#add-to-'+listId+' .optional-list').hide();
+				*/
+				this.myLists();
+			} else {
+				// unclick
+				this.reset();
+			}
+		};
+	
+		this.hideAllOptionalLists = function(div){
+			let optionalLists = uiApp.nodeArray(div.querySelectorAll('.optional-list'));
+			optionalLists.forEach((list) => {
+				uiApp.hide(list);
+			});
+			
+		};
+	
+		this.myLists = function(){
+			groups.forEach( group => {
+				/*
+				in group hide other lists
+				*/
+				this.hideAllOptionalLists(group.div);
+				
+				if(group.showDefaultText){
+					uiApp.show(group.holder);
+				} else {
+					uiApp.hide(group.holder);
+					// show required Lists
+					group.lists.forEach( list => {
+						uiApp.show(list);
+					});
+				}
+				
+			});
+		};
+		
+		/*
+		Reset (these!) groups!	
+		*/
+		this.reset = function(){
+			groups.forEach( group => {
+				this.hideAllOptionalLists(group.div);
+				uiApp.show(group.holder);
+			});
+		};
+			
+	};
+	
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	const addSelect = uiApp.getModule('addSelect');	
+	
+	addSelect.OptionsList = function(ul){
+		
+		let json = JSON.parse(ul.dataset.options);
+
+		const single = json.type == 'single' ? true : false ;				
+		// some assumptions here... 
+		const hasOptions = json.hasExtraOptions === "true" ? true : false;
+		const isOptionalList = json.isOptionalList === "true" ? true : false;
+		
+		this.uniqueId  = ul.dataset.id; // passes in DOM id (unique part) 
+		
+		/*
+		Optional List? 
+		Needs hiding. The List Option it depends on will show
+		it when it's clicked	
+		*/
+		if(isOptionalList) {
+			uiApp.hide(ul.parentNode);
+		}
+		 
+		/*
+		Store all List Options	
+		*/
+		let me = this; // hmmm... this could be better.
+		let options = [];
+		let defaultSelected = [];
+		
+		const listElems = uiApp.nodeArray(ul.querySelectorAll('li'));
+		listElems.forEach((li) => {
+			let liOpt = new addSelect.ListOption(li, this);
+			options.push(liOpt);
+			/*
+			If liOpt is selected AND has dependents
+			Need to activate the list AFTER all the other DOM
+			is set up
+			*/
+			if( liOpt.selected && liOpt.dependents){
+				/*
+				Store and then loop through after
+				others are all done to set up default
+				selected states 
+				*/
+				defaultSelected.push(liOpt);
+			}
+		});
+		
+		/*
+		Methods	
+		*/
+		this.optionClicked = function( selected, listOption ){
+			/*
+			Manage this list. 
+			Multi-select is the default	
+			*/
+			if(selected){
+				if(single){
+					options.forEach( option => {
+						if(option !== listOption) option.deselect();
+					});
+				}
+			} 
+		};
+		
+		
+		this.checkForDefaultSelections = () => {
+			if( defaultSelected.length ){
+				/*
+				This all need 'clicking' to activate
+				the dependent optional lists	
+				*/
+				defaultSelected.forEach( d => {
+					/*
+					To make the click work correctly 
+					de-select the list btn, click will
+					re-select it and activate the dependents 
+					*/
+					d.selected = false;
+					d.click();
+				});
+			}
+		};			
+	};
+		
+})(bluejay); 
+
+(function (uiApp) {
+
+	'use strict';	
+	
+	const addSelect = uiApp.getModule('addSelect');	
+	
+	addSelect.Popup = function(greenBtn){	
+		
+		let popup = document.querySelector('#' + greenBtn.dataset.popup);
+		let lists = [];
+		const reset = true;
+		const require = false; 
+	
+		/*
+		Using in analytics to build the data filters. Popup
+		needs to anchor to the left. Can not rely to x < n to do this.
+		*/
+		this.anchorLeft = popup.dataset.anchorLeft ? true : false;
+	
+		/*
+		Props
+		*/ 
+		this.btn = greenBtn;  
+		this.popup = popup;
+		this.closeBtn = popup.querySelector('.close-icon-btn');
+	
+		/*
+		Methods
+		*/
+		this.open = function(){
+			this.position();
+			addSelect.closeAll();
+			uiApp.show(popup);
+			
+			this.closeBtn.addEventListener('mousedown', this.close.bind(this));
+			window.addEventListener('scroll', this.close.bind(this), {capture:true, once:true});
+		};
+		
+		this.close = function(){
+			popup.style.display = "none";	
+		};
+		
+		this.reset = function(){
+			// reset (to default state)
+		};
+		
+		let addOptions = uiApp.nodeArray(popup.querySelectorAll('.add-options'));
+		addOptions.forEach((option) => {
+			let list = new addSelect.OptionsList(option);
+			list.checkForDefaultSelections();
+			lists.push(list);
+		});
+		
+		//idg.addSelectInsert.btnEvent( this, $popup.children('.close-icon-btn'), this.close );
+		this.btn.addEventListener('mousedown', this.open.bind(this) );		
+	};
+	
+	
+	addSelect.Popup.prototype.position = function(){
+		let rect = this.btn.getBoundingClientRect();	
+		let w = window.innerWidth; // hmmm, this could be better as forces reflow
+		let h = window.innerHeight;
+		let posH = (h - rect.bottom);
+		
+		// check popup doesn't go off the top of the screen 
+		// and don't overlay Logo! or Patient Name
+		if(h - posH < 325){
+			posH = h - 325;
+		}
+		
+		/*
+		Popup can be 'requested' to anchor left.
+		Only used in Analytics (so far)	
+		*/
+		if( this.anchorLeft ){
+			this.popup.style.left = rect.left + 'px';
+		} else {
+			// is popup pushing off the left
+			let leftSideEdge = rect.right - this.popup.getBoundingClientRect().width;
+			let adjustRight =  leftSideEdge < 0 ? leftSideEdge - 25 : 0;
+			this.popup.style.right = (w - rect.right) + adjustRight + 'px' ;
+		}
+		
+		this.popup.style.bottom = posH + 'px';
+
+	};
+	
+		
 })(bluejay); 
