@@ -53,7 +53,7 @@ List Options Constructor
 			set: (v) => {
 				_selected = v;
 				if(!v){
-					$li.removeClass('selected');
+					li.classList.remove('selected');
 				}
 			}
 		});

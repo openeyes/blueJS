@@ -32,8 +32,21 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			let ids = group.split('.'); // could be mutliple list IDs e.g. 2.3.4.5
 			let obj = {};
 			// find group
-			obj.div = document.querySelector(idPrefix + 'listgroup'+ids[0] ); // <div> wrapper for optional lists
+			
+			if(ids[0] === 0){
+				console.log('Error: OptionDependents, listGroup = 0 !!',  idPrefix + 'listgroup'+ids[0]);
+			}
+			
+			obj.div = document.querySelector(idPrefix + 'listgroup'+ids[0]); // <div> wrapper for optional lists
+			if(obj.div === null){
+				console.log('obj.div = null!',idPrefix + 'listgroup'+ids[0]);
+			}
+			
 			obj.holder = obj.div.querySelector('.optional-placeholder'); // default placeholder for Optional Lists
+			if(obj.holder === null){
+				console.log('obj.holder = null!');
+			}
+			
 	
 			/*
 			Does it have lists, or show default text?
@@ -50,7 +63,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				*/
 				obj.lists = [];
 				for(let i=1;i<ids.length;i++ ){
-					obj.lists.push( document.querySelector(idPrefix + 'list' + ids[i]));
+					let li = document.querySelector(idPrefix + 'list' + ids[i]);
+					if(li === null){
+						console.log('Err: OptionDependents, list? ', idPrefix + 'list' + ids[i]);	
+					} else {
+						obj.lists.push(li);
+					}
+					
 				}
 			}
 			
@@ -89,9 +108,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				this.hideAllOptionalLists(group.div);
 				
 				if(group.showDefaultText){
-					uiApp.show(group.holder);
+					if(group.holder) uiApp.show(group.holder);
 				} else {
-					uiApp.hide(group.holder);
+					if(group.holder) uiApp.hide(group.holder);
 					// show required Lists
 					group.lists.forEach( list => {
 						uiApp.show(list);
@@ -107,7 +126,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		this.reset = function(){
 			groups.forEach( group => {
 				this.hideAllOptionalLists(group.div);
-				uiApp.show(group.holder);
+				if(group.holder) uiApp.show(group.holder);
 			});
 		};
 			

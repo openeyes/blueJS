@@ -9,6 +9,16 @@
 	*/
 	if( document.querySelector('.home-messages') === null ) return;
 	
+	/*
+	Does message need expanding?
+	*/
+	const msgs = uiApp.nodeArray(document.querySelectorAll('.js-message .message'));
+	msgs.forEach((msg) => {
+		if( msg.scrollWidth <= msg.clientWidth ){
+			// message fits in available space!
+			msg.parentNode.nextSibling.querySelector('.js-expand-message').style.display = "none";
+		} 
+	});
 	
 	const userClick = (ev) => {
 		let icon = ev.target;

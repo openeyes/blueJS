@@ -12,6 +12,8 @@
 	
 	// get the <UL> wrapper
 	let ul = document.querySelector('.sidebar-eventlist .oe-element-list');
+	if(ul === null) return;
+	
 	
 	// pretty sure only this class is used here
 	let elemTitles = document.querySelectorAll('.element-title');

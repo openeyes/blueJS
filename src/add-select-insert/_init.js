@@ -26,9 +26,6 @@ Updated to Vanilla JS for IDG
 	initialise	
 	*/
 	addSelect.init = function(){
-			
-			console.log('addSelect - init',this);
-			
 			/*
 			Find all the green + buttons
 			*/

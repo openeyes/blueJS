@@ -8,6 +8,7 @@
 	if(scratchPad === null) return;
 	
 	let offsetX, offsetY;
+	let show = false;
 
 	const handleStart = (e) => {
 		e.dataTransfer.dropEffect = "move";
@@ -28,6 +29,24 @@
 
 	scratchPad.addEventListener("dragstart", handleStart, false);
 	scratchPad.addEventListener("dragend", handleEnd, false);
+
+	/*
+	Demo the the scratchPad behaviour 
+	*/
+	const change = (ev) => {
+		let btn = ev.target;
+		console.log(scratchPad);
+		if(show){
+			uiApp.hide(scratchPad);
+			btn.textContent = 'ScratchPad';
+		} else {
+			uiApp.show(scratchPad);
+			btn.textContent = 'Hide ScratchPad';
+		}
+		show = !show;		
+	};
 	
+	uiApp.registerForClick('#js-vc-scratchpad', change );
+
 
 })(bluejay); 

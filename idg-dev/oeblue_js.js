@@ -1032,9 +1032,9 @@ const bluejay = (function () {
 		/**
 		* Loads in PHP file into DOM wrapper
 		*/
-		loadPHP:function(){
+		loadPHP:function(demo){
 			// xhr returns a Promise... 
-			uiApp.xhr('/idg-php/v3/_load/sidebar/' + this.php)
+			uiApp.xhr(demo)
 				.then( html => {
 					// in the meantime has the user clicked to close?
 					if(this.open === false) return; 
@@ -1075,8 +1075,35 @@ const bluejay = (function () {
 				this.close();
 			} else {
 				this.open = true;
-				this.loadPHP();
+				let demoPHP = JSON.parse(this.btn.dataset.demophp);
+				if(demoPHP !== false){
+					this.loadPHP(demoPHP);
+				} else {
+					this.elementSideNav();
+				}
+				
 			}
+		}
+	});
+	
+	const _elementSideNav = () => ({
+		elementSideNav:function(){
+			this.nav = document.createElement('nav');
+			this.nav.className = this.wrapClass;
+			
+			const elementTitles = uiApp.nodeArray(document.querySelectorAll('.element .element-title'));
+			const listItems = elementTitles.map((title) => {
+				return '<li class="element" id="side-element-contacts"><a href="#" class="selected">' + title.textContent + '</a></li>';
+			});
+		
+			this.nav.innerHTML = [
+				'<div class="element-structure">',
+				'<ul class="oe-element-list">',
+				listItems.join(''),
+				'</ul>',
+				'</div>'].join('');	
+				
+			uiApp.appendTo('body',this.nav);
 		}
 	});
 	
@@ -1085,29 +1112,39 @@ const bluejay = (function () {
 	* @param {Object} set up
 	* @returns new Object
 	*/	
-	const ElementOverlay = (me) => {
-		me.btn = null;
-		me.open = false; 
-		return Object.assign(	me, 
-								_change(),
-								_loadPHP(), 
-								_close() );			
+	const ElementOverlay = (wrap) => {
+		return Object.assign({
+			btn: null, 
+			open: false,
+			wrapClass: wrap
+		}, 
+		_change(),
+		_loadPHP(), 
+		_elementSideNav(),
+		_close());			
 	};
 
-	// Only set up if DOM needs it...
+	/*
+	Element manager is only required (currently) in Examination
+	Only set up if DOM is available
+	*/
 	if(document.querySelector('#js-manage-elements-btn') !== null){
-		
-		const manager = ElementOverlay({	wrapClass: 'oe-element-selector', 
-											php: 'element-selector.php' });
-												
-		const sidebar = ElementOverlay({ 	wrapClass: 'sidebar element-overlay', 
-											php: 'examination-elements.php' });
- 	
+		const manager = ElementOverlay('oe-element-selector');
 		// register Events
 		uiApp.registerForClick('#js-manage-elements-btn', (ev) => manager.change(ev) );
 		uiApp.registerForClick('.oe-element-selector .close-icon-btn button', () => manager.close() );
+	}
+		
+	/*
+	Sidebar Element view should be available in all Events
+	Only set up if DOM is available
+	*/
+	if(document.querySelector('#js-element-structure-btn') !== null){
+		const sidebar = ElementOverlay('sidebar element-overlay');
+		// register Events
 		uiApp.registerForClick('#js-element-structure-btn', (ev) => sidebar.change(ev) );
 	}
+	
 
 })(bluejay); 
 (function (uiApp) {
@@ -1516,6 +1553,16 @@ const bluejay = (function () {
 	*/
 	if( document.querySelector('.home-messages') === null ) return;
 	
+	/*
+	Does message need expanding?
+	*/
+	const msgs = uiApp.nodeArray(document.querySelectorAll('.js-message .message'));
+	msgs.forEach((msg) => {
+		if( msg.scrollWidth <= msg.clientWidth ){
+			// message fits in available space!
+			msg.parentNode.nextSibling.querySelector('.js-expand-message').style.display = "none";
+		} 
+	});
 	
 	const userClick = (ev) => {
 		let icon = ev.target;
@@ -1785,9 +1832,15 @@ const bluejay = (function () {
 	const selector = '#js-openeyes-btn';
 	
 	/*
+	on Login flag the logo
+	*/
+	if(document.querySelector('.oe-login') !== null){
+		document.querySelector(selector).classList.add(cssActive);	
+	}
+	
+	/*
 	Methods	
 	*/
-
 	const _change = () => ({
 		/**
 		* Callback for 'click'
@@ -3357,6 +3410,8 @@ const bluejay = (function () {
 	
 	// get the <UL> wrapper
 	let ul = document.querySelector('.sidebar-eventlist .oe-element-list');
+	if(ul === null) return;
+	
 	
 	// pretty sure only this class is used here
 	let elemTitles = document.querySelectorAll('.element-title');
@@ -3695,6 +3750,7 @@ const bluejay = (function () {
 	if(scratchPad === null) return;
 	
 	let offsetX, offsetY;
+	let show = false;
 
 	const handleStart = (e) => {
 		e.dataTransfer.dropEffect = "move";
@@ -3715,7 +3771,25 @@ const bluejay = (function () {
 
 	scratchPad.addEventListener("dragstart", handleStart, false);
 	scratchPad.addEventListener("dragend", handleEnd, false);
+
+	/*
+	Demo the the scratchPad behaviour 
+	*/
+	const change = (ev) => {
+		let btn = ev.target;
+		console.log(scratchPad);
+		if(show){
+			uiApp.hide(scratchPad);
+			btn.textContent = 'ScratchPad';
+		} else {
+			uiApp.show(scratchPad);
+			btn.textContent = 'Hide ScratchPad';
+		}
+		show = !show;		
+	};
 	
+	uiApp.registerForClick('#js-vc-scratchpad', change );
+
 
 })(bluejay); 
 /*
@@ -3746,9 +3820,6 @@ Updated to Vanilla JS for IDG
 	initialise	
 	*/
 	addSelect.init = function(){
-			
-			console.log('addSelect - init',this);
-			
 			/*
 			Find all the green + buttons
 			*/
@@ -3824,7 +3895,7 @@ List Options Constructor
 			set: (v) => {
 				_selected = v;
 				if(!v){
-					$li.removeClass('selected');
+					li.classList.remove('selected');
 				}
 			}
 		});
@@ -3878,8 +3949,21 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			let ids = group.split('.'); // could be mutliple list IDs e.g. 2.3.4.5
 			let obj = {};
 			// find group
-			obj.div = document.querySelector(idPrefix + 'listgroup'+ids[0] ); // <div> wrapper for optional lists
+			
+			if(ids[0] === 0){
+				console.log('Error: OptionDependents, listGroup = 0 !!',  idPrefix + 'listgroup'+ids[0]);
+			}
+			
+			obj.div = document.querySelector(idPrefix + 'listgroup'+ids[0]); // <div> wrapper for optional lists
+			if(obj.div === null){
+				console.log('obj.div = null!',idPrefix + 'listgroup'+ids[0]);
+			}
+			
 			obj.holder = obj.div.querySelector('.optional-placeholder'); // default placeholder for Optional Lists
+			if(obj.holder === null){
+				console.log('obj.holder = null!');
+			}
+			
 	
 			/*
 			Does it have lists, or show default text?
@@ -3896,7 +3980,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				*/
 				obj.lists = [];
 				for(let i=1;i<ids.length;i++ ){
-					obj.lists.push( document.querySelector(idPrefix + 'list' + ids[i]));
+					let li = document.querySelector(idPrefix + 'list' + ids[i]);
+					if(li === null){
+						console.log('Err: OptionDependents, list? ', idPrefix + 'list' + ids[i]);	
+					} else {
+						obj.lists.push(li);
+					}
+					
 				}
 			}
 			
@@ -3935,9 +4025,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				this.hideAllOptionalLists(group.div);
 				
 				if(group.showDefaultText){
-					uiApp.show(group.holder);
+					if(group.holder) uiApp.show(group.holder);
 				} else {
-					uiApp.hide(group.holder);
+					if(group.holder) uiApp.hide(group.holder);
 					// show required Lists
 					group.lists.forEach( list => {
 						uiApp.show(list);
@@ -3953,7 +4043,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		this.reset = function(){
 			groups.forEach( group => {
 				this.hideAllOptionalLists(group.div);
-				uiApp.show(group.holder);
+				if(group.holder) uiApp.show(group.holder);
 			});
 		};
 			

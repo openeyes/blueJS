@@ -9,9 +9,15 @@
 	const selector = '#js-openeyes-btn';
 	
 	/*
+	on Login flag the logo
+	*/
+	if(document.querySelector('.oe-login') !== null){
+		document.querySelector(selector).classList.add(cssActive);	
+	}
+	
+	/*
 	Methods	
 	*/
-
 	const _change = () => ({
 		/**
 		* Callback for 'click'
