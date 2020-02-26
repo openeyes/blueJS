@@ -4,10 +4,12 @@
 	
 	uiApp.addModule('patientQuickMeta');
 	
-	let open = false;
-	let fixed = false; 
-	let currentIcon = null; 
-	let div = null;	
+	let	open = false,
+		fixed = false,
+		currentIcon = null,
+		div = null,
+		closeBtn = null;
+		
 	const text = {};
 	
 	const buildDOM = () => {
@@ -29,6 +31,8 @@
 			
 		uiApp.appendTo('body',div);
 		
+		closeBtn = div.querySelector('.close-icon-btn');
+		
 		text.surname = div.querySelector('.patient-surname');
 		text.first = div.querySelector('.patient-firstname');
 		text.hospital = div.querySelector('.hospital-number');
@@ -44,11 +48,23 @@
 		open = fixed = false;
 		currentIcon = null;
 	};
-	
-	
-	const show = (dataSet,rect) => {
-		div = div || buildDOM();
+
+	const show = (icon, clicked) => {
+		// is click to fix open?
+		if(currentIcon === icon && open){
+			fixed = true;
+			uiApp.show(closeBtn);
+			return;
+		}
 		
+		div = div || buildDOM();
+		open = true;
+		fixed = clicked;
+		currentIcon = icon;
+		 
+		
+		let dataSet = icon.dataset;
+		let rect = icon.getBoundingClientRect();
 		let mode = dataSet.mode;
 		let php = dataSet.php;
 		let patient = JSON.parse( dataSet.patient );
@@ -93,6 +109,12 @@
 		// slow loading??
 		let spinnerID = setTimeout( () => content.innerHTML = '<i class="spinner"></i>', 400);	
 		
+		if(clicked){
+			uiApp.show(closeBtn);
+		} else {
+			uiApp.hide(closeBtn);
+		}
+		
 		// xhr returns a Promise... 
 		uiApp.xhr('/idg-php/v3/_load/' + php)
 			.then( html => {
@@ -103,21 +125,16 @@
 			.catch(e => console.log('ed3app php failed to load',e));  // maybe output this to UI at somepoint, but for now...
 	};
 	
+	/**
+	* Callback for 'Click'
+	* @param {event} event
+	*/
 	const userClick = (ev) => {
 		let icon = ev.target;
-		if(open){
-			if(fixed && currentIcon === icon) {
-				hide();
-			} else {
-				// new click OR hover
-				fixed = true; 
-				currentIcon = icon;
-				show(icon.dataset, icon.getBoundingClientRect() );
-			}
+		if(open && fixed && currentIcon === icon) {
+			hide(); // this is an unclick!
 		} else {
-			fixed = true;
-			currentIcon = ev.target;
-			show(currentIcon.dataset, currentIcon.getBoundingClientRect() );
+			show(icon, true); // new 
 		}
 	};
 	
@@ -127,9 +144,7 @@
 	*/
 	const userHover = (ev) => {
 		if(fixed) return;
-		currentIcon = ev.target;
-		show(currentIcon.dataset, currentIcon.getBoundingClientRect() );
-		open = true;
+		show(ev.target, false);
 	};
 	
 	/**
@@ -145,5 +160,6 @@
 	uiApp.registerForClick('.js-patient-quick-overview',userClick);
 	uiApp.registerForHover('.js-patient-quick-overview',userHover);
 	uiApp.registerForExit('.js-patient-quick-overview',userOut);
+	uiApp.registerForClick('.close-icon-btn .oe-i',hide);
 	
 })(bluejay); 
