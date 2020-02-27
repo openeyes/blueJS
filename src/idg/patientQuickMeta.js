@@ -26,8 +26,8 @@
 			'<div class="nhs-number"><span>NHS</span>111 222 3333</div>',
 			'<div class="patient-gender"><em>Gen</em>Male</div>',
 			'<div class="patient-age"><em>Age</em>00y</div>',
-			'<div class="quick-overview-content"></div>',
-			'</div></div>'].join('');
+			'</div></div>',
+			'<div class="quick-overview-content"></div>',].join('');
 			
 		uiApp.appendTo('body',div);
 		

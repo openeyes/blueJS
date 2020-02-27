@@ -268,7 +268,7 @@ const bluejay = (function () {
 	*/
 	const xhr = (url) => {
 		uiApp.log('[XHR] - '+url);
-		
+		// wrap XHR in Promise
 		return new Promise((resolve, reject) => {
 			let xReq = new XMLHttpRequest();
 			xReq.open("GET", url);
@@ -301,7 +301,7 @@ const bluejay = (function () {
 		// need to render with all the right CSS being applied
 		// displayed but hidden...
 		el.style.visibility = 'hidden';
-		el.style.display = 'block';			// this won't work for 'flex'
+		el.style.display = 'block'; // this won't work for 'flex'
 		
 		// get props...
 		let props = {	
@@ -2585,8 +2585,8 @@ const bluejay = (function () {
 			'<div class="nhs-number"><span>NHS</span>111 222 3333</div>',
 			'<div class="patient-gender"><em>Gen</em>Male</div>',
 			'<div class="patient-age"><em>Age</em>00y</div>',
-			'<div class="quick-overview-content"></div>',
-			'</div></div>'].join('');
+			'</div></div>',
+			'<div class="quick-overview-content"></div>',].join('');
 			
 		uiApp.appendTo('body',div);
 		
