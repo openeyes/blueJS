@@ -8,7 +8,8 @@
 		fixed = false,
 		currentIcon = null,
 		div = null,
-		closeBtn = null;
+		closeBtn = null,
+		winHeight = window.innerHeight; // forces reflow, only update onResize
 		
 	const text = {};
 	
@@ -79,6 +80,7 @@
 		text.gender.innerHTML = '<em>Gen</em> '+ patient.gender;
 		text.age.innerHTML = '<em>Age</em> '+ patient.age;
 		
+		div.style.cssText = "";
 		
 		/*
 		CSS can handle a mode of "side"
@@ -97,9 +99,13 @@
 			*/
 			div.classList.remove("side-panel");
 			
-			let wh = window.innerHeight;
-			// quick position for testing... 
-			div.style.top 	= (rect.y + rect.height + 5) + "px";
+			// check not too close the bottom of the screen:
+			if(winHeight - rect.y > 300){
+				div.style.top 	= (rect.y + rect.height + 5) + "px";
+			} else {
+				div.style.bottom = (winHeight - rect.top) + 10 + "px";
+			}
+			
 			div.style.left 	= (rect.x - 250 +  rect.width/2)  + "px";			
 		}
 		
@@ -119,8 +125,11 @@
 		uiApp.xhr('/idg-php/v3/_load/' + php)
 			.then( html => {
 				clearTimeout(spinnerID);
-				content.innerHTML = html;
-				div.style.display = "block";
+				if(open){
+					content.innerHTML = html;
+					div.style.display = "block";
+				}
+				
 			})
 			.catch(e => console.log('ed3app php failed to load',e));  // maybe output this to UI at somepoint, but for now...
 	};
@@ -160,6 +169,9 @@
 	uiApp.registerForClick('.js-patient-quick-overview',userClick);
 	uiApp.registerForHover('.js-patient-quick-overview',userHover);
 	uiApp.registerForExit('.js-patient-quick-overview',userOut);
-	uiApp.registerForClick('.close-icon-btn .oe-i',hide);
+	uiApp.registerForClick('.oe-patient-quick-overview .close-icon-btn .oe-i',hide);
+	
+	// innerWidth forces a reflow, only update when necessary
+	uiApp.listenForResize(() => winHeight = window.inneHeight );
 	
 })(bluejay); 

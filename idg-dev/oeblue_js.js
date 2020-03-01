@@ -153,7 +153,7 @@ const bluejay = (function () {
 		document.addEventListener('mousedown', (event) => checkListeners(event,click), {capture:true}); 
 		document.addEventListener('mouseleave', (event) => checkListeners(event,exit), {capture:true});
 		// Throttle high rate events
-		window.onresize = () => resizeThrottle(); 
+		window.onresize = resizeThrottle; 
     },{once:true});
 	
 	// extend App
@@ -337,7 +337,20 @@ const bluejay = (function () {
 	/**
 	Manage Modules 
 	*/
-	const modules = {};
+	const modules = new Map();
+	
+	/**
+	 * Get module namespace
+	 * @param  {String} namespace
+	 * @return {Object} 
+	 */
+	let get = (name) => {
+		if(modules.has(name)){
+			return modules.get(name);	
+		}
+		uiApp.log('Module does not exist?: '+name);
+		return false;
+	};
 	
 	/**
 	 * Add a new module
@@ -347,28 +360,16 @@ const bluejay = (function () {
 	 */
 	let add = (name, methods) => {
 		// check for unique namespace
-		if(!(name in modules)){
-			uiApp.log('[Module] '+name);
-			modules[name] = {};
-			return modules[name];
+		if(!modules.has(name)){
+			uiApp.log('[Module] ' + name);
+			modules.set(name, {});
+			return get(name);
 		} else {
 			uiApp.log('** Err: Module aleady added? ' + name);
 			return false;
 		}
 	};
-	
-	/**
-	 * Get module namespace
-	 * @param  {String} namespace
-	 * @return {Object} 
-	 */
-	let get = (name) => {
-		if (!(name in modules)){
-			uiApp.log('Module does not exist?: '+name);
-			return;	
-		}
-		return modules[name];
-	};
+
 	
 	// Extend App
 	uiApp.extend('addModule', add);
@@ -1359,6 +1360,66 @@ const bluejay = (function () {
 
 	'use strict';	
 	
+	uiApp.addModule('eventsUserTrail');	
+	
+	/*
+	Provide a popup for a USER event activity in VIEW	
+	*/
+	const iconBtn = document.querySelector('#js-events-user-trail');
+	if(iconBtn === null) return;
+	
+	let div = null;	
+
+	const toggleEventDetails = (ev) => {
+		let icon = ev.target;
+		let trail = div.querySelector('#' + icon.dataset.auditid);
+		
+		// Did try mouseenter but it was causing a layout flicker!	
+		if(trail.style.display === "block"){
+			trail.style.display = "none";
+		} else {
+			trail.style.display = "block";
+		}
+	};
+	
+	const show = () => {
+		// Build DOM
+		div = document.createElement('div');
+		div.className = "oe-popup-wrap";
+		
+		let content = document.createElement('div');
+		content.className = "oe-popup oe-events-user-trail";
+		
+		div.appendChild(content);
+		uiApp.appendTo('body',div);
+			
+		// slow loading??
+		let spinnerID = setTimeout( () => content.innerHTML = '<i class="spinner"></i>', 400);
+		
+		// xhr returns a Promise... 	
+		uiApp.xhr('/idg-php/v3/_load/sidebar/events-user-trail-v2.php')
+			.then( html => {
+				clearTimeout(spinnerID);
+				content.innerHTML = html;
+			})
+			.catch(e => console.log('ed3app php failed to load',e));  // maybe output this to UI at somepoint, but for now...	
+	};
+	
+	const hide = () => {
+		uiApp.removeElement(div);
+	};
+	
+
+	uiApp.registerForClick('#js-events-user-trail', show);
+	uiApp.registerForClick('.js-idg-toggle-event-audit-trail',toggleEventDetails);
+	uiApp.registerForClick('.oe-events-user-trail .close-icon-btn .oe-i', hide);
+		
+
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
 	uiApp.addModule('examElementSearch');	
 	
 	/*
@@ -1540,6 +1601,270 @@ const bluejay = (function () {
 	
 	// Regsiter for Events
 	uiApp.registerForClick('.oe-filter-options .oe-filter-btn', ev => userClick(ev) );	
+	
+})(bluejay); 
+/*
+Lightning (Document Viewer page)
+Updated to Vanilla JS for IDG
+*/
+
+(function (uiApp) {
+
+	'use strict';	
+	
+	const lightning = uiApp.addModule('lightning');	
+	
+	if(document.querySelector('.oe-lightning-viewer') === null) return;
+	
+	/*
+	Methods	
+	*/
+	const _updateView = () => ({
+		updateView: function(id){
+			this.updateStack(id);
+			this.updateMeta(document.querySelector(this.iconPrefix + id).dataset.meta);
+		}
+	});
+	
+	const _updateMeta = () => ({
+		updateMeta: function(meta){
+			let div = document.querySelector('.lightning-meta');
+			let info = meta.split(',');
+			['.type','.date','.who'].forEach((item, index) => {
+				div.querySelector(item).textContent = info[index];
+			});
+		}
+	});
+	
+	const _updateStack = () => ({
+		updateStack: function(stackID){
+			uiApp.hide(document.querySelector(this.stackPrefix + this.currentStack));
+			uiApp.show(document.querySelector(this.stackPrefix + stackID));
+			this.currentStack = stackID; // track id
+			this.updateCounter();
+			this.timelineIcon();
+		}
+	});
+	
+	
+	const _updateCounter = () => ({
+		updateCounter: function(){
+			document.querySelector('.lightning-ui .stack-position').textContent = this.currentStack+1 + '/' + this.totalStackNum;
+		}
+	});
+
+	const _timelineIcon = () => ({
+		timelineIcon: function(){
+			document.querySelector('.icon-event').classList.remove('js-hover');
+			document.querySelector(this.iconPrefix + this.currentStack).classList.add('js-hover');	
+		}
+	});
+	
+	/*
+	xscroll using DOM overlay (rather than the image)
+	(note: the overlay has 2 possible widths depending on browser size)
+	*/
+	const _xscroll = () => ({
+		xscroll: function(xCoord,e){
+			var xpos = Math.floor(xCoord/(this.xscrollWidth / this.totalStackNum));
+			if(this.locked == false){
+				this.updateView( xpos );
+			} 
+		}
+	});
+	
+	const _swipeLock = () => ({
+		swipeLock: function(){
+			this.locked = !this.locked;
+			let help = document.querySelector('.lightning-ui .user-help');
+			if(this.locked){
+				help.textContent = 'Swipe is LOCKED | Click to unlock';
+			} else {
+				help.textContent = 'Swipe to scan or use key RIGHT / LEFT | Click to LOCK swipe';
+			}
+		}
+	});
+
+	const _stepThrough = () => ({
+		stepThrough: function(dir){
+			var next = this.currentStack + dir;
+			if( next >= 0 && next < this.totalStackNum){
+				this.updateView(next);
+			}
+		}
+	});
+	
+	
+	
+
+	/**
+	* singleton 
+	* (using IIFE to maintain code pattern)
+	*/
+	const app = (() => {
+		return Object.assign({	
+			currentStack: 0,
+			iconPrefix: '#lqv_',
+			stackPrefix: '#lsg_',
+			totalStackNum: document.querySelectorAll('.stack-group').length,
+			xscrollWidth: document.querySelector('.lightning-view').clientWidth,
+			locked: true
+		},
+		_updateView(),
+		_updateMeta(), 
+		_updateStack(),
+		_updateCounter(),
+		_timelineIcon(),
+		_xscroll(),
+		_swipeLock(),
+		_stepThrough());
+	})();
+	
+	
+	/*
+	setup viewer	
+	*/
+	app.updateCounter();
+	app.swipeLock();
+	
+	/*
+	Events	
+	*/
+	uiApp.registerForClick('#lightning-left-btn', () => app.stepThrough(-1));
+	uiApp.registerForClick('#lightning-right-btn', () => app.stepThrough(1));
+	uiApp.registerForClick('.lightning-view', () => app.swipeLock());
+	uiApp.registerForClick('.icon-event', () => app.swipeLock());
+	
+	uiApp.registerForHover('.icon-event', (ev) => {
+		let icon = ev.target;
+		app.updateStack( icon.dataset.id );
+		app.updateMeta( icon.dataset.meta );
+	});
+	
+	const view = document.querySelector('.lightning-view');
+	view.addEventListener('mousemove', (ev) => {
+		//app.xscroll(e.pageX - offset.left,e);
+	});
+	
+	uiApp.listenForResize(() => app.xscrollWidth = view.clientWidth);
+
+	document.addEventListener('keydown', (ev) => {
+		if ((ev.keyCode || ev.which) == 37) app.stepThrough(-1);
+		if ((ev.keyCode || ev.which) == 39) app.stepThrough(1);
+	});
+		
+		
+})(bluejay); 
+
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('lightningFilterOptions');
+	
+	const cssActive = 'active';
+	const selector = '.lightning-btn';
+	const btn = document.querySelector(selector);
+	if(btn === null) return;
+
+	/*
+	Methods	
+	*/
+	
+	const _change = () => ({
+		/**
+		* Callback for 'click'
+		*/
+		change: function(){
+			if(this.open)	this.hide();
+			else			this.show();
+		}
+	});
+	
+	const _show = () => ({
+		/**
+		* Callback for 'hover'
+		* Enhanced behaviour for mouse/trackpad
+		*/
+		show:function(){
+			if(this.open) return;
+			this.open = true;
+			this.btn.classList.add( cssActive );
+			uiApp.show(this.content);
+		}	
+	});
+	
+	const _hide = () => ({
+		/**
+		* Hide content
+		*/
+		hide:function(){
+			if(this.open === false) return;
+			this.open = false;
+			this.btn.classList.remove( cssActive );
+			uiApp.hide(this.content);
+		}
+	});
+	
+	
+	
+	/**
+	* shortcuts singleton 
+	* (using IIFE to maintain code pattern)
+	*/
+	const lightningFilter = (() => {
+		return Object.assign({	
+			btn:btn,
+			content: document.querySelector('.change-timeline'),
+			open: false 
+		},
+		_change(),
+		_show(),
+		_hide() );
+	})();
+	
+
+	/*
+	Events 
+	*/
+	uiApp.registerForClick(selector, () => lightningFilter.change());
+	
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('lightningIconGroups');
+	
+	const iconGroups = uiApp.nodeArray(document.querySelectorAll('.icon-group'));
+	if(iconGroups.length < 1) return;
+	
+	iconGroups.forEach((group) => {
+		let count = group.childElementCount;
+		let div = document.createElement('div');
+		div.textContent = '(' + count + ')';
+		uiApp.hide(div);
+		group.parentNode.appendChild(div);
+	});
+	
+	const collapseTimeline = (ev) => {
+		let icon = ev.target;
+		let group = document.querySelector('#js-icon-' + icon.dataset.icons);
+		if(icon.classList.contains('collapse')){
+			uiApp.hide(group);
+			uiApp.show(group.nextElementSibling);
+			icon.classList.replace('collapse','expand');
+		} else {
+			uiApp.show(group);
+			uiApp.hide(group.nextElementSibling);
+			icon.classList.replace('expand','collapse');
+		}
+	};
+	
+	/*
+	Events 
+	*/
+	uiApp.registerForClick('.js-timeline-date', collapseTimeline);
 	
 })(bluejay); 
 (function (uiApp) {
@@ -2399,7 +2724,7 @@ const bluejay = (function () {
 	uiApp.registerForClick(selector,userClick);
 	uiApp.registerForHover(selector,userHover);
 	uiApp.registerForExit(selector,userOut);
-	uiApp.registerForClick('.close-icon-btn .oe-i',hide);
+	uiApp.registerForClick('.oe-pathstep-popup .close-icon-btn .oe-i',hide);
 		
 })(bluejay); 
 (function (uiApp) {
@@ -2567,7 +2892,8 @@ const bluejay = (function () {
 		fixed = false,
 		currentIcon = null,
 		div = null,
-		closeBtn = null;
+		closeBtn = null,
+		winHeight = window.innerHeight; // forces reflow, only update onResize
 		
 	const text = {};
 	
@@ -2638,6 +2964,7 @@ const bluejay = (function () {
 		text.gender.innerHTML = '<em>Gen</em> '+ patient.gender;
 		text.age.innerHTML = '<em>Age</em> '+ patient.age;
 		
+		div.style.cssText = "";
 		
 		/*
 		CSS can handle a mode of "side"
@@ -2656,9 +2983,13 @@ const bluejay = (function () {
 			*/
 			div.classList.remove("side-panel");
 			
-			let wh = window.innerHeight;
-			// quick position for testing... 
-			div.style.top 	= (rect.y + rect.height + 5) + "px";
+			// check not too close the bottom of the screen:
+			if(winHeight - rect.y > 300){
+				div.style.top 	= (rect.y + rect.height + 5) + "px";
+			} else {
+				div.style.bottom = (winHeight - rect.top) + 10 + "px";
+			}
+			
 			div.style.left 	= (rect.x - 250 +  rect.width/2)  + "px";			
 		}
 		
@@ -2678,8 +3009,11 @@ const bluejay = (function () {
 		uiApp.xhr('/idg-php/v3/_load/' + php)
 			.then( html => {
 				clearTimeout(spinnerID);
-				content.innerHTML = html;
-				div.style.display = "block";
+				if(open){
+					content.innerHTML = html;
+					div.style.display = "block";
+				}
+				
 			})
 			.catch(e => console.log('ed3app php failed to load',e));  // maybe output this to UI at somepoint, but for now...
 	};
@@ -2719,7 +3053,10 @@ const bluejay = (function () {
 	uiApp.registerForClick('.js-patient-quick-overview',userClick);
 	uiApp.registerForHover('.js-patient-quick-overview',userHover);
 	uiApp.registerForExit('.js-patient-quick-overview',userOut);
-	uiApp.registerForClick('.close-icon-btn .oe-i',hide);
+	uiApp.registerForClick('.oe-patient-quick-overview .close-icon-btn .oe-i',hide);
+	
+	// innerWidth forces a reflow, only update when necessary
+	uiApp.listenForResize(() => winHeight = window.inneHeight );
 	
 })(bluejay); 
 (function (uiApp) {

@@ -153,7 +153,7 @@ const bluejay = (function () {
 		document.addEventListener('mousedown', (event) => checkListeners(event,click), {capture:true}); 
 		document.addEventListener('mouseleave', (event) => checkListeners(event,exit), {capture:true});
 		// Throttle high rate events
-		window.onresize = () => resizeThrottle(); 
+		window.onresize = resizeThrottle; 
     },{once:true});
 	
 	// extend App
@@ -337,7 +337,20 @@ const bluejay = (function () {
 	/**
 	Manage Modules 
 	*/
-	const modules = {};
+	const modules = new Map();
+	
+	/**
+	 * Get module namespace
+	 * @param  {String} namespace
+	 * @return {Object} 
+	 */
+	let get = (name) => {
+		if(modules.has(name)){
+			return modules.get(name);	
+		}
+		uiApp.log('Module does not exist?: '+name);
+		return false;
+	};
 	
 	/**
 	 * Add a new module
@@ -347,28 +360,16 @@ const bluejay = (function () {
 	 */
 	let add = (name, methods) => {
 		// check for unique namespace
-		if(!(name in modules)){
-			uiApp.log('[Module] '+name);
-			modules[name] = {};
-			return modules[name];
+		if(!modules.has(name)){
+			uiApp.log('[Module] ' + name);
+			modules.set(name, {});
+			return get(name);
 		} else {
 			uiApp.log('** Err: Module aleady added? ' + name);
 			return false;
 		}
 	};
-	
-	/**
-	 * Get module namespace
-	 * @param  {String} namespace
-	 * @return {Object} 
-	 */
-	let get = (name) => {
-		if (!(name in modules)){
-			uiApp.log('Module does not exist?: '+name);
-			return;	
-		}
-		return modules[name];
-	};
+
 	
 	// Extend App
 	uiApp.extend('addModule', add);

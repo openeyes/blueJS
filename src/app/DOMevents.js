@@ -77,7 +77,7 @@
 		document.addEventListener('mousedown', (event) => checkListeners(event,click), {capture:true}); 
 		document.addEventListener('mouseleave', (event) => checkListeners(event,exit), {capture:true});
 		// Throttle high rate events
-		window.onresize = () => resizeThrottle(); 
+		window.onresize = resizeThrottle; 
     },{once:true});
 	
 	// extend App
