@@ -89,8 +89,6 @@ Updated to Vanilla JS for IDG
 		}
 	});
 	
-	
-	
 
 	/**
 	* singleton 

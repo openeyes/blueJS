@@ -1694,8 +1694,6 @@ Updated to Vanilla JS for IDG
 		}
 	});
 	
-	
-	
 
 	/**
 	* singleton 
@@ -2964,7 +2962,7 @@ Updated to Vanilla JS for IDG
 		text.gender.innerHTML = '<em>Gen</em> '+ patient.gender;
 		text.age.innerHTML = '<em>Age</em> '+ patient.age;
 		
-		div.style.cssText = "";
+		div.style.cssText = " ";
 		
 		/*
 		CSS can handle a mode of "side"
@@ -2974,7 +2972,6 @@ Updated to Vanilla JS for IDG
 		JS positioning relative to the icon.
 		*/ 
 		if( mode == "side"){
-			div.style.top = div.style.left = null;
 			div.classList.add("side-panel"); 
 		} else {
 			/*
