@@ -59,7 +59,7 @@ const bluejay = (function () {
 			let apiMethods = [];
 			for(const name in methods)	apiMethods.push(name); 
 			methods.log('[API] [Helper Methods] ' + apiMethods.join(', '));
-			console.timeEnd('[blue] Ready');
+			methods.log('DOM Loaded');
 		},{once:true});
 	}
 

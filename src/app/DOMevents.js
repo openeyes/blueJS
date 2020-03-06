@@ -72,13 +72,11 @@
 	To improve performance delegate Event handling to the document
 	setup Event listeners... 
 	*/
-	document.addEventListener('DOMContentLoaded', () => {
-        document.addEventListener('mouseenter', (event) => checkListeners(event,hover), {capture:true});
-		document.addEventListener('mousedown', (event) => checkListeners(event,click), {capture:true}); 
-		document.addEventListener('mouseleave', (event) => checkListeners(event,exit), {capture:true});
-		// Throttle high rate events
-		window.onresize = resizeThrottle; 
-    },{once:true});
+	document.addEventListener('mouseenter', (event) => checkListeners(event,hover), {capture:true});
+	document.addEventListener('mousedown', (event) => checkListeners(event,click), {capture:true}); 
+	document.addEventListener('mouseleave', (event) => checkListeners(event,exit), {capture:true});
+	// Throttle high rate events
+	window.onresize = resizeThrottle; 
 	
 	// extend App
 	uiApp.extend('registerForHover', (selector,cb) => addListener(hover,selector,cb));

@@ -66,7 +66,7 @@ const bluejay = (function () {
 			let apiMethods = [];
 			for(const name in methods)	apiMethods.push(name); 
 			methods.log('[API] [Helper Methods] ' + apiMethods.join(', '));
-			console.timeEnd('[blue] Ready');
+			methods.log('DOM Loaded');
 		},{once:true});
 	}
 
@@ -148,13 +148,11 @@ const bluejay = (function () {
 	To improve performance delegate Event handling to the document
 	setup Event listeners... 
 	*/
-	document.addEventListener('DOMContentLoaded', () => {
-        document.addEventListener('mouseenter', (event) => checkListeners(event,hover), {capture:true});
-		document.addEventListener('mousedown', (event) => checkListeners(event,click), {capture:true}); 
-		document.addEventListener('mouseleave', (event) => checkListeners(event,exit), {capture:true});
-		// Throttle high rate events
-		window.onresize = resizeThrottle; 
-    },{once:true});
+	document.addEventListener('mouseenter', (event) => checkListeners(event,hover), {capture:true});
+	document.addEventListener('mousedown', (event) => checkListeners(event,click), {capture:true}); 
+	document.addEventListener('mouseleave', (event) => checkListeners(event,exit), {capture:true});
+	// Throttle high rate events
+	window.onresize = resizeThrottle; 
 	
 	// extend App
 	uiApp.extend('registerForHover', (selector,cb) => addListener(hover,selector,cb));
@@ -2424,7 +2422,10 @@ Updated to Vanilla JS for IDG
 					{id:'#js-idg-worklist-ps-add', php:'worklist-PS.php', close:'.close-icon-btn' }, // Worklist PSD / PSG	
 					{id:'#analytics-change-filters', php:'analytics-filters.php', close:'.close-icon-btn' }, // Analytics Custom Filters	
 					{id:'#js-idg-add-new-contact-popup', php:'add-new-contact.php', close:'.close-icon-btn' }, // Add new contact
-					{id:'#js-idg-admin-queset-demo',php:'admin-add-queue.php',close:'.close-icon-btn'}
+					{id:'#js-idg-admin-queset-demo',php:'admin-add-queue.php',close:'.close-icon-btn'},
+					{id:'#js-idg-search-query-save',php:'query-save.php',close:'.close-icon-btn'}, // Search, manage Queries popup 
+					{id:'#js-idg-search-all-searches',php:'query-all-searches.php',close:'.close-icon-btn'} // Search, manage Queries popup 
+					
 					];
 	
 	
@@ -2962,6 +2963,10 @@ Updated to Vanilla JS for IDG
 		text.gender.innerHTML = '<em>Gen</em> '+ patient.gender;
 		text.age.innerHTML = '<em>Age</em> '+ patient.age;
 		
+		/*
+		The CSS approach is different for float / sidepanel
+		wipe any inline styles before setting up
+		*/
 		div.style.cssText = " ";
 		
 		/*
@@ -4683,3 +4688,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	
 		
 })(bluejay); 
+
+/**
+* Last loaded
+*/
+(function (uiApp) {
+
+	'use strict';
+	
+	console.timeEnd('[blue] Ready');
+
+})(bluejay);

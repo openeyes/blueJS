@@ -12,18 +12,20 @@ const paths = {
 	js: {	
 		input: [	'./src/polyfills/*.js',		// to ensure concat order is correct
 					'./src/app/app.js',			// load in the app file first
-					'./src/app/*.js',			// app bits, then... 
-					'./src/openeyes/**/*.js'],	// UI modules for use in OE
+					'./src/app/*.js',			// other app parts, then modules... 
+					'./src/openeyes/**/*.js',
+					'./src/app/_last/ready.js'], // Ready state loaded last 
 		output:	'./dist/',
 	},
 	idgDev: {
 		input:	[	'./src/polyfills/*.js',		// to ensure concat order is correct
 					'./src/app/app.js',			// load in the app file first
-					'./src/app/*.js',			// app bits, then... 
+					'./src/app/*.js',			// other app parts, then modules... 
 					'./src/openeyes/**/*.js',	// UI Modules for use in OE
 					'./src/idg/**/*.js',		// IDG only modules - NOT for OE (yet)
 					'./src/add-select-insert/_init.js',
-					'./src/add-select-insert/*.js'],
+					'./src/add-select-insert/*.js',
+					'./src/app/_last/ready.js'], // Ready state loaded last 
 		output:	'./idg-dev/',
 	}
 };

@@ -80,6 +80,10 @@
 		text.gender.innerHTML = '<em>Gen</em> '+ patient.gender;
 		text.age.innerHTML = '<em>Age</em> '+ patient.age;
 		
+		/*
+		The CSS approach is different for float / sidepanel
+		wipe any inline styles before setting up
+		*/
 		div.style.cssText = " ";
 		
 		/*
