@@ -8,11 +8,12 @@ const bluejay = (function () {
 
 	'use strict';
 
-	console.time('[blue] Ready');
+	console.time('[blue] Ready'); // endTime called by './_last/ready.js' the last JS concatenated by Gulp
+	console.time('[blue] DOM Loaded'); // this is called by "DOMContentLoaded" event (to watch out for scripts that are slowing things down)
 
+	const debug = true;		// Output debug '[blue]' to console
 	const methods = {}; 	// Create a public methods object 
-	const debug = true;		// Output debug to console
-	let extendID = 1;		// Method ID
+	let extendID = 1;		// Method IDs
 
 	/**
 	* Extend the public methods
@@ -37,7 +38,6 @@ const bluejay = (function () {
 		}
 	};
 	
-	
 	/**
 	* Log to console, if debug is true
 	* @param {String} msg - message to log
@@ -59,7 +59,7 @@ const bluejay = (function () {
 			let apiMethods = [];
 			for(const name in methods)	apiMethods.push(name); 
 			methods.log('[API] [Helper Methods] ' + apiMethods.join(', '));
-			methods.log('DOM Loaded');
+			console.timeEnd('[blue] DOM Loaded');
 		},{once:true});
 	}
 

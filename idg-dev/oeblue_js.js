@@ -15,11 +15,12 @@ const bluejay = (function () {
 
 	'use strict';
 
-	console.time('[blue] Ready');
+	console.time('[blue] Ready'); // endTime called by './_last/ready.js' the last JS concatenated by Gulp
+	console.time('[blue] DOM Loaded'); // this is called by "DOMContentLoaded" event (to watch out for scripts that are slowing things down)
 
+	const debug = true;		// Output debug '[blue]' to console
 	const methods = {}; 	// Create a public methods object 
-	const debug = true;		// Output debug to console
-	let extendID = 1;		// Method ID
+	let extendID = 1;		// Method IDs
 
 	/**
 	* Extend the public methods
@@ -44,7 +45,6 @@ const bluejay = (function () {
 		}
 	};
 	
-	
 	/**
 	* Log to console, if debug is true
 	* @param {String} msg - message to log
@@ -66,7 +66,7 @@ const bluejay = (function () {
 			let apiMethods = [];
 			for(const name in methods)	apiMethods.push(name); 
 			methods.log('[API] [Helper Methods] ' + apiMethods.join(', '));
-			methods.log('DOM Loaded');
+			console.timeEnd('[blue] DOM Loaded');
 		},{once:true});
 	}
 
@@ -224,14 +224,21 @@ const bluejay = (function () {
 		el.parentNode.removeChild(el);
 	};
 	
-	
 	/**
-	* Show a DOM Element ()	
+	* Show a DOM Element - this assumes CSS has set display: "none"
 	* @param {DOM Element} el
 	* @param {String} block - "block","flex",'table-row',etc
 	*/
 	const show = (el, block = "block") => {
 		el.style.display = block;
+	};
+	
+	/**
+	* re-show a DOM Element - this assumes CSS has set display: "block" || "flex" || "inline-block" (or whatever)
+	* @param {DOM Element} el
+	*/
+	const reshow = (el) => {
+		el.style.display = ""; // in which case remove the style display and let the CSS handle it again (thanks Mike)
 	};
 	
 	/**
@@ -299,7 +306,7 @@ const bluejay = (function () {
 		// need to render with all the right CSS being applied
 		// displayed but hidden...
 		el.style.visibility = 'hidden';
-		el.style.display = 'block'; // this won't work for 'flex'
+		el.style.display = ''; // this assumes that a display is set on CSS (or by default on the DOM)
 		
 		// get props...
 		let props = {	
@@ -320,6 +327,7 @@ const bluejay = (function () {
 	uiApp.extend('getParent', getParent);
 	uiApp.extend('removeElement', removeDOM);
 	uiApp.extend('show', show);
+	uiApp.extend('reshow', reshow);
 	uiApp.extend('hide', hide);
 	uiApp.extend('xhr', xhr);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
@@ -558,6 +566,18 @@ const bluejay = (function () {
 	let div = null;
 	let showing = false;
 	let winWidth = window.innerWidth; // forces reflow, only update onResize
+	let clickTarget = null;
+	
+	/*
+	OE tooltips: 
+	1) Basic
+	2) Bilateral (eyelat icons are optional)
+	Tooltip widths are set by CSS	
+	*/
+	const css = {
+		basicWidth: 200,
+		bilateralWidth: 400, 
+	};
 		
 	/**
 	Build the Tooltip DOM, once built just update when required. 
@@ -575,14 +595,32 @@ const bluejay = (function () {
 	const resetToolTip = () => {
 		div.innerHTML = "";
 		div.className = "oe-tooltip"; // clear all CSS classes
-		div.style.cssText = "display:none"; // clear all styles
+		div.style.cssText = "display:none"; // clear all styles & hide
 	};
 	
 	/**
 	* Callback for 'click'
 	* @param {Event} ev
 	*/
-	const userClick = (ev) => showing ? out() : show(ev);
+	const userClick = (ev) => {
+		if(ev.target.isSameNode(clickTarget)){
+			if(showing){
+				out()
+			} else {
+				show(ev);
+			}
+		} else {
+			// user clicks on another icon
+			out();
+			show(ev);
+		}
+		
+		/*
+		without this you will have to double click 
+		to open another tooltip on touch
+		*/
+		clickTarget = ev.target;
+	}
 	
 	/**
 	* Callback for 'exit'
@@ -599,27 +637,54 @@ const bluejay = (function () {
 	const show = (ev) => {
 		if(showing) return; showing = true;
 		
-		// always an icon <i>				
+		
+		// actually can be any DOM element
+		// but generally is an icon <i>				
 		const icon = ev.target; 
 		
 		// build the DOM if not done already
 		div = div || buildDOM();
 		
-		/*
-		content is stored in: data-tootip-content
-		which could contain HTML tags
-		*/
-		div.innerHTML = icon.dataset.tooltipContent; 
+		// set up for basic, as most common
+		let tipWidth = css.basicWidth; 
+		let divDisplayMode = 'block';
+		
+		// check tooltip type
+		if(icon.dataset.ttType === "bilateral"){
+			/*
+			Bilateral enhances the basic tooltip
+			with 2 content areas for Right and Left 	
+			*/
+			div.classList.add('bilateral');
+			/*
+			No eye lat icons?
+			*/
+			if(icon.dataset.ttEyeicons === 'no'){
+				div.classList.add('no-icons');
+			}
+			
+			div.innerHTML = '<div class="right"></div><div class="left"></div>';
+			div.querySelector('.right').innerHTML = icon.dataset.ttRight;
+			div.querySelector('.left').innerHTML = icon.dataset.ttLeft; 
+			
+			divDisplayMode = 'flex';
+			tipWidth = css.bilateralWidth; 
+			
+		} else {
+			/*
+			basic: content is stored in: data-tootip-content
+			which may contain basic HTML tags, such as <br>
+			*/
+			div.innerHTML = icon.dataset.tooltipContent; 
+		}
 		
 		/*
-		Check the tooltip height
-		width is restricted in the CSS to 200px;	
+		Check the tooltip height to see if content fits.	
 		*/
-		const tipWidth = 200; 
 		let offsetW = tipWidth/2; 
 		let offsetH = 8; // visual offset, which allows for the arrow
 		
-		// can't get the height without some trickery...
+		// can't get the DOM height without some trickery...
 		let h = uiApp.getHiddenElemSize(div).h;
 						
 		/*
@@ -649,7 +714,7 @@ const bluejay = (function () {
 		
 		// too close to the right?
 		if (center > (maxRightPos - offsetW)) {
-			offsetW = 180; 			// position to the left of icon, needs to match CSS arrow position
+			offsetW = (tipWidth - 20); 			// position to the left of icon, needs to match CSS arrow position
 			div.classList.add("offset-left");
 		}
 		
@@ -662,7 +727,7 @@ const bluejay = (function () {
 		// update DOM and show the tooltip
 		div.style.top = top + 'px';
 		div.style.left = (center - offsetW) + 'px';
-		div.style.display = "block";
+		div.style.display = divDisplayMode;
 		
 		// hide if user scrolls
 		window.addEventListener('scroll', out, {capture:true, once:true});
@@ -1001,8 +1066,13 @@ const bluejay = (function () {
 		ed3app.style.top = top < 60 ? '60px' : top + "px";
 		uiApp.show(ed3app);
 		
+		// get demo JSON data
+		let json = JSON.parse(btn.dataset.idgDemo);
+		// then pass it back into PHP...
+		var queryString = Object.keys(json).map(key => key + '=' + json[key]).join('&');
+		
 		// xhr returns a Promise... 
-		uiApp.xhr('/idg-php/v3/_load/ed3/' + btn.dataset.php)
+		uiApp.xhr('/idg-php/v3/_load/ed3/ed3-app.php?' + queryString)
 			.then( html => {
 				ed3app.innerHTML = html;
 				ed3app.querySelector('.close-icon-btn').addEventListener('mousedown', () => {
@@ -1011,7 +1081,6 @@ const bluejay = (function () {
 			})
 			.catch(e => console.log('ed3app php failed to load', e));  // maybe output this to UI at somepoint, but for now...			
 	};
-	
 
 	uiApp.registerForClick('.js-idg-ed3-app-btn', userClick);
 
@@ -1468,8 +1537,6 @@ const bluejay = (function () {
 	
 	const states = [];
 	const cssActive = 'active';
-	const allFilterOptions = uiApp.nodeArray(document.querySelectorAll('.oe-filter-options'));
-	if(allFilterOptions.length < 1) return;
 	
 	/*
 	Methods	
@@ -1497,6 +1564,7 @@ const bluejay = (function () {
 			this.positionContent();
 			uiApp.show(this.content);
 			this.mouseOutHide();
+			this.closeIconBtn();
 		}	
 	});
 	
@@ -1509,6 +1577,15 @@ const bluejay = (function () {
 			this.open = false;
 			this.btn.classList.remove( cssActive );
 			uiApp.hide(this.content);
+		}
+	});
+	
+	const _closeIconBtn = () => ({
+		closeIconBtn: function(){
+			this.wrapper.querySelector('.close-icon-btn').addEventListener('mousedown',(ev) => {
+				ev.stopPropagation();
+				this.hide();
+			},{once:true});
 		}
 	});
 	
@@ -1565,6 +1642,7 @@ const bluejay = (function () {
 								_show(),
 								_hide(),
 								_mouseOutHide(),
+								_closeIconBtn(),
 								_positionContent() );
 	};
 
@@ -1574,6 +1652,7 @@ const bluejay = (function () {
 	* @param {event} event
 	*/
 	const userClick = (ev) => {
+
 		let btn = ev.target;
 		let dataAttr = uiApp.getDataAttr(btn);
 		if(dataAttr){
@@ -1596,7 +1675,7 @@ const bluejay = (function () {
 			states.push(filter); // store state			
 		}
 	};
-	
+
 	// Regsiter for Events
 	uiApp.registerForClick('.oe-filter-options .oe-filter-btn', ev => userClick(ev) );	
 	
@@ -2128,7 +2207,8 @@ Updated to Vanilla JS for IDG
 	2) The content area allows it (DOM will flag this via data-fixable attribute)
 	*/
 	const checkBrowserWidth = () => {
-		if(btn.dataset.fixable){
+		// note: Boolean is actually a string! 
+		if(btn.dataset.fixable === "true"){
 			hotlist.fixedOpen((window.innerWidth > uiApp.settings.cssExtendBrowserSize));
 		}
 	};
@@ -2339,6 +2419,93 @@ Updated to Vanilla JS for IDG
 	*/
 	uiApp.registerForClick(selector, () => shortcuts.change() );			
 	uiApp.registerForHover(selector, () => shortcuts.show() );
+	
+
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('navShortlists');
+	
+	const cssActive = 'active';
+	const selector = '#js-nav-shortlists-btn';
+	const btn = document.querySelector(selector);
+	if(btn === null) return;
+		
+	/*
+	Methods	
+	*/
+	
+	const _change = () => ({
+		/**
+		* Callback for 'click'
+		*/
+		change: function(){
+			if(this.open)	this.hide();
+			else			this.show();
+		}
+	});
+	
+	const _show = () => ({
+		/**
+		* Callback for 'hover'
+		* Enhanced behaviour for mouse/trackpad
+		*/
+		show:function(){
+			if(this.open) return;
+			this.open = true;
+			this.btn.classList.add( cssActive );
+			uiApp.show(this.content);
+			this.mouseOutHide();
+		}	
+	});
+	
+	const _hide = () => ({
+		/**
+		* Hide content
+		*/
+		hide:function(){
+			if(this.open === false) return;
+			this.open = false;
+			this.btn.classList.remove( cssActive );
+			uiApp.hide(this.content);
+		}
+	});
+	
+	const _mouseOutHide = () => ({
+		/**
+		* Enhanced behaviour for mouse/trackpad
+		*/
+		mouseOutHide: function(){
+			this.wrapper.addEventListener('mouseleave',(ev) => {
+				ev.stopPropagation();
+				this.hide();
+			},{once:true});
+		}
+	});
+	
+	/**
+	* shortcuts singleton 
+	* (using IIFE to maintain code pattern)
+	*/
+	const shortlists = (() => {
+		return Object.assign(	{	btn:btn,
+									content: document.querySelector('#js-shortlists-panel'),
+									wrapper: document.querySelector('#js-shortlists-panel-wrapper'),
+									open: false 
+								},
+								_change(),
+								_show(),
+								_hide(),
+								_mouseOutHide() );
+	})();
+	
+	/*
+	Events 
+	*/
+	uiApp.registerForClick(selector, () => shortlists.change() );			
+	uiApp.registerForHover(selector, () => shortlists.show() );
 	
 
 })(bluejay); 
@@ -3060,6 +3227,93 @@ Updated to Vanilla JS for IDG
 	// innerWidth forces a reflow, only update when necessary
 	uiApp.listenForResize(() => winHeight = window.inneHeight );
 	
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('printOptions');
+	
+	const cssActive = 'active';
+	const selector = '#js-header-print-dropdown-btn';
+	const btn = document.querySelector(selector);
+	if(btn === null) return;
+		
+	/*
+	Methods	
+	*/
+	
+	const _change = () => ({
+		/**
+		* Callback for 'click'
+		*/
+		change: function(){
+			if(this.open)	this.hide();
+			else			this.show();
+		}
+	});
+	
+	const _show = () => ({
+		/**
+		* Callback for 'hover'
+		* Enhanced behaviour for mouse/trackpad
+		*/
+		show:function(){
+			if(this.open) return;
+			this.open = true;
+			this.btn.classList.add( cssActive );
+			uiApp.show(this.content);
+			this.mouseOutHide();
+		}	
+	});
+	
+	const _hide = () => ({
+		/**
+		* Hide content
+		*/
+		hide:function(){
+			if(this.open === false) return;
+			this.open = false;
+			this.btn.classList.remove( cssActive );
+			uiApp.hide(this.content);
+		}
+	});
+	
+	const _mouseOutHide = () => ({
+		/**
+		* Enhanced behaviour for mouse/trackpad
+		*/
+		mouseOutHide: function(){
+			this.wrapper.addEventListener('mouseleave',(ev) => {
+				ev.stopPropagation();
+				this.hide();
+			},{once:true});
+		}
+	});
+	
+	/**
+	* shortcuts singleton 
+	* (using IIFE to maintain code pattern)
+	*/
+	const shortcuts = (() => {
+		return Object.assign(	{	btn:btn,
+									content: document.querySelector('#js-header-print-subnav'),
+									wrapper: document.querySelector('#js-header-print-dropdown'),
+									open: false 
+								},
+								_change(),
+								_show(),
+								_hide(),
+								_mouseOutHide() );
+	})();
+	
+	/*
+	Events 
+	*/
+	uiApp.registerForClick(selector, () => shortcuts.change() );			
+	uiApp.registerForHover(selector, () => shortcuts.show() );
+	
+
 })(bluejay); 
 (function (uiApp) {
 
@@ -4634,7 +4888,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			uiApp.show(popup);
 			
 			this.closeBtn.addEventListener('mousedown', this.close.bind(this));
-			window.addEventListener('scroll', this.close.bind(this), {capture:true, once:true});
+			//window.addEventListener('scroll', this.close.bind(this), {capture:true, once:true});
 		};
 		
 		this.close = function(){

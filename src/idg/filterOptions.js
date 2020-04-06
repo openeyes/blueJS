@@ -13,8 +13,6 @@
 	
 	const states = [];
 	const cssActive = 'active';
-	const allFilterOptions = uiApp.nodeArray(document.querySelectorAll('.oe-filter-options'));
-	if(allFilterOptions.length < 1) return;
 	
 	/*
 	Methods	
@@ -42,6 +40,7 @@
 			this.positionContent();
 			uiApp.show(this.content);
 			this.mouseOutHide();
+			this.closeIconBtn();
 		}	
 	});
 	
@@ -54,6 +53,15 @@
 			this.open = false;
 			this.btn.classList.remove( cssActive );
 			uiApp.hide(this.content);
+		}
+	});
+	
+	const _closeIconBtn = () => ({
+		closeIconBtn: function(){
+			this.wrapper.querySelector('.close-icon-btn').addEventListener('mousedown',(ev) => {
+				ev.stopPropagation();
+				this.hide();
+			},{once:true});
 		}
 	});
 	
@@ -110,6 +118,7 @@
 								_show(),
 								_hide(),
 								_mouseOutHide(),
+								_closeIconBtn(),
 								_positionContent() );
 	};
 
@@ -119,6 +128,7 @@
 	* @param {event} event
 	*/
 	const userClick = (ev) => {
+
 		let btn = ev.target;
 		let dataAttr = uiApp.getDataAttr(btn);
 		if(dataAttr){
@@ -141,7 +151,7 @@
 			states.push(filter); // store state			
 		}
 	};
-	
+
 	// Regsiter for Events
 	uiApp.registerForClick('.oe-filter-options .oe-filter-btn', ev => userClick(ev) );	
 	

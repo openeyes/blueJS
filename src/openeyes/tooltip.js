@@ -8,6 +8,18 @@
 	let div = null;
 	let showing = false;
 	let winWidth = window.innerWidth; // forces reflow, only update onResize
+	let clickTarget = null;
+	
+	/*
+	OE tooltips: 
+	1) Basic
+	2) Bilateral (eyelat icons are optional)
+	Tooltip widths are set by CSS	
+	*/
+	const css = {
+		basicWidth: 200,
+		bilateralWidth: 400, 
+	};
 		
 	/**
 	Build the Tooltip DOM, once built just update when required. 
@@ -25,14 +37,32 @@
 	const resetToolTip = () => {
 		div.innerHTML = "";
 		div.className = "oe-tooltip"; // clear all CSS classes
-		div.style.cssText = "display:none"; // clear all styles
+		div.style.cssText = "display:none"; // clear all styles & hide
 	};
 	
 	/**
 	* Callback for 'click'
 	* @param {Event} ev
 	*/
-	const userClick = (ev) => showing ? out() : show(ev);
+	const userClick = (ev) => {
+		if(ev.target.isSameNode(clickTarget)){
+			if(showing){
+				out()
+			} else {
+				show(ev);
+			}
+		} else {
+			// user clicks on another icon
+			out();
+			show(ev);
+		}
+		
+		/*
+		without this you will have to double click 
+		to open another tooltip on touch
+		*/
+		clickTarget = ev.target;
+	}
 	
 	/**
 	* Callback for 'exit'
@@ -49,27 +79,54 @@
 	const show = (ev) => {
 		if(showing) return; showing = true;
 		
-		// always an icon <i>				
+		
+		// actually can be any DOM element
+		// but generally is an icon <i>				
 		const icon = ev.target; 
 		
 		// build the DOM if not done already
 		div = div || buildDOM();
 		
-		/*
-		content is stored in: data-tootip-content
-		which could contain HTML tags
-		*/
-		div.innerHTML = icon.dataset.tooltipContent; 
+		// set up for basic, as most common
+		let tipWidth = css.basicWidth; 
+		let divDisplayMode = 'block';
+		
+		// check tooltip type
+		if(icon.dataset.ttType === "bilateral"){
+			/*
+			Bilateral enhances the basic tooltip
+			with 2 content areas for Right and Left 	
+			*/
+			div.classList.add('bilateral');
+			/*
+			No eye lat icons?
+			*/
+			if(icon.dataset.ttEyeicons === 'no'){
+				div.classList.add('no-icons');
+			}
+			
+			div.innerHTML = '<div class="right"></div><div class="left"></div>';
+			div.querySelector('.right').innerHTML = icon.dataset.ttRight;
+			div.querySelector('.left').innerHTML = icon.dataset.ttLeft; 
+			
+			divDisplayMode = 'flex';
+			tipWidth = css.bilateralWidth; 
+			
+		} else {
+			/*
+			basic: content is stored in: data-tootip-content
+			which may contain basic HTML tags, such as <br>
+			*/
+			div.innerHTML = icon.dataset.tooltipContent; 
+		}
 		
 		/*
-		Check the tooltip height
-		width is restricted in the CSS to 200px;	
+		Check the tooltip height to see if content fits.	
 		*/
-		const tipWidth = 200; 
 		let offsetW = tipWidth/2; 
 		let offsetH = 8; // visual offset, which allows for the arrow
 		
-		// can't get the height without some trickery...
+		// can't get the DOM height without some trickery...
 		let h = uiApp.getHiddenElemSize(div).h;
 						
 		/*
@@ -99,7 +156,7 @@
 		
 		// too close to the right?
 		if (center > (maxRightPos - offsetW)) {
-			offsetW = 180; 			// position to the left of icon, needs to match CSS arrow position
+			offsetW = (tipWidth - 20); 			// position to the left of icon, needs to match CSS arrow position
 			div.classList.add("offset-left");
 		}
 		
@@ -112,7 +169,7 @@
 		// update DOM and show the tooltip
 		div.style.top = top + 'px';
 		div.style.left = (center - offsetW) + 'px';
-		div.style.display = "block";
+		div.style.display = divDisplayMode;
 		
 		// hide if user scrolls
 		window.addEventListener('scroll', out, {capture:true, once:true});

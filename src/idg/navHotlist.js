@@ -138,7 +138,8 @@
 	2) The content area allows it (DOM will flag this via data-fixable attribute)
 	*/
 	const checkBrowserWidth = () => {
-		if(btn.dataset.fixable){
+		// note: Boolean is actually a string! 
+		if(btn.dataset.fixable === "true"){
 			hotlist.fixedOpen((window.innerWidth > uiApp.settings.cssExtendBrowserSize));
 		}
 	};

@@ -33,14 +33,21 @@
 		el.parentNode.removeChild(el);
 	};
 	
-	
 	/**
-	* Show a DOM Element ()	
+	* Show a DOM Element - this assumes CSS has set display: "none"
 	* @param {DOM Element} el
 	* @param {String} block - "block","flex",'table-row',etc
 	*/
 	const show = (el, block = "block") => {
 		el.style.display = block;
+	};
+	
+	/**
+	* re-show a DOM Element - this assumes CSS has set display: "block" || "flex" || "inline-block" (or whatever)
+	* @param {DOM Element} el
+	*/
+	const reshow = (el) => {
+		el.style.display = ""; // in which case remove the style display and let the CSS handle it again (thanks Mike)
 	};
 	
 	/**
@@ -108,7 +115,7 @@
 		// need to render with all the right CSS being applied
 		// displayed but hidden...
 		el.style.visibility = 'hidden';
-		el.style.display = 'block'; // this won't work for 'flex'
+		el.style.display = ''; // this assumes that a display is set on CSS (or by default on the DOM)
 		
 		// get props...
 		let props = {	
@@ -129,6 +136,7 @@
 	uiApp.extend('getParent', getParent);
 	uiApp.extend('removeElement', removeDOM);
 	uiApp.extend('show', show);
+	uiApp.extend('reshow', reshow);
 	uiApp.extend('hide', hide);
 	uiApp.extend('xhr', xhr);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);

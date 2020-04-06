@@ -35,8 +35,13 @@
 		ed3app.style.top = top < 60 ? '60px' : top + "px";
 		uiApp.show(ed3app);
 		
+		// get demo JSON data
+		let json = JSON.parse(btn.dataset.idgDemo);
+		// then pass it back into PHP...
+		var queryString = Object.keys(json).map(key => key + '=' + json[key]).join('&');
+		
 		// xhr returns a Promise... 
-		uiApp.xhr('/idg-php/v3/_load/ed3/' + btn.dataset.php)
+		uiApp.xhr('/idg-php/v3/_load/ed3/ed3-app.php?' + queryString)
 			.then( html => {
 				ed3app.innerHTML = html;
 				ed3app.querySelector('.close-icon-btn').addEventListener('mousedown', () => {
@@ -45,7 +50,6 @@
 			})
 			.catch(e => console.log('ed3app php failed to load', e));  // maybe output this to UI at somepoint, but for now...			
 	};
-	
 
 	uiApp.registerForClick('.js-idg-ed3-app-btn', userClick);
 
