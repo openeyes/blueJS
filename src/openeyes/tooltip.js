@@ -47,7 +47,7 @@
 	const userClick = (ev) => {
 		if(ev.target.isSameNode(clickTarget)){
 			if(showing){
-				out()
+				out();
 			} else {
 				show(ev);
 			}
@@ -62,7 +62,7 @@
 		to open another tooltip on touch
 		*/
 		clickTarget = ev.target;
-	}
+	};
 	
 	/**
 	* Callback for 'exit'

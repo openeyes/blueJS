@@ -93,9 +93,7 @@
 		However, mode = "float" requires a 
 		JS positioning relative to the icon.
 		*/ 
-		if( mode == "side"){
-			div.classList.add("side-panel"); 
-		} else {
+		if( mode == "float"){
 			/*
 			floating fixed, calculate position
 			in relation to the icon,
@@ -109,7 +107,10 @@
 				div.style.bottom = (winHeight - rect.top) + 10 + "px";
 			}
 			
-			div.style.left 	= (rect.x - 250 +  rect.width/2)  + "px";			
+			div.style.left 	= (rect.x - 250 +  rect.width/2)  + "px";
+
+		} else {
+			div.classList.add("side-panel"); 			
 		}
 		
 		let content = div.querySelector('.quick-overview-content');

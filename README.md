@@ -1,2 +1,2 @@
 # blueJS
-JS for OE UI
+Simple JS layer for OE UI Elements
