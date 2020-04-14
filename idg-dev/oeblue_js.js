@@ -929,6 +929,202 @@ const bluejay = (function () {
 
 	'use strict';
 	
+	/*
+	IDG DEMO of some UX functionality
+	Eyedraw v2 (2.5)
+	*/
+	
+	if(document.querySelector('.js-idg-demo-ed2') === null) return;
+
+
+	uiApp.registerForClick('.js-idg-demo-doodle-drawer', (ev) => {
+		let icon = ev.target; 
+		let li = uiApp.getParent(icon,'li');
+		li.classList.toggle('ed-drawer-open');
+	});
+	
+	
+	uiApp.registerForClick('.ed-canvas-edit', (ev) => {
+		let canvas = ev.target; 
+		let editor = uiApp.getParent(canvas,'.ed-editor');
+		let popup = editor.querySelector('.ed-doodle-popup');
+		popup.classList.toggle('closed');	
+	});
+	
+	uiApp.registerForClick('#js-idg-demo-ed-search-input', (ev) => {
+		let autocomplete = ev.target.nextElementSibling;
+		if(autocomplete.style.display == "none"){
+			autocomplete.style.display = 'block';
+		} else {
+			autocomplete.style.display = 'none';
+		}
+	});
+	
+			
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';
+	
+	/*
+	IDG DEMO of some UX functionality
+	for Ophthalmic Diagnosis v2!
+	*/
+	
+	if(document.querySelector('.js-idg-demo-eye-diagnosis-audit') === null) return;
+	
+
+	const showPopup = (ev) => {
+ 		let php = 'specific/exam-eye-diagnosis.php';
+		
+		if(ev.target.dataset.idgDemo !== undefined){
+			php = JSON.parse(ev.target.dataset.idgDemo).php;
+		}
+
+		// xhr returns a Promise... 
+		uiApp.xhr('/idg-php/v3/_load/' + php)
+			.then( html => {
+				const div = document.createElement('div');
+				div.className = "oe-popup-wrap";
+				div.innerHTML = html;
+				div.querySelector('.close-icon-btn').addEventListener("mousedown", (ev) => {
+					ev.stopPropagation();
+					uiApp.removeElement(div);
+				}, {once:true} );
+				
+				// reflow DOM
+				uiApp.appendTo('body',div);
+			})
+			.catch(e => console.log('failed to load',e));  // maybe output this to UI at somepoint, but for now... 
+	};
+
+	uiApp.registerForClick('.js-idg-demo-eye-diagnosis-audit', showPopup);
+
+			
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';
+	
+	/*
+	IDG DEMO of some UX functionality
+	*/
+	
+	// tr class hook: .js-idg-demo-13420;
+	if(document.querySelector('.js-idg-demo-13420') === null) return;
+	
+	// state change is based on the prescribed toggle switch
+	document.addEventListener('input',(ev) => {
+		let me = ev.target;
+		if(me.matches('.js-idg-demo-13420 .toggle-switch input')){
+			/*
+			toggling the presciption: 
+			ON: show 'Stop' / hide: Duration/dispense & taper
+			*/
+			let tr = uiApp.getParent(me, 'tr');
+			let stopBtn = tr.querySelector('.js-idg-stop-btn');
+			let durDis = tr.querySelector('.js-idg-duration-dispense');
+			let taperBtn = tr.querySelector('.js-idg-taper-btn');
+			
+			
+			if(me.checked){
+				// on
+				uiApp.show(stopBtn);
+				uiApp.hide(durDis);
+				uiApp.hide(taperBtn);	
+			} else {
+				// off
+				uiApp.hide(stopBtn);
+				uiApp.show(durDis);
+				uiApp.reshow(taperBtn);
+			}
+			
+			
+		}
+	});
+
+			
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';
+	
+	/*
+	IDG DEMO of some UX functionality
+	for Ophthalmic Diagnosis v2!
+	*/
+	
+	if(document.querySelector('.js-idg-diagnosis-active-switcher') === null) return;
+	
+	const editDate = (id, display) => {
+		document.querySelector('#js-idg-demo-diag-date'+id+' input').style.display = display;
+	};
+
+	// Active Switcher
+	document.addEventListener('input',(ev) => {
+		let me = ev.target;
+		if(me.matches('.js-idg-diagnosis-active-switcher input')){
+			let switcher = me.parentNode.parentNode;
+			let text = switcher.querySelector('.js-active-state');
+			//;
+			let newAdded = switcher.dataset.idgadded === '1' ? true : false;
+			let txtActive = 'Active from';
+			let txtInactive = 'Inactive from';
+			
+			if(newAdded){
+				txtActive = "Started";
+				txtInactive = "None";
+			}
+
+			if(me.checked){
+				text.textContent = txtActive;
+				text.classList.remove('fade');
+				if(newAdded){
+					editDate(switcher.dataset.idgdemo, 'block');
+				}
+				
+			} else {
+				text.textContent = txtInactive;
+				text.classList.add('fade');
+				if(newAdded){
+					editDate(switcher.dataset.idgdemo, 'none');
+				}
+			}
+			
+			
+		}
+	});
+	
+	// Show history
+	document.addEventListener('mousedown',(ev) => {
+		let me = ev.target;
+		if(me.matches('.js-show-diagnosis-history')){
+			let tableRows = document.querySelectorAll('.js-idg-js-idg-diagnosis-history-' + me.dataset.idgdemo);
+			tableRows.forEach((row) => {
+				console.log(row.style.display);
+				if(row.style.display == "table-row"){
+					row.style.display = "none";
+				} else {
+					row.style.display = "table-row";
+				}
+				
+			});
+		}
+		
+		if(me.matches('.js-idg-demo-show-diagnosis-comments')){
+			document.querySelector('.js-idg-diagnosis-comments-'+me.dataset.idgdemo).style.display = "table-row";
+		}
+		
+		if(me.matches('.js-remove-diagnosis-comments')){
+			me.parentNode.parentNode.style.display = "none";
+		}
+	});
+			
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';
+	
 	uiApp.addModule('attachmentThumbnail');
 	
 	/*
@@ -2757,28 +2953,27 @@ Updated to Vanilla JS for IDG
 	/*
 	Pretty simple. Click on something (by id), load in some PHP demo content, assign a selector to close
 	*/
-	const pops = [ 	{id:'#js-change-context-btn', php:'change-context.php', close:'.close-icon-btn' },	// change context (firm)
-					{id:'#copy-edit-history-btn', php:'previous-history-elements.php', close:'.close-icon-btn' }, // duplicate history element
-					{id:'#copy-edit-anterior-segment-btn', php:'previous-ed-anterior.php', close:'.close-icon-btn' }, // duplicate history element ED
-					{id:'#js-virtual-clinic-btn', php:'virtual-clinic.php', close:'.close-icon-btn' }, // virtual clinic change:
-					{id:'#js-delete-event-btn', php:'delete-event.php', close:'.js-demo-cancel-btn' }, // Delete Event generic example:
-					{id:'#js-close-element-btn', php:'close-element.php', close:'.js-demo-cancel-btn' }, // Remove element confirmation
-					{id:'#js-add-new-event', php:'add-new-event.php', close:'.close-icon-btn' }, // Add New Event in SEM view mode
-					{id:'#js-idg-preview-correspondence', php:'letter-preview.php', close:'.close-icon-btn' }, // duplicate history element
-					{id:'#js-idg-exam-complog', php:'exam-va-COMPlog.php', close:'.close-icon-btn' }, // Duplicate Event
-					{id:'#js-duplicate-event-btn', php:'duplicate-event-warning.php', close:'.close-icon-btn' }, 
-					{id:'#js-idg-worklist-ps-add', php:'worklist-PS.php', close:'.close-icon-btn' }, // Worklist PSD / PSG	
-					{id:'#analytics-change-filters', php:'analytics-filters.php', close:'.close-icon-btn' }, // Analytics Custom Filters	
-					{id:'#js-idg-add-new-contact-popup', php:'add-new-contact.php', close:'.close-icon-btn' }, // Add new contact
-					{id:'#js-idg-admin-queset-demo',php:'admin-add-queue.php',close:'.close-icon-btn'},
-					{id:'#js-idg-search-query-save',php:'query-save.php',close:'.close-icon-btn'}, // Search, manage Queries popup 
-					{id:'#js-idg-search-all-searches',php:'query-all-searches.php',close:'.close-icon-btn'} // Search, manage Queries popup 
-					
-					];
+	const pops = [ 	
+		{id:'#js-change-context-btn', php:'change-context.php', close:'.close-icon-btn' },	// change context (firm)
+		{id:'#copy-edit-history-btn', php:'previous-history-elements.php', close:'.close-icon-btn' }, // duplicate history element
+		{id:'#copy-edit-anterior-segment-btn', php:'previous-ed-anterior.php', close:'.close-icon-btn' }, // duplicate history element ED
+		{id:'#js-virtual-clinic-btn', php:'virtual-clinic.php', close:'.close-icon-btn' }, // virtual clinic change:
+		{id:'#js-delete-event-btn', php:'delete-event.php', close:'.js-demo-cancel-btn' }, // Delete Event generic example:
+		{id:'#js-close-element-btn', php:'close-element.php', close:'.js-demo-cancel-btn' }, // Remove element confirmation
+		{id:'#js-add-new-event', php:'add-new-event.php', close:'.close-icon-btn' }, // Add New Event in SEM view mode
+		{id:'#js-idg-preview-correspondence', php:'letter-preview.php', close:'.close-icon-btn' }, // duplicate history element
+		{id:'#js-idg-exam-complog', php:'exam-va-COMPlog.php', close:'.close-icon-btn' }, // Duplicate Event
+		{id:'#js-duplicate-event-btn', php:'duplicate-event-warning.php', close:'.close-icon-btn' }, 
+		{id:'#js-idg-worklist-ps-add', php:'worklist-PS.php', close:'.close-icon-btn' }, // Worklist PSD / PSG	
+		{id:'#analytics-change-filters', php:'analytics-filters.php', close:'.close-icon-btn' }, // Analytics Custom Filters	
+		{id:'#js-idg-add-new-contact-popup', php:'add-new-contact.php', close:'.close-icon-btn' }, // Add new contact
+		{id:'#js-idg-admin-queset-demo',php:'admin-add-queue.php',close:'.close-icon-btn'},
+		{id:'#js-idg-search-query-save',php:'query-save.php',close:'.close-icon-btn'}, // Search, manage Queries popup 
+		{id:'#js-idg-search-all-searches',php:'query-all-searches.php',close:'.close-icon-btn'}, // Search, manage Queries popup 				
+	];
 	
 	
-	const overlayPopup = (id,php,closeSelector) => {
-		
+	const overlayPopup = (id,php,closeSelector) => {	
 		const showPopup = () => {
 			// xhr returns a Promise... 
 			uiApp.xhr('/idg-php/v3/_load/' + php)
@@ -2794,7 +2989,7 @@ Updated to Vanilla JS for IDG
 					// reflow DOM
 					uiApp.appendTo('body',div);
 				})
-				.catch(e => console.log('overlayPopup failed to load',e));  // maybe output this to UI at somepoint, but for now... 
+				.catch(e => console.log('OverlayPopup failed to load: Err msg -',e));  // maybe output this to UI at somepoint, but for now... 
 		};
 		
 		// register Events
