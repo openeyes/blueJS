@@ -52,9 +52,8 @@
 	document.addEventListener('mousedown',(ev) => {
 		let me = ev.target;
 		if(me.matches('.js-show-diagnosis-history')){
-			let tableRows = document.querySelectorAll('.js-idg-js-idg-diagnosis-history-' + me.dataset.idgdemo);
+			let tableRows = document.querySelectorAll('.js-idg-diagnosis-history-' + me.dataset.idgdemo);
 			tableRows.forEach((row) => {
-				console.log(row.style.display);
 				if(row.style.display == "table-row"){
 					row.style.display = "none";
 				} else {

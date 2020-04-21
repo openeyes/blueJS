@@ -44,7 +44,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			obj.holder = obj.div.querySelector('.optional-placeholder'); // default placeholder for Optional Lists
 			if(obj.holder === null){
-				console.log('obj.holder = null!');
+				console.log('Adder: no placeholder text for optional group');
 			}
 			
 	

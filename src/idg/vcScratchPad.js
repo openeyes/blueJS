@@ -35,7 +35,6 @@
 	*/
 	const change = (ev) => {
 		let btn = ev.target;
-		console.log(scratchPad);
 		if(show){
 			uiApp.hide(scratchPad);
 			btn.textContent = 'ScratchPad';
