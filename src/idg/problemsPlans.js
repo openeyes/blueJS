@@ -249,6 +249,9 @@
 		li.addEventListener('dragover',handleOver, false);
 		li.addEventListener('drop',handleDrop, false);
 		//li.addEventListener('dragend', handleEnd,false);	
+		
+		
+		
 	};
 			
 })(bluejay); 
