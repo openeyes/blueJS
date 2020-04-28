@@ -230,6 +230,7 @@ const bluejay = (function () {
 	* @param {String} block - "block","flex",'table-row',etc
 	*/
 	const show = (el, block = "block") => {
+		if(el === null) return;
 		el.style.display = block;
 	};
 	
@@ -238,6 +239,7 @@ const bluejay = (function () {
 	* @param {DOM Element} el
 	*/
 	const reshow = (el) => {
+		if(el === null) return;
 		el.style.display = ""; // in which case remove the style display and let the CSS handle it again (thanks Mike)
 	};
 	
@@ -246,6 +248,7 @@ const bluejay = (function () {
 	* @param {DOM Element} el
 	*/
 	const hide = (el) => {
+		if(el === null) return;
 		el.style.display = "none";
 	};
 	
@@ -548,12 +551,23 @@ const bluejay = (function () {
 	*/ 
 	
 	const hidden = uiApp.nodeArray(document.querySelectorAll('.hidden'));
-	if(hidden.length < 1) return; // no elements!
+	if(hidden.length){
+		hidden.forEach( (elem) => {
+			uiApp.hide(elem);
+			elem.classList.remove('hidden');
+		});
+	}
 	
-	hidden.forEach( (elem) => {
-		uiApp.hide(elem);
-		elem.classList.remove('hidden');
-	});
+	// Table rows use a different technique
+	const trCollapse = uiApp.nodeArray(document.querySelectorAll('.tr-collapse'));
+	if(trCollapse.length){
+		trCollapse.forEach( (elem) => {
+			elem.style.visibility = 'collapse';
+			elem.classList.remove('tr-collapse');
+		});
+	}
+	
+
 	
 })(bluejay);
 (function (uiApp) {
@@ -943,7 +957,7 @@ const bluejay = (function () {
 		let side = div.dataset.idgside;
 		let eyelatIcon = div.parentNode.previousElementSibling.querySelector('.oe-eye-lat-icons .oe-i');
 		
-		let date = div.parentNode.nextElementSibling.querySelector('.js-idg-diagnosis-date');
+		let date = div.parentNode.nextElementSibling.querySelector('.js-idg-diagnosis-date');	
 				
 		switch(state){
 			case 'active':
@@ -956,6 +970,7 @@ const bluejay = (function () {
 			text.textContent = 'Active (confirmed)';
 			text.classList.remove('fade');
 			doubt.querySelector('input').checked = false;
+			toggle.querySelector('input').checked = true;
 			setEyeLatIcon(eyelatIcon, side, 'active');
 			break;
 			
@@ -983,11 +998,11 @@ const bluejay = (function () {
 			break;
 			
 			case 'removed':
-			uiApp.hide(text);
 			uiApp.hide(toggle);
 			uiApp.hide(remove);
 			uiApp.reshow(btn);
 			uiApp.hide(date);
+			text.textContent = 'Not present';
 			setEyeLatIcon(eyelatIcon, side, 'none');
 			break; 
 		}
@@ -999,6 +1014,8 @@ const bluejay = (function () {
 		oe-i eyelat-L small pad disabled
 		oe-i laterality NA small pad	
 		*/
+		if(i === null) return;
+		
 		let css = ['oe-i', 'small', 'pad'];
 		let eye = side == 'left' ? 'L' : 'R';
 		
@@ -1021,10 +1038,10 @@ const bluejay = (function () {
 		let tableRows = document.querySelectorAll('.js-idg-diagnosis-history-' + id);
 		tableRows.forEach((row) => {
 			// toggle the audit rows
-			if(row.style.display == "table-row"){
-				row.style.display = "none";
+			if(row.style.visibility == "collapse"){
+				row.style.visibility = "visible";
 			} else {
-				row.style.display = "table-row";
+				row.style.visibility = "collapse";
 			}
 		});
 	};
@@ -1052,6 +1069,7 @@ const bluejay = (function () {
 			showAuditHistory(me.dataset.idgdemo);
 		}
 		
+/*
 		if(me.matches('.js-idg-demo-show-diagnosis-comments')){
 			document.querySelector('.js-idg-diagnosis-comments-'+me.dataset.idgdemo).style.display = "table-row";
 		}
@@ -1059,6 +1077,7 @@ const bluejay = (function () {
 		if(me.matches('.js-remove-diagnosis-comments')){
 			me.parentNode.parentNode.style.display = "none";
 		}
+*/
 		
 		if(me.matches('.js-idg-diagnosis-active-switcher .remove-circle')){
 			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
@@ -1067,10 +1086,32 @@ const bluejay = (function () {
 		
 		if(me.matches('.js-idg-diagnosis-add-btn')){
 			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
-			updateActiveState(parent, 'inactive');
+			updateActiveState(parent, 'active');
 		}
 
 	});
+	
+	const showDeletePopup = (ev) => {
+		// xhr returns a Promise... 
+		uiApp.xhr('/idg-php/v3/_load/specific/exam-oph-diag-delete.php')
+			.then( html => {
+				const div = document.createElement('div');
+				div.className = "oe-popup-wrap";
+				div.innerHTML = html;
+				div.querySelector('.close-icon-btn').addEventListener("mousedown", (ev) => {
+					ev.stopPropagation();
+					uiApp.removeElement(div);
+				}, {once:true} );
+				
+				// reflow DOM
+				uiApp.appendTo('body',div);
+			})
+			.catch(e => console.log('failed to load',e));  // maybe output this to UI at somepoint, but for now... 
+	};
+
+	uiApp.registerForClick('.js-idg-demo-remove-oph-diag', showDeletePopup);
+	
+	
 			
 })(bluejay); 
 (function (uiApp) {
@@ -1279,25 +1320,54 @@ const bluejay = (function () {
 	'use strict';	
 	
 	uiApp.addModule('comments');	
-	
-	
+
 	/**
 	Comments icon is clicked on to reveal 
 	comments input field. Either:
 	1) Textarea switches places with icon button
 	2) Textarea is shown in different DOM placement  
+	
+	update: 
+	New Diagnosis Element need comments for both sides
+	see: Ophthalmic & Systemic Diagnosis EDIT
 	**/
 	
 	const userClick = (ev) => {
 		const btn = ev.target;
-		const comments = document.querySelector('#' + btn.dataset.input);
+		const json = JSON.parse(btn.dataset.idgdemo);
+		
 		uiApp.hide(btn);
-		uiApp.show(comments);
-		comments.querySelector('textarea').focus();
-		comments.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
-			uiApp.show(btn,"inline-block");
-			uiApp.hide(comments);
-		},{once:true});	
+		
+		if(json.bilateral){
+			// Find 2 comment inputs (I assume suffix of "-left" & '-right')
+			const commentsR = document.querySelector('#' + json.id + '-right');
+			const commentsL = document.querySelector('#' + json.id + '-left');
+			
+			uiApp.show(commentsR);
+			uiApp.show(commentsL);
+			
+			commentsR.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
+				uiApp.reshow(btn);
+				uiApp.hide(commentsR);
+				uiApp.hide(commentsL);
+			},{once:true});
+			
+			commentsL.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
+				uiApp.reshow(btn);
+				uiApp.hide(commentsR);
+				uiApp.hide(commentsL);
+			},{once:true});
+				
+		} else {
+			// single comment input
+			const comments = document.querySelector('#' + json.id);
+			uiApp.show(comments);
+			comments.querySelector('textarea').focus();
+			comments.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
+				uiApp.reshow(btn);
+				uiApp.hide(comments);
+			},{once:true});	
+		}
 	};
 	
 	uiApp.registerForClick('.js-add-comments', userClick );
@@ -2923,6 +2993,8 @@ Updated to Vanilla JS for IDG
 		{id:'#js-idg-search-query-save',php:'query-save.php',close:'.close-icon-btn'}, // Search, manage Queries popup 
 		{id:'#js-idg-search-all-searches',php:'query-all-searches.php',close:'.close-icon-btn'}, // Search, manage Queries popup 				
 	];
+	
+	
 	
 	
 	const overlayPopup = (id,php,closeSelector) => {	

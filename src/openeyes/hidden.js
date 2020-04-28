@@ -10,11 +10,22 @@
 	*/ 
 	
 	const hidden = uiApp.nodeArray(document.querySelectorAll('.hidden'));
-	if(hidden.length < 1) return; // no elements!
+	if(hidden.length){
+		hidden.forEach( (elem) => {
+			uiApp.hide(elem);
+			elem.classList.remove('hidden');
+		});
+	}
 	
-	hidden.forEach( (elem) => {
-		uiApp.hide(elem);
-		elem.classList.remove('hidden');
-	});
+	// Table rows use a different technique
+	const trCollapse = uiApp.nodeArray(document.querySelectorAll('.tr-collapse'));
+	if(trCollapse.length){
+		trCollapse.forEach( (elem) => {
+			elem.style.visibility = 'collapse';
+			elem.classList.remove('tr-collapse');
+		});
+	}
+	
+
 	
 })(bluejay);

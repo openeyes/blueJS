@@ -230,6 +230,7 @@ const bluejay = (function () {
 	* @param {String} block - "block","flex",'table-row',etc
 	*/
 	const show = (el, block = "block") => {
+		if(el === null) return;
 		el.style.display = block;
 	};
 	
@@ -238,6 +239,7 @@ const bluejay = (function () {
 	* @param {DOM Element} el
 	*/
 	const reshow = (el) => {
+		if(el === null) return;
 		el.style.display = ""; // in which case remove the style display and let the CSS handle it again (thanks Mike)
 	};
 	
@@ -246,6 +248,7 @@ const bluejay = (function () {
 	* @param {DOM Element} el
 	*/
 	const hide = (el) => {
+		if(el === null) return;
 		el.style.display = "none";
 	};
 	
@@ -548,12 +551,23 @@ const bluejay = (function () {
 	*/ 
 	
 	const hidden = uiApp.nodeArray(document.querySelectorAll('.hidden'));
-	if(hidden.length < 1) return; // no elements!
+	if(hidden.length){
+		hidden.forEach( (elem) => {
+			uiApp.hide(elem);
+			elem.classList.remove('hidden');
+		});
+	}
 	
-	hidden.forEach( (elem) => {
-		uiApp.hide(elem);
-		elem.classList.remove('hidden');
-	});
+	// Table rows use a different technique
+	const trCollapse = uiApp.nodeArray(document.querySelectorAll('.tr-collapse'));
+	if(trCollapse.length){
+		trCollapse.forEach( (elem) => {
+			elem.style.visibility = 'collapse';
+			elem.classList.remove('tr-collapse');
+		});
+	}
+	
+
 	
 })(bluejay);
 (function (uiApp) {

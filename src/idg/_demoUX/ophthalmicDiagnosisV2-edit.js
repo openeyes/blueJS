@@ -23,7 +23,7 @@
 		let side = div.dataset.idgside;
 		let eyelatIcon = div.parentNode.previousElementSibling.querySelector('.oe-eye-lat-icons .oe-i');
 		
-		let date = div.parentNode.nextElementSibling.querySelector('.js-idg-diagnosis-date');
+		let date = div.parentNode.nextElementSibling.querySelector('.js-idg-diagnosis-date');	
 				
 		switch(state){
 			case 'active':
@@ -36,6 +36,7 @@
 			text.textContent = 'Active (confirmed)';
 			text.classList.remove('fade');
 			doubt.querySelector('input').checked = false;
+			toggle.querySelector('input').checked = true;
 			setEyeLatIcon(eyelatIcon, side, 'active');
 			break;
 			
@@ -63,11 +64,11 @@
 			break;
 			
 			case 'removed':
-			uiApp.hide(text);
 			uiApp.hide(toggle);
 			uiApp.hide(remove);
 			uiApp.reshow(btn);
 			uiApp.hide(date);
+			text.textContent = 'Not present';
 			setEyeLatIcon(eyelatIcon, side, 'none');
 			break; 
 		}
@@ -79,6 +80,8 @@
 		oe-i eyelat-L small pad disabled
 		oe-i laterality NA small pad	
 		*/
+		if(i === null) return;
+		
 		let css = ['oe-i', 'small', 'pad'];
 		let eye = side == 'left' ? 'L' : 'R';
 		
@@ -101,10 +104,10 @@
 		let tableRows = document.querySelectorAll('.js-idg-diagnosis-history-' + id);
 		tableRows.forEach((row) => {
 			// toggle the audit rows
-			if(row.style.display == "table-row"){
-				row.style.display = "none";
+			if(row.style.visibility == "collapse"){
+				row.style.visibility = "visible";
 			} else {
-				row.style.display = "table-row";
+				row.style.visibility = "collapse";
 			}
 		});
 	};
@@ -132,6 +135,7 @@
 			showAuditHistory(me.dataset.idgdemo);
 		}
 		
+/*
 		if(me.matches('.js-idg-demo-show-diagnosis-comments')){
 			document.querySelector('.js-idg-diagnosis-comments-'+me.dataset.idgdemo).style.display = "table-row";
 		}
@@ -139,6 +143,7 @@
 		if(me.matches('.js-remove-diagnosis-comments')){
 			me.parentNode.parentNode.style.display = "none";
 		}
+*/
 		
 		if(me.matches('.js-idg-diagnosis-active-switcher .remove-circle')){
 			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
@@ -147,9 +152,31 @@
 		
 		if(me.matches('.js-idg-diagnosis-add-btn')){
 			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
-			updateActiveState(parent, 'inactive');
+			updateActiveState(parent, 'active');
 		}
 
 	});
+	
+	const showDeletePopup = (ev) => {
+		// xhr returns a Promise... 
+		uiApp.xhr('/idg-php/v3/_load/specific/exam-oph-diag-delete.php')
+			.then( html => {
+				const div = document.createElement('div');
+				div.className = "oe-popup-wrap";
+				div.innerHTML = html;
+				div.querySelector('.close-icon-btn').addEventListener("mousedown", (ev) => {
+					ev.stopPropagation();
+					uiApp.removeElement(div);
+				}, {once:true} );
+				
+				// reflow DOM
+				uiApp.appendTo('body',div);
+			})
+			.catch(e => console.log('failed to load',e));  // maybe output this to UI at somepoint, but for now... 
+	};
+
+	uiApp.registerForClick('.js-idg-demo-remove-oph-diag', showDeletePopup);
+	
+	
 			
 })(bluejay); 

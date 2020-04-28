@@ -39,6 +39,7 @@
 	* @param {String} block - "block","flex",'table-row',etc
 	*/
 	const show = (el, block = "block") => {
+		if(el === null) return;
 		el.style.display = block;
 	};
 	
@@ -47,6 +48,7 @@
 	* @param {DOM Element} el
 	*/
 	const reshow = (el) => {
+		if(el === null) return;
 		el.style.display = ""; // in which case remove the style display and let the CSS handle it again (thanks Mike)
 	};
 	
@@ -55,6 +57,7 @@
 	* @param {DOM Element} el
 	*/
 	const hide = (el) => {
+		if(el === null) return;
 		el.style.display = "none";
 	};
 	
