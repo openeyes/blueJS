@@ -1,7 +1,7 @@
 /**
 * Last loaded
 */
-(function (uiApp) {
+(function () {
 
 	'use strict';
 	

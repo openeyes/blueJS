@@ -21,7 +21,7 @@
 	* @param {String} suffix optional
 	* @returns {Sting} 
 	*/
-	const domDataAttribute = (suffix=false) => {
+	const domDataAttribute = (suffix = false) => {
 		let attr = !suffix ? 'bluejay' : 'bluejay-' + suffix;
 		return 'data-' + attr;
 	};
