@@ -268,7 +268,7 @@
 				icon.classList.replace("person-split", "person");
 			}
 		}
-	})
+	});
 	
 	document.addEventListener('mousedown',(ev) => {
 		let me = ev.target;

@@ -15,13 +15,13 @@
 		/*
 		Create unique prefix & dispatch 
 		*/
-		const event = new CustomEvent("blue-" + eventType, {detail: eventDetail});
+		const event = new CustomEvent(eventType, {detail: eventDetail});
 		document.dispatchEvent(event);
 		
-		// log for DEBUG
-		bluejay.log('[Custom Event] - "'+eventType+'"');
+		// DEBUG
+		// bluejay.log('[Custom Event] - "'+eventType+'"');
 	};
 		
-	uiApp.extend('triggerCustomEvent', myEvent);	
+	uiApp.extend('uiEvent', myEvent);	
 	
 })(bluejay);
