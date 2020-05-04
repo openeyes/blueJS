@@ -595,7 +595,16 @@ const bluejay = (function () {
 		type: "basic", // could be bilateral
 		tip: null, // 
 		eyeIcons: null, // only applies to bilateral popups
-		notifyEvent: 'blueTooltip',
+		
+		// no need for fancy Observer/Subject pattern
+		notifyView:null, 
+		/**
+		* Link View with Model
+		* @param {Funciton} f - callback
+		*/
+		addViewCallback(f){
+			this.notifyView = f;
+		},
 		
 		/**
 		* Reset the Model
@@ -603,7 +612,7 @@ const bluejay = (function () {
 		reset(){
 			this.showing = false;
 			this.target = null;
-			uiApp.uiEvent(this.notifyEvent);
+			this.notifyView();
 		},
 		
 		/**
@@ -627,7 +636,7 @@ const bluejay = (function () {
 				this.type = "basic";
 				this.tip = target.dataset.tooltipContent;
 			}
-			uiApp.uiEvent(this.notifyEvent);
+			this.notifyView();
 		}
 	};
 
@@ -747,9 +756,9 @@ const bluejay = (function () {
 		};
 
 		/**
-		listen for any model changes
+		Callback for Model for changes
 		*/
-		document.addEventListener(model.notifyEvent, () => {
+		const modelChange = () => {
 			// check the model state
 			if(model.showing == false){
 				hide();
@@ -764,7 +773,9 @@ const bluejay = (function () {
 				}
 				show();
 			}
-		});
+		};
+		
+		model.addViewCallback(modelChange);
 		
 	})(m);
 	
@@ -799,9 +810,6 @@ const bluejay = (function () {
 	uiApp.registerForHover(m.selector, userOver);
 	uiApp.registerForExit(m.selector, userOut);
 	
-	
-	
-		
 	
 })(bluejay); 
 (function (uiApp) {
