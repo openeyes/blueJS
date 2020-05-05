@@ -13,19 +13,20 @@
 	uiApp.registerForClick('.js-idg-demo-doodle-drawer', (ev) => {
 		let icon = ev.target; 
 		let li = uiApp.getParent(icon,'li');
-		li.classList.toggle('ed-drawer-open');
+		li.classList.toggle('ed2-drawer-open');
 	});
 	
 	
 	uiApp.registerForClick('.ed-canvas-edit', (ev) => {
 		let canvas = ev.target; 
-		let editor = uiApp.getParent(canvas,'.ed-editor');
-		let popup = editor.querySelector('.ed-doodle-popup');
+		let editor = uiApp.getParent(canvas,'.ed2-editor');
+		let popup = editor.querySelector('.ed2-doodle-popup');
 		popup.classList.toggle('closed');	
 	});
 	
-	uiApp.registerForClick('#js-idg-demo-ed-search-input', (ev) => {
+	uiApp.registerForClick('#js-idg-demo-ed2-search-input', (ev) => {
 		let autocomplete = ev.target.nextElementSibling;
+		console.log('hi');
 		if(autocomplete.style.display == "none"){
 			autocomplete.style.display = 'block';
 		} else {
