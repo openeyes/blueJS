@@ -5,33 +5,32 @@
 	uiApp.addModule('tooltip'); 
 	
 	/** 
-	Model
+	M.V.C
 	*/
 	const m = {
 		selector: ".js-has-tooltip",
 		/*
 		OE tooltips: 1) Basic, 2) Bilateral (eyelat icons are optional)
-		Tooltip widths are set by CSS	
+		Tooltip widths are set by newnblue CSS	
 		*/
 		css: {
-			basicWidth: 200,
-			bilateralWidth: 400, 
+			basicWidth: 200, // match CSS
+			bilateralWidth: 400, // match CSS
 		},
 		
 		showing:false,
 		target:null,
-		type: "basic", // could be bilateral
-		tip: null, // 
+		type: "basic", // or, bilateral
+		tip: null, // tooltip content
 		eyeIcons: null, // only applies to bilateral popups
-		
-		// no need for fancy Observer/Subject pattern
-		notifyView:null, 
+		 
 		/**
-		* Link View with Model
-		* @param {Funciton} f - callback
+		* a Model change notifies View, simple, but tight coupling
+		* @param {Funciton} f - view callback
 		*/
-		addViewCallback(f){
-			this.notifyView = f;
+		onChange(f){
+			if(typeof f !== "function") throw new Error('Tooltip Model requires View callback as funciton');
+			this.onChange = f;
 		},
 		
 		/**
@@ -40,7 +39,7 @@
 		reset(){
 			this.showing = false;
 			this.target = null;
-			this.notifyView();
+			this.onChange();
 		},
 		
 		/**
@@ -64,7 +63,7 @@
 				this.type = "basic";
 				this.tip = target.dataset.tooltipContent;
 			}
-			this.notifyView();
+			this.onChange();
 		}
 	};
 
@@ -156,7 +155,7 @@
 			
 			/*
 			setup CSS classes to visually position the 
-			arrow correctly based on it's positon
+			arrow correctly based on tooltip positoning
 			*/
 			
 			// too close to the left?
@@ -184,9 +183,9 @@
 		};
 
 		/**
-		Callback for Model for changes
+		Callback for any Model changes
 		*/
-		const modelChange = () => {
+		model.onChange(() => {
 			// check the model state
 			if(model.showing == false){
 				hide();
@@ -201,11 +200,9 @@
 				}
 				show();
 			}
-		};
+		});
 		
-		model.addViewCallback(modelChange);
-		
-	})(m);
+	})(m); // link to Model, easy & basic
 	
 	/**
 	* Controllers for user Events	
@@ -213,7 +210,6 @@
 	*/
 	const userOver = (ev) => {
 		m.update(ev.target); // update the Model with DOM data
-		
 		// if the user scrolls, remove the tooltip (as it will be out of position)
 		window.addEventListener('scroll', userOut, {capture:true, once:true});
 	};

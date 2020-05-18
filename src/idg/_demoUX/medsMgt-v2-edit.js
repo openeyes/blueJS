@@ -84,10 +84,10 @@
 		if(me.matches('.js-show-medication-history')){
 			let tableRows = document.querySelectorAll('.js-idg-medication-history-' + me.dataset.idgdemo);
 			tableRows.forEach((row) => {
-				if(row.style.display == "table-row"){
-					row.style.display = "none";
+				if(row.style.visibility == "collapse"){
+					row.style.visibility = "visible";
 				} else {
-					row.style.display = "table-row";
+					row.style.visibility = "collapse";
 				}
 				
 			});

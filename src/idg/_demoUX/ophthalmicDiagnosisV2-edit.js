@@ -77,12 +77,11 @@
 	const setEyeLatIcon = (i, side, state) => {
 		/*
 		oe-i laterality L small pad
-		oe-i eyelat-L small pad disabled
 		oe-i laterality NA small pad	
 		*/
 		if(i === null) return;
 		
-		let css = ['oe-i', 'small', 'pad'];
+		let css = ['oe-i'];
 		let eye = side == 'left' ? 'L' : 'R';
 		
 		switch(state){
@@ -90,12 +89,14 @@
 			css.push('laterality', eye);
 			break;
 			case 'inactive':
-			css.push('eyelat-'+eye, 'disabled');
+			css.push('laterality', eye+'i');
 			break;
 			case 'none':
 			css.push('laterality', 'NA');
 			break;
 		}
+		
+		css.push('small', 'pad');
 		
 		i.className = css.join(' ');
 	};
@@ -119,6 +120,8 @@
 		let toggle = div.querySelector('.toggle-switch');
 		let doubt = div.querySelector('.js-idg-diagnosis-doubt');
 		let doubtInput = div.querySelector('.js-idg-diagnosis-doubt-input');
+		
+		let systemicIcons = tr.querySelector('.js-idg-right-icon .oe-systemic-icons');
 
 
 		if(tdDefault == null){
@@ -138,6 +141,8 @@
 				uiApp.reshow(doubt);
 				doubt.querySelector('input').checked = false;
 				uiApp.hide(doubtInput);
+				systemicIcons.querySelector('.oe-i').className = "oe-i person-green small pad";
+				
 				
 			break;
 			
@@ -150,6 +155,7 @@
 				uiApp.reshow(doubt);
 				doubt.querySelector('input').checked = false;
 				uiApp.hide(doubtInput);
+				systemicIcons.querySelector('.oe-i').className = "oe-i NA small pad";
 			break;
 			
 			case '2':
@@ -160,13 +166,16 @@
 				uiApp.hide(toggle);
 				uiApp.hide(doubt);
 				uiApp.hide(doubtInput);
-				
+				systemicIcons.querySelector('.oe-i').className = "oe-i NA small pad";
 			break;
 		}
 	};
 	
 	const systemicSidesChange = (tr, val) => {
 		let td = tr.querySelector('.js-idg-diagnosis-state-options');
+		let systemicIcons = tr.querySelector('.js-idg-right-icon .oe-systemic-icons');
+		let eyeLatIcons = tr.querySelector('.js-idg-right-icon .oe-eye-lat-icons .oe-i');
+	
 		
 		if(val){
 			// show sides
@@ -193,13 +202,9 @@
 			text.textContent = 'Inactive from';
 			text.classList.add('fade');
 			
-			tr.querySelector('.js-idg-right-icon .person').style.display = "none";
-			tr.querySelector('.js-idg-right-icon .oe-eye-lat-icons .oe-i').style.display = "inline-block";
+			systemicIcons.style.display = "none";
+			eyeLatIcons.style.display = "inline-block";
 			
-			
-			
-			
-		
 		} else {
 			// no sides
 			tr.deleteCell(2);
@@ -214,8 +219,8 @@
 			
 			td.querySelector('input').checked = true;
 			
-			tr.querySelector('.js-idg-right-icon .person').style.display = "inline-block";
-			tr.querySelector('.js-idg-right-icon .oe-eye-lat-icons .oe-i').style.display = "none";
+			systemicIcons.style.display = "inline-block";
+			eyeLatIcons.style.display = "none";
 		}		
 	};
 

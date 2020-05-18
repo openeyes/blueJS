@@ -23,13 +23,14 @@
 				const div = document.createElement('div');
 				div.className = "oe-popup-wrap";
 				div.innerHTML = html;
+				// reflow DOM
+				uiApp.appendTo('body',div);
+				
+				// this will error if PHP errors
 				div.querySelector('.close-icon-btn').addEventListener("mousedown", (ev) => {
 					ev.stopPropagation();
 					uiApp.removeElement(div);
 				}, {once:true} );
-				
-				// reflow DOM
-				uiApp.appendTo('body',div);
 			})
 			.catch(e => console.log('failed to load',e));  // maybe output this to UI at somepoint, but for now... 
 	};
