@@ -8,6 +8,7 @@
 	Pretty simple. Click on something (by id), load in some PHP demo content, assign a selector to close
 	*/
 	const pops = [ 	
+		{id:'#js-idg-popup-content-template',php:'_popup-content-template.php',close:'.close-icon-btn'}, // template (standardisation)
 		{id:'#js-change-context-btn', php:'change-context.php', close:'.close-icon-btn' },	// change context (firm)
 		{id:'#copy-edit-history-btn', php:'previous-history-elements.php', close:'.close-icon-btn' }, // duplicate history element
 		{id:'#copy-edit-anterior-segment-btn', php:'previous-ed-anterior.php', close:'.close-icon-btn' }, // duplicate history element ED

@@ -52,7 +52,7 @@ const bluejay = (function () {
 	* Provide set up feedback whilst debugging
 	*/
 	if(debug){
-		methods.log('OE JS UI layer... starting');
+		methods.log('OE JS UI layer ("blue") ...');
 		methods.log('DEBUG MODE');
 		document.addEventListener('DOMContentLoaded', () => {
 			// list API methods 
