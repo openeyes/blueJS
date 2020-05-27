@@ -10,9 +10,6 @@
 	in JSON should be a PHP file path e.g, /file.php?name=value
 	it also assumes the standard popup close btn structure (... JSON could provide)
 	*/
-	const popsJSON = [
-		'.js-idg-demo-eye-diagnosis-audit',
-	];
 	
 	const showPopup = (ev) => {
 		let php; 
@@ -45,9 +42,6 @@
 	};
 	
 	
-	popsJSON.forEach(pop => {
-		uiApp.registerForClick(pop, showPopup);
-	});
-
+	uiApp.registerForClick('.js-idg-demo-popup-json', showPopup);
 			
 })(bluejay); 

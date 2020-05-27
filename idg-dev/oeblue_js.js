@@ -3125,29 +3125,26 @@ Updated to Vanilla JS for IDG
 	Pretty simple. Click on something (by id), load in some PHP demo content, assign a selector to close
 	*/
 	const pops = [ 	
-		{id:'#js-idg-popup-content-template',php:'_popup-content-template.php',close:'.close-icon-btn'}, // template (standardisation)
-		{id:'#js-change-context-btn', php:'change-context.php', close:'.close-icon-btn' },	// change context (firm)
-		{id:'#copy-edit-history-btn', php:'previous-history-elements.php', close:'.close-icon-btn' }, // duplicate history element
-		{id:'#copy-edit-anterior-segment-btn', php:'previous-ed-anterior.php', close:'.close-icon-btn' }, // duplicate history element ED
-		{id:'#js-virtual-clinic-btn', php:'virtual-clinic.php', close:'.close-icon-btn' }, // virtual clinic change:
-		{id:'#js-delete-event-btn', php:'delete-event.php', close:'.js-demo-cancel-btn' }, // Delete Event generic example:
-		{id:'#js-close-element-btn', php:'close-element.php', close:'.js-demo-cancel-btn' }, // Remove element confirmation
-		{id:'#js-add-new-event', php:'add-new-event.php', close:'.close-icon-btn' }, // Add New Event in SEM view mode
-		{id:'#js-idg-preview-correspondence', php:'letter-preview.php', close:'.close-icon-btn' }, // duplicate history element
-		{id:'#js-idg-exam-complog', php:'exam-va-COMPlog.php', close:'.close-icon-btn' }, // Duplicate Event
-		{id:'#js-duplicate-event-btn', php:'duplicate-event-warning.php', close:'.close-icon-btn' }, 
-		{id:'#js-idg-worklist-ps-add', php:'worklist-PS.php', close:'.close-icon-btn' }, // Worklist PSD / PSG	
-		{id:'#analytics-change-filters', php:'analytics-filters.php', close:'.close-icon-btn' }, // Analytics Custom Filters	
-		{id:'#js-idg-add-new-contact-popup', php:'add-new-contact.php', close:'.close-icon-btn' }, // Add new contact
-		{id:'#js-idg-admin-queset-demo',php:'admin-add-queue.php',close:'.close-icon-btn'},
-		{id:'#js-idg-search-query-save',php:'query-save.php',close:'.close-icon-btn'}, // Search, manage Queries popup 
-		{id:'#js-idg-search-all-searches',php:'query-all-searches.php',close:'.close-icon-btn'}, // Search, manage Queries popup 				
+		{id:'#js-idg-popup-content-template',php:'_popup-content-template.php'}, // template (standardisation)
+		{id:'#js-change-context-btn', php:'change-context.php' },	// change context (firm)
+		{id:'#copy-edit-history-btn', php:'previous-history-elements.php' }, // duplicate history element
+		{id:'#copy-edit-anterior-segment-btn', php:'previous-ed-anterior.php' }, // duplicate history element ED
+		{id:'#js-virtual-clinic-btn', php:'virtual-clinic.php' }, // virtual clinic change:
+		{id:'#js-delete-event-btn', php:'delete-event.php'}, // Delete Event generic example:
+		{id:'#js-close-element-btn', php:'close-element.php' }, // Remove element confirmation
+		{id:'#js-add-new-event', php:'add-new-event.php' }, // Add New Event in SEM view mode
+		{id:'#js-idg-preview-correspondence', php:'letter-preview.php' }, // duplicate history element
+		{id:'#js-idg-exam-complog', php:'exam-va-COMPlog.php' }, // Duplicate Event
+		{id:'#js-duplicate-event-btn', php:'duplicate-event-warning.php' }, 
+		{id:'#js-idg-worklist-ps-add', php:'worklist-PS.php' }, // Worklist PSD / PSG	
+		{id:'#analytics-change-filters', php:'analytics-filters.php' }, // Analytics Custom Filters	
+		{id:'#js-idg-add-new-contact-popup', php:'add-new-contact.php' }, // Add new contact
+		{id:'#js-idg-admin-queset-demo',php:'admin-add-queue.php'},
+		{id:'#js-idg-search-query-save',php:'query-save.php'}, // Search, manage Queries popup 
+		{id:'#js-idg-search-all-searches',php:'query-all-searches.php'}, // Search, manage Queries popup 
 	];
-	
-	
-	
-	
-	const overlayPopup = (id,php,closeSelector) => {	
+
+	const overlayPopup = (id,php) => {	
 		const showPopup = () => {
 			// xhr returns a Promise... 
 			uiApp.xhr('/idg-php/v3/_load/' + php)
@@ -3155,7 +3152,7 @@ Updated to Vanilla JS for IDG
 					const div = document.createElement('div');
 					div.className = "oe-popup-wrap";
 					div.innerHTML = html;
-					div.querySelector(closeSelector).addEventListener("mousedown", (ev) => {
+					div.querySelector('.close-icon-btn').addEventListener("mousedown", (ev) => {
 						ev.stopPropagation();
 						uiApp.removeElement(div);
 					}, {once:true} );
@@ -3179,8 +3176,7 @@ Updated to Vanilla JS for IDG
 		let el = document.querySelector(p.id);
 		if(el !== null){
 			overlayPopup(	p.id,
-							p.php,
-							p.close);
+							p.php);
 		}
 	}
 			
@@ -3197,9 +3193,6 @@ Updated to Vanilla JS for IDG
 	in JSON should be a PHP file path e.g, /file.php?name=value
 	it also assumes the standard popup close btn structure (... JSON could provide)
 	*/
-	const popsJSON = [
-		'.js-idg-demo-eye-diagnosis-audit',
-	];
 	
 	const showPopup = (ev) => {
 		let php; 
@@ -3232,10 +3225,7 @@ Updated to Vanilla JS for IDG
 	};
 	
 	
-	popsJSON.forEach(pop => {
-		uiApp.registerForClick(pop, showPopup);
-	});
-
+	uiApp.registerForClick('.js-idg-demo-popup-json', showPopup);
 			
 })(bluejay); 
 (function (uiApp) {
