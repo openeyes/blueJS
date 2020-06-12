@@ -301,7 +301,7 @@ const bluejay = (function () {
 
 	/**
 	* Get dimensions of hidden DOM element
-	* only use on 'fixed' or 'absolute'elements
+	* can only be used on 'fixed' or 'absolute'elements
 	* @param {DOM Element} el 	currently out of the document flow
 	* @returns {Object} width and height as {w:w,h:h}
 	*/

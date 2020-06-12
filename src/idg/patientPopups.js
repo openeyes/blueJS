@@ -8,9 +8,24 @@
 	const cssOpen = 'open';
 	
 	/*
+	Patient popup (icons at the top next to the Patient name)
+	Originally, hover interaction was only on the icon but this 
+	has been changed to allow 'hover' over the popup content	
+	uses unique IDs for DOM elements
+	*/
+	const map = [
+		{btn:'#js-quicklook-btn', content:'#patient-summary-quicklook' },
+		{btn:'#js-demographics-btn', content:'#patient-popup-demographics'},
+		{btn:'#js-management-btn', content:'#patient-popup-management'},
+		{btn:'#js-allergies-risks-btn', content:'#patient-popup-allergies-risks'},
+		{btn:'#js-charts-btn', content:'#patient-popup-charts'},
+		{btn:'#js-patient-extra-btn', content:'#patient-popup-trials'},
+	];
+	
+	
+	/*
 	Methods	
 	*/
-	
 	const _over = () => ({
 		/**
 		* Callback for 'hover'
@@ -25,9 +40,11 @@
 		/**
 		* Callback for 'exit'
 		*/
-		out: function(){
-			this.btn.classList.remove( cssActive );
+		out: function(e){
+			if(e.relatedTarget === this.content) return;
 			this.hide();
+			this.btn.classList.remove( cssActive );
+			
 		}	
 	});
 	
@@ -59,7 +76,7 @@
 			if(this.open) return;
 			this.open = true;
 			hideOtherPopups(this);
-			uiApp.show(this.popup);
+			uiApp.show(this.content);
 		}	
 	});
 	
@@ -71,7 +88,7 @@
 			if(this.open === false || this.isLocked ) return;
 			this.open = false;
 			this.btn.classList.remove( cssActive, cssOpen );
-			uiApp.hide(this.popup);
+			uiApp.hide(this.content);
 		}
 	});
 	
@@ -104,7 +121,7 @@
 		me.open = false;
 		me.isLocked = false;
 		return Object.assign( 	me,
-								_changeState(),
+								// _changeState(),
 								_over(),
 								_out(),
 								_makeLocked(),
@@ -117,11 +134,10 @@
 	/**
 	* group control all popups
 	*/
-	const all = [];
 	const hideOtherPopups = (showing) => {
-		all.forEach((popup)=>{
-			if(popup != showing){
-				popup.makeHidden();
+		map.forEach((item) => {
+			if(item.popup != showing){
+				item.popup.makeHidden();
 			}
 		});
 	};
@@ -129,25 +145,19 @@
 	/**
 	* Init
 	*/
-	const popupMap = [
-		{btn:'#js-quicklook-btn', popup:'#patient-summary-quicklook' },
-		{btn:'#js-demographics-btn', popup:'#patient-popup-demographics'},
-		{btn:'#js-management-btn', popup:'#patient-popup-management'},
-		{btn:'#js-allergies-risks-btn', popup:'#patient-popup-allergies-risks'},
-		{btn:'#js-charts-btn', popup:'#patient-popup-charts'},
-		{btn:'#js-patient-extra-btn', popup:'#patient-popup-trials'},
-	];
-	
-	popupMap.forEach((item)=>{
+	map.forEach((item) => {
+		// only init if there is a btn in the DOM
 		let btn = document.querySelector(item.btn);
 		if(btn !== null){
-			let popup = PatientPopup({	btn:document.querySelector(item.btn),
-										popup:document.querySelector(item.popup) });
-										
-			uiApp.registerForClick(item.btn, () => popup.changeState());
+			let popup = PatientPopup({	
+				btn: btn,
+				content: document.querySelector(item.content) 
+			});					
+			uiApp.registerForClick(item.btn, () => popup.over());
 			uiApp.registerForHover(item.btn, () => popup.over());
-			uiApp.registerForExit(item.btn, () => popup.out());
-			all.push(popup);
+			uiApp.registerForExit(item.btn, (e) => popup.out(e));
+			uiApp.registerForExit(item.content, (e) => popup.out(e));
+			item.popup = popup; // store.
 		}	
 	});
 	
