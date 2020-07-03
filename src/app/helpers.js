@@ -133,6 +133,28 @@
 		return props;
 	};
 
+	/* 
+	Output messgaes onto UI
+	*/  
+	const idgMsgReporter = (msg) => {
+		
+		let id = "idg-js-ui-message-out";
+		let ul = document.getElementById(id);
+		let li = document.createElement("li");
+		
+		if(ul === null){
+			ul = document.createElement("ul");
+			ul.id = id;
+			ul.style = "position:fixed; bottom:10px; right:10px; z-index:9999; background:orange; padding:10px; list-style-position:inside; max-height:vh90; overflow-y: scroll; font-size:14px;";
+			document.body.appendChild(ul);
+		}
+	
+		let count = ul.children.length; 
+		li.appendChild( document.createTextNode(count +' - '+ msg) );
+		ul.appendChild(li);
+	};
+
+
 	// Extend App
 	uiApp.extend('nodeArray', NodeListToArray);
 	uiApp.extend('appendTo', appendTo);
@@ -143,5 +165,6 @@
 	uiApp.extend('hide', hide);
 	uiApp.extend('xhr', xhr);
 	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
+	uiApp.extend('idgReporter', idgMsgReporter);
 	
 })(bluejay);

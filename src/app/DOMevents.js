@@ -31,7 +31,6 @@
 	*/
 	const checkListeners = (event, listeners) => {
 		if(event.target === document) return;
-		
 		listeners.forEach((item) => {
 			if(event.target.matches(item.selector)){
 				item.cb(event);
@@ -54,29 +53,69 @@
 	* As these fire at such high rates they need restricting
 	* @oaram {Array} listeners array	
 	*/
-	function EventThrottler(listeners){
-		let throttle = false;
-		return () => {
-			if(throttle) return;
-			throttle = true;
-			setTimeout( () => {
-				throttle = false;
-				broadcast(listeners); // broadcast to listeners
-			},160);  // 16ms * 10
+	function EventThrottler(){
+		let throttleID = 0;
+		return (listeners) => {
+			clearTimeout(throttleID);
+			throttleID = setTimeout(() => broadcast(listeners), 100);
 		};
 	}
+	// set up closure
+	const resizeThrottle = EventThrottler();
 	
-	const resizeThrottle = EventThrottler(resize);
+	/**
+	Specific functions for each event. This is so that they can be remove
+	*/
+	function handleMouserEnter(e){
+		checkListeners(e, hover);
+	}
+	function handleMouserDown(e){
+		checkListeners(e, click);
+	}
+	function handleMouserLeave(e){
+		checkListeners(e, exit);
+	}
+	
+	
 	
 	/**
 	To improve performance delegate Event handling to the document
 	setup Event listeners... 
 	*/
-	document.addEventListener('mouseenter', (event) => checkListeners(event,hover), {capture:true});
-	document.addEventListener('mousedown', (event) => checkListeners(event,click), {capture:true}); 
-	document.addEventListener('mouseleave', (event) => checkListeners(event,exit), {capture:true});
+	document.addEventListener('mouseenter', handleMouserEnter, {capture:true});
+	document.addEventListener('mousedown', handleMouserDown, {capture:true}); 
+	document.addEventListener('mouseleave', handleMouserLeave, {capture:true});
+	
+	/* 
+	** Touch **
+	*/
+	let handleTouchStart = (e) => {
+		
+		/*
+		With touch I'll get: touchstart, mouseenter then mousedown.
+		This will mess up the UI because of "hover" enhancment behaviour for mouse users.
+		Therefore remove the Mouse events.
+		*/
+		document.removeEventListener('mouseenter', handleMouserEnter, {capture:true});
+		document.removeEventListener('mousedown', handleMouserDown, {capture:true}); 
+		document.removeEventListener('mouseleave', handleMouserLeave, {capture:true});
+		
+		// basic "click" behaviour
+		checkListeners(e, click);
+		
+		// only need to removeListeners once!
+		handleTouchStart = (e) => {
+			checkListeners(e, click);
+		};
+	};
+	
+	
+	document.addEventListener('touchstart', (e) => handleTouchStart(e), {capture:true});
+	
+	
+	
 	// Throttle high rate events
-	window.onresize = resizeThrottle; 
+	window.onresize = () => resizeThrottle(resize); 
 	
 	// extend App
 	uiApp.extend('registerForHover', (selector,cb) => addListener(hover,selector,cb));

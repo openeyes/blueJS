@@ -64,6 +64,12 @@ List Options Constructor
 			}
 		});
 		
+		Object.defineProperty(this, 'value',{
+			get: () => {
+				return json.value; 
+			}
+		});
+		
 	
 	
 		/*

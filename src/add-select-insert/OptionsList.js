@@ -7,7 +7,13 @@
 	addSelect.OptionsList = function(ul){
 		
 		let json = JSON.parse(ul.dataset.options);
-
+		
+		/*
+		Types: Single & Multi are the main ones but 
+		added in "inputTemplate" to handle the 
+		list of options to fill the input field
+		*/
+		const template = json.type == 'inputTemplate' ? true : false;
 		const single = json.type == 'single' ? true : false ;				
 		// some assumptions here... 
 		const hasOptions = json.hasExtraOptions === "true" ? true : false;
@@ -54,6 +60,25 @@
 		Methods	
 		*/
 		this.optionClicked = function( selected, listOption ){
+		
+			if(template){
+				// Assume that we have an input field available.
+				let input = ul.previousElementSibling;
+				let template = listOption.value;
+				let selectStart = template.indexOf('{');
+				let selectEnd = template.indexOf('}') + 1;
+				input.value = template;
+				listOption.deselect();
+				// let the events play out
+				setTimeout(() => {
+					input.focus();
+					input.select();
+					input.setSelectionRange(selectStart, selectEnd);
+				}, 50);
+				return;
+			}
+			
+			
 			/*
 			Manage this list. 
 			Multi-select is the default	
