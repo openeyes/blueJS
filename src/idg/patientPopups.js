@@ -48,23 +48,13 @@
 		}	
 	});
 	
-	const _changeState = () => ({
+	const _change = () => ({
 		/**
 		* Callback for 'click'
-		* Hotlist can be quickly viewed or 'locked' open
 		*/
-		changeState:function(){
-			if(!this.open){
-				this.makeLocked();
-				this.over();
-			} else {
-				if(this.isLocked){
-					this.isLocked = false;
-					this.hide();
-				} else {
-					this.makeLocked();
-				}
-			}
+		change: function(){
+			if(this.open)	this.hide();
+			else			this.show();
 		}
 	});
 	
@@ -76,6 +66,7 @@
 			if(this.open) return;
 			this.open = true;
 			hideOtherPopups(this);
+			this.btn.classList.add( cssOpen );
 			uiApp.show(this.content);
 		}	
 	});
@@ -121,7 +112,7 @@
 		me.open = false;
 		me.isLocked = false;
 		return Object.assign( 	me,
-								// _changeState(),
+								_change(),
 								_over(),
 								_out(),
 								_makeLocked(),
@@ -153,7 +144,7 @@
 				btn: btn,
 				content: document.querySelector(item.content) 
 			});					
-			uiApp.registerForClick(item.btn, () => popup.over());
+			uiApp.registerForClick(item.btn, () => popup.change());
 			uiApp.registerForHover(item.btn, () => popup.over());
 			uiApp.registerForExit(item.btn, (e) => popup.out(e));
 			uiApp.registerForExit(item.content, (e) => popup.out(e));
