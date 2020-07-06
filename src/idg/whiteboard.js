@@ -4,99 +4,105 @@
 	
 	uiApp.addModule('whiteboard');
 	
-	// Check for Whiteboard UI
 	if(document.querySelector('main.oe-whiteboard') === null) return;
 	
-	// hide these
-	uiApp.hide(document.querySelector('#oe-minimum-width-warning'));
+	/*
+	In Whiteboard mode hide these DOM Elements
+	*/
 	uiApp.hide(document.querySelector('#oe-admin-notifcation'));
 	
-	const actionsPanel = document.querySelector('.wb3-actions');
+	/*
+	Set up Whiteboard 
+	2 states: Standard & Biometry report
+	Handling both... 
+	*/
 	
-	uiApp.registerForClick('#js-wb3-openclose-actions', (ev) => {
-		let iconBtn= ev.target;
-		if(iconBtn.classList.contains('up')){
-			// panel is hidden
-			iconBtn.classList.replace('up','close');
+	// Actions panel (bottom) is standard for both:
+	const actionsPanel = document.querySelector('.wb3-actions');
+	const actionsBtn = document.querySelector('#js-wb3-openclose-actions');
+	
+	const openClosePanel = (ev) => {
+		if(actionsBtn.classList.contains('up')){
+			actionsBtn.classList.replace('up','close');
 			actionsPanel.classList.replace('down','up'); // CSS animation
 		} else {
-			iconBtn.classList.replace('close','up');
+			actionsBtn.classList.replace('close','up');
 			actionsPanel.classList.replace('up','down'); // CSS animation
 		}
-	});
+	};
+	
+	uiApp.registerForClick('#js-wb3-openclose-actions', openClosePanel);
 	
 	// provide a way to click around the whiteboard demos:		
 	uiApp.registerForClick('.wb-idg-demo-btn',(ev) => {
 		window.location = '/v3-whiteboard/' + ev.target.dataset.url;
 	});
 	
-	
-	// dirty demo of editor
-/*
-	$('.edit-widget-btn').click(function(){
-		$('.oe-i',this).toggleClass('pencil tick');
-		let wbData = $(this).parent().parent().children('.wb-data');
-		wbData.find('ul').toggle();
-		wbData.find('.edit-widget').toggle();
+	/*
+	Standard
+	Demo the editible text concept
+	*/
+	uiApp.registerForClick('.edit-widget-btn .oe-i', (ev) => {
+		// check the state.
+		let oei = ev.target;
+		let widget = uiApp.getParent(oei, '.oe-wb-widget');
+		let view = widget.querySelector('.wb-data ul');
+		let edit = widget.querySelector('.wb-data .edit-widget');
 		
+		if(oei.classList.contains('pencil')){
+			oei.classList.replace('pencil','tick');
+			uiApp.hide(view);
+			uiApp.show(edit);
+		} else {
+			oei.classList.replace('tick','pencil');
+			uiApp.hide(edit);
+			uiApp.show(view);
+		}
+	});
+
+	/*
+	Biometry Report?
+	*/
+	if(document.querySelector('.multipage-nav') === null) return;
+	
+	let stack = document.querySelector('.multipage-stack');
+	let pages = uiApp.nodeArray(stack.querySelectorAll('img'));
+	
+	/*
+	Get first IMG height Attribute to work out page scrolling.
+	note: CSS adds 20px padding to the (bottom) of all images
+	*/
+	let pageH = pages[0].height + 20;
+	uiApp.listenForResize(() => pageH = pages[0].height + 20 );
+
+	// scrollJump 
+	let scrollPos = 0;
+	const scrollJump = (px) => {
+		scrollPos = scrollPos + px;
+		if(scrollPos < 0) scrollPos = 0;
+		if(scrollPos > (pages.length * pageH)) scrollPos = pages.length * pageH;
+		stack.scrollTop = scrollPos; // uses CSS scroll behaviour
+	};
+
+	uiApp.registerForClick('#js-scroll-btn-down', () => scrollJump(-200) );
+	uiApp.registerForClick('#js-scroll-btn-up', () => scrollJump(200) );
+	
+	let pageJump = document.querySelector('.page-jump');
+	
+	pages.forEach((page, i) => {
+		let div = document.createElement('div');
+		div.className = "page-num-btn";
+		div.setAttribute('data-page', i);
+		div.textContent = i + 1;
+		pageJump.appendChild(div);
 	});
 	
-	let $nav = $('.multipage-nav .page-jump');
-		let $stack = $('.multipage-stack');
-		let numOfImgs = $('.multipage-stack > img').length;
+	uiApp.registerForClick('.page-num-btn', (e) => {
+		scrollPos = 0;
+		let pageScroll = parseInt(e.target.dataset.page * pageH);
+		scrollJump(pageScroll);
+	});
 		
-	
-		Get first IMG height Attribute 
-		to work out page scrolling.
-		Note: CSS adds 20px padding to the (bottom) of all images !
-	
-		let pageH = 20 + parseInt( $('.multipage-stack > img:first-child').height() );
-		
-		function resize() {
-		  pageH = 20 + parseInt( $('.multipage-stack > img:first-child').height() );
-		}
-
-		window.onresize = resize;
-		
-		
-		Animate the scrolling
-		
-		let animateScrolling = function( page ){
-			var scroll = pageH * page;
-			$stack.animate({scrollTop: scroll+'px'},200,'swing');
-		}
-		
-		let scrollPage = function( change ){
-			let newPos = $stack.scrollTop() + change;
-			$stack.animate({scrollTop: newPos+'px'},200,'swing');
-		}
-
-	
-		Build Page Nav Btns
-		loop through and create page buttons
-		e.g. <div class="page-num-btn">1/4</div>
-			
-		for(var i=0;i<numOfImgs;i++){
-			var btn = $( "<div></div>", {
-							text: (i+1),
-							"class": "page-num-btn",
-							"data-page": i,
-							click: function( event ) {
-								animateScrolling( $(this).data('page') );
-							}
-						}).appendTo( $nav );
-		}
-		
-		$('#js-scroll-btn-down').click(function(){
-			scrollPage( -200 );
-		});
-		
-		$('#js-scroll-btn-up').click(function(){
-			scrollPage( 200 );
-		});
-	
-*/
-	
 })(bluejay); 
 
 

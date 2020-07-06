@@ -85,12 +85,13 @@
 	document.addEventListener('mouseenter', handleMouserEnter, {capture:true});
 	document.addEventListener('mousedown', handleMouserDown, {capture:true}); 
 	document.addEventListener('mouseleave', handleMouserLeave, {capture:true});
+	// Throttle high rate events
+	window.onresize = () => resizeThrottle(resize);
 	
 	/* 
 	** Touch **
 	*/
 	let handleTouchStart = (e) => {
-		
 		/*
 		With touch I'll get: touchstart, mouseenter then mousedown.
 		This will mess up the UI because of "hover" enhancment behaviour for mouse users.
@@ -108,14 +109,9 @@
 			checkListeners(e, click);
 		};
 	};
-	
-	
+
 	document.addEventListener('touchstart', (e) => handleTouchStart(e), {capture:true});
-	
-	
-	
-	// Throttle high rate events
-	window.onresize = () => resizeThrottle(resize); 
+		
 	
 	// extend App
 	uiApp.extend('registerForHover', (selector,cb) => addListener(hover,selector,cb));
