@@ -1,8 +1,8 @@
-(function (uiApp) {
+(function (bj) {
 	
 	'use strict';
 	
-	uiApp.addModule('tooltip'); 
+	bj.addModule('tooltip'); 
 	
 	/** 
 	M.V.C
@@ -79,7 +79,7 @@
 		
 		// innerWidth forces a reflow, only update when necessary
 		let winWidth = window.innerWidth;
-		uiApp.listenForResize(() => winWidth = window.innerWidth);
+		bj.listenForResize(() => winWidth = window.innerWidth);
 		
 		/**
 		hide
@@ -93,7 +93,7 @@
 		// only build DOM when needed
 		const buildDOM = () => {
 			div = document.createElement('div');
-			uiApp.appendTo('body', div);
+			bj.appendTo('body', div);
 			hide();
 			return div;
 		};
@@ -137,7 +137,7 @@
 			let offsetH = 8; // visual offset, which allows for the arrow
 			
 			// can't get the DOM height without some trickery...
-			let h = uiApp.getHiddenElemSize(div).h;
+			let h = bj.getHiddenElemSize(div).h;
 							
 			/*
 			work out positioning based on icon
@@ -150,7 +150,7 @@
 			let top = domRect.top - h - offsetH;
 		
 			// watch out for the hotlist, which may overlay the tooltip content
-			let extendedBrowser = uiApp.settings.cssExtendBrowserSize;
+			let extendedBrowser = bj.settings("cssHotlistFixed");
 			let maxRightPos = winWidth > extendedBrowser ? extendedBrowser : winWidth;
 			
 			/*
@@ -230,9 +230,9 @@
 	/**
 	Listeners 
 	*/
-	uiApp.registerForClick(m.selector, userClick);
-	uiApp.registerForHover(m.selector, userOver);
-	uiApp.registerForExit(m.selector, userOut);
+	bj.registerForClick(m.selector, userClick);
+	bj.registerForHover(m.selector, userOver);
+	bj.registerForExit(m.selector, userOut);
 	
 	
 })(bluejay); 

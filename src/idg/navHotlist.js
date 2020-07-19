@@ -1,8 +1,8 @@
-(function (uiApp) {
+(function (bj) {
 
 	'use strict';	
 	
-	uiApp.addModule('navHotlist');
+	bj.addModule('navHotlist');
 			
 	const cssActive = 'active';
 	const cssOpen = 'open';
@@ -54,7 +54,7 @@
 		show:function(){
 			if(this.open) return;
 			this.open = true;
-			uiApp.show(this.content);
+			bj.show(this.content);
 			this.mouseOutHide();
 		}	
 	});
@@ -67,7 +67,7 @@
 			if(this.open === false || this.isLocked || this.isFixed ) return;
 			this.open = false;
 			this.btn.classList.remove( cssActive, cssOpen );
-			uiApp.hide(this.content);
+			bj.hide(this.content);
 		}
 	});
 	
@@ -140,16 +140,16 @@
 	const checkBrowserWidth = () => {
 		// note: Boolean is actually a string! 
 		if(btn.dataset.fixable === "true"){
-			hotlist.fixedOpen((window.innerWidth > uiApp.settings.cssExtendBrowserSize));
+			hotlist.fixedOpen((window.innerWidth > bj.settings("cssHotlistFixed")));
 		}
 	};
 	
 	/*
 	Events
 	*/
-	uiApp.registerForClick(selector, () => hotlist.changeState() );			
-	uiApp.registerForHover(selector, () => hotlist.over() );
-	uiApp.listenForResize(checkBrowserWidth);
+	bj.registerForClick(selector, () => hotlist.changeState() );			
+	bj.registerForHover(selector, () => hotlist.over() );
+	bj.listenForResize(checkBrowserWidth);
 	checkBrowserWidth();
 
 })(bluejay); 

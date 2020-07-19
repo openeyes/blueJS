@@ -1,19 +1,26 @@
 /**
 * Settings (useful globals)
 */
-(function (uiApp) {
+(function (bj) {
 
 	'use strict';
-
-	// useful global settings
-	const settings = {
-		/*
-		For newblue CSS media query widths see: config.all.scss
-		*/
-		get cssTopBarHeight(){ return 60; },
-		get cssExtendBrowserSize(){ return 1890; },
-		get cssBrowserHotlistFixSize(){ return 1440; },
-		get PHPLOAD(){ return '/idg-php/v3/_load/'; }
+	
+	/**
+	* Globally useful settings.
+	* CSS setting MUST match newblue: openeyes/__config-all.scss
+	* @param {String} setting request
+	* @returns value || null
+	*/ 
+	const settings = (request) => {
+		switch(request){
+			case "cssHeaderHeight": return 60; // mobile portrait, this doubles up! 
+			case "cssExtended": return 1440;
+			case "cssHotlistFixed": return 1890;
+			case "idgPHPLoadURL": return '/idg-php/v3/_load/';
+			default:
+				bj.log('Setting request not recognised: ' + request);
+				return null;
+		}
 	};
 	
 	/**
@@ -50,9 +57,9 @@
 	};
 
 	// Extend App
-	uiApp.extend('settings', settings);
-	uiApp.extend('getDataAttributeName', domDataAttribute);
-	uiApp.extend('setDataAttr', setDataAttr);
-	uiApp.extend('getDataAttr', getDataAttr);
+	bj.extend('settings', settings);
+	bj.extend('getDataAttributeName', domDataAttribute);
+	bj.extend('setDataAttr', setDataAttr);
+	bj.extend('getDataAttr', getDataAttr);
 
 })(bluejay);

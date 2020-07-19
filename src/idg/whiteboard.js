@@ -84,8 +84,8 @@
 		stack.scrollTop = scrollPos; // uses CSS scroll behaviour
 	};
 
-	uiApp.registerForClick('#js-scroll-btn-down', () => scrollJump(-200) );
-	uiApp.registerForClick('#js-scroll-btn-up', () => scrollJump(200) );
+	uiApp.registerForClick('#js-scroll-btn-down', () => scrollJump(200) );
+	uiApp.registerForClick('#js-scroll-btn-up', () => scrollJump(-200) );
 	
 	let pageJump = document.querySelector('.page-jump');
 	

@@ -1,12 +1,12 @@
 /**
 * Namespace controller within App for Modules
 */
-(function (uiApp) {
+(function (bj) {
 
 	'use strict';
 	
 	/**
-	Manage Modules 
+	JS Modules in Bluejay
 	*/
 	const modules = new Map();
 	
@@ -19,7 +19,7 @@
 		if(modules.has(name)){
 			return modules.get(name);	
 		}
-		uiApp.log('Module does not exist?: '+name);
+		bj.log('Module does not exist?: '+name);
 		return false;
 	};
 	
@@ -32,18 +32,18 @@
 	let add = (name, methods) => {
 		// check for unique namespace
 		if(!modules.has(name)){
-			uiApp.log('[Module] ' + name);
+			bj.log('[Module] ' + name);
 			modules.set(name, {});
 			return get(name);
 		} else {
-			uiApp.log('** Err: Module aleady added? ' + name);
+			bj.log('** Err: Module aleady added? ' + name);
 			return false;
 		}
 	};
 
 	
 	// Extend App
-	uiApp.extend('addModule', add);
-	uiApp.extend('getModule', get);
-	
+	bj.extend('addModule', add);
+	bj.extend('getModule', get);
+
 })(bluejay);

@@ -6,74 +6,74 @@ if (!Element.prototype.matches) {
 	Element.prototype.matches = Element.prototype.msMatchesSelector || Element.prototype.webkitMatchesSelector;
 }
 /**
-* OE3 JS layer to handle UI interactions.
-* Tooltips, popups, etc. 
-* Using "bluejay" for namespace
+* OE3 JS to handle DOM UI.
+* Using "bluejay" as namespace
 * @namespace
 */
 const bluejay = (function () {
 
 	'use strict';
-
-	console.time('[blue] Ready'); // endTime called by './_last/ready.js' the last JS concatenated by Gulp
-	console.time('[blue] DOM Loaded'); // this is called by "DOMContentLoaded" event (to watch out for scripts that are slowing things down)
+	/*
+	Set up some performance timers
+	"Ready": called by './_last/ready.js' the last JS file concatenated by Gulp
+	"DOM Loaded": called by "DOMContentLoaded" event (watching out for other scripts that are slowing things down)
+	*/
+	console.time('[blue] Ready');
+	console.time('[blue] DOM Loaded');
+	
 
 	const debug = true;		// Output debug '[blue]' to console
-	const methods = {}; 	// Create a public methods object 
-	let extendID = 1;		// Method IDs
+	const api = {};			// API for bluejay
 
 	/**
-	* Extend the public methods
+	* Extend bluejay public methods
 	* @param  {String}   name 	App method name
 	* @param  {Function} fn   	The method
 	* @returns {boolean}  
 	*/
-	methods.extend = (name, fn) => {
-		/*
-		only extend if not already added 
-		and if the name is available
-		*/
-		if(!fn._app && !(name in methods)){
-			// ok, extend		
-			fn._app = extendID++;
-			methods[name] = fn;
-			return true;
+	api.extend = (name, fn) => {
+		
+		if(typeof fn !== "function"){
+			throw new TypeError('[bluejay] [app.js] - only extend with a function: ' + name); 
+		}
+	
+		// only extend if not already added and available
+		if(!fn._bj && !(name in api)){		
+			api[name] = fn;
+			fn._bj = true; // tag it
 		} else {
-			// method already added!
-			bluejay.log('** Err: Can not extend again: "' + name + '"');
-			return false;
+			throw new TypeError('[bluejay] [app.js] - already added: ' + name); 
 		}
 	};
 	
 	/**
-	* Log to console, if debug is true
+	* Log to console with a fixed prefix
 	* @param {String} msg - message to log
 	*/
-	methods.log = function (msg) {
-		if(debug){
-			console.log('[blue] ' + msg);
-		}
+	api.log = (msg) => {
+		if(debug) console.log('[blue] ' + msg);
 	};
+	
 	
 	/**
 	* Provide set up feedback whilst debugging
 	*/
 	if(debug){
-		methods.log('OE JS UI layer ("blue") ...');
-		methods.log('DEBUG MODE');
+		api.log('OE JS UI layer ("blue") ...');
+		api.log('DEBUG MODE');
+		
 		document.addEventListener('DOMContentLoaded', () => {
-			// list API methods 
-			let apiMethods = [];
-			for(const name in methods)	apiMethods.push(name); 
-			methods.log('[API] [Helper Methods] ' + apiMethods.join(', '));
 			console.timeEnd('[blue] DOM Loaded');
-		},{once:true});
+		}, {once:true});
 	}
 
-	// Return public methods object
-	return methods;
+	/* 
+	Reveal public methods for bluejay
+	*/
+	return api;
 
 })();
+
 /**
 * DOM Event Delegation
 */
@@ -397,12 +397,12 @@ const bluejay = (function () {
 /**
 * Namespace controller within App for Modules
 */
-(function (uiApp) {
+(function (bj) {
 
 	'use strict';
 	
 	/**
-	Manage Modules 
+	JS Modules in Bluejay
 	*/
 	const modules = new Map();
 	
@@ -415,7 +415,7 @@ const bluejay = (function () {
 		if(modules.has(name)){
 			return modules.get(name);	
 		}
-		uiApp.log('Module does not exist?: '+name);
+		bj.log('Module does not exist?: '+name);
 		return false;
 	};
 	
@@ -428,37 +428,44 @@ const bluejay = (function () {
 	let add = (name, methods) => {
 		// check for unique namespace
 		if(!modules.has(name)){
-			uiApp.log('[Module] ' + name);
+			bj.log('[Module] ' + name);
 			modules.set(name, {});
 			return get(name);
 		} else {
-			uiApp.log('** Err: Module aleady added? ' + name);
+			bj.log('** Err: Module aleady added? ' + name);
 			return false;
 		}
 	};
 
 	
 	// Extend App
-	uiApp.extend('addModule', add);
-	uiApp.extend('getModule', get);
-	
+	bj.extend('addModule', add);
+	bj.extend('getModule', get);
+
 })(bluejay);
 /**
 * Settings (useful globals)
 */
-(function (uiApp) {
+(function (bj) {
 
 	'use strict';
-
-	// useful global settings
-	const settings = {
-		/*
-		For newblue CSS media query widths see: config.all.scss
-		*/
-		get cssTopBarHeight(){ return 60; },
-		get cssExtendBrowserSize(){ return 1890; },
-		get cssBrowserHotlistFixSize(){ return 1440; },
-		get PHPLOAD(){ return '/idg-php/v3/_load/'; }
+	
+	/**
+	* Globally useful settings.
+	* CSS setting MUST match newblue: openeyes/__config-all.scss
+	* @param {String} setting request
+	* @returns value || null
+	*/ 
+	const settings = (request) => {
+		switch(request){
+			case "cssHeaderHeight": return 60; // mobile portrait, this doubles up! 
+			case "cssExtended": return 1440;
+			case "cssHotlistFixed": return 1890;
+			case "idgPHPLoadURL": return '/idg-php/v3/_load/';
+			default:
+				bj.log('Setting request not recognised: ' + request);
+				return null;
+		}
 	};
 	
 	/**
@@ -495,10 +502,10 @@ const bluejay = (function () {
 	};
 
 	// Extend App
-	uiApp.extend('settings', settings);
-	uiApp.extend('getDataAttributeName', domDataAttribute);
-	uiApp.extend('setDataAttr', setDataAttr);
-	uiApp.extend('getDataAttr', getDataAttr);
+	bj.extend('settings', settings);
+	bj.extend('getDataAttributeName', domDataAttribute);
+	bj.extend('setDataAttr', setDataAttr);
+	bj.extend('getDataAttr', getDataAttr);
 
 })(bluejay);
 (function (uiApp) {
@@ -628,11 +635,11 @@ const bluejay = (function () {
 
 	
 })(bluejay);
-(function (uiApp) {
+(function (bj) {
 	
 	'use strict';
 	
-	uiApp.addModule('tooltip'); 
+	bj.addModule('tooltip'); 
 	
 	/** 
 	M.V.C
@@ -709,7 +716,7 @@ const bluejay = (function () {
 		
 		// innerWidth forces a reflow, only update when necessary
 		let winWidth = window.innerWidth;
-		uiApp.listenForResize(() => winWidth = window.innerWidth);
+		bj.listenForResize(() => winWidth = window.innerWidth);
 		
 		/**
 		hide
@@ -723,7 +730,7 @@ const bluejay = (function () {
 		// only build DOM when needed
 		const buildDOM = () => {
 			div = document.createElement('div');
-			uiApp.appendTo('body', div);
+			bj.appendTo('body', div);
 			hide();
 			return div;
 		};
@@ -767,7 +774,7 @@ const bluejay = (function () {
 			let offsetH = 8; // visual offset, which allows for the arrow
 			
 			// can't get the DOM height without some trickery...
-			let h = uiApp.getHiddenElemSize(div).h;
+			let h = bj.getHiddenElemSize(div).h;
 							
 			/*
 			work out positioning based on icon
@@ -780,7 +787,7 @@ const bluejay = (function () {
 			let top = domRect.top - h - offsetH;
 		
 			// watch out for the hotlist, which may overlay the tooltip content
-			let extendedBrowser = uiApp.settings.cssExtendBrowserSize;
+			let extendedBrowser = bj.settings("cssHotlistFixed");
 			let maxRightPos = winWidth > extendedBrowser ? extendedBrowser : winWidth;
 			
 			/*
@@ -860,18 +867,21 @@ const bluejay = (function () {
 	/**
 	Listeners 
 	*/
-	uiApp.registerForClick(m.selector, userClick);
-	uiApp.registerForHover(m.selector, userOver);
-	uiApp.registerForExit(m.selector, userOut);
+	bj.registerForClick(m.selector, userClick);
+	bj.registerForHover(m.selector, userOver);
+	bj.registerForExit(m.selector, userOut);
 	
 	
 })(bluejay); 
 /**
 * Last loaded
 */
-(function () {
+(function(bj) {
 
 	'use strict';
+	
+	// no need for any more extensions
+	Object.preventExtensions(bj);
 	
 	console.timeEnd('[blue] Ready');
 
