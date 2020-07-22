@@ -64,7 +64,7 @@
 	/**
 	* getParent - search UP the DOM (restrict to body) 
 	* @param {HTMLElement} el
-	* @parent {String} class to match
+	* @parent {String} string to match
 	* @returns {HTMLElement} or False
 	*/
 	const getParent = (el, selector) => {

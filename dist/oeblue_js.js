@@ -23,7 +23,7 @@ const bluejay = (function () {
 	
 
 	const debug = true;		// Output debug '[blue]' to console
-	const api = {};			// API for bluejay
+	const bj = {};			// API for bluejay
 
 	/**
 	* Extend bluejay public methods
@@ -31,18 +31,18 @@ const bluejay = (function () {
 	* @param  {Function} fn   	The method
 	* @returns {boolean}  
 	*/
-	api.extend = (name, fn) => {
+	bj.extend = (name, fn) => {
 		
 		if(typeof fn !== "function"){
 			throw new TypeError('[bluejay] [app.js] - only extend with a function: ' + name); 
 		}
-	
+		
 		// only extend if not already added and available
-		if(!fn._bj && !(name in api)){		
-			api[name] = fn;
+		if(!fn._bj && !(name in bj)){		
+			bj[name] = fn;
 			fn._bj = true; // tag it
 		} else {
-			throw new TypeError('[bluejay] [app.js] - already added: ' + name); 
+			throw new TypeError('[bluejay] [app.js] - already extended with: ' + name); 
 		}
 	};
 	
@@ -50,7 +50,7 @@ const bluejay = (function () {
 	* Log to console with a fixed prefix
 	* @param {String} msg - message to log
 	*/
-	api.log = (msg) => {
+	bj.log = (msg) => {
 		if(debug) console.log('[blue] ' + msg);
 	};
 	
@@ -59,10 +59,11 @@ const bluejay = (function () {
 	* Provide set up feedback whilst debugging
 	*/
 	if(debug){
-		api.log('OE JS UI layer ("blue") ...');
-		api.log('DEBUG MODE');
+		bj.log('OE JS UI layer ("blue") ...');
+		bj.log('DEBUG MODE');
 		
 		document.addEventListener('DOMContentLoaded', () => {
+			bj.log('[Modules] - ' + bj.registeredModules() );
 			console.timeEnd('[blue] DOM Loaded');
 		}, {once:true});
 	}
@@ -70,7 +71,7 @@ const bluejay = (function () {
 	/* 
 	Reveal public methods for bluejay
 	*/
-	return api;
+	return bj;
 
 })();
 
@@ -198,6 +199,79 @@ const bluejay = (function () {
 
 })(bluejay);
 /**
+* Handle DOM collections
+* Modules tend to handle DOM collections. 
+* this should be of help... 
+*/
+(function( bj ) {
+	'use strict';
+	/**
+	* Generator to create unique ids 
+	* Used as Keys and in DOM data-bjk 
+	*/
+	function* IdGenerator(){
+		let id = 10;
+		while( true ){
+			yield ++id;
+		}
+	}
+	
+	const iterator = IdGenerator();
+	const getKey = () => iterator.next().value;
+	
+	bj.extend( 'getKey', getKey );
+	
+	/**
+	* Handle DOM collections in modules
+	* Create a Facade to Map to link the DOM data attribute
+	* with the Map Key
+	*/ 
+	function Collection(){
+		this.map = new Map();
+		this.dataAttr =  'data-oebjk';
+	}
+	
+	/**
+	* Add new Key / Value 
+	* this is the reason behind the Facade: Link Key to DOM element.
+	* @param {Object} value (anything)
+	* @param {HTMLElement} el - linked DOM element
+	* @returns {String} Key
+	*/
+	Collection.prototype.add = function( value, el ){
+		const key = getKey();
+		this.map.set( key, value );
+		el.setAttribute( this.dataAttr, key );	 
+		return key;
+	};
+	
+	/**
+	* Get Key from DOM element data attribute
+	* @param {HTMLElement} el - DOM Element to check
+	* @returns Key || False
+	*/
+	Collection.prototype.getKey = function( el ){
+		let key = el.getAttribute( this.dataAttr );
+		if( key === null || key == ""){
+			return false;
+		} else {
+			return key;
+		}
+	};
+	
+	Collection.prototype.get = function( key ){
+		if( typeof key === "string") key = parseInt(key, 10);
+		return this.map.get( key );
+	};
+	
+	Collection.prototype.has = function( key ){
+		return this.map.has( key );
+	};
+	
+	bj.extend( 'Collection', Collection );	
+
+})( bluejay );
+/**
 * Custom App Events 
 * (lets try and keep it loose)
 */
@@ -290,7 +364,7 @@ const bluejay = (function () {
 	/**
 	* getParent - search UP the DOM (restrict to body) 
 	* @param {HTMLElement} el
-	* @parent {String} class to match
+	* @parent {String} string to match
 	* @returns {HTMLElement} or False
 	*/
 	const getParent = (el, selector) => {
@@ -395,54 +469,47 @@ const bluejay = (function () {
 	
 })(bluejay);
 /**
-* Namespace controller within App for Modules
+* Modules in bluejay.
+* Manage namespacing for modules in blueajay
 */
-(function (bj) {
-
+(function( bj ){
 	'use strict';
 	
-	/**
-	JS Modules in Bluejay
+	/* 
+	Keep a note of added Modules for debugging
+	2 version of Bluejay are created: 
+	1) IDG all modules.
+	2) OE UI: selected modules.
 	*/
-	const modules = new Map();
+	const modules = [];
+	const registerModule = ( name ) => modules.push( name );
+	const listModules = () => {
+		modules.sort();
+		return modules.join(', ');
+	};
 	
 	/**
-	 * Get module namespace
+	Manage namespace in Bluejay
+	*/
+	const namespace = new Map();
+	/**
+	 * Get/Set Namespace
 	 * @param  {String} namespace
-	 * @return {Object} 
+	 * @return {Object} (namespace)
 	 */
-	let get = (name) => {
-		if(modules.has(name)){
-			return modules.get(name);	
+	const appNameSpace = ( name ) => {
+		if( !namespace.has(name) ){
+			namespace.set( name, {} );
 		}
-		bj.log('Module does not exist?: '+name);
-		return false;
+		return namespace.get(name);	
 	};
 	
-	/**
-	 * Add a new module
-	 * @param {String} name of module 
-	 * @param {Object} public methods
-	 * @returns {Boolean} 
-	 */
-	let add = (name, methods) => {
-		// check for unique namespace
-		if(!modules.has(name)){
-			bj.log('[Module] ' + name);
-			modules.set(name, {});
-			return get(name);
-		} else {
-			bj.log('** Err: Module aleady added? ' + name);
-			return false;
-		}
-	};
+	// Extend API
+	bj.extend( 'addModule', registerModule );
+	bj.extend( 'registeredModules', listModules );
+	bj.extend( 'namespace', appNameSpace );
 
-	
-	// Extend App
-	bj.extend('addModule', add);
-	bj.extend('getModule', get);
-
-})(bluejay);
+})( bluejay );
 /**
 * Settings (useful globals)
 */

@@ -10,7 +10,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 
 	'use strict';	
 	
-	const addSelect = uiApp.getModule('addSelect');	
+	const addSelect = uiApp.namespace( 'addSelect' );	
 	
 	addSelect.OptionDependents = function( dependents, listId ){
 

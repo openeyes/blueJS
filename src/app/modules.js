@@ -1,49 +1,42 @@
 /**
-* Namespace controller within App for Modules
+* Modules in bluejay.
+* Manage namespacing for modules in blueajay
 */
-(function (bj) {
-
+(function( bj ){
 	'use strict';
 	
-	/**
-	JS Modules in Bluejay
+	/* 
+	Keep a note of added Modules for debugging
+	2 version of Bluejay are created: 
+	1) IDG all modules.
+	2) OE UI: selected modules.
 	*/
-	const modules = new Map();
+	const modules = [];
+	const registerModule = ( name ) => modules.push( name );
+	const listModules = () => {
+		modules.sort();
+		return modules.join(', ');
+	};
 	
 	/**
-	 * Get module namespace
+	Manage namespace in Bluejay
+	*/
+	const namespace = new Map();
+	/**
+	 * Get/Set Namespace
 	 * @param  {String} namespace
-	 * @return {Object} 
+	 * @return {Object} (namespace)
 	 */
-	let get = (name) => {
-		if(modules.has(name)){
-			return modules.get(name);	
+	const appNameSpace = ( name ) => {
+		if( !namespace.has(name) ){
+			namespace.set( name, {} );
 		}
-		bj.log('Module does not exist?: '+name);
-		return false;
+		return namespace.get(name);	
 	};
 	
-	/**
-	 * Add a new module
-	 * @param {String} name of module 
-	 * @param {Object} public methods
-	 * @returns {Boolean} 
-	 */
-	let add = (name, methods) => {
-		// check for unique namespace
-		if(!modules.has(name)){
-			bj.log('[Module] ' + name);
-			modules.set(name, {});
-			return get(name);
-		} else {
-			bj.log('** Err: Module aleady added? ' + name);
-			return false;
-		}
-	};
+	// Extend API
+	bj.extend( 'addModule', registerModule );
+	bj.extend( 'registeredModules', listModules );
+	bj.extend( 'namespace', appNameSpace );
 
-	
-	// Extend App
-	bj.extend('addModule', add);
-	bj.extend('getModule', get);
-
-})(bluejay);
+})( bluejay );

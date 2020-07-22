@@ -16,7 +16,7 @@ const bluejay = (function () {
 	
 
 	const debug = true;		// Output debug '[blue]' to console
-	const api = {};			// API for bluejay
+	const bj = {};			// API for bluejay
 
 	/**
 	* Extend bluejay public methods
@@ -24,18 +24,18 @@ const bluejay = (function () {
 	* @param  {Function} fn   	The method
 	* @returns {boolean}  
 	*/
-	api.extend = (name, fn) => {
+	bj.extend = (name, fn) => {
 		
 		if(typeof fn !== "function"){
 			throw new TypeError('[bluejay] [app.js] - only extend with a function: ' + name); 
 		}
-	
+		
 		// only extend if not already added and available
-		if(!fn._bj && !(name in api)){		
-			api[name] = fn;
+		if(!fn._bj && !(name in bj)){		
+			bj[name] = fn;
 			fn._bj = true; // tag it
 		} else {
-			throw new TypeError('[bluejay] [app.js] - already added: ' + name); 
+			throw new TypeError('[bluejay] [app.js] - already extended with: ' + name); 
 		}
 	};
 	
@@ -43,7 +43,7 @@ const bluejay = (function () {
 	* Log to console with a fixed prefix
 	* @param {String} msg - message to log
 	*/
-	api.log = (msg) => {
+	bj.log = (msg) => {
 		if(debug) console.log('[blue] ' + msg);
 	};
 	
@@ -52,10 +52,11 @@ const bluejay = (function () {
 	* Provide set up feedback whilst debugging
 	*/
 	if(debug){
-		api.log('OE JS UI layer ("blue") ...');
-		api.log('DEBUG MODE');
+		bj.log('OE JS UI layer ("blue") ...');
+		bj.log('DEBUG MODE');
 		
 		document.addEventListener('DOMContentLoaded', () => {
+			bj.log('[Modules] - ' + bj.registeredModules() );
 			console.timeEnd('[blue] DOM Loaded');
 		}, {once:true});
 	}
@@ -63,6 +64,6 @@ const bluejay = (function () {
 	/* 
 	Reveal public methods for bluejay
 	*/
-	return api;
+	return bj;
 
 })();

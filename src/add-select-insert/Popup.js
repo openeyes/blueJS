@@ -2,7 +2,7 @@
 
 	'use strict';	
 	
-	const addSelect = uiApp.getModule('addSelect');	
+	const addSelect = uiApp.namespace( 'addSelect' );
 	
 	addSelect.Popup = function(greenBtn){	
 		

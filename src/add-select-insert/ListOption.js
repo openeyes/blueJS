@@ -5,7 +5,7 @@ List Options Constructor
 
 	'use strict';	
 	
-	const addSelect = uiApp.getModule('addSelect');	
+	const addSelect = uiApp.namespace( 'addSelect' );	
 	
 	addSelect.ListOption = function (li, parent){
 		

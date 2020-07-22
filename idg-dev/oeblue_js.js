@@ -23,7 +23,7 @@ const bluejay = (function () {
 	
 
 	const debug = true;		// Output debug '[blue]' to console
-	const api = {};			// API for bluejay
+	const bj = {};			// API for bluejay
 
 	/**
 	* Extend bluejay public methods
@@ -31,18 +31,18 @@ const bluejay = (function () {
 	* @param  {Function} fn   	The method
 	* @returns {boolean}  
 	*/
-	api.extend = (name, fn) => {
+	bj.extend = (name, fn) => {
 		
 		if(typeof fn !== "function"){
 			throw new TypeError('[bluejay] [app.js] - only extend with a function: ' + name); 
 		}
-	
+		
 		// only extend if not already added and available
-		if(!fn._bj && !(name in api)){		
-			api[name] = fn;
+		if(!fn._bj && !(name in bj)){		
+			bj[name] = fn;
 			fn._bj = true; // tag it
 		} else {
-			throw new TypeError('[bluejay] [app.js] - already added: ' + name); 
+			throw new TypeError('[bluejay] [app.js] - already extended with: ' + name); 
 		}
 	};
 	
@@ -50,7 +50,7 @@ const bluejay = (function () {
 	* Log to console with a fixed prefix
 	* @param {String} msg - message to log
 	*/
-	api.log = (msg) => {
+	bj.log = (msg) => {
 		if(debug) console.log('[blue] ' + msg);
 	};
 	
@@ -59,10 +59,11 @@ const bluejay = (function () {
 	* Provide set up feedback whilst debugging
 	*/
 	if(debug){
-		api.log('OE JS UI layer ("blue") ...');
-		api.log('DEBUG MODE');
+		bj.log('OE JS UI layer ("blue") ...');
+		bj.log('DEBUG MODE');
 		
 		document.addEventListener('DOMContentLoaded', () => {
+			bj.log('[Modules] - ' + bj.registeredModules() );
 			console.timeEnd('[blue] DOM Loaded');
 		}, {once:true});
 	}
@@ -70,7 +71,7 @@ const bluejay = (function () {
 	/* 
 	Reveal public methods for bluejay
 	*/
-	return api;
+	return bj;
 
 })();
 
@@ -198,6 +199,79 @@ const bluejay = (function () {
 
 })(bluejay);
 /**
+* Handle DOM collections
+* Modules tend to handle DOM collections. 
+* this should be of help... 
+*/
+(function( bj ) {
+	'use strict';
+	/**
+	* Generator to create unique ids 
+	* Used as Keys and in DOM data-bjk 
+	*/
+	function* IdGenerator(){
+		let id = 10;
+		while( true ){
+			yield ++id;
+		}
+	}
+	
+	const iterator = IdGenerator();
+	const getKey = () => iterator.next().value;
+	
+	bj.extend( 'getKey', getKey );
+	
+	/**
+	* Handle DOM collections in modules
+	* Create a Facade to Map to link the DOM data attribute
+	* with the Map Key
+	*/ 
+	function Collection(){
+		this.map = new Map();
+		this.dataAttr =  'data-oebjk';
+	}
+	
+	/**
+	* Add new Key / Value 
+	* this is the reason behind the Facade: Link Key to DOM element.
+	* @param {Object} value (anything)
+	* @param {HTMLElement} el - linked DOM element
+	* @returns {String} Key
+	*/
+	Collection.prototype.add = function( value, el ){
+		const key = getKey();
+		this.map.set( key, value );
+		el.setAttribute( this.dataAttr, key );	 
+		return key;
+	};
+	
+	/**
+	* Get Key from DOM element data attribute
+	* @param {HTMLElement} el - DOM Element to check
+	* @returns Key || False
+	*/
+	Collection.prototype.getKey = function( el ){
+		let key = el.getAttribute( this.dataAttr );
+		if( key === null || key == ""){
+			return false;
+		} else {
+			return key;
+		}
+	};
+	
+	Collection.prototype.get = function( key ){
+		if( typeof key === "string") key = parseInt(key, 10);
+		return this.map.get( key );
+	};
+	
+	Collection.prototype.has = function( key ){
+		return this.map.has( key );
+	};
+	
+	bj.extend( 'Collection', Collection );	
+
+})( bluejay );
+/**
 * Custom App Events 
 * (lets try and keep it loose)
 */
@@ -290,7 +364,7 @@ const bluejay = (function () {
 	/**
 	* getParent - search UP the DOM (restrict to body) 
 	* @param {HTMLElement} el
-	* @parent {String} class to match
+	* @parent {String} string to match
 	* @returns {HTMLElement} or False
 	*/
 	const getParent = (el, selector) => {
@@ -395,54 +469,47 @@ const bluejay = (function () {
 	
 })(bluejay);
 /**
-* Namespace controller within App for Modules
+* Modules in bluejay.
+* Manage namespacing for modules in blueajay
 */
-(function (bj) {
-
+(function( bj ){
 	'use strict';
 	
-	/**
-	JS Modules in Bluejay
+	/* 
+	Keep a note of added Modules for debugging
+	2 version of Bluejay are created: 
+	1) IDG all modules.
+	2) OE UI: selected modules.
 	*/
-	const modules = new Map();
+	const modules = [];
+	const registerModule = ( name ) => modules.push( name );
+	const listModules = () => {
+		modules.sort();
+		return modules.join(', ');
+	};
 	
 	/**
-	 * Get module namespace
+	Manage namespace in Bluejay
+	*/
+	const namespace = new Map();
+	/**
+	 * Get/Set Namespace
 	 * @param  {String} namespace
-	 * @return {Object} 
+	 * @return {Object} (namespace)
 	 */
-	let get = (name) => {
-		if(modules.has(name)){
-			return modules.get(name);	
+	const appNameSpace = ( name ) => {
+		if( !namespace.has(name) ){
+			namespace.set( name, {} );
 		}
-		bj.log('Module does not exist?: '+name);
-		return false;
+		return namespace.get(name);	
 	};
 	
-	/**
-	 * Add a new module
-	 * @param {String} name of module 
-	 * @param {Object} public methods
-	 * @returns {Boolean} 
-	 */
-	let add = (name, methods) => {
-		// check for unique namespace
-		if(!modules.has(name)){
-			bj.log('[Module] ' + name);
-			modules.set(name, {});
-			return get(name);
-		} else {
-			bj.log('** Err: Module aleady added? ' + name);
-			return false;
-		}
-	};
+	// Extend API
+	bj.extend( 'addModule', registerModule );
+	bj.extend( 'registeredModules', listModules );
+	bj.extend( 'namespace', appNameSpace );
 
-	
-	// Extend App
-	bj.extend('addModule', add);
-	bj.extend('getModule', get);
-
-})(bluejay);
+})( bluejay );
 /**
 * Settings (useful globals)
 */
@@ -1692,61 +1759,220 @@ const bluejay = (function () {
 	uiApp.registerForClick('.js-add-comments', userClick );
 	
 })(bluejay); 
-(function (uiApp) {
-
+(function( bj ) {
 	'use strict';	
 	
-	uiApp.addModule('commentHotlist');	
-	
-	/*
-	Basic implement for IDG 
-	whilst moving over from jQuery 
-	needs improving ...
-	*/
-	
-	const selector = '.oe-hotlist-panel .js-patient-comments';
-	const quick = document.querySelector('#hotlist-quicklook');
+	bj.addModule('commentHotlist');	
 
-	const quickOut = () => {
-		uiApp.hide(quick);
-	};
+	// DOM collection
+	const collection = new bj.Collection();
 	
-	const quickOver = (ev) => {
-		const icon = ev.target;
-		/*
-		icon is relative positioned by CSS to '.parent-activity'
-		offset of 21px allows for the height of the <tr>
+	/**
+	* Methods
+	*/
+	const _reset = () => ({
+		/**
+		* VIEW: Reset the comment. 
 		*/
-		let relativeTo = uiApp.getParent(icon, '.patient-activity');
-		let top = icon.getBoundingClientRect().top - relativeTo.getBoundingClientRect().top + 21;
+		reset(){
+			this.editMode = false;
+			this.icon('comment');
+			bj.hide( this.elem.textarea );
+			bj.hide( this.elem.userComment );
+		}
+	});
 	
-		if(icon.classList.contains('comments-added')){
-			quick.textContent = getComments(icon);
-			quick.style.top = top + 'px';
-			uiApp.show(quick);
-		} 
+	const _show = () => ({
+		/**
+		* VIEW: Show the comment. 
+		*/
+		show(){
+			this.editMode = false;
+			this.icon('edit');
+			
+			// set the comment text
+			this.elem.userComment.textContent = this.comment;
+			
+			bj.hide( this.elem.textarea );
+			bj.show( this.elem.userComment );
+		}
+	});
+	
+	const _edit = () => ({
+		/**
+		* VIEW: Edit the comment. 
+		*/
+		edit(){
+			this.editMode = true;
+			this.icon('save');
+			bj.show( this.elem.textarea );
+			bj.hide( this.elem.userComment );
+			
+			// set the comment text
+			this.elem.textarea.value = this.comment;
+			
+			// check the resize
+			bj.resizeTextArea( this.elem.textarea );
+			
+			// and set focus for cursor
+			setTimeout( () => this.elem.textarea.focus() , 20);
+			
+			/*
+			Allow user to update comments with an Enter press
+			(alternative to icon click)
+			*/
+			const keyPress = ( ev ) => {
+				ev.stopPropagation();
+				if( ev.key === "Enter" ){
+					this.elem.textarea.removeEventListener("keydown", keyPress, false );
+					this.update();
+				}
+			};
+			// must match the removeEventListener.
+			this.elem.textarea.addEventListener("keydown", keyPress, false );				
+		}
+	});
+	
+	const _icon = () => ({
+		/**
+		* VIEW: Icon state. 
+		*/
+		icon( state ){
+			this.elem.icon.classList.remove('comments', 'pencil', 'save', 'active');
+			switch( state ){
+				case 'comment': this.elem.icon.classList.add('comments');
+				break;
+				case 'edit': this.elem.icon.classList.add('pencil');
+				break;
+				case 'save': this.elem.icon.classList.add('save', 'active');
+				break;
+				
+				default: bj.log(`commentHotlist - unknown icon: ${state}`);
+			}
+		}
+	});
+	
+	
+	const _userClick = () => ({
+		/**
+		* Clicking icon can only have two options
+		*/
+		userClick(){
+			// icon clicked, update based on current state
+			if( this.editMode ){
+				this.update();
+			} else {
+				this.edit();
+			}
+		}
+	});
+	
+	const _update = () => ({
+		/**
+		* Update the comment text and the state depending 
+		* the text... if it's an empty string then reset
+		*/
+		update(){
+			let text = this.elem.textarea.value.trim();
+			if( text.length < 2 ){
+				this.comment = "";
+				this.reset();
+			} else {
+				this.comment = text;
+				this.show();
+			}
+		}
+	});
+	
+
+	/**
+	* @Class 
+	* @param {Element} icon
+	* @param {Element} <td>
+	* @param {String} comments to initalise template with.
+	* @returns new Object
+	*/
+	const PatientComment = ( icon, td, comment = "" ) => {
+		// Mustache template
+		const template = [
+			'<textarea placeholder="Comments" rows="1" class="cols-full" style="display:none"></textarea>',
+			'<div class="user-comment" style="display:none">{{comment}}</div>',
+		].join('');
+		
+		/*
+		Initalise the DOM for comments
+		*/
+		let div = document.createElement('div');
+		div.className = 'patient-comments';
+		div.innerHTML = Mustache.render( template, { comment: comment });
+		td.appendChild( div );
+		
+		// get the new Elements
+		let textarea = div.querySelector('textarea');
+		let userComment = div.querySelector('.user-comment');
+		
+		return Object.assign({ 
+				editMode: false,
+				comment,
+				elem: { 
+					icon, textarea, userComment 
+				}
+			},
+			_reset(),
+			_show(),
+			_edit(), 
+			_icon(),
+			_userClick(),
+			_update()
+		);
 	};
 	
-	const getComments = (icon) => {
-		const trComments = uiApp.getParent(icon,'tr').nextSibling;
-		const textArea = trComments.querySelector('textarea');
-		return textArea.value;
-	};
+	/**
+	Initalise from DOM
+	check to see if PHP static comments are added
+	*/
+	let hotlistPatients = bj.nodeArray( document.querySelectorAll( '.oe-hotlist-panel .patients-open tr, .oe-hotlist-panel .patients-closed tr' ));
 	
+	hotlistPatients.forEach( (tr) => {
+		let json = JSON.parse( tr.dataset.idg );
+		if( json.comment ){
+			let icon = tr.querySelector('.oe-i.comments');
+			let td = tr.querySelector('.js-patient-comment');
+			let patientComment = PatientComment( icon, td, json.comment );
+			patientComment.show();
+			
+			// init and record Key
+			collection.add( patientComment, icon );
+		}
+	});
+	
+	/**
+	* Callback for Event (header btn)
+	* @param {event} event
+	*/
 	const userClick = (ev) => {
 		const icon = ev.target;
-		const comments = getComments(icon);
-		const trComments = uiApp.getParent(icon, 'tr').nextSibling;
-		const textArea = trComments.querySelector('textarea');
-		trComments.style.display = "table-row";
-		uiApp.resizeTextArea(textArea);
+		let key = collection.getKey( icon );
+		
+		if( key ){
+			let patientComment = collection.get( key );
+			patientComment.userClick();
+		} else {
+			// Not Setup.
+			let tr = bj.getParent(icon, 'tr');
+			let td = tr.querySelector('.js-patient-comment');
+			let patientComment = PatientComment( icon, td );
+			patientComment.edit(); // user clicked on comment icon
+
+			// update collection 	
+			collection.add( patientComment, icon );	
+		}		
 	};
-	
-	uiApp.registerForClick(selector, userClick);
-	uiApp.registerForHover(selector,quickOver);
-	uiApp.registerForExit(selector,quickOut);
-	
-})(bluejay); 
+
+	bj.registerForClick('.oe-hotlist-panel .js-comment-icon', userClick);
+
+})( bluejay ); 
+
 (function (uiApp) {
 
 	'use strict';	
@@ -5286,7 +5512,8 @@ Updated to Vanilla JS for IDG
 
 	'use strict';	
 	
-	const addSelect = uiApp.addModule('addSelect');	
+	uiApp.addModule('addSelect');
+	const addSelect = uiApp.namespace( 'addSelect' );	
 	
 	/*
 	keep a track of all popups	
@@ -5332,7 +5559,7 @@ List Options Constructor
 
 	'use strict';	
 	
-	const addSelect = uiApp.getModule('addSelect');	
+	const addSelect = uiApp.namespace( 'addSelect' );	
 	
 	addSelect.ListOption = function (li, parent){
 		
@@ -5418,7 +5645,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 
 	'use strict';	
 	
-	const addSelect = uiApp.getModule('addSelect');	
+	const addSelect = uiApp.namespace( 'addSelect' );	
 	
 	addSelect.OptionDependents = function( dependents, listId ){
 
@@ -5545,7 +5772,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 
 	'use strict';	
 	
-	const addSelect = uiApp.getModule('addSelect');	
+	const addSelect = uiApp.namespace( 'addSelect' );
 	
 	addSelect.OptionsList = function(ul){
 		
@@ -5661,7 +5888,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 
 	'use strict';	
 	
-	const addSelect = uiApp.getModule('addSelect');	
+	const addSelect = uiApp.namespace( 'addSelect' );
 	
 	addSelect.Popup = function(greenBtn){	
 		

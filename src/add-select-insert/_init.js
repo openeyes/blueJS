@@ -7,7 +7,8 @@ Updated to Vanilla JS for IDG
 
 	'use strict';	
 	
-	const addSelect = uiApp.addModule('addSelect');	
+	uiApp.addModule('addSelect');
+	const addSelect = uiApp.namespace( 'addSelect' );	
 	
 	/*
 	keep a track of all popups	
