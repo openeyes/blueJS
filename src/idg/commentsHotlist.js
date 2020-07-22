@@ -81,7 +81,7 @@
 			switch( state ){
 				case 'comment': this.elem.icon.classList.add('comments');
 				break;
-				case 'edit': this.elem.icon.classList.add('pencil');
+				case 'edit': this.elem.icon.classList.add('comments-added');
 				break;
 				case 'save': this.elem.icon.classList.add('save', 'active');
 				break;
