@@ -77,7 +77,7 @@
 		* VIEW: Icon state. 
 		*/
 		icon( state ){
-			this.elem.icon.classList.remove('comments', 'pencil', 'save', 'active');
+			this.elem.icon.classList.remove('comments', 'comments-added', 'save', 'active');
 			switch( state ){
 				case 'comment': this.elem.icon.classList.add('comments');
 				break;
@@ -173,7 +173,7 @@
 	let hotlistPatients = bj.nodeArray( document.querySelectorAll( '.oe-hotlist-panel .patients-open tr, .oe-hotlist-panel .patients-closed tr' ));
 	
 	hotlistPatients.forEach( (tr) => {
-		let json = JSON.parse( tr.dataset.idg );
+		let json = JSON.parse( tr.dataset.comment );
 		if( json.comment ){
 			let icon = tr.querySelector('.oe-i.comments');
 			let td = tr.querySelector('.js-patient-comment');

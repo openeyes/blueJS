@@ -54,6 +54,7 @@ const bluejay = (function () {
 	if(debug){
 		bj.log('OE JS UI layer ("blue") ...');
 		bj.log('DEBUG MODE');
+		bj.log('Mustache version: ' + Mustache.version);
 		
 		document.addEventListener('DOMContentLoaded', () => {
 			bj.log('[Modules] - ' + bj.registeredModules() );
