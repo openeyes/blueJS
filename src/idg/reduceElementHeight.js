@@ -64,6 +64,6 @@
 		}
 	};
 
-	uiApp.registerForClick('.element .js-elem-reduce .oe-i', userClick );
+	uiApp.userDown('.element .js-elem-reduce .oe-i', userClick );
 	
 })(bluejay); 

@@ -47,7 +47,7 @@
 		};
 		
 		// register Events
-		uiApp.registerForClick(id,showPopup);
+		uiApp.userDown(id,showPopup);
 	};
 	
 	/*

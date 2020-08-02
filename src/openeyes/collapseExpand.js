@@ -28,7 +28,7 @@
 	
 	const _show = () => ({
 		show: function(){
-			uiApp.show(this.content);
+			uiApp.show(this.content, "block");
 			this.btn.classList.replace('expand','collapse');
 			this.open = true;
 		}
@@ -90,7 +90,7 @@
 	/*
 	Events
 	*/
-	uiApp.registerForClick( ".collapse-data-header-icon", ev => userClick(ev, "data"));
-	uiApp.registerForClick( ".collapse-group > .header-icon", ev => userClick(ev, "group"));
+	uiApp.userDown( ".collapse-data-header-icon", ev => userClick(ev, "data"));
+	uiApp.userDown( ".collapse-group > .header-icon", ev => userClick(ev, "group"));
 
 })(bluejay); 

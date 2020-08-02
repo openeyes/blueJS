@@ -30,7 +30,7 @@
 		this.open = function(){
 			this.position();
 			addSelect.closeAll();
-			uiApp.show(popup);
+			uiApp.show(popup, 'block');
 			
 			this.closeBtn.addEventListener('mousedown', this.close.bind(this));
 			//window.addEventListener('scroll', this.close.bind(this), {capture:true, once:true});

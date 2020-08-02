@@ -2,7 +2,7 @@
 * Custom App Events 
 * (lets try and keep it loose)
 */
-(function (uiApp) {
+(function( bj ) {
 
 	'use strict';
 	
@@ -11,7 +11,7 @@
 	* @param {string} eventType
 	* @param {Object}
 	*/
-	const myEvent = (eventType, eventDetail) => {
+	const myEvent = ( eventType, eventDetail ) => {
 		/*
 		Create unique prefix & dispatch 
 		*/
@@ -22,6 +22,6 @@
 		// bluejay.log('[Custom Event] - "'+eventType+'"');
 	};
 		
-	uiApp.extend('uiEvent', myEvent);	
+	bj.extend('bjEvent', myEvent);	
 	
-})(bluejay);
+})( bluejay );

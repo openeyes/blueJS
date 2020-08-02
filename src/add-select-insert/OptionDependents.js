@@ -108,12 +108,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				this.hideAllOptionalLists(group.div);
 				
 				if(group.showDefaultText){
-					if(group.holder) uiApp.show(group.holder);
+					if(group.holder) uiApp.show(group.holder, 'block');
 				} else {
 					if(group.holder) uiApp.hide(group.holder);
 					// show required Lists
 					group.lists.forEach( list => {
-						uiApp.show(list);
+						uiApp.show(list, 'block');
 					});
 				}
 				
@@ -126,7 +126,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		this.reset = function(){
 			groups.forEach( group => {
 				this.hideAllOptionalLists(group.div);
-				if(group.holder) uiApp.show(group.holder);
+				if(group.holder) uiApp.show(group.holder, 'block');
 			});
 		};
 			

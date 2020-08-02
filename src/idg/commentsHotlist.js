@@ -33,7 +33,7 @@
 			this.elem.userComment.textContent = this.comment;
 			
 			bj.hide( this.elem.textarea );
-			bj.show( this.elem.userComment );
+			bj.show( this.elem.userComment, 'block' );
 		}
 	});
 	
@@ -44,7 +44,7 @@
 		edit(){
 			this.editMode = true;
 			this.icon('save');
-			bj.show( this.elem.textarea );
+			bj.show( this.elem.textarea, 'block' );
 			bj.hide( this.elem.userComment );
 			
 			// set the comment text
@@ -208,6 +208,6 @@
 		}		
 	};
 
-	bj.registerForClick('.oe-hotlist-panel .js-comment-icon', userClick);
+	bj.userDown('.oe-hotlist-panel .js-comment-icon', userClick);
 
 })( bluejay ); 

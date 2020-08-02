@@ -18,7 +18,7 @@
 				closeBtn = popup.querySelector('.close-icon-btn');
 		
 		hdBtn.classList.add('selected');
-		uiApp.show(popup);
+		uiApp.show(popup, 'block');
 		// the pop will overlay the Event.. add this class to push the Exam content down
 		mainEvent.classList.add('examination-search-active');
 		
@@ -34,6 +34,6 @@
 	/*
 	Events
 	*/
-	uiApp.registerForClick(	'#js-search-in-event',	userClick );
+	uiApp.userDown(	'#js-search-in-event',	userClick );
 
 })(bluejay); 

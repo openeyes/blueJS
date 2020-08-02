@@ -20,10 +20,10 @@
 		let group = document.querySelector('#js-icon-' + icon.dataset.icons);
 		if(icon.classList.contains('collapse')){
 			uiApp.hide(group);
-			uiApp.show(group.nextElementSibling);
+			uiApp.show(group.nextElementSibling, 'block');
 			icon.classList.replace('collapse','expand');
 		} else {
-			uiApp.show(group);
+			uiApp.show(group, 'block');
 			uiApp.hide(group.nextElementSibling);
 			icon.classList.replace('expand','collapse');
 		}
@@ -32,6 +32,6 @@
 	/*
 	Events 
 	*/
-	uiApp.registerForClick('.js-timeline-date', collapseTimeline);
+	uiApp.userDown('.js-timeline-date', collapseTimeline);
 	
 })(bluejay); 

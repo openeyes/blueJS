@@ -42,6 +42,6 @@
 	};
 	
 	
-	uiApp.registerForClick('.js-idg-demo-popup-json', showPopup);
+	uiApp.userDown('.js-idg-demo-popup-json', showPopup);
 			
 })(bluejay); 

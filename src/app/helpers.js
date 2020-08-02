@@ -34,16 +34,18 @@
 	};
 	
 	/**
-	* Show a DOM Element - this assumes CSS has set display: "none"
+	* Show a DOM Element, the default setting of '' will allow the
+	* the CSS to be used and stop the inline style overwriting it
 	* @param {DOM Element} el
-	* @param {String} block - "block","flex",'table-row',etc
+	* @param {String} displayType - "block","flex",'table-row',etc
 	*/
-	const show = (el, block = "block") => {
+	const show = (el, displayType = '') => {
 		if(el === null) return;
-		el.style.display = block;
+		el.style.display = displayType;
 	};
 	
 	/**
+	* ! - DEPRECIATED
 	* re-show a DOM Element - this assumes CSS has set display: "block" || "flex" || "inline-block" (or whatever)
 	* @param {DOM Element} el
 	*/

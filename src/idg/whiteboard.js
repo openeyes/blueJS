@@ -31,10 +31,10 @@
 		}
 	};
 	
-	uiApp.registerForClick('#js-wb3-openclose-actions', openClosePanel);
+	uiApp.userDown('#js-wb3-openclose-actions', openClosePanel);
 	
 	// provide a way to click around the whiteboard demos:		
-	uiApp.registerForClick('.wb-idg-demo-btn',(ev) => {
+	uiApp.userDown('.wb-idg-demo-btn',(ev) => {
 		window.location = '/v3-whiteboard/' + ev.target.dataset.url;
 	});
 	
@@ -42,7 +42,7 @@
 	Standard
 	Demo the editible text concept
 	*/
-	uiApp.registerForClick('.edit-widget-btn .oe-i', (ev) => {
+	uiApp.userDown('.edit-widget-btn .oe-i', (ev) => {
 		// check the state.
 		let oei = ev.target;
 		let widget = uiApp.getParent(oei, '.oe-wb-widget');
@@ -52,11 +52,11 @@
 		if(oei.classList.contains('pencil')){
 			oei.classList.replace('pencil','tick');
 			uiApp.hide(view);
-			uiApp.show(edit);
+			uiApp.show(edit, 'block');
 		} else {
 			oei.classList.replace('tick','pencil');
 			uiApp.hide(edit);
-			uiApp.show(view);
+			uiApp.show(view, 'block');
 		}
 	});
 
@@ -84,8 +84,8 @@
 		stack.scrollTop = scrollPos; // uses CSS scroll behaviour
 	};
 
-	uiApp.registerForClick('#js-scroll-btn-down', () => scrollJump(200) );
-	uiApp.registerForClick('#js-scroll-btn-up', () => scrollJump(-200) );
+	uiApp.userDown('#js-scroll-btn-down', () => scrollJump(200) );
+	uiApp.userDown('#js-scroll-btn-up', () => scrollJump(-200) );
 	
 	let pageJump = document.querySelector('.page-jump');
 	
@@ -97,7 +97,7 @@
 		pageJump.appendChild(div);
 	});
 	
-	uiApp.registerForClick('.page-num-btn', (e) => {
+	uiApp.userDown('.page-num-btn', (e) => {
 		scrollPos = 0;
 		let pageScroll = parseInt(e.target.dataset.page * pageH);
 		scrollJump(pageScroll);

@@ -31,7 +31,7 @@
 		*/
 		show: function(){
 			this.h3.textContent = this.title;
-			uiApp.show(this.content);
+			uiApp.show(this.content, 'block');
 		}
 	});
 	
@@ -146,7 +146,7 @@
 	
 
 	// Regsiter for Events
-	uiApp.registerForClick('.collapse-tile-group .oe-i', userClick);
+	uiApp.userDown('.collapse-tile-group .oe-i', userClick);
 	
 	
 })(bluejay); 

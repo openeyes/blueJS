@@ -32,7 +32,7 @@
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssActive );
-			uiApp.show(this.content);
+			uiApp.show(this.content, 'block');
 		}	
 	});
 	
@@ -69,6 +69,6 @@
 	/*
 	Events 
 	*/
-	uiApp.registerForClick(selector, () => lightningFilter.change());
+	uiApp.userDown(selector, () => lightningFilter.change());
 	
 })(bluejay); 

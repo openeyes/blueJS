@@ -54,7 +54,7 @@
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssOpen );
-			uiApp.show(this.content);
+			uiApp.show(this.content, 'block');
 			this.mouseOutHide();
 		}	
 	});
@@ -105,9 +105,9 @@
 	/*
 	Events
 	*/
-	uiApp.registerForClick(selector, () => oelogo.change());			
-	uiApp.registerForHover(selector, () => oelogo.over());
-	uiApp.registerForExit(selector, () => oelogo.out());
+	uiApp.userDown(selector, () => oelogo.change());			
+	uiApp.userEnter(selector, () => oelogo.over());
+	uiApp.userLeave(selector, () => oelogo.out());
 	
 
 })(bluejay); 

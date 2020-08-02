@@ -33,7 +33,7 @@
 		*/
 		let top = btnY - 532;
 		ed3app.style.top = top < 60 ? '60px' : top + "px";
-		uiApp.show(ed3app);
+		uiApp.show(ed3app, 'block');
 		
 		// get demo JSON data
 		let json = JSON.parse(btn.dataset.idgDemo);
@@ -51,6 +51,6 @@
 			.catch(e => console.log('ed3app php failed to load', e));  // maybe output this to UI at somepoint, but for now...			
 	};
 
-	uiApp.registerForClick('.js-idg-ed3-app-btn', userClick);
+	uiApp.userDown('.js-idg-ed3-app-btn', userClick);
 
 })(bluejay); 

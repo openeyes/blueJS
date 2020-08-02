@@ -54,7 +54,7 @@
 		show:function(){
 			if(this.open) return;
 			this.open = true;
-			bj.show(this.content);
+			bj.show(this.content, 'block');
 			this.mouseOutHide();
 		}	
 	});
@@ -147,8 +147,8 @@
 	/*
 	Events
 	*/
-	bj.registerForClick(selector, () => hotlist.changeState() );			
-	bj.registerForHover(selector, () => hotlist.over() );
+	bj.userDown(selector, () => hotlist.changeState() );			
+	bj.userEnter(selector, () => hotlist.over() );
 	bj.listenForResize(checkBrowserWidth);
 	checkBrowserWidth();
 

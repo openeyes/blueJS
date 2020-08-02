@@ -27,7 +27,7 @@
 			allListsDisplay('block');
 		} else {
 			allListsDisplay('none');
-			uiApp.show(document.querySelector('#'+listID));
+			uiApp.show(document.querySelector('#'+listID), 'block');
 		}
 	};
 	

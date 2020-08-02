@@ -18,13 +18,14 @@ const bluejay = (function () {
 	"Ready": called by './_last/ready.js' the last JS file concatenated by Gulp
 	"DOM Loaded": called by "DOMContentLoaded" event (watching out for other scripts that are slowing things down)
 	*/
-	console.time('[blue] Ready');
-	console.time('[blue] DOM Loaded');
 	
-
-	const debug = true;		// Output debug '[blue]' to console
-	const bj = {};			// API for bluejay
-
+	const logPrefix = "[bluejay]";
+	const debug = true;	 // Output debug '[blue]' to console
+	const bj = {};  // API for bluejay
+	
+	console.time(`${logPrefix} Ready`);
+	console.time(`${logPrefix} DOM Loaded`);
+	
 	/**
 	* Extend bluejay public methods
 	* @param  {String}   name 	App method name
@@ -51,21 +52,28 @@ const bluejay = (function () {
 	* @param {String} msg - message to log
 	*/
 	bj.log = (msg) => {
-		if(debug) console.log('[blue] ' + msg);
+		if(debug) console.log( logPrefix + ' ' + msg );
 	};
 	
+	/**
+	* Gulp ensures that _last/ready.js is added last
+	* to the JS file ...it calls ready: 
+	*/
+	bj.ready = () => {
+		console.timeEnd(`${logPrefix} Ready`);
+	};
 	
 	/**
 	* Provide set up feedback whilst debugging
 	*/
 	if(debug){
-		bj.log('OE JS UI layer ("blue") ...');
+		bj.log('OE JS UI layer ' + logPrefix + ' ...');
 		bj.log('DEBUG MODE');
 		bj.log('Mustache version: ' + Mustache.version);
 		
 		document.addEventListener('DOMContentLoaded', () => {
 			bj.log('[Modules] - ' + bj.registeredModules() );
-			console.timeEnd('[blue] DOM Loaded');
+			console.timeEnd(`${logPrefix} DOM Loaded`);
 		}, {once:true});
 	}
 
@@ -79,126 +87,128 @@ const bluejay = (function () {
 /**
 * DOM Event Delegation
 */
-(function (uiApp) {
+(function( bj ) {
 
 	'use strict';
 	
 	/**
-	To improve performance delegate all events. 
-	Modules register callbacks for listeners here.
+	* Event Aggregation Pattern
+	* To improve performance delegate all events for all Modules here.
+	* Modules register selectors (to match) along with callbacks
 	*/
-	const click = [];	// mousedown
-	const hover = [];	// mouseenter
-	const exit = [];	// mouseleave
-	const resize = [];	// window resize
+	
+	const mouseDown = new Map();	
+	const mouseEnter = new Map();	
+	const mouseLeave = new Map();	
+	const resize = new Set(); // no selectors to match too.
 
 	/**
 	* Register a Module callback with an Event
-	* @param {Array} arr - listeners array  
+	* @param {May} map - for each EventListener
 	* @param {String} CSS selector to match
 	* @param {Function} callback 
 	*/
-	const addListener = (arr, selector, cb) => {
-		arr.push({selector:selector, cb:cb});
+	const addListener = ( map, selector, cb ) => {
+		
+		if( map.has(selector)){
+			throw new TypeError('DOM Events: selector already added : ' + selector); 
+		} 
+		
+		map.set( selector, cb );
 	};
 
 	/**
-	* Check Listeners for Selector matches	
-	* @param {Event}  event 
-	* @param {Array}  Listeners
+	* When Event fires check for registered listeners	
+	* @param {Event} - event
+	* @param {Map} - listeners
 	*/
-	const checkListeners = (event, listeners) => {
-		if(event.target === document) return;
-		listeners.forEach((item) => {
-			if(event.target.matches(item.selector)){
-				item.cb(event);
+	const notifyListeners = ( event, listeners ) => {
+		
+		const target = event.target;
+		if( target === document ) return false;
+		
+		listeners.forEach( ( cb, key ) => {
+			if( target.matches( key )){
+				cb( event );
 			}
 		});
 	};
-	
-	/**
-	* Basic broadcaster for Resize
-	* @param {Array}  Listeners
-	*/
-	const broadcast = (listeners) => {
-		listeners.forEach((item) => {
-			item.cb();
-		});
-	};
 
 	/**
-	* Throttle Scroll & Resize events
-	* As these fire at such high rates they need restricting
-	* @oaram {Array} listeners array	
+	* Throttle Resize Event	
 	*/
-	function EventThrottler(){
+	const resizeThrottle = (() => {
+		
 		let throttleID = 0;
-		return (listeners) => {
+		
+		const delay = () => {
 			clearTimeout(throttleID);
-			throttleID = setTimeout(() => broadcast(listeners), 100);
+			throttleID = setTimeout( () => {
+				resize.forEach( ( cb ) => {
+					cb();
+				});
+			}, 150);
 		};
-	}
-	// set up closure
-	const resizeThrottle = EventThrottler();
+		
+		// public
+		return { delay };
+	})();
 	
 	/**
-	Specific functions for each event. This is so that they can be remove
+	* Event handlers
+	* Specific functions for each event, this is so that they can be removed
 	*/
+	
 	function handleMouserEnter(e){
-		checkListeners(e, hover);
+		notifyListeners( e, mouseEnter );
 	}
+	
 	function handleMouserDown(e){
-		checkListeners(e, click);
+		notifyListeners( e, mouseDown );
 	}
+	
 	function handleMouserLeave(e){
-		checkListeners(e, exit);
+		notifyListeners( e, mouseLeave );
 	}
 	
-	
-	
-	/**
-	To improve performance delegate Event handling to the document
-	setup Event listeners... 
-	*/
-	document.addEventListener('mouseenter', handleMouserEnter, {capture:true});
-	document.addEventListener('mousedown', handleMouserDown, {capture:true}); 
-	document.addEventListener('mouseleave', handleMouserLeave, {capture:true});
-	// Throttle high rate events
-	window.onresize = () => resizeThrottle(resize);
-	
-	/* 
-	** Touch **
-	*/
-	let handleTouchStart = (e) => {
+	let handleTouchStart = ( e ) => {
 		/*
 		With touch I'll get: touchstart, mouseenter then mousedown.
-		This will mess up the UI because of "hover" enhancment behaviour for mouse users.
-		Therefore remove the Mouse events.
+		This messes up the UI because of "mouseEnter" enhancment behaviour for mouse/track users.
 		*/
-		document.removeEventListener('mouseenter', handleMouserEnter, {capture:true});
-		document.removeEventListener('mousedown', handleMouserDown, {capture:true}); 
-		document.removeEventListener('mouseleave', handleMouserLeave, {capture:true});
+		document.removeEventListener('mouseenter', handleMouserEnter, { capture:true });
+		document.removeEventListener('mousedown', handleMouserDown, { capture:true }); 
+		document.removeEventListener('mouseleave', handleMouserLeave, { capture:true });
 		
 		// basic "click" behaviour
-		checkListeners(e, click);
+		notifyListeners( e, mouseDown );
 		
-		// only need to removeListeners once!
-		handleTouchStart = (e) => {
-			checkListeners(e, click);
+		// only need the removeListeners once...
+		handleTouchStart = ( e ) => {
+			notifyListeners( e, mouseDown );
 		};
 	};
-
-	document.addEventListener('touchstart', (e) => handleTouchStart(e), {capture:true});
-		
 	
+	/**
+	* Event Listeners
+	*/
+	document.addEventListener('mouseenter', handleMouserEnter, { capture:true });
+	document.addEventListener('mousedown', handleMouserDown, { capture:true }); 
+	document.addEventListener('mouseleave', handleMouserLeave, { capture:true });
+	document.addEventListener('touchstart', ( e ) => handleTouchStart( e ), { capture:true });
+	
+	// Throttle high rate events
+	window.onresize = () => resizeThrottle.delay();
+
 	// extend App
-	uiApp.extend('registerForHover', (selector,cb) => addListener(hover,selector,cb));
-	uiApp.extend('registerForClick', (selector,cb) => addListener(click,selector,cb));
-	uiApp.extend('registerForExit', (selector,cb) => addListener(exit,selector,cb));
-	uiApp.extend('listenForResize', (cb) => addListener(resize,null,cb));
+	bj.extend('userEnter', ( selector, cb ) => addListener( mouseEnter, selector, cb ));
+	bj.extend('userDown', ( selector, cb ) => addListener( mouseDown, selector, cb ));
+	bj.extend('userLeave', ( selector, cb ) => addListener( mouseLeave, selector, cb ));
+	
+	// window resize, no need for selectors
+	bj.extend('listenForResize', ( cb ) => resize.add( cb ));
 
-
-})(bluejay);
+})( bluejay );
 /**
 * Handle DOM collections
 * Modules tend to handle DOM collections. 
@@ -276,7 +286,7 @@ const bluejay = (function () {
 * Custom App Events 
 * (lets try and keep it loose)
 */
-(function (uiApp) {
+(function( bj ) {
 
 	'use strict';
 	
@@ -285,7 +295,7 @@ const bluejay = (function () {
 	* @param {string} eventType
 	* @param {Object}
 	*/
-	const myEvent = (eventType, eventDetail) => {
+	const myEvent = ( eventType, eventDetail ) => {
 		/*
 		Create unique prefix & dispatch 
 		*/
@@ -296,9 +306,9 @@ const bluejay = (function () {
 		// bluejay.log('[Custom Event] - "'+eventType+'"');
 	};
 		
-	uiApp.extend('uiEvent', myEvent);	
+	bj.extend('bjEvent', myEvent);	
 	
-})(bluejay);
+})( bluejay );
 /**
 * Helper functions
 */
@@ -335,16 +345,18 @@ const bluejay = (function () {
 	};
 	
 	/**
-	* Show a DOM Element - this assumes CSS has set display: "none"
+	* Show a DOM Element, the default setting of '' will allow the
+	* the CSS to be used and stop the inline style overwriting it
 	* @param {DOM Element} el
-	* @param {String} block - "block","flex",'table-row',etc
+	* @param {String} displayType - "block","flex",'table-row',etc
 	*/
-	const show = (el, block = "block") => {
+	const show = (el, displayType = '') => {
 		if(el === null) return;
-		el.style.display = block;
+		el.style.display = displayType;
 	};
 	
 	/**
+	* ! - DEPRECIATED
 	* re-show a DOM Element - this assumes CSS has set display: "block" || "flex" || "inline-block" (or whatever)
 	* @param {DOM Element} el
 	*/
@@ -512,6 +524,55 @@ const bluejay = (function () {
 
 })( bluejay );
 /**
+* Template structure for MV* patterns 
+* Observer pattern
+*/
+(function( bj ) {
+	
+	'use strict';
+	
+	/**
+	* Create an ObserverList for Models (Models)
+	*/	
+	const ObserverList = {
+		list: new Set(), // observer only needs (should) be added once
+		add( obj ){
+			this.list.add( obj );
+			return this.list.has( obj );
+		}, 
+		remove(){
+			this.list.remove( obj );
+		}, 
+		getAll(){
+			return this.list.values( obj );
+		}, 
+		size(){
+			return this.list.size;
+		}, 
+		notify(){
+			let iterator = this.getAll();
+			for ( let obj of iterator ){
+				// could be a callback or an object
+				if( typeof obj === 'function'){
+					obj();
+				} else {
+					obj.update();
+				}
+			}
+		}
+	};
+	 
+	/**
+	* Basic Model with Observer Pattern for Views
+	*/
+	const Model = () => ({
+		views: Object.create( ObserverList )
+	});
+		
+	bj.extend( 'ModelViews', Model );	
+
+})( bluejay );
+/**
 * Settings (useful globals)
 */
 (function (bj) {
@@ -606,7 +667,7 @@ const bluejay = (function () {
 	
 	const _show = () => ({
 		show: function(){
-			uiApp.show(this.content);
+			uiApp.show(this.content, "block");
 			this.btn.classList.replace('expand','collapse');
 			this.open = true;
 		}
@@ -668,8 +729,8 @@ const bluejay = (function () {
 	/*
 	Events
 	*/
-	uiApp.registerForClick( ".collapse-data-header-icon", ev => userClick(ev, "data"));
-	uiApp.registerForClick( ".collapse-group > .header-icon", ev => userClick(ev, "group"));
+	uiApp.userDown( ".collapse-data-header-icon", ev => userClick(ev, "data"));
+	uiApp.userDown( ".collapse-group > .header-icon", ev => userClick(ev, "group"));
 
 })(bluejay); 
 (function (uiApp) {
@@ -935,22 +996,23 @@ const bluejay = (function () {
 	/**
 	Listeners 
 	*/
-	bj.registerForClick(m.selector, userClick);
-	bj.registerForHover(m.selector, userOver);
-	bj.registerForExit(m.selector, userOut);
+	bj.userDown(m.selector, userClick);
+	bj.userEnter(m.selector, userOver);
+	bj.userLeave(m.selector, userOut);
 	
 	
 })(bluejay); 
 /**
 * Last loaded
 */
-(function(bj) {
+(function( bj ) {
 
 	'use strict';
 	
 	// no need for any more extensions
 	Object.preventExtensions(bj);
 	
-	console.timeEnd('[blue] Ready');
+	// ready
+	bj.ready();
 
-})(bluejay);
+})( bluejay );

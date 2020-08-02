@@ -112,8 +112,8 @@
 	if(document.querySelector('#js-manage-elements-btn') !== null){
 		const manager = ElementOverlay('oe-element-selector');
 		// register Events
-		uiApp.registerForClick('#js-manage-elements-btn', (ev) => manager.change(ev) );
-		uiApp.registerForClick('.oe-element-selector .close-icon-btn button', () => manager.close() );
+		uiApp.userDown('#js-manage-elements-btn', (ev) => manager.change(ev) );
+		uiApp.userDown('.oe-element-selector .close-icon-btn button', () => manager.close() );
 	}
 		
 	/*
@@ -123,7 +123,7 @@
 	if(document.querySelector('#js-element-structure-btn') !== null){
 		const sidebar = ElementOverlay('sidebar element-overlay');
 		// register Events
-		uiApp.registerForClick('#js-element-structure-btn', (ev) => sidebar.change(ev) );
+		uiApp.userDown('#js-element-structure-btn', (ev) => sidebar.change(ev) );
 	}
 	
 

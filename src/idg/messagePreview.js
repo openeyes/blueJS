@@ -35,6 +35,6 @@
 	/*
 	Events
 	*/
-	uiApp.registerForClick(	'.js-expand-message',	userClick );
+	uiApp.userDown(	'.js-expand-message',	userClick );
 
 })(bluejay); 

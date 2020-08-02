@@ -188,13 +188,13 @@
 	};	
 	
 	// register for Event delegation
-	uiApp.registerForClick('.' + css.thumb, userClick);
+	uiApp.userDown('.' + css.thumb, userClick);
 	
 	/*
 	If there is an "Annotate" button under the thumbail
 	*/
 	if(document.querySelectorAll('.js-annotate-attachment')){
-		uiApp.registerForClick('.js-annotate-attachment',userClick); 
+		uiApp.userDown('.js-annotate-attachment',userClick); 
 	}
 	
 		

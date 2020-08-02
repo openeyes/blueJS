@@ -26,17 +26,17 @@
 			const commentsR = document.querySelector('#' + json.id + '-right');
 			const commentsL = document.querySelector('#' + json.id + '-left');
 			
-			uiApp.show(commentsR);
-			uiApp.show(commentsL);
+			uiApp.show(commentsR, 'block');
+			uiApp.show(commentsL, 'block');
 			
 			commentsR.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
-				uiApp.reshow(btn);
+				uiApp.show(btn, 'block');
 				uiApp.hide(commentsR);
 				uiApp.hide(commentsL);
 			},{once:true});
 			
 			commentsL.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
-				uiApp.reshow(btn);
+				uiApp.show(btn, 'block');
 				uiApp.hide(commentsR);
 				uiApp.hide(commentsL);
 			},{once:true});
@@ -44,15 +44,15 @@
 		} else {
 			// single comment input
 			const comments = document.querySelector('#' + json.id);
-			uiApp.show(comments);
+			uiApp.show(comments, 'block');
 			comments.querySelector('textarea').focus();
 			comments.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
-				uiApp.reshow(btn);
+				uiApp.show(btn, 'block');
 				uiApp.hide(comments);
 			},{once:true});	
 		}
 	};
 	
-	uiApp.registerForClick('.js-add-comments', userClick );
+	uiApp.userDown('.js-add-comments', userClick );
 	
 })(bluejay); 

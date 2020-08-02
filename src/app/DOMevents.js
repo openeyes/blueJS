@@ -1,123 +1,125 @@
 /**
 * DOM Event Delegation
 */
-(function (uiApp) {
+(function( bj ) {
 
 	'use strict';
 	
 	/**
-	To improve performance delegate all events. 
-	Modules register callbacks for listeners here.
+	* Event Aggregation Pattern
+	* To improve performance delegate all events for all Modules here.
+	* Modules register selectors (to match) along with callbacks
 	*/
-	const click = [];	// mousedown
-	const hover = [];	// mouseenter
-	const exit = [];	// mouseleave
-	const resize = [];	// window resize
+	
+	const mouseDown = new Map();	
+	const mouseEnter = new Map();	
+	const mouseLeave = new Map();	
+	const resize = new Set(); // no selectors to match too.
 
 	/**
 	* Register a Module callback with an Event
-	* @param {Array} arr - listeners array  
+	* @param {May} map - for each EventListener
 	* @param {String} CSS selector to match
 	* @param {Function} callback 
 	*/
-	const addListener = (arr, selector, cb) => {
-		arr.push({selector:selector, cb:cb});
+	const addListener = ( map, selector, cb ) => {
+		
+		if( map.has(selector)){
+			throw new TypeError('DOM Events: selector already added : ' + selector); 
+		} 
+		
+		map.set( selector, cb );
 	};
 
 	/**
-	* Check Listeners for Selector matches	
-	* @param {Event}  event 
-	* @param {Array}  Listeners
+	* When Event fires check for registered listeners	
+	* @param {Event} - event
+	* @param {Map} - listeners
 	*/
-	const checkListeners = (event, listeners) => {
-		if(event.target === document) return;
-		listeners.forEach((item) => {
-			if(event.target.matches(item.selector)){
-				item.cb(event);
+	const notifyListeners = ( event, listeners ) => {
+		
+		const target = event.target;
+		if( target === document ) return false;
+		
+		listeners.forEach( ( cb, key ) => {
+			if( target.matches( key )){
+				cb( event );
 			}
 		});
 	};
-	
-	/**
-	* Basic broadcaster for Resize
-	* @param {Array}  Listeners
-	*/
-	const broadcast = (listeners) => {
-		listeners.forEach((item) => {
-			item.cb();
-		});
-	};
 
 	/**
-	* Throttle Scroll & Resize events
-	* As these fire at such high rates they need restricting
-	* @oaram {Array} listeners array	
+	* Throttle Resize Event	
 	*/
-	function EventThrottler(){
+	const resizeThrottle = (() => {
+		
 		let throttleID = 0;
-		return (listeners) => {
+		
+		const delay = () => {
 			clearTimeout(throttleID);
-			throttleID = setTimeout(() => broadcast(listeners), 100);
+			throttleID = setTimeout( () => {
+				resize.forEach( ( cb ) => {
+					cb();
+				});
+			}, 150);
 		};
-	}
-	// set up closure
-	const resizeThrottle = EventThrottler();
+		
+		// public
+		return { delay };
+	})();
 	
 	/**
-	Specific functions for each event. This is so that they can be remove
+	* Event handlers
+	* Specific functions for each event, this is so that they can be removed
 	*/
+	
 	function handleMouserEnter(e){
-		checkListeners(e, hover);
+		notifyListeners( e, mouseEnter );
 	}
+	
 	function handleMouserDown(e){
-		checkListeners(e, click);
+		notifyListeners( e, mouseDown );
 	}
+	
 	function handleMouserLeave(e){
-		checkListeners(e, exit);
+		notifyListeners( e, mouseLeave );
 	}
 	
-	
-	
-	/**
-	To improve performance delegate Event handling to the document
-	setup Event listeners... 
-	*/
-	document.addEventListener('mouseenter', handleMouserEnter, {capture:true});
-	document.addEventListener('mousedown', handleMouserDown, {capture:true}); 
-	document.addEventListener('mouseleave', handleMouserLeave, {capture:true});
-	// Throttle high rate events
-	window.onresize = () => resizeThrottle(resize);
-	
-	/* 
-	** Touch **
-	*/
-	let handleTouchStart = (e) => {
+	let handleTouchStart = ( e ) => {
 		/*
 		With touch I'll get: touchstart, mouseenter then mousedown.
-		This will mess up the UI because of "hover" enhancment behaviour for mouse users.
-		Therefore remove the Mouse events.
+		This messes up the UI because of "mouseEnter" enhancment behaviour for mouse/track users.
 		*/
-		document.removeEventListener('mouseenter', handleMouserEnter, {capture:true});
-		document.removeEventListener('mousedown', handleMouserDown, {capture:true}); 
-		document.removeEventListener('mouseleave', handleMouserLeave, {capture:true});
+		document.removeEventListener('mouseenter', handleMouserEnter, { capture:true });
+		document.removeEventListener('mousedown', handleMouserDown, { capture:true }); 
+		document.removeEventListener('mouseleave', handleMouserLeave, { capture:true });
 		
 		// basic "click" behaviour
-		checkListeners(e, click);
+		notifyListeners( e, mouseDown );
 		
-		// only need to removeListeners once!
-		handleTouchStart = (e) => {
-			checkListeners(e, click);
+		// only need the removeListeners once...
+		handleTouchStart = ( e ) => {
+			notifyListeners( e, mouseDown );
 		};
 	};
-
-	document.addEventListener('touchstart', (e) => handleTouchStart(e), {capture:true});
-		
 	
+	/**
+	* Event Listeners
+	*/
+	document.addEventListener('mouseenter', handleMouserEnter, { capture:true });
+	document.addEventListener('mousedown', handleMouserDown, { capture:true }); 
+	document.addEventListener('mouseleave', handleMouserLeave, { capture:true });
+	document.addEventListener('touchstart', ( e ) => handleTouchStart( e ), { capture:true });
+	
+	// Throttle high rate events
+	window.onresize = () => resizeThrottle.delay();
+
 	// extend App
-	uiApp.extend('registerForHover', (selector,cb) => addListener(hover,selector,cb));
-	uiApp.extend('registerForClick', (selector,cb) => addListener(click,selector,cb));
-	uiApp.extend('registerForExit', (selector,cb) => addListener(exit,selector,cb));
-	uiApp.extend('listenForResize', (cb) => addListener(resize,null,cb));
+	bj.extend('userEnter', ( selector, cb ) => addListener( mouseEnter, selector, cb ));
+	bj.extend('userDown', ( selector, cb ) => addListener( mouseDown, selector, cb ));
+	bj.extend('userLeave', ( selector, cb ) => addListener( mouseLeave, selector, cb ));
+	
+	// window resize, no need for selectors
+	bj.extend('listenForResize', ( cb ) => resize.add( cb ));
 
-
-})(bluejay);
+})( bluejay );

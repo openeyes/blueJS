@@ -67,7 +67,7 @@
 			this.open = true;
 			hideOtherPopups(this);
 			this.btn.classList.add( cssOpen );
-			uiApp.show(this.content);
+			uiApp.show(this.content, 'block');
 		}	
 	});
 	
@@ -144,10 +144,10 @@
 				btn: btn,
 				content: document.querySelector(item.content) 
 			});					
-			uiApp.registerForClick(item.btn, () => popup.change());
-			uiApp.registerForHover(item.btn, () => popup.over());
-			uiApp.registerForExit(item.btn, (e) => popup.out(e));
-			uiApp.registerForExit(item.content, (e) => popup.out(e));
+			uiApp.userDown(item.btn, () => popup.change());
+			uiApp.userEnter(item.btn, () => popup.over());
+			uiApp.userLeave(item.btn, (e) => popup.out(e));
+			uiApp.userLeave(item.content, (e) => popup.out(e));
 			item.popup = popup; // store.
 		}	
 	});

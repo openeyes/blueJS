@@ -115,10 +115,10 @@
 	/*
 	Events 
 	*/
-	uiApp.registerForHover('.event .event-type', (ev) => {	showQuickLook(ev.target);
+	uiApp.userEnter('.event .event-type', (ev) => {	showQuickLook(ev.target);
 															quickView.show(ev.target);	});	
 																				
-	uiApp.registerForExit('.event .event-type', (ev) => {	hideQuickLook(); 
+	uiApp.userLeave('.event .event-type', (ev) => {	hideQuickLook(); 
 															quickView.hide();	});
 	
 	/*

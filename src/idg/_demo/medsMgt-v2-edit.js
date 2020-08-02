@@ -30,12 +30,12 @@
 				// on
 				uiApp.hide(stopBtn);
 				uiApp.hide(reasons);
-				uiApp.show(ongoingTxt);
-				uiApp.show(durDis);
-				uiApp.reshow(taperBtn);	
+				uiApp.show(ongoingTxt, 'block');
+				uiApp.show(durDis, 'block');
+				uiApp.show(taperBtn, 'block');	
 			} else {
 				// off
-				uiApp.show(stopBtn);
+				uiApp.show(stopBtn, 'block');
 				uiApp.hide(ongoingTxt);	
 				uiApp.hide(durDis);
 				uiApp.hide(taperBtn);
@@ -52,11 +52,11 @@
 		
 		if(stop){
 			uiApp.hide(stopBtn);
-			uiApp.show(stopDate);
-			uiApp.show(reasons);
-			uiApp.show(cancelIcon);
+			uiApp.show(stopDate, 'block');
+			uiApp.show(reasons, 'block');
+			uiApp.show(cancelIcon, 'block');
 		} else {
-			uiApp.show(stopBtn);
+			uiApp.show(stopBtn, 'block');
 			uiApp.hide(stopDate);
 			uiApp.hide(reasons);
 			uiApp.hide(cancelIcon);

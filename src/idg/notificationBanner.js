@@ -16,7 +16,7 @@
 	*/
 	if(document.querySelector('.oe-login') !== null){
 		uiApp.hide(shortInfo);
-		uiApp.show(longInfo);
+		uiApp.show(longInfo, 'block');
 		document.querySelector(selector).style.display = "none";	
 		return; // exit!
 	}
@@ -51,8 +51,8 @@
 		showHide(defaultDisplay,otherDisplay);
 	};
 	
-	uiApp.registerForHover(	selector,	() => showHide(otherDisplay,defaultDisplay) );
-	uiApp.registerForExit(	selector,	() => showHide(defaultDisplay,otherDisplay) );	
-	uiApp.registerForClick(	selector,	changeDefault );
+	uiApp.userEnter(	selector,	() => showHide(otherDisplay,defaultDisplay) );
+	uiApp.userLeave(	selector,	() => showHide(defaultDisplay,otherDisplay) );	
+	uiApp.userDown(	selector,	changeDefault );
 
 })(bluejay); 

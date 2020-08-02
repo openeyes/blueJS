@@ -250,9 +250,9 @@
 	/*
 	Events 
 	*/
-	uiApp.registerForClick(selector,userClick);
-	uiApp.registerForHover(selector,userHover);
-	uiApp.registerForExit(selector,userOut);
-	uiApp.registerForClick('.oe-pathstep-popup .close-icon-btn .oe-i',hide);
+	uiApp.userDown(selector,userClick);
+	uiApp.userEnter(selector,userHover);
+	uiApp.userLeave(selector,userOut);
+	uiApp.userDown('.oe-pathstep-popup .close-icon-btn .oe-i',hide);
 		
 })(bluejay); 

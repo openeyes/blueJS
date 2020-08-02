@@ -230,9 +230,9 @@
 	/**
 	Listeners 
 	*/
-	bj.registerForClick(m.selector, userClick);
-	bj.registerForHover(m.selector, userOver);
-	bj.registerForExit(m.selector, userOut);
+	bj.userDown(m.selector, userClick);
+	bj.userEnter(m.selector, userOver);
+	bj.userLeave(m.selector, userOut);
 	
 	
 })(bluejay); 

@@ -11,13 +11,14 @@ const bluejay = (function () {
 	"Ready": called by './_last/ready.js' the last JS file concatenated by Gulp
 	"DOM Loaded": called by "DOMContentLoaded" event (watching out for other scripts that are slowing things down)
 	*/
-	console.time('[blue] Ready');
-	console.time('[blue] DOM Loaded');
 	
-
-	const debug = true;		// Output debug '[blue]' to console
-	const bj = {};			// API for bluejay
-
+	const logPrefix = "[bluejay]";
+	const debug = true;	 // Output debug '[blue]' to console
+	const bj = {};  // API for bluejay
+	
+	console.time(`${logPrefix} Ready`);
+	console.time(`${logPrefix} DOM Loaded`);
+	
 	/**
 	* Extend bluejay public methods
 	* @param  {String}   name 	App method name
@@ -44,21 +45,28 @@ const bluejay = (function () {
 	* @param {String} msg - message to log
 	*/
 	bj.log = (msg) => {
-		if(debug) console.log('[blue] ' + msg);
+		if(debug) console.log( logPrefix + ' ' + msg );
 	};
 	
+	/**
+	* Gulp ensures that _last/ready.js is added last
+	* to the JS file ...it calls ready: 
+	*/
+	bj.ready = () => {
+		console.timeEnd(`${logPrefix} Ready`);
+	};
 	
 	/**
 	* Provide set up feedback whilst debugging
 	*/
 	if(debug){
-		bj.log('OE JS UI layer ("blue") ...');
+		bj.log('OE JS UI layer ' + logPrefix + ' ...');
 		bj.log('DEBUG MODE');
 		bj.log('Mustache version: ' + Mustache.version);
 		
 		document.addEventListener('DOMContentLoaded', () => {
 			bj.log('[Modules] - ' + bj.registeredModules() );
-			console.timeEnd('[blue] DOM Loaded');
+			console.timeEnd(`${logPrefix} DOM Loaded`);
 		}, {once:true});
 	}
 

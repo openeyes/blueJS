@@ -32,7 +32,7 @@
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssActive );
-			uiApp.show(this.content);
+			uiApp.show(this.content, 'block');
 			this.mouseOutHide();
 		}	
 	});
@@ -80,8 +80,8 @@
 	/*
 	Events 
 	*/
-	uiApp.registerForClick(selector, () => eventFilter.change() );			
-	uiApp.registerForHover(selector, () => eventFilter.show() );
+	uiApp.userDown(selector, () => eventFilter.change() );			
+	uiApp.userEnter(selector, () => eventFilter.show() );
 
 	
 })(bluejay); 

@@ -30,7 +30,7 @@
 	* @param {Event} ev
 	*/
 	const show = (ev) => {
-		uiApp.show(popup);
+		uiApp.show(popup, 'block');
 		icon.classList.add('active');
 		showing = true;
 	};
@@ -48,9 +48,9 @@
 	/*
 	Events	
 	*/
-	uiApp.registerForClick(selector,userClick);
-	uiApp.registerForHover(selector,show);
-	uiApp.registerForExit(selector,hide);
+	uiApp.userDown(selector,userClick);
+	uiApp.userEnter(selector,show);
+	uiApp.userLeave(selector,hide);
 
 
 })(bluejay); 

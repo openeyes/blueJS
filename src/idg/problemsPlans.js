@@ -160,8 +160,8 @@
 	/* 
 	Events
 	*/
-	uiApp.registerForClick('.create-new-problem-plan button', addListItem);
-	uiApp.registerForClick('.problems-plans-sortable .remove-circle', removeListItem);
+	uiApp.userDown('.create-new-problem-plan button', addListItem);
+	uiApp.userDown('.problems-plans-sortable .remove-circle', removeListItem);
 	
 	document.addEventListener('DOMContentLoaded', () => {
 		pps.forEach((list)=>{

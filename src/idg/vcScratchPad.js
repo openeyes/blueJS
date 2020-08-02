@@ -39,13 +39,13 @@
 			uiApp.hide(scratchPad);
 			btn.textContent = 'ScratchPad';
 		} else {
-			uiApp.show(scratchPad);
+			uiApp.show(scratchPad, 'block');
 			btn.textContent = 'Hide ScratchPad';
 		}
 		show = !show;		
 	};
 	
-	uiApp.registerForClick('#js-vc-scratchpad', change );
+	uiApp.userDown('#js-vc-scratchpad', change );
 
 
 })(bluejay); 

@@ -165,7 +165,7 @@
 	};
 
 	// Regsiter for Events
-	uiApp.registerForClick('.pro-view-btn', userClick);
+	uiApp.userDown('.pro-view-btn', userClick);
 
 
 })(bluejay); 

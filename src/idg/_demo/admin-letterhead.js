@@ -72,7 +72,7 @@
 		}
 	}); 
 		
-	uiApp.registerForClick('.idg-quick-insert', (ev) => {
+	uiApp.userDown('.idg-quick-insert', (ev) => {
 		let obj = JSON.parse(ev.target.dataset.insert);
 		insertData(obj.key, obj.value);
 	});

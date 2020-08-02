@@ -313,7 +313,7 @@
 			.catch(e => console.log('failed to load',e));  // maybe output this to UI at somepoint, but for now... 
 	};
 
-	uiApp.registerForClick('.js-idg-demo-remove-oph-diag', showDeletePopup);
+	uiApp.userDown('.js-idg-demo-remove-oph-diag', showDeletePopup);
 	
 	
 			

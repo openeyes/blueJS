@@ -54,7 +54,7 @@
 		// is click to fix open?
 		if(currentIcon === icon && open){
 			fixed = true;
-			uiApp.show(closeBtn);
+			uiApp.show(closeBtn, 'block');
 			return;
 		}
 		
@@ -120,7 +120,7 @@
 		let spinnerID = setTimeout( () => content.innerHTML = '<i class="spinner"></i>', 400);	
 		
 		if(clicked){
-			uiApp.show(closeBtn);
+			uiApp.show(closeBtn, 'block');
 		} else {
 			uiApp.hide(closeBtn);
 		}
@@ -170,10 +170,10 @@
 	};
 	
 
-	uiApp.registerForClick('.js-patient-quick-overview',userClick);
-	uiApp.registerForHover('.js-patient-quick-overview',userHover);
-	uiApp.registerForExit('.js-patient-quick-overview',userOut);
-	uiApp.registerForClick('.oe-patient-quick-overview .close-icon-btn .oe-i',hide);
+	uiApp.userDown('.js-patient-quick-overview',userClick);
+	uiApp.userEnter('.js-patient-quick-overview',userHover);
+	uiApp.userLeave('.js-patient-quick-overview',userOut);
+	uiApp.userDown('.oe-patient-quick-overview .close-icon-btn .oe-i',hide);
 	
 	// innerWidth forces a reflow, only update when necessary
 	uiApp.listenForResize(() => winHeight = window.inneHeight );

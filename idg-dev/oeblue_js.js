@@ -18,13 +18,14 @@ const bluejay = (function () {
 	"Ready": called by './_last/ready.js' the last JS file concatenated by Gulp
 	"DOM Loaded": called by "DOMContentLoaded" event (watching out for other scripts that are slowing things down)
 	*/
-	console.time('[blue] Ready');
-	console.time('[blue] DOM Loaded');
 	
-
-	const debug = true;		// Output debug '[blue]' to console
-	const bj = {};			// API for bluejay
-
+	const logPrefix = "[bluejay]";
+	const debug = true;	 // Output debug '[blue]' to console
+	const bj = {};  // API for bluejay
+	
+	console.time(`${logPrefix} Ready`);
+	console.time(`${logPrefix} DOM Loaded`);
+	
 	/**
 	* Extend bluejay public methods
 	* @param  {String}   name 	App method name
@@ -51,21 +52,28 @@ const bluejay = (function () {
 	* @param {String} msg - message to log
 	*/
 	bj.log = (msg) => {
-		if(debug) console.log('[blue] ' + msg);
+		if(debug) console.log( logPrefix + ' ' + msg );
 	};
 	
+	/**
+	* Gulp ensures that _last/ready.js is added last
+	* to the JS file ...it calls ready: 
+	*/
+	bj.ready = () => {
+		console.timeEnd(`${logPrefix} Ready`);
+	};
 	
 	/**
 	* Provide set up feedback whilst debugging
 	*/
 	if(debug){
-		bj.log('OE JS UI layer ("blue") ...');
+		bj.log('OE JS UI layer ' + logPrefix + ' ...');
 		bj.log('DEBUG MODE');
 		bj.log('Mustache version: ' + Mustache.version);
 		
 		document.addEventListener('DOMContentLoaded', () => {
 			bj.log('[Modules] - ' + bj.registeredModules() );
-			console.timeEnd('[blue] DOM Loaded');
+			console.timeEnd(`${logPrefix} DOM Loaded`);
 		}, {once:true});
 	}
 
@@ -79,126 +87,128 @@ const bluejay = (function () {
 /**
 * DOM Event Delegation
 */
-(function (uiApp) {
+(function( bj ) {
 
 	'use strict';
 	
 	/**
-	To improve performance delegate all events. 
-	Modules register callbacks for listeners here.
+	* Event Aggregation Pattern
+	* To improve performance delegate all events for all Modules here.
+	* Modules register selectors (to match) along with callbacks
 	*/
-	const click = [];	// mousedown
-	const hover = [];	// mouseenter
-	const exit = [];	// mouseleave
-	const resize = [];	// window resize
+	
+	const mouseDown = new Map();	
+	const mouseEnter = new Map();	
+	const mouseLeave = new Map();	
+	const resize = new Set(); // no selectors to match too.
 
 	/**
 	* Register a Module callback with an Event
-	* @param {Array} arr - listeners array  
+	* @param {May} map - for each EventListener
 	* @param {String} CSS selector to match
 	* @param {Function} callback 
 	*/
-	const addListener = (arr, selector, cb) => {
-		arr.push({selector:selector, cb:cb});
+	const addListener = ( map, selector, cb ) => {
+		
+		if( map.has(selector)){
+			throw new TypeError('DOM Events: selector already added : ' + selector); 
+		} 
+		
+		map.set( selector, cb );
 	};
 
 	/**
-	* Check Listeners for Selector matches	
-	* @param {Event}  event 
-	* @param {Array}  Listeners
+	* When Event fires check for registered listeners	
+	* @param {Event} - event
+	* @param {Map} - listeners
 	*/
-	const checkListeners = (event, listeners) => {
-		if(event.target === document) return;
-		listeners.forEach((item) => {
-			if(event.target.matches(item.selector)){
-				item.cb(event);
+	const notifyListeners = ( event, listeners ) => {
+		
+		const target = event.target;
+		if( target === document ) return false;
+		
+		listeners.forEach( ( cb, key ) => {
+			if( target.matches( key )){
+				cb( event );
 			}
 		});
 	};
-	
-	/**
-	* Basic broadcaster for Resize
-	* @param {Array}  Listeners
-	*/
-	const broadcast = (listeners) => {
-		listeners.forEach((item) => {
-			item.cb();
-		});
-	};
 
 	/**
-	* Throttle Scroll & Resize events
-	* As these fire at such high rates they need restricting
-	* @oaram {Array} listeners array	
+	* Throttle Resize Event	
 	*/
-	function EventThrottler(){
+	const resizeThrottle = (() => {
+		
 		let throttleID = 0;
-		return (listeners) => {
+		
+		const delay = () => {
 			clearTimeout(throttleID);
-			throttleID = setTimeout(() => broadcast(listeners), 100);
+			throttleID = setTimeout( () => {
+				resize.forEach( ( cb ) => {
+					cb();
+				});
+			}, 150);
 		};
-	}
-	// set up closure
-	const resizeThrottle = EventThrottler();
+		
+		// public
+		return { delay };
+	})();
 	
 	/**
-	Specific functions for each event. This is so that they can be remove
+	* Event handlers
+	* Specific functions for each event, this is so that they can be removed
 	*/
+	
 	function handleMouserEnter(e){
-		checkListeners(e, hover);
+		notifyListeners( e, mouseEnter );
 	}
+	
 	function handleMouserDown(e){
-		checkListeners(e, click);
+		notifyListeners( e, mouseDown );
 	}
+	
 	function handleMouserLeave(e){
-		checkListeners(e, exit);
+		notifyListeners( e, mouseLeave );
 	}
 	
-	
-	
-	/**
-	To improve performance delegate Event handling to the document
-	setup Event listeners... 
-	*/
-	document.addEventListener('mouseenter', handleMouserEnter, {capture:true});
-	document.addEventListener('mousedown', handleMouserDown, {capture:true}); 
-	document.addEventListener('mouseleave', handleMouserLeave, {capture:true});
-	// Throttle high rate events
-	window.onresize = () => resizeThrottle(resize);
-	
-	/* 
-	** Touch **
-	*/
-	let handleTouchStart = (e) => {
+	let handleTouchStart = ( e ) => {
 		/*
 		With touch I'll get: touchstart, mouseenter then mousedown.
-		This will mess up the UI because of "hover" enhancment behaviour for mouse users.
-		Therefore remove the Mouse events.
+		This messes up the UI because of "mouseEnter" enhancment behaviour for mouse/track users.
 		*/
-		document.removeEventListener('mouseenter', handleMouserEnter, {capture:true});
-		document.removeEventListener('mousedown', handleMouserDown, {capture:true}); 
-		document.removeEventListener('mouseleave', handleMouserLeave, {capture:true});
+		document.removeEventListener('mouseenter', handleMouserEnter, { capture:true });
+		document.removeEventListener('mousedown', handleMouserDown, { capture:true }); 
+		document.removeEventListener('mouseleave', handleMouserLeave, { capture:true });
 		
 		// basic "click" behaviour
-		checkListeners(e, click);
+		notifyListeners( e, mouseDown );
 		
-		// only need to removeListeners once!
-		handleTouchStart = (e) => {
-			checkListeners(e, click);
+		// only need the removeListeners once...
+		handleTouchStart = ( e ) => {
+			notifyListeners( e, mouseDown );
 		};
 	};
-
-	document.addEventListener('touchstart', (e) => handleTouchStart(e), {capture:true});
-		
 	
+	/**
+	* Event Listeners
+	*/
+	document.addEventListener('mouseenter', handleMouserEnter, { capture:true });
+	document.addEventListener('mousedown', handleMouserDown, { capture:true }); 
+	document.addEventListener('mouseleave', handleMouserLeave, { capture:true });
+	document.addEventListener('touchstart', ( e ) => handleTouchStart( e ), { capture:true });
+	
+	// Throttle high rate events
+	window.onresize = () => resizeThrottle.delay();
+
 	// extend App
-	uiApp.extend('registerForHover', (selector,cb) => addListener(hover,selector,cb));
-	uiApp.extend('registerForClick', (selector,cb) => addListener(click,selector,cb));
-	uiApp.extend('registerForExit', (selector,cb) => addListener(exit,selector,cb));
-	uiApp.extend('listenForResize', (cb) => addListener(resize,null,cb));
+	bj.extend('userEnter', ( selector, cb ) => addListener( mouseEnter, selector, cb ));
+	bj.extend('userDown', ( selector, cb ) => addListener( mouseDown, selector, cb ));
+	bj.extend('userLeave', ( selector, cb ) => addListener( mouseLeave, selector, cb ));
+	
+	// window resize, no need for selectors
+	bj.extend('listenForResize', ( cb ) => resize.add( cb ));
 
-
-})(bluejay);
+})( bluejay );
 /**
 * Handle DOM collections
 * Modules tend to handle DOM collections. 
@@ -276,7 +286,7 @@ const bluejay = (function () {
 * Custom App Events 
 * (lets try and keep it loose)
 */
-(function (uiApp) {
+(function( bj ) {
 
 	'use strict';
 	
@@ -285,7 +295,7 @@ const bluejay = (function () {
 	* @param {string} eventType
 	* @param {Object}
 	*/
-	const myEvent = (eventType, eventDetail) => {
+	const myEvent = ( eventType, eventDetail ) => {
 		/*
 		Create unique prefix & dispatch 
 		*/
@@ -296,9 +306,9 @@ const bluejay = (function () {
 		// bluejay.log('[Custom Event] - "'+eventType+'"');
 	};
 		
-	uiApp.extend('uiEvent', myEvent);	
+	bj.extend('bjEvent', myEvent);	
 	
-})(bluejay);
+})( bluejay );
 /**
 * Helper functions
 */
@@ -335,16 +345,18 @@ const bluejay = (function () {
 	};
 	
 	/**
-	* Show a DOM Element - this assumes CSS has set display: "none"
+	* Show a DOM Element, the default setting of '' will allow the
+	* the CSS to be used and stop the inline style overwriting it
 	* @param {DOM Element} el
-	* @param {String} block - "block","flex",'table-row',etc
+	* @param {String} displayType - "block","flex",'table-row',etc
 	*/
-	const show = (el, block = "block") => {
+	const show = (el, displayType = '') => {
 		if(el === null) return;
-		el.style.display = block;
+		el.style.display = displayType;
 	};
 	
 	/**
+	* ! - DEPRECIATED
 	* re-show a DOM Element - this assumes CSS has set display: "block" || "flex" || "inline-block" (or whatever)
 	* @param {DOM Element} el
 	*/
@@ -512,6 +524,55 @@ const bluejay = (function () {
 
 })( bluejay );
 /**
+* Template structure for MV* patterns 
+* Observer pattern
+*/
+(function( bj ) {
+	
+	'use strict';
+	
+	/**
+	* Create an ObserverList for Models (Models)
+	*/	
+	const ObserverList = {
+		list: new Set(), // observer only needs (should) be added once
+		add( obj ){
+			this.list.add( obj );
+			return this.list.has( obj );
+		}, 
+		remove(){
+			this.list.remove( obj );
+		}, 
+		getAll(){
+			return this.list.values( obj );
+		}, 
+		size(){
+			return this.list.size;
+		}, 
+		notify(){
+			let iterator = this.getAll();
+			for ( let obj of iterator ){
+				// could be a callback or an object
+				if( typeof obj === 'function'){
+					obj();
+				} else {
+					obj.update();
+				}
+			}
+		}
+	};
+	 
+	/**
+	* Basic Model with Observer Pattern for Views
+	*/
+	const Model = () => ({
+		views: Object.create( ObserverList )
+	});
+		
+	bj.extend( 'ModelViews', Model );	
+
+})( bluejay );
+/**
 * Settings (useful globals)
 */
 (function (bj) {
@@ -606,7 +667,7 @@ const bluejay = (function () {
 	
 	const _show = () => ({
 		show: function(){
-			uiApp.show(this.content);
+			uiApp.show(this.content, "block");
 			this.btn.classList.replace('expand','collapse');
 			this.open = true;
 		}
@@ -668,8 +729,8 @@ const bluejay = (function () {
 	/*
 	Events
 	*/
-	uiApp.registerForClick( ".collapse-data-header-icon", ev => userClick(ev, "data"));
-	uiApp.registerForClick( ".collapse-group > .header-icon", ev => userClick(ev, "group"));
+	uiApp.userDown( ".collapse-data-header-icon", ev => userClick(ev, "data"));
+	uiApp.userDown( ".collapse-group > .header-icon", ev => userClick(ev, "group"));
 
 })(bluejay); 
 (function (uiApp) {
@@ -935,9 +996,9 @@ const bluejay = (function () {
 	/**
 	Listeners 
 	*/
-	bj.registerForClick(m.selector, userClick);
-	bj.registerForHover(m.selector, userOver);
-	bj.registerForExit(m.selector, userOut);
+	bj.userDown(m.selector, userClick);
+	bj.userEnter(m.selector, userOver);
+	bj.userLeave(m.selector, userOut);
 	
 	
 })(bluejay); 
@@ -1015,7 +1076,7 @@ const bluejay = (function () {
 		}
 	}); 
 		
-	uiApp.registerForClick('.idg-quick-insert', (ev) => {
+	uiApp.userDown('.idg-quick-insert', (ev) => {
 		let obj = JSON.parse(ev.target.dataset.insert);
 		insertData(obj.key, obj.value);
 	});
@@ -1058,21 +1119,21 @@ const bluejay = (function () {
 	if(document.querySelector('.js-idg-demo-ed2') === null) return;
 
 
-	uiApp.registerForClick('.js-idg-demo-doodle-drawer', (ev) => {
+	uiApp.userDown('.js-idg-demo-doodle-drawer', (ev) => {
 		let icon = ev.target; 
 		let li = uiApp.getParent(icon,'li');
 		li.classList.toggle('ed2-drawer-open');
 	});
 	
 	
-	uiApp.registerForClick('.ed-canvas-edit', (ev) => {
+	uiApp.userDown('.ed-canvas-edit', (ev) => {
 		let canvas = ev.target; 
 		let editor = uiApp.getParent(canvas,'.ed2-editor');
 		let popup = editor.querySelector('.ed2-doodle-popup');
 		popup.classList.toggle('closed');	
 	});
 	
-	uiApp.registerForClick('#js-idg-demo-ed2-search-input', (ev) => {
+	uiApp.userDown('#js-idg-demo-ed2-search-input', (ev) => {
 		let autocomplete = ev.target.nextElementSibling;
 		console.log('hi');
 		if(autocomplete.style.display == "none"){
@@ -1147,12 +1208,12 @@ const bluejay = (function () {
 				// on
 				uiApp.hide(stopBtn);
 				uiApp.hide(reasons);
-				uiApp.show(ongoingTxt);
-				uiApp.show(durDis);
-				uiApp.reshow(taperBtn);	
+				uiApp.show(ongoingTxt, 'block');
+				uiApp.show(durDis, 'block');
+				uiApp.show(taperBtn, 'block');	
 			} else {
 				// off
-				uiApp.show(stopBtn);
+				uiApp.show(stopBtn, 'block');
 				uiApp.hide(ongoingTxt);	
 				uiApp.hide(durDis);
 				uiApp.hide(taperBtn);
@@ -1169,11 +1230,11 @@ const bluejay = (function () {
 		
 		if(stop){
 			uiApp.hide(stopBtn);
-			uiApp.show(stopDate);
-			uiApp.show(reasons);
-			uiApp.show(cancelIcon);
+			uiApp.show(stopDate, 'block');
+			uiApp.show(reasons, 'block');
+			uiApp.show(cancelIcon, 'block');
 		} else {
-			uiApp.show(stopBtn);
+			uiApp.show(stopBtn, 'block');
 			uiApp.hide(stopDate);
 			uiApp.hide(reasons);
 			uiApp.hide(cancelIcon);
@@ -1527,7 +1588,7 @@ const bluejay = (function () {
 			.catch(e => console.log('failed to load',e));  // maybe output this to UI at somepoint, but for now... 
 	};
 
-	uiApp.registerForClick('.js-idg-demo-remove-oph-diag', showDeletePopup);
+	uiApp.userDown('.js-idg-demo-remove-oph-diag', showDeletePopup);
 	
 	
 			
@@ -1722,13 +1783,13 @@ const bluejay = (function () {
 	};	
 	
 	// register for Event delegation
-	uiApp.registerForClick('.' + css.thumb, userClick);
+	uiApp.userDown('.' + css.thumb, userClick);
 	
 	/*
 	If there is an "Annotate" button under the thumbail
 	*/
 	if(document.querySelectorAll('.js-annotate-attachment')){
-		uiApp.registerForClick('.js-annotate-attachment',userClick); 
+		uiApp.userDown('.js-annotate-attachment',userClick); 
 	}
 	
 		
@@ -1761,17 +1822,17 @@ const bluejay = (function () {
 			const commentsR = document.querySelector('#' + json.id + '-right');
 			const commentsL = document.querySelector('#' + json.id + '-left');
 			
-			uiApp.show(commentsR);
-			uiApp.show(commentsL);
+			uiApp.show(commentsR, 'block');
+			uiApp.show(commentsL, 'block');
 			
 			commentsR.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
-				uiApp.reshow(btn);
+				uiApp.show(btn, 'block');
 				uiApp.hide(commentsR);
 				uiApp.hide(commentsL);
 			},{once:true});
 			
 			commentsL.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
-				uiApp.reshow(btn);
+				uiApp.show(btn, 'block');
 				uiApp.hide(commentsR);
 				uiApp.hide(commentsL);
 			},{once:true});
@@ -1779,16 +1840,16 @@ const bluejay = (function () {
 		} else {
 			// single comment input
 			const comments = document.querySelector('#' + json.id);
-			uiApp.show(comments);
+			uiApp.show(comments, 'block');
 			comments.querySelector('textarea').focus();
 			comments.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
-				uiApp.reshow(btn);
+				uiApp.show(btn, 'block');
 				uiApp.hide(comments);
 			},{once:true});	
 		}
 	};
 	
-	uiApp.registerForClick('.js-add-comments', userClick );
+	uiApp.userDown('.js-add-comments', userClick );
 	
 })(bluejay); 
 (function( bj ) {
@@ -1826,7 +1887,7 @@ const bluejay = (function () {
 			this.elem.userComment.textContent = this.comment;
 			
 			bj.hide( this.elem.textarea );
-			bj.show( this.elem.userComment );
+			bj.show( this.elem.userComment, 'block' );
 		}
 	});
 	
@@ -1837,7 +1898,7 @@ const bluejay = (function () {
 		edit(){
 			this.editMode = true;
 			this.icon('save');
-			bj.show( this.elem.textarea );
+			bj.show( this.elem.textarea, 'block' );
 			bj.hide( this.elem.userComment );
 			
 			// set the comment text
@@ -2001,7 +2062,7 @@ const bluejay = (function () {
 		}		
 	};
 
-	bj.registerForClick('.oe-hotlist-panel .js-comment-icon', userClick);
+	bj.userDown('.oe-hotlist-panel .js-comment-icon', userClick);
 
 })( bluejay ); 
 
@@ -2040,7 +2101,7 @@ const bluejay = (function () {
 		*/
 		let top = btnY - 532;
 		ed3app.style.top = top < 60 ? '60px' : top + "px";
-		uiApp.show(ed3app);
+		uiApp.show(ed3app, 'block');
 		
 		// get demo JSON data
 		let json = JSON.parse(btn.dataset.idgDemo);
@@ -2058,7 +2119,7 @@ const bluejay = (function () {
 			.catch(e => console.log('ed3app php failed to load', e));  // maybe output this to UI at somepoint, but for now...			
 	};
 
-	uiApp.registerForClick('.js-idg-ed3-app-btn', userClick);
+	uiApp.userDown('.js-idg-ed3-app-btn', userClick);
 
 })(bluejay); 
 (function (uiApp) {
@@ -2175,8 +2236,8 @@ const bluejay = (function () {
 	if(document.querySelector('#js-manage-elements-btn') !== null){
 		const manager = ElementOverlay('oe-element-selector');
 		// register Events
-		uiApp.registerForClick('#js-manage-elements-btn', (ev) => manager.change(ev) );
-		uiApp.registerForClick('.oe-element-selector .close-icon-btn button', () => manager.close() );
+		uiApp.userDown('#js-manage-elements-btn', (ev) => manager.change(ev) );
+		uiApp.userDown('.oe-element-selector .close-icon-btn button', () => manager.close() );
 	}
 		
 	/*
@@ -2186,7 +2247,7 @@ const bluejay = (function () {
 	if(document.querySelector('#js-element-structure-btn') !== null){
 		const sidebar = ElementOverlay('sidebar element-overlay');
 		// register Events
-		uiApp.registerForClick('#js-element-structure-btn', (ev) => sidebar.change(ev) );
+		uiApp.userDown('#js-element-structure-btn', (ev) => sidebar.change(ev) );
 	}
 	
 
@@ -2224,7 +2285,7 @@ const bluejay = (function () {
 		*/
 		show: function(){
 			this.h3.textContent = this.title;
-			uiApp.show(this.content);
+			uiApp.show(this.content, 'block');
 		}
 	});
 	
@@ -2339,7 +2400,7 @@ const bluejay = (function () {
 	
 
 	// Regsiter for Events
-	uiApp.registerForClick('.collapse-tile-group .oe-i', userClick);
+	uiApp.userDown('.collapse-tile-group .oe-i', userClick);
 	
 	
 })(bluejay); 
@@ -2375,7 +2436,7 @@ const bluejay = (function () {
 	* @param {Event} ev
 	*/
 	const show = (ev) => {
-		uiApp.show(popup);
+		uiApp.show(popup, 'block');
 		icon.classList.add('active');
 		showing = true;
 	};
@@ -2393,9 +2454,9 @@ const bluejay = (function () {
 	/*
 	Events	
 	*/
-	uiApp.registerForClick(selector,userClick);
-	uiApp.registerForHover(selector,show);
-	uiApp.registerForExit(selector,hide);
+	uiApp.userDown(selector,userClick);
+	uiApp.userEnter(selector,show);
+	uiApp.userLeave(selector,hide);
 
 
 })(bluejay); 
@@ -2453,9 +2514,9 @@ const bluejay = (function () {
 	};
 	
 
-	uiApp.registerForClick('#js-events-user-trail', show);
-	uiApp.registerForClick('.js-idg-toggle-event-audit-trail',toggleEventDetails);
-	uiApp.registerForClick('.oe-events-user-trail .close-icon-btn .oe-i', hide);
+	uiApp.userDown('#js-events-user-trail', show);
+	uiApp.userDown('.js-idg-toggle-event-audit-trail',toggleEventDetails);
+	uiApp.userDown('.oe-events-user-trail .close-icon-btn .oe-i', hide);
 		
 
 })(bluejay); 
@@ -2479,7 +2540,7 @@ const bluejay = (function () {
 				closeBtn = popup.querySelector('.close-icon-btn');
 		
 		hdBtn.classList.add('selected');
-		uiApp.show(popup);
+		uiApp.show(popup, 'block');
 		// the pop will overlay the Event.. add this class to push the Exam content down
 		mainEvent.classList.add('examination-search-active');
 		
@@ -2495,7 +2556,7 @@ const bluejay = (function () {
 	/*
 	Events
 	*/
-	uiApp.registerForClick(	'#js-search-in-event',	userClick );
+	uiApp.userDown(	'#js-search-in-event',	userClick );
 
 })(bluejay); 
 (function (uiApp) {
@@ -2538,7 +2599,7 @@ const bluejay = (function () {
 			this.open = true;
 			this.btn.classList.add( cssActive );
 			this.positionContent();
-			uiApp.show(this.content);
+			uiApp.show(this.content, 'block');
 			this.mouseOutHide();
 			this.closeIconBtn();
 		}	
@@ -2653,7 +2714,7 @@ const bluejay = (function () {
 	};
 
 	// Regsiter for Events
-	uiApp.registerForClick('.oe-filter-options .oe-filter-btn', ev => userClick(ev) );	
+	uiApp.userDown('.oe-filter-options .oe-filter-btn', ev => userClick(ev) );	
 	
 })(bluejay); 
 /*
@@ -2692,7 +2753,7 @@ Updated to Vanilla JS for IDG
 	const _updateStack = () => ({
 		updateStack: function(stackID){
 			uiApp.hide(document.querySelector(this.stackPrefix + this.currentStack));
-			uiApp.show(document.querySelector(this.stackPrefix + stackID));
+			uiApp.show(document.querySelector(this.stackPrefix + stackID), 'block');
 			this.currentStack = stackID; // track id
 			this.updateCounter();
 			this.timelineIcon();
@@ -2781,12 +2842,12 @@ Updated to Vanilla JS for IDG
 	/*
 	Events	
 	*/
-	uiApp.registerForClick('#lightning-left-btn', () => app.stepThrough(-1));
-	uiApp.registerForClick('#lightning-right-btn', () => app.stepThrough(1));
-	uiApp.registerForClick('.lightning-view', () => app.swipeLock());
-	uiApp.registerForClick('.icon-event', () => app.swipeLock());
+	uiApp.userDown('#lightning-left-btn', () => app.stepThrough(-1));
+	uiApp.userDown('#lightning-right-btn', () => app.stepThrough(1));
+	uiApp.userDown('.lightning-view', () => app.swipeLock());
+	uiApp.userDown('.icon-event', () => app.swipeLock());
 	
-	uiApp.registerForHover('.icon-event', (ev) => {
+	uiApp.userEnter('.icon-event', (ev) => {
 		let icon = ev.target;
 		app.updateStack( icon.dataset.id );
 		app.updateMeta( icon.dataset.meta );
@@ -2841,7 +2902,7 @@ Updated to Vanilla JS for IDG
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssActive );
-			uiApp.show(this.content);
+			uiApp.show(this.content, 'block');
 		}	
 	});
 	
@@ -2878,7 +2939,7 @@ Updated to Vanilla JS for IDG
 	/*
 	Events 
 	*/
-	uiApp.registerForClick(selector, () => lightningFilter.change());
+	uiApp.userDown(selector, () => lightningFilter.change());
 	
 })(bluejay); 
 (function (uiApp) {
@@ -2903,10 +2964,10 @@ Updated to Vanilla JS for IDG
 		let group = document.querySelector('#js-icon-' + icon.dataset.icons);
 		if(icon.classList.contains('collapse')){
 			uiApp.hide(group);
-			uiApp.show(group.nextElementSibling);
+			uiApp.show(group.nextElementSibling, 'block');
 			icon.classList.replace('collapse','expand');
 		} else {
-			uiApp.show(group);
+			uiApp.show(group, 'block');
 			uiApp.hide(group.nextElementSibling);
 			icon.classList.replace('expand','collapse');
 		}
@@ -2915,7 +2976,7 @@ Updated to Vanilla JS for IDG
 	/*
 	Events 
 	*/
-	uiApp.registerForClick('.js-timeline-date', collapseTimeline);
+	uiApp.userDown('.js-timeline-date', collapseTimeline);
 	
 })(bluejay); 
 (function (uiApp) {
@@ -2955,7 +3016,7 @@ Updated to Vanilla JS for IDG
 	/*
 	Events
 	*/
-	uiApp.registerForClick(	'.js-expand-message',	userClick );
+	uiApp.userDown(	'.js-expand-message',	userClick );
 
 })(bluejay); 
 (function (uiApp) {
@@ -3099,7 +3160,7 @@ Updated to Vanilla JS for IDG
 		show:function(){
 			if(this.open) return;
 			this.open = true;
-			bj.show(this.content);
+			bj.show(this.content, 'block');
 			this.mouseOutHide();
 		}	
 	});
@@ -3192,8 +3253,8 @@ Updated to Vanilla JS for IDG
 	/*
 	Events
 	*/
-	bj.registerForClick(selector, () => hotlist.changeState() );			
-	bj.registerForHover(selector, () => hotlist.over() );
+	bj.userDown(selector, () => hotlist.changeState() );			
+	bj.userEnter(selector, () => hotlist.over() );
 	bj.listenForResize(checkBrowserWidth);
 	checkBrowserWidth();
 
@@ -3254,7 +3315,7 @@ Updated to Vanilla JS for IDG
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssOpen );
-			uiApp.show(this.content);
+			uiApp.show(this.content, 'block');
 			this.mouseOutHide();
 		}	
 	});
@@ -3305,9 +3366,9 @@ Updated to Vanilla JS for IDG
 	/*
 	Events
 	*/
-	uiApp.registerForClick(selector, () => oelogo.change());			
-	uiApp.registerForHover(selector, () => oelogo.over());
-	uiApp.registerForExit(selector, () => oelogo.out());
+	uiApp.userDown(selector, () => oelogo.change());			
+	uiApp.userEnter(selector, () => oelogo.over());
+	uiApp.userLeave(selector, () => oelogo.out());
 	
 
 })(bluejay); 
@@ -3345,7 +3406,7 @@ Updated to Vanilla JS for IDG
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssActive );
-			uiApp.show(this.content);
+			uiApp.show(this.content, 'block');
 			this.mouseOutHide();
 		}	
 	});
@@ -3393,8 +3454,8 @@ Updated to Vanilla JS for IDG
 	/*
 	Events 
 	*/
-	uiApp.registerForClick(selector, () => shortcuts.change() );			
-	uiApp.registerForHover(selector, () => shortcuts.show() );
+	uiApp.userDown(selector, () => shortcuts.change() );			
+	uiApp.userEnter(selector, () => shortcuts.show() );
 	
 
 })(bluejay); 
@@ -3432,7 +3493,7 @@ Updated to Vanilla JS for IDG
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssActive );
-			uiApp.show(this.content);
+			uiApp.show(this.content, 'block');
 			this.mouseOutHide();
 		}	
 	});
@@ -3480,8 +3541,8 @@ Updated to Vanilla JS for IDG
 	/*
 	Events 
 	*/
-	uiApp.registerForClick(selector, () => shortlists.change() );			
-	uiApp.registerForHover(selector, () => shortlists.show() );
+	uiApp.userDown(selector, () => shortlists.change() );			
+	uiApp.userEnter(selector, () => shortlists.show() );
 	
 
 })(bluejay); 
@@ -3503,7 +3564,7 @@ Updated to Vanilla JS for IDG
 	*/
 	if(document.querySelector('.oe-login') !== null){
 		uiApp.hide(shortInfo);
-		uiApp.show(longInfo);
+		uiApp.show(longInfo, 'block');
 		document.querySelector(selector).style.display = "none";	
 		return; // exit!
 	}
@@ -3538,11 +3599,127 @@ Updated to Vanilla JS for IDG
 		showHide(defaultDisplay,otherDisplay);
 	};
 	
-	uiApp.registerForHover(	selector,	() => showHide(otherDisplay,defaultDisplay) );
-	uiApp.registerForExit(	selector,	() => showHide(defaultDisplay,otherDisplay) );	
-	uiApp.registerForClick(	selector,	changeDefault );
+	uiApp.userEnter(	selector,	() => showHide(otherDisplay,defaultDisplay) );
+	uiApp.userLeave(	selector,	() => showHide(defaultDisplay,otherDisplay) );	
+	uiApp.userDown(	selector,	changeDefault );
 
 })(bluejay); 
+(function( bj ) {
+	
+	'use strict';
+	
+	bj.addModule('oesLayoutOptions'); 
+	
+	const dataLayoutElem = document.querySelector('.oes-hd-data-layout');
+	if( dataLayoutElem == null ) return; // DOM check
+	
+	/** 
+	* Model
+	*/	
+	const model = Object.assign( bj.ModelViews(), { 
+		selector: {
+			root: 		'.oes-hd-data-layout',
+			btn: 		'.oes-hd-data-layout .layout-select-btn',
+			optionBtn: 	'.oes-hd-data-layout .option-btn',
+			options: 	'.layout-options',
+		},
+		side: dataLayoutElem.dataset.eye,
+		layout:dataLayoutElem.dataset.layout, 
+		changed(){
+			this.views.notify();
+		} 		
+	});
+	
+	/**
+	* Build eye and layout options and insert for user selection
+	*/
+	const buildOptions = (() => {
+		// Mustache template
+		const template = [
+			'{{#sides}}',
+			'<div class="option-btn" data-oes=\'{"opt":"eye.{{eyelat.r}}-{{eyelat.l}}"}\'><span class="oe-eye-lat-icons"><i class="oe-i laterality {{eyelat.r}} small"></i><i class="oe-i laterality {{eyelat.l}} small"></i></span></div>',
+			'{{/sides}}',
+			'{{#layouts}}',
+			'<div class="option-btn" data-oes=\'{"opt":"layout.{{.}}}"}\'><i class="oes-layout-icon i-{{.}}"></i></div>',
+			'{{/layouts}}',
+		].join('');
+		
+		// build layout DOM
+		const div = document.createElement('div');
+		div.className = model.selector.options.replace('.','');
+		div.innerHTML = Mustache.render( template, {
+			'sides' : [
+				{ eyelat: { r:'R', l:'NA'}},
+				{ eyelat: { r:'R', l:'L'}},
+				{ eyelat: { r:'NA', l:'L'}}
+			],
+			'layouts' : ['1-0', '2-1', '1-1', '1-2', '0-1'], 
+		} );
+		
+		bj.hide( div );
+		dataLayoutElem.appendChild( div );
+		
+	})();
+	
+
+	/** 
+	* Views
+	*/
+	const layout = (() => {
+		// observer model changes
+		const update = () => {
+			console.log('Model updated');
+		};
+		
+		model.views.add( update );
+		
+	})();
+	
+	// Data and Layout options bar
+	const options = (() => {
+		
+		let showing = false;
+		const btn = dataLayoutElem.querySelector(  model.selector.btn );
+		const elem = dataLayoutElem.querySelector( model.selector.options );
+		
+		/**
+		* Event callbacks
+		*/
+		const show = ( ev ) => {
+			showing = true;
+			bj.show( elem); 
+			btn.classList.add('active'); 
+		};
+		
+		const hide = ( ev ) => {
+			showing = false;
+			bj.hide( elem );
+			btn.classList.remove('active'); 
+		}; 
+		
+		const change = ( ev ) => {
+			if( showing ){
+				hide();
+			} else {
+				show();
+			}
+		};
+		
+		// public
+		return { show, hide, change };
+			
+	})();
+
+	
+	/**
+	* Events
+	*/
+	bj.userDown( model.selector.btn, options.change );
+	bj.userEnter( model.selector.btn, options.show );
+	bj.userLeave( model.selector.root , options.hide );
+	
+	
+})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';
@@ -3592,7 +3769,7 @@ Updated to Vanilla JS for IDG
 		};
 		
 		// register Events
-		uiApp.registerForClick(id,showPopup);
+		uiApp.userDown(id,showPopup);
 	};
 	
 	/*
@@ -3653,7 +3830,7 @@ Updated to Vanilla JS for IDG
 	};
 	
 	
-	uiApp.registerForClick('.js-idg-demo-popup-json', showPopup);
+	uiApp.userDown('.js-idg-demo-popup-json', showPopup);
 			
 })(bluejay); 
 (function (uiApp) {
@@ -3908,10 +4085,10 @@ Updated to Vanilla JS for IDG
 	/*
 	Events 
 	*/
-	uiApp.registerForClick(selector,userClick);
-	uiApp.registerForHover(selector,userHover);
-	uiApp.registerForExit(selector,userOut);
-	uiApp.registerForClick('.oe-pathstep-popup .close-icon-btn .oe-i',hide);
+	uiApp.userDown(selector,userClick);
+	uiApp.userEnter(selector,userHover);
+	uiApp.userLeave(selector,userOut);
+	uiApp.userDown('.oe-pathstep-popup .close-icon-btn .oe-i',hide);
 		
 })(bluejay); 
 (function (uiApp) {
@@ -3983,7 +4160,7 @@ Updated to Vanilla JS for IDG
 			this.open = true;
 			hideOtherPopups(this);
 			this.btn.classList.add( cssOpen );
-			uiApp.show(this.content);
+			uiApp.show(this.content, 'block');
 		}	
 	});
 	
@@ -4060,10 +4237,10 @@ Updated to Vanilla JS for IDG
 				btn: btn,
 				content: document.querySelector(item.content) 
 			});					
-			uiApp.registerForClick(item.btn, () => popup.change());
-			uiApp.registerForHover(item.btn, () => popup.over());
-			uiApp.registerForExit(item.btn, (e) => popup.out(e));
-			uiApp.registerForExit(item.content, (e) => popup.out(e));
+			uiApp.userDown(item.btn, () => popup.change());
+			uiApp.userEnter(item.btn, () => popup.over());
+			uiApp.userLeave(item.btn, (e) => popup.out(e));
+			uiApp.userLeave(item.content, (e) => popup.out(e));
 			item.popup = popup; // store.
 		}	
 	});
@@ -4126,7 +4303,7 @@ Updated to Vanilla JS for IDG
 		// is click to fix open?
 		if(currentIcon === icon && open){
 			fixed = true;
-			uiApp.show(closeBtn);
+			uiApp.show(closeBtn, 'block');
 			return;
 		}
 		
@@ -4192,7 +4369,7 @@ Updated to Vanilla JS for IDG
 		let spinnerID = setTimeout( () => content.innerHTML = '<i class="spinner"></i>', 400);	
 		
 		if(clicked){
-			uiApp.show(closeBtn);
+			uiApp.show(closeBtn, 'block');
 		} else {
 			uiApp.hide(closeBtn);
 		}
@@ -4242,10 +4419,10 @@ Updated to Vanilla JS for IDG
 	};
 	
 
-	uiApp.registerForClick('.js-patient-quick-overview',userClick);
-	uiApp.registerForHover('.js-patient-quick-overview',userHover);
-	uiApp.registerForExit('.js-patient-quick-overview',userOut);
-	uiApp.registerForClick('.oe-patient-quick-overview .close-icon-btn .oe-i',hide);
+	uiApp.userDown('.js-patient-quick-overview',userClick);
+	uiApp.userEnter('.js-patient-quick-overview',userHover);
+	uiApp.userLeave('.js-patient-quick-overview',userOut);
+	uiApp.userDown('.oe-patient-quick-overview .close-icon-btn .oe-i',hide);
 	
 	// innerWidth forces a reflow, only update when necessary
 	uiApp.listenForResize(() => winHeight = window.inneHeight );
@@ -4285,7 +4462,7 @@ Updated to Vanilla JS for IDG
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssActive );
-			uiApp.show(this.content);
+			uiApp.show(this.content, 'block');
 			this.mouseOutHide();
 		}	
 	});
@@ -4333,8 +4510,8 @@ Updated to Vanilla JS for IDG
 	/*
 	Events 
 	*/
-	uiApp.registerForClick(selector, () => shortcuts.change() );			
-	uiApp.registerForHover(selector, () => shortcuts.show() );
+	uiApp.userDown(selector, () => shortcuts.change() );			
+	uiApp.userEnter(selector, () => shortcuts.show() );
 	
 
 })(bluejay); 
@@ -4505,7 +4682,7 @@ Updated to Vanilla JS for IDG
 	};
 
 	// Regsiter for Events
-	uiApp.registerForClick('.pro-view-btn', userClick);
+	uiApp.userDown('.pro-view-btn', userClick);
 
 
 })(bluejay); 
@@ -4671,8 +4848,8 @@ Updated to Vanilla JS for IDG
 	/* 
 	Events
 	*/
-	uiApp.registerForClick('.create-new-problem-plan button', addListItem);
-	uiApp.registerForClick('.problems-plans-sortable .remove-circle', removeListItem);
+	uiApp.userDown('.create-new-problem-plan button', addListItem);
+	uiApp.userDown('.problems-plans-sortable .remove-circle', removeListItem);
 	
 	document.addEventListener('DOMContentLoaded', () => {
 		pps.forEach((list)=>{
@@ -4832,7 +5009,7 @@ Updated to Vanilla JS for IDG
 		}
 	};
 
-	uiApp.registerForClick('.element .js-elem-reduce .oe-i', userClick );
+	uiApp.userDown('.element .js-elem-reduce .oe-i', userClick );
 	
 })(bluejay); 
 (function (uiApp) {
@@ -4966,7 +5143,7 @@ Updated to Vanilla JS for IDG
 	init();
 	
 	// register Events
-	uiApp.registerForClick('.' + css.flag, userClicksFlag);
+	uiApp.userDown('.' + css.flag, userClicksFlag);
 	
 	
 })(bluejay); 
@@ -4999,7 +5176,7 @@ Updated to Vanilla JS for IDG
 			allListsDisplay('block');
 		} else {
 			allListsDisplay('none');
-			uiApp.show(document.querySelector('#'+listID));
+			uiApp.show(document.querySelector('#'+listID), 'block');
 		}
 	};
 	
@@ -5101,7 +5278,7 @@ Updated to Vanilla JS for IDG
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssActive );
-			uiApp.show(this.content);
+			uiApp.show(this.content, 'block');
 			this.mouseOutHide();
 		}	
 	});
@@ -5149,8 +5326,8 @@ Updated to Vanilla JS for IDG
 	/*
 	Events 
 	*/
-	uiApp.registerForClick(selector, () => eventFilter.change() );			
-	uiApp.registerForHover(selector, () => eventFilter.show() );
+	uiApp.userDown(selector, () => eventFilter.change() );			
+	uiApp.userEnter(selector, () => eventFilter.show() );
 
 	
 })(bluejay); 
@@ -5271,10 +5448,10 @@ Updated to Vanilla JS for IDG
 	/*
 	Events 
 	*/
-	uiApp.registerForHover('.event .event-type', (ev) => {	showQuickLook(ev.target);
+	uiApp.userEnter('.event .event-type', (ev) => {	showQuickLook(ev.target);
 															quickView.show(ev.target);	});	
 																				
-	uiApp.registerForExit('.event .event-type', (ev) => {	hideQuickLook(); 
+	uiApp.userLeave('.event .event-type', (ev) => {	hideQuickLook(); 
 															quickView.hide();	});
 	
 	/*
@@ -5416,13 +5593,13 @@ Updated to Vanilla JS for IDG
 			uiApp.hide(scratchPad);
 			btn.textContent = 'ScratchPad';
 		} else {
-			uiApp.show(scratchPad);
+			uiApp.show(scratchPad, 'block');
 			btn.textContent = 'Hide ScratchPad';
 		}
 		show = !show;		
 	};
 	
-	uiApp.registerForClick('#js-vc-scratchpad', change );
+	uiApp.userDown('#js-vc-scratchpad', change );
 
 
 })(bluejay); 
@@ -5459,10 +5636,10 @@ Updated to Vanilla JS for IDG
 		}
 	};
 	
-	uiApp.registerForClick('#js-wb3-openclose-actions', openClosePanel);
+	uiApp.userDown('#js-wb3-openclose-actions', openClosePanel);
 	
 	// provide a way to click around the whiteboard demos:		
-	uiApp.registerForClick('.wb-idg-demo-btn',(ev) => {
+	uiApp.userDown('.wb-idg-demo-btn',(ev) => {
 		window.location = '/v3-whiteboard/' + ev.target.dataset.url;
 	});
 	
@@ -5470,7 +5647,7 @@ Updated to Vanilla JS for IDG
 	Standard
 	Demo the editible text concept
 	*/
-	uiApp.registerForClick('.edit-widget-btn .oe-i', (ev) => {
+	uiApp.userDown('.edit-widget-btn .oe-i', (ev) => {
 		// check the state.
 		let oei = ev.target;
 		let widget = uiApp.getParent(oei, '.oe-wb-widget');
@@ -5480,11 +5657,11 @@ Updated to Vanilla JS for IDG
 		if(oei.classList.contains('pencil')){
 			oei.classList.replace('pencil','tick');
 			uiApp.hide(view);
-			uiApp.show(edit);
+			uiApp.show(edit, 'block');
 		} else {
 			oei.classList.replace('tick','pencil');
 			uiApp.hide(edit);
-			uiApp.show(view);
+			uiApp.show(view, 'block');
 		}
 	});
 
@@ -5512,8 +5689,8 @@ Updated to Vanilla JS for IDG
 		stack.scrollTop = scrollPos; // uses CSS scroll behaviour
 	};
 
-	uiApp.registerForClick('#js-scroll-btn-down', () => scrollJump(200) );
-	uiApp.registerForClick('#js-scroll-btn-up', () => scrollJump(-200) );
+	uiApp.userDown('#js-scroll-btn-down', () => scrollJump(200) );
+	uiApp.userDown('#js-scroll-btn-up', () => scrollJump(-200) );
 	
 	let pageJump = document.querySelector('.page-jump');
 	
@@ -5525,7 +5702,7 @@ Updated to Vanilla JS for IDG
 		pageJump.appendChild(div);
 	});
 	
-	uiApp.registerForClick('.page-num-btn', (e) => {
+	uiApp.userDown('.page-num-btn', (e) => {
 		scrollPos = 0;
 		let pageScroll = parseInt(e.target.dataset.page * pageH);
 		scrollJump(pageScroll);
@@ -5775,12 +5952,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				this.hideAllOptionalLists(group.div);
 				
 				if(group.showDefaultText){
-					if(group.holder) uiApp.show(group.holder);
+					if(group.holder) uiApp.show(group.holder, 'block');
 				} else {
 					if(group.holder) uiApp.hide(group.holder);
 					// show required Lists
 					group.lists.forEach( list => {
-						uiApp.show(list);
+						uiApp.show(list, 'block');
 					});
 				}
 				
@@ -5793,7 +5970,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		this.reset = function(){
 			groups.forEach( group => {
 				this.hideAllOptionalLists(group.div);
-				if(group.holder) uiApp.show(group.holder);
+				if(group.holder) uiApp.show(group.holder, 'block');
 			});
 		};
 			
@@ -5948,7 +6125,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		this.open = function(){
 			this.position();
 			addSelect.closeAll();
-			uiApp.show(popup);
+			uiApp.show(popup, 'block');
 			
 			this.closeBtn.addEventListener('mousedown', this.close.bind(this));
 			//window.addEventListener('scroll', this.close.bind(this), {capture:true, once:true});
@@ -6009,13 +6186,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 /**
 * Last loaded
 */
-(function(bj) {
+(function( bj ) {
 
 	'use strict';
 	
 	// no need for any more extensions
 	Object.preventExtensions(bj);
 	
-	console.timeEnd('[blue] Ready');
+	// ready
+	bj.ready();
 
-})(bluejay);
+})( bluejay );

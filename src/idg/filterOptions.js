@@ -38,7 +38,7 @@
 			this.open = true;
 			this.btn.classList.add( cssActive );
 			this.positionContent();
-			uiApp.show(this.content);
+			uiApp.show(this.content, 'block');
 			this.mouseOutHide();
 			this.closeIconBtn();
 		}	
@@ -153,6 +153,6 @@
 	};
 
 	// Regsiter for Events
-	uiApp.registerForClick('.oe-filter-options .oe-filter-btn', ev => userClick(ev) );	
+	uiApp.userDown('.oe-filter-options .oe-filter-btn', ev => userClick(ev) );	
 	
 })(bluejay); 

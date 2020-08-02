@@ -52,9 +52,9 @@
 	};
 	
 
-	uiApp.registerForClick('#js-events-user-trail', show);
-	uiApp.registerForClick('.js-idg-toggle-event-audit-trail',toggleEventDetails);
-	uiApp.registerForClick('.oe-events-user-trail .close-icon-btn .oe-i', hide);
+	uiApp.userDown('#js-events-user-trail', show);
+	uiApp.userDown('.js-idg-toggle-event-audit-trail',toggleEventDetails);
+	uiApp.userDown('.oe-events-user-trail .close-icon-btn .oe-i', hide);
 		
 
 })(bluejay); 

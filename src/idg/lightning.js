@@ -34,7 +34,7 @@ Updated to Vanilla JS for IDG
 	const _updateStack = () => ({
 		updateStack: function(stackID){
 			uiApp.hide(document.querySelector(this.stackPrefix + this.currentStack));
-			uiApp.show(document.querySelector(this.stackPrefix + stackID));
+			uiApp.show(document.querySelector(this.stackPrefix + stackID), 'block');
 			this.currentStack = stackID; // track id
 			this.updateCounter();
 			this.timelineIcon();
@@ -123,12 +123,12 @@ Updated to Vanilla JS for IDG
 	/*
 	Events	
 	*/
-	uiApp.registerForClick('#lightning-left-btn', () => app.stepThrough(-1));
-	uiApp.registerForClick('#lightning-right-btn', () => app.stepThrough(1));
-	uiApp.registerForClick('.lightning-view', () => app.swipeLock());
-	uiApp.registerForClick('.icon-event', () => app.swipeLock());
+	uiApp.userDown('#lightning-left-btn', () => app.stepThrough(-1));
+	uiApp.userDown('#lightning-right-btn', () => app.stepThrough(1));
+	uiApp.userDown('.lightning-view', () => app.swipeLock());
+	uiApp.userDown('.icon-event', () => app.swipeLock());
 	
-	uiApp.registerForHover('.icon-event', (ev) => {
+	uiApp.userEnter('.icon-event', (ev) => {
 		let icon = ev.target;
 		app.updateStack( icon.dataset.id );
 		app.updateMeta( icon.dataset.meta );
