@@ -9,19 +9,16 @@
 	/**
 	* Create Custom Event
 	* @param {string} eventType
-	* @param {Object}
+	* @param {String} details
 	*/
 	const myEvent = ( eventType, eventDetail ) => {
-		/*
-		Create unique prefix & dispatch 
-		*/
+	
+		bluejay.log('[Custom Event] - "'+eventType+'"');
+		
 		const event = new CustomEvent(eventType, {detail: eventDetail});
 		document.dispatchEvent(event);
-		
-		// DEBUG
-		// bluejay.log('[Custom Event] - "'+eventType+'"');
 	};
 		
-	bj.extend('bjEvent', myEvent);	
+	bj.extend('customEvent', myEvent);	
 	
 })( bluejay );
