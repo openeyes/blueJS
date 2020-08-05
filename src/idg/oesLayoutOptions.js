@@ -68,9 +68,9 @@
 		div.className = model.selector.options.replace('.','');
 		div.innerHTML = Mustache.render( template, {
 			'sides' : [
-				{ eyelat: { r:'R', l:'NA'}},
+				//{ eyelat: { r:'R', l:'NA'}},
 				{ eyelat: { r:'R', l:'L'}},
-				{ eyelat: { r:'NA', l:'L'}}
+				//{ eyelat: { r:'NA', l:'L'}}
 			],
 			'layouts' : ['1-0', '2-1', '1-1', '1-2', '0-1'], 
 		} );
