@@ -179,7 +179,7 @@
 		});
 	};
 	
-	// PHP loads for it's demo
+	// PHP requests the demo
 	bj.extend('demoOESMedicalRetina', init);	
 		
 })( bluejay ); 

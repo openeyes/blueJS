@@ -1,31 +1,40 @@
 /*
-blueJS OE UI JS (JS) - Gulp generates:
-- blueJS.min.js
-- blueJS.idg.js	// read-able + de-bugging 
+blueJay OE UI JS (JS) - Gulp generates:
+- oeblue_js.js
+- oeblue_js.min.js
 */
 
 const config = {
 	jsPrefix:	'oeblue_js',
 }
 
+/*
+Modules
+*/
+const bjReady = ['./src/app/_last/ready.js'];  // Ready state loaded last 
+
+const baseModules = [
+	'./src/polyfills/*.js',		// to ensure concat order is correct
+	'./src/app/app.js',			// load in the app file first
+	'./src/app/*.js',			// other app parts, then modules... 
+	'./src/openeyes/**/*.js',   // OE modules
+	'./src/oePlotly/_oePlotly.js',	// oePlotly moved from newblue
+	'./src/oePlotly/*.js'
+];
+
 const paths = {
+	// builds: for OpenEyes
 	js: {	
-		input: [	'./src/polyfills/*.js',		// to ensure concat order is correct
-					'./src/app/app.js',			// load in the app file first
-					'./src/app/*.js',			// other app parts, then modules... 
-					'./src/openeyes/**/*.js',
-					'./src/app/_last/ready.js'], // Ready state loaded last 
+		input: baseModules.concat( bjReady ), // Ready state loaded last 
 		output:	'./dist/',
 	},
+	// builds: for IDG
 	idgDev: {
-		input:	[	'./src/polyfills/*.js',		// to ensure concat order is correct
-					'./src/app/app.js',			// load in the app file first
-					'./src/app/*.js',			// other app parts, then modules... 
-					'./src/openeyes/**/*.js',	// UI Modules for use in OE
-					'./src/idg/**/*.js',		// IDG only modules - NOT for OE (yet)
-					'./src/add-select-insert/_init.js',
-					'./src/add-select-insert/*.js',
-					'./src/app/_last/ready.js'], // Ready state loaded last 
+		input: baseModules.concat([
+			'./src/idg/**/*.js',	// IDG only modules - NOT for OE (yet)
+			'./src/add-select-insert/_init.js',
+			'./src/add-select-insert/*.js'
+			], bjReady ),
 		output:	'./idg-dev/',
 	}
 };
