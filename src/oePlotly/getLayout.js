@@ -14,20 +14,21 @@
 		legend: true, 			// Required {Boolean}
 		titleX: false, 			// Optional {String}
 		titleY: false, 			// Optional {String}
-		numTicksX: 20, 			// Required {Number}
-		numTicksY: 20, 			// Required	{Number}
+		numTicksX: 20, 			// Optional {Number}
+		numTicksY: 20, 			// Optional	{Number}
 		rangeX: false, 			// Optional {Array} e.g. [0, 100]
 		rangeY: false, 			// Optional {Array} e.g. [0, 100]
 		useCategories: 			// Optional {Object} e.g. {showAll:true, categoryarray:[]}
 		y2: false,				// Optional {Object} e.g {title: "y2 title", range: [0, 100], useCategories: {showAll:true, categoryarray:[]}}
 		rangeslider: false,		// Optional {Boolean}
-		zoom: false, 			// Optional {Boolean}
+		zoom: true, 			// Optional {Boolean}
 		subplot: false,			// Optional {Boolean}
 		domain: false, 			// Optional {Array} e.g. [0, 0.75] (if subplot)
 		spikes: false, 			// Optional {Boolean} 
+		vLineMarker: false		// Optional {Boolean} or Array of objects e.g. [{x:x, y:1, name:"name"}]
 	}
 	*/
-	oePlotly.getLayout = function(options){
+	oePlotly.getLayout = function( options ){
 		// set up layout colours based on OE theme settings: "dark" or "light"
 		const dark = oePlotly.isDarkTheme( options.theme );
 		
@@ -37,10 +38,10 @@
 			autosize:true, // onResize change chart size
 			margin: {
 				l:60, // 80 default, if Y axis has a title this will need more
-				r:60, // change if y2 axis is added
+				r:60, // change if y2 axis is added (see below)
 				t:30, // if there is a title will need upping to 60
 				b:80, // allow for xaxis title
-				pad:5, // px between plotting area and the axis lines
+				pad:4, // px between plotting area and the axis lines
 				autoexpand:true, // auto margin expansion computations
 			},
 			// Paper = chart area. Set at opacity 0.5 for both, to hide the 'paper' set to: 0
@@ -52,7 +53,7 @@
 			// base font settings
 			font: {
 				family: "Roboto, 'Open Sans', verdana, arial, sans-serif",
-				size: dark ? 11 : 13,
+				size: 11,
 				color: dark ? '#aaa' : '#333',
 			},
 			
@@ -75,8 +76,8 @@
 				bgcolor: dark ? "#003" : '#fff',
 				bordercolor: dark ? '#003' : '#00f',
 				font: {
-					size:11, // override base font
-					color: dark ? oePlotly.getElectricBlue() : '#00f',
+					size: 11, // override base font
+					color: oePlotly.getBlue( dark ),
 				}
 			},
 			
@@ -100,9 +101,9 @@
 				xref: 'paper', //  "container" | "paper" (as in, align too)
 				yref: 'container', 
 				x: 0, // 0 - 1
-				y: 0.96,
+				y: 0.97,
 				font: {
-					size:dark ? 15 : 17,
+					size: 15,
 					// color:'#f00' - can override base font
 				}, 		
 			};
@@ -124,10 +125,10 @@
 		}
 
 		// set up X & Y axis
-		layout.xaxis = Object.assign({},axis); 
+		layout.xaxis = Object.assign({}, axis); 
 		layout.xaxis.nticks = options.numTicksX;
 		
-		layout.yaxis = Object.assign({},axis); 
+		layout.yaxis = Object.assign({} ,axis); 
 		layout.yaxis.nticks = options.numTicksY;
 		
 		// turn off zoom?
@@ -166,7 +167,7 @@
 				text: options.titleX,
 				standoff:20, // px offset 
 				font: {
-					size:dark ? 12 : 13,
+					size: 12,
 				}
 			};
 		}
@@ -176,7 +177,7 @@
 				text: options.titleY,
 				standoff: 15, // px offset 
 				font: {
-					size:dark ? 12 : 13,
+					size: 12,
 				}
 			};
 			// make space for Y title
@@ -208,7 +209,7 @@
 					text: options.y2.title,
 					standoff: 15, // px offset 
 					font: {
-						size:dark ? 12 : 13,
+						size: 12,
 					}
 				};
 				// make space for Y title
@@ -231,6 +232,111 @@
 				layout.yaxis2.domain = options.domain;
 			}
 		}
+		
+		
+		/*
+		Shapes and Annotations! 
+		*/
+		
+		let layoutShapes = [];
+		let layoutAnnotate = [];
+		
+		/*
+		Vertical marker line
+		{array} = [{x:x, y:1, name:"name"}]
+		*/
+		if(options.vLineMarker){
+			// vLineMarker must be an array of objects
+			
+			const shape = ( my, index ) => {
+				return {
+			      type: 'line',
+			      layer: 'below', // or "below"
+			      yref: 'paper', // this means y & y0 are ratios of area (paper)
+			      x0: my.x,
+			      y0: 0,
+			      x1: my.x,
+			      y1: my.y,
+			      line: {
+			        color: oePlotly.getBlue( dark ),
+			        width: 1,
+					dash:"3px,1px",
+			      }
+			    };
+			}; 
+			const annotate = ( my, index ) => {
+				return {
+				   showarrow: false,
+				   text: my.name,
+				   textangle: 90,
+				   align: "left",
+				   font: {
+					   color: oePlotly.getBlue( dark )
+				   },
+				   borderpad: 2,
+				   x: my.x,
+				   xshift: 8, // shift over so label isnt' on line? 
+				   yref: "paper", // this means y is ratio of area (paper)
+				   y: my.y 
+			    };
+			}; 
+			
+			// Add verticals
+			layoutShapes = layoutShapes.concat( options.vLineMarker.map( shape ));
+		    layoutAnnotate = layoutAnnotate.concat( options.vLineMarker.map( annotate ));
+		}
+		
+		/*
+		Horizontal marker line
+		{array} = [{ axis:'y3', y:15, name: "Target IOP"}]
+		*/
+		if(options.hLineMarker){
+			
+			// expecting an array of objects here
+			const shape = ( my, index ) => {
+				return {
+			      type: 'line',
+			      layer: 'below', // or "below"
+			      xref: "paper", // this means x & x0 are ratios of area (paper)
+			      yref: my.axis, 
+			      x0: 0,
+			      y0: my.y,
+			      x1: 1,
+			      y1: my.y,
+			      line: {
+			        color: oePlotly.getBlue( dark ),
+			        width: 2,
+			        dash:"3px,9px",
+			      }
+			    };
+			}; 
+			const annotate = ( my, index ) => {
+				return {
+				   showarrow: false,
+				   text: my.name,
+				   align: "left",
+				   font: {
+					   color: oePlotly.getBlue( dark )
+				   },
+				   borderpad: 2,
+				   xref: "paper",
+				   x:0,
+				   yshift: 8, // shift over so label isnt' on line? 
+				   yref: my.axis, // this means y is ratio of area (paper)
+				   y: my.y 
+			    };
+			}; 
+			
+			// Add horizontals
+			layoutShapes = layoutShapes.concat( options.hLineMarker.map( shape ));
+		    layoutAnnotate = layoutAnnotate.concat( options.hLineMarker.map( annotate ));
+		}
+		
+		// update layout
+		layout.shapes = layoutShapes;
+		layout.annotations = layoutAnnotate;
+		
+		
 		
 		// add range slider
 		if(options.rangeslider){

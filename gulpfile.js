@@ -14,12 +14,12 @@ Modules
 const bjReady = ['./src/app/_last/ready.js'];  // Ready state loaded last 
 
 const baseModules = [
-	'./src/polyfills/*.js',		// to ensure concat order is correct
-	'./src/app/app.js',			// load in the app file first
-	'./src/app/*.js',			// other app parts, then modules... 
-	'./src/openeyes/**/*.js',   // OE modules
+	'./src/polyfills/*.js',			// to ensure concat order is correct
+	'./src/app/app.js',				// load in the app file first
+	'./src/app/*.js',				// other app parts, then modules... 
 	'./src/oePlotly/_oePlotly.js',	// oePlotly moved from newblue
-	'./src/oePlotly/*.js'
+	'./src/oePlotly/**/*.js',		
+	'./src/openeyes/**/*.js',   	// OE distribution modules
 ];
 
 const paths = {

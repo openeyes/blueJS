@@ -2,10 +2,9 @@
 
 	'use strict';
 	
-	/*
-	Demo init from PHP
+	/**
+	* Data for IDG demo
 	*/
-	
 	const dataTraces = ( eye ) => {
 		
 		const rightVA = {
@@ -14,7 +13,8 @@
 			yaxis: 'y2',
 			name: 'VA',		
 			hovertemplate: 'Snellen Metre: %{y}<br>%{x}',
-			type: 'scatter'
+			type: 'scatter',
+			mode: 'lines+markers',
 		};
 		
 		const rightCRT = {
@@ -23,7 +23,8 @@
 			name: 'CRT',
 			line: oePlotly.dashedLine(),		
 			hovertemplate: 'CRT: %{y}<br>%{x}',
-			type: 'scatter'
+			type: 'scatter',
+			mode: 'lines+markers',
 		};
 		
 		const rightOCT = {
@@ -33,7 +34,8 @@
 			yaxis: 'y3',
 			hovertemplate: '%{y}<br>%{x}',
 			type: 'scatter', 
-			mode: 'markers'
+			mode: 'markers',
+			marker: oePlotly.markerFor('image')
 		};
 		
 		const rightLucentis = {
@@ -43,7 +45,8 @@
 			yaxis: 'y3',
 			hovertemplate: '%{y}<br>%{x}',
 			type: 'scatter', 
-			mode: 'markers'
+			mode: 'markers',
+			marker: oePlotly.markerFor('drug')
 		};
 		
 		const rightEylea = {
@@ -53,7 +56,8 @@
 			yaxis: 'y3',
 			hovertemplate: '%{y}<br>%{x}',
 			type: 'scatter', 
-			mode: 'markers'
+			mode: 'markers',
+			marker: oePlotly.markerFor('drug')
 		};
 		
 		// Left 
@@ -83,7 +87,8 @@
 			yaxis: 'y3',
 			hovertemplate: '%{y}<br>%{x}',
 			type: 'scatter', 
-			mode: 'markers'
+			mode: 'markers',
+			marker: oePlotly.markerFor('image')
 		};
 		
 		// return array depending on request
@@ -94,13 +99,16 @@
 		}		
 	};
 	
-	const buildRightLayout = () => {
+	/**
+	* Build Layout object
+	*/
+	const buildRightLayout = ( title, colours ) => {
 		// layout 
 		return oePlotly.getLayout({
 			theme: window.oeThemeMode, 
 			legend: false,
-			colors: 'rightEye',
-			plotTitle: 'Right Eye',
+			colors: colours,
+			plotTitle: title,
 			titleY: 'CRT (µm)', 
 			numTicksX: 10,
 			numTicksY: 20,
@@ -120,62 +128,64 @@
 		});
 	};
 	
-	const init = () => {
-		const dataR = dataTraces('right');
-		const dataL = dataTraces('left');
-		const layoutR = buildRightLayout();
+	/**
+	* Build DIV
+	*/
+	const buildDiv = ( id ) => {
+		const div = document.createElement('div');
+		div.id = id;
+		div.style.height = "calc(100vh - 150px)";
+		div.style.minHeight = "450px";
 		
-		// left Layout is almost identical to Right
-		let layoutL = Object.assign( {}, layoutR );
-		
-		// oePlotly can modify key properities
-		oePlotly.changeTitle( layoutL, 'Left Eye');
-		oePlotly.changeColorSeries( layoutL, 'leftEye', window.oeThemeMode); 
+		return div;
+	};
 	
+	/**
+	* init demo - needs to be called from the PHP page that needs it
+	*/
+	const init = () => {
+		const rightEyeData = dataTraces('right');
+		const leftEyeData = dataTraces('left');
+		const rightEyeLayout = buildRightLayout( 'Right Eye', 'rightEye' );
+		const leftEyeLayout = buildRightLayout( 'Left Eye', 'leftEye' );
+		
 		/*
-		yAxis for subplots
+		yAxis for subplot
 		*/
 		// build yaxis for subplot 
 		let yaxis3 = { domain: [0.8, 1] };
 		yaxis3 = oePlotly.makeCategoryAxis(yaxis3, ['OCT', 'Lucentis', 'Eylea', 'Letters lost'].reverse(), true);
+		
+		// add to the layouts
+		rightEyeLayout.yaxis3 = oePlotly.defaultAxis( yaxis3, window.oeThemeMode);  
+		leftEyeLayout.yaxis3 = oePlotly.defaultAxis( yaxis3, window.oeThemeMode);
 
-		// add to layouts
-		layoutR.yaxis3 = oePlotly.defaultAxis( yaxis3, window.oeThemeMode);
-		layoutL.yaxis3 = oePlotly.defaultAxis( yaxis3, window.oeThemeMode);
-		
-
-		// build <div> for Plotly
-		const leftDiv = document.createElement('div');
-		leftDiv.id = 'idgPlotlyLeft1';
-		leftDiv.style.height = "calc(100vh - 150px)";
-		leftDiv.style.minHeight = "450px";
-		
-		const rightDiv = document.createElement('div');
-		rightDiv.id = 'idgPlotlyLeft1';
-		rightDiv.style.height = "calc(100vh - 150px)";
-		rightDiv.style.minHeight = "450px";
-		
+		/*
+		build <div> for Plotly
+		*/
+		const leftDiv = buildDiv('idgPlotlyLeft');		
+		const rightDiv = buildDiv('idgPlotlyRight');	
 		document.querySelector('.oes-left-side').appendChild( leftDiv );
 		document.querySelector('.oes-right-side').appendChild( rightDiv );
 		
 		Plotly.newPlot(
 			leftDiv, 
-			dataR, 
-			layoutR, 
+			rightEyeData, 
+			rightEyeLayout, 
 			{ displayModeBar: false, responsive: true }
 		);
 		
 		Plotly.newPlot(
 			rightDiv, 
-			dataL, 
-			layoutL, 
+			leftEyeData, 
+			leftEyeLayout, 
 			{ displayModeBar: false, responsive: true }
 		);
 
 		// bluejay custom event (user changes layout)
 		document.addEventListener('oesLayoutChange', () => {
-			Plotly.relayout(leftDiv, layoutR);
-			Plotly.relayout(rightDiv, layoutL);
+			Plotly.relayout(leftDiv, rightEyeLayout);
+			Plotly.relayout(rightDiv, leftEyeLayout);
 		});
 	};
 	
