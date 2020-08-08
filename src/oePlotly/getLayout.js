@@ -6,26 +6,19 @@
 	* Build Plotly layout: colours and layout based on theme and standardised settings
 	* @param {Object} options - quick reminder of 'options':
 	* @returns {Object} layout themed for Plot.ly
-	* All options...
+	*
+	Options:
 	{
-		theme: "dark",  		// OE Theme  
+		theme: "dark",  		// Required {String} OE Theme  
+		legend: true, 			// Required {Boolean}
 		colors: 'varied', 		// Optional {String} varied" or "twoPosNeg" or "rightEye" (defaults to "blues")
 		plotTitle: false, 		// Optional {String}
-		legend: true, 			// Required {Boolean}
-		titleX: false, 			// Optional {String}
-		titleY: false, 			// Optional {String}
-		numTicksX: 20, 			// Optional {Number}
-		numTicksY: 20, 			// Optional	{Number}
-		rangeX: false, 			// Optional {Array} e.g. [0, 100]
-		rangeY: false, 			// Optional {Array} e.g. [0, 100]
-		useCategories: 			// Optional {Object} e.g. {showAll:true, categoryarray:[]}
-		y2: false,				// Optional {Object} e.g {title: "y2 title", range: [0, 100], useCategories: {showAll:true, categoryarray:[]}}
+		xaxis: x1,				// Required {Object} xaxis
+		yaxes: [ y1 ],			// Required {Array} all yaxes
+		subplot: false,			// Optional {Number} number of 'rows' (number of verical plots)
+		vLineLabel: false		// Optional {Object} e.g. { x: [ ... ], h: 0.75 }
+		hLineLabel: false		// Optional {Object} e.g. { y: [ ... ], axis: 'y2' }
 		rangeslider: false,		// Optional {Boolean}
-		zoom: true, 			// Optional {Boolean}
-		subplot: false,			// Optional {Boolean}
-		domain: false, 			// Optional {Array} e.g. [0, 0.75] (if subplot)
-		spikes: false, 			// Optional {Boolean} 
-		vLineMarker: false		// Optional {Boolean} or Array of objects e.g. [{x:x, y:1, name:"name"}]
 	}
 	*/
 	oePlotly.getLayout = function( options ){
@@ -34,11 +27,12 @@
 		
 		// build the Plotly layout obj
 		let layout = {
+			isDark: dark, // store OE dark theme in layout
 			hovermode:'closest', // get single point rather than all of them
 			autosize:true, // onResize change chart size
 			margin: {
-				l:60, // 80 default, if Y axis has a title this will need more
-				r:60, // change if y2 axis is added (see below)
+				l:50, // 80 default, if Y axis has a title this will need more
+				r:50, // change if y2 axis is added (see below)
 				t:30, // if there is a title will need upping to 60
 				b:80, // allow for xaxis title
 				pad:4, // px between plotting area and the axis lines
@@ -80,11 +74,10 @@
 					color: oePlotly.getBlue( dark ),
 				}
 			},
-			
 		};
 	
 		/*
-		Colour themes!	
+		Colour theme	
 		*/ 
 		if(options.colors){
 			layout.colorway = oePlotly.getColorSeries( options.colors, dark );			
@@ -112,158 +105,53 @@
 		}
 		
 		/*
-		Axes
-		*/
-		let axis = oePlotly.defaultAxis( {}, dark );
-		
-		// spikes
-		if(options.spikes){
-			axis.showspikes = true; 
-			axis.spikecolor = dark ? '#0ff' : '#00f';
-			axis.spikethickness = dark ? 0.5 : 1;
-			axis.spikedash = dark ? "1px,3px" : "2px,3px";
-		}
-
-		// set up X & Y axis
-		layout.xaxis = Object.assign({}, axis); 
-		layout.xaxis.nticks = options.numTicksX;
-		
-		layout.yaxis = Object.assign({} ,axis); 
-		layout.yaxis.nticks = options.numTicksY;
-		
-		// turn off zoom?
-		if(options.zoom === false){
-			layout.xaxis.fixedrange = true;
-			layout.yaxis.fixedrange = true;
-		}
-		
-		// manually set axes data range
-		if(options.rangeX){
-			layout.xaxis.range = options.rangeX;
-		}
-		
-		if(options.rangeY){
-			layout.yaxis.range = options.rangeY;
-		}
-		
-		// categories (assuming this will only be used for yAxis)
-		if(options.useCategories){
-			layout.yaxis = oePlotly.makeCategoryAxis( layout.yaxis, options.useCategories.categoryarray, options.useCategories.showAll);
-		}
-		
-		// OE data formatting
-		if(options.datesOnAxis){
-			switch(options.datesOnAxis){
-				case "x": layout.xaxis.tickformat = "%e %b %Y";
-				break; 
-				case "y": layout.yaxis.tickformat = "%e %b %Y";
-				break; 
-			}	
-		}
-			
-		// add titles to Axes?
-		if(options.titleX){
-			layout.xaxis.title = {
-				text: options.titleX,
-				standoff:20, // px offset 
-				font: {
-					size: 12,
-				}
-			};
-		}
-		
-		if(options.titleY){
-			layout.yaxis.title = {
-				text: options.titleY,
-				standoff: 15, // px offset 
-				font: {
-					size: 12,
-				}
-			};
-			// make space for Y title
-			layout.margin.l = 80;
-		}
-		
-		// two Y axes? 
-		if(options.y2){
-			
-			layout.yaxis2 = Object.assign({}, axis);
-			layout.yaxis2.nticks = options.numTicksY;
-			layout.yaxis2.overlaying = 'y';
-			layout.yaxis2.side = 'right';
-			layout.yaxis2.showgrid = false;
-			
-			if(options.y2.range){
-				layout.yaxis2.range = options.y2.range; 
-			}
-			
-			// categories
-			if(options.y2.useCategories){
-				layout.yaxis2 = oePlotly.makeCategoryAxis( layout.yaxis2, options.y2.useCategories.categoryarray, options.y2.useCategories.showAll );
-			}
-
-
-			// and need a title as well??
-			if(options.y2.title){
-				layout.yaxis2.title = {
-					text: options.y2.title,
-					standoff: 15, // px offset 
-					font: {
-						size: 12,
-					}
-				};
-				// make space for Y title
-				layout.margin.r = 80;
-			}
-		}
-		
-		/*
-		Subplots (2 charts on a single plot)
+		Subplots (n charts on a single plot)
+		Assumes always vertically stacked
 		*/
 		if(options.subplot){
 			layout.grid = {
-		    	rows: 2,
+		    	rows: options.subplot,
 				columns: 1,
 				pattern: 'independent',
 			};
-			
-			layout.yaxis.domain = options.domain;
-			if(layout.yaxis2){
-				layout.yaxis2.domain = options.domain;
-			}
 		}
 		
-		
 		/*
-		Shapes and Annotations! 
+		Shapes and Annotations
 		*/
 		
-		let layoutShapes = [];
-		let layoutAnnotate = [];
+		layout.shapes = [];
+		layout.annotations = [];
 		
 		/*
 		Vertical marker line
 		{array} = [{x:x, y:1, name:"name"}]
 		*/
-		if(options.vLineMarker){
-			// vLineMarker must be an array of objects
+		if(options.vLineLabel){
 			
-			const shape = ( my, index ) => {
+			// vLineLabel must be an array of objects
+			const verticals = options.vLineLabel.x;
+			const height = options.vLineLabel.h;
+		
+			const line = ( my, index ) => {
+				console.log(my);
+				
 				return {
 			      type: 'line',
-			      layer: 'below', // or "below"
+			      layer: 'above', // or "below"
 			      yref: 'paper', // this means y & y0 are ratios of area (paper)
 			      x0: my.x,
 			      y0: 0,
 			      x1: my.x,
-			      y1: my.y,
+			      y1: height,
 			      line: {
 			        color: oePlotly.getBlue( dark ),
 			        width: 1,
-					dash:"3px,1px",
+					dash:"1px,4px",
 			      }
 			    };
 			}; 
+			
 			const annotate = ( my, index ) => {
 				return {
 				   showarrow: false,
@@ -277,28 +165,32 @@
 				   x: my.x,
 				   xshift: 8, // shift over so label isnt' on line? 
 				   yref: "paper", // this means y is ratio of area (paper)
-				   y: my.y 
+				   y: height 
 			    };
 			}; 
 			
 			// Add verticals
-			layoutShapes = layoutShapes.concat( options.vLineMarker.map( shape ));
-		    layoutAnnotate = layoutAnnotate.concat( options.vLineMarker.map( annotate ));
+			layout.shapes = layout.shapes.concat( verticals.map( line ));
+		    layout.annotations = layout.annotations.concat( verticals.map( annotate ));
 		}
 		
 		/*
 		Horizontal marker line
 		{array} = [{ axis:'y3', y:15, name: "Target IOP"}]
 		*/
-		if(options.hLineMarker){
+		if(options.hLineLabel){
+			
+			// hLineLabel must be an array of objects
+			const horizontals = options.hLineLabel.y;
+			const axis = options.hLineLabel.axis;
 			
 			// expecting an array of objects here
-			const shape = ( my, index ) => {
+			const line = ( my, index ) => {
 				return {
 			      type: 'line',
 			      layer: 'below', // or "below"
 			      xref: "paper", // this means x & x0 are ratios of area (paper)
-			      yref: my.axis, 
+			      yref: axis, // assign to a yaxis
 			      x0: 0,
 			      y0: my.y,
 			      x1: 1,
@@ -321,25 +213,47 @@
 				   borderpad: 2,
 				   xref: "paper",
 				   x:0,
-				   yshift: 8, // shift over so label isnt' on line? 
-				   yref: my.axis, // this means y is ratio of area (paper)
+				   yshift: 8, // shift over so label isnt' too close to the axis 
+				   yref: axis, // this means y is ratio of area (paper)
 				   y: my.y 
 			    };
 			}; 
 			
 			// Add horizontals
-			layoutShapes = layoutShapes.concat( options.hLineMarker.map( shape ));
-		    layoutAnnotate = layoutAnnotate.concat( options.hLineMarker.map( annotate ));
+			layout.shapes = layout.shapes.concat( horizontals.map( line ));
+		    layout.annotations = layout.annotations.concat( horizontals.map( annotate ));
 		}
 		
-		// update layout
-		layout.shapes = layoutShapes;
-		layout.annotations = layoutAnnotate;
+		/*
+		Axes
+		*/
+		if(options.xaxis){
+			layout.xaxis = options.xaxis; // only 1 axis per layout
+		}
 		
+		if(options.yaxes){
+			options.yaxes.forEach((y, index) => {
+				if( index ){
+					layout['yaxis'+(index + 1)] = y;
+				} else {
+					layout.yaxis = y;
+				}
+				
+				if( y.title ){
+					if( y.side == 'right' ){
+						layout.margin.r = 80; // make spare for Y on the right?
+					} else {
+						layout.margin.l = 80; // make space for Y title
+					}
+				}	
+			});
+		}
 		
-		
-		// add range slider
-		if(options.rangeslider){
+		/*
+		Add range slider to xaxis
+		*/
+		if(options.rangeSlider){
+			
 			if(dark){
 				// this is a pain.
 				// can't find a setting to change the slide cover color!
@@ -356,8 +270,8 @@
 					thickness: 0.1, // 0 - 1, default 0.15 (height of area)
 				};
 			}
-			// adjust the margin because it looks better:
-			layout.margin.b = 40;
+			
+			layout.margin.b = 15;
 		}
 		
 		// ok, all done

@@ -14,7 +14,7 @@ const oePlotly = (function ( bj ) {
 			green: '#65d235',
 			greenSeries: ['#65d235', '#94d712', '#36be8d', '#099f18', '#9bd727'],
 			red: '#ea2b34',
-			redSeries: ['#ea2b34','#D41C81','#F65B20','#D4341C'],
+			redSeries: ['#ea2b34','#F65B20','#D41C81','#D4341C'],
 			standard: ['#1451b3', '#175ece', '#1a69e5'],
 			varied:  ['#0a83ea', '#18949f', '#781cea','#3f0aea'],
 			dual: ['#3f0aea','#7b3131'],
