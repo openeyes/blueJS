@@ -9,46 +9,47 @@
 	*/
 	const dataTraces = ( eye ) => {
 		
+		const CRT = {
+			x: eye.CRT.x,
+			y: eye.CRT.y,
+			name: eye.CRT.name,		
+			hovertemplate: 'CRT: %{y}<br>%{x}',
+			type: 'scatter',
+			mode: 'lines+markers',
+			line: oePlotly.dashedLine(),
+		};
+		
 		const VA_SnellenMetre = {
 			x: eye.va.snellenMetre.x,
 			y: eye.va.snellenMetre.y,
-			name: eye.va.snellenMetre.name,		
+			name: eye.va.snellenMetre.name,	
+			yaxis: 'y2',	
 			hovertemplate: 'Snellen Metre: %{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
 		};
 		
-		const IOP = {
-			x: eye.IOP.x,
-			y: eye.IOP.y,
-			name: eye.IOP.name,		
-			yaxis: 'y2',
-			hovertemplate: 'IOP: %{y}<br>%{x}',
-			type: 'scatter',
-			mode: 'lines+markers',
-		};
-		
 		/**
-		Build Drugs data for right eye
+		Build Events data for right eye
 		*/
-		const drugs = [];
-		const arr = Object.values( eye.drugs );
+		const events = [];
+		const arr = Object.values( eye.events );
 		// loop through array...
-		arr.forEach(( drug ) => {
-			drugs.push({
-				x: drug.x, 
-				y: drug.y, 
-				customdata: drug.customdata,
+		arr.forEach(( event ) => {
+			events.push({
+				x: event.x, 
+				y: event.y, 
+				customdata: event.customdata,
 				name:'', 
 				yaxis: 'y3',
 				hovertemplate: '%{y}<br>%{customdata}<br>%{x}',
 				type: 'scatter', 
-				mode: 'lines+markers',
-				marker: oePlotly.markerFor('drug')
+				mode: 'markers',
+				marker: oePlotly.markerFor( event.type )
 			});
 		});
 		
-		return [ VA_SnellenMetre, IOP ].concat( drugs );
+		return [ CRT, VA_SnellenMetre ].concat( events );
 				
 	};
 	
@@ -59,8 +60,8 @@
 	const buildDiv = ( id ) => {
 		const div = document.createElement('div');
 		div.id = `oePlotly-${id}`;
-		div.style.height = "80vh";
-		div.style.minHeight = "850px";
+		div.style.height = "70vh";
+		div.style.minHeight = "500px";
 		return div;
 	};
 	
@@ -69,7 +70,7 @@
 	*/
 	const init = ( json = null ) => {
 		
-		const oesTemplateType = "Glaucoma";
+		const oesTemplateType = "Medical Retina";
 		
 		if(json === null){
 			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
@@ -92,10 +93,20 @@
 			spikes: true,
 		}, dark );
 		
-		// y1 - VA
+		// y1 - CRT
 		const y1 = oePlotly.getAxis({
 			type:'y',
-			domain: [0, 0.35],
+			domain: [0, 0.7],
+			title: 'CRT', 
+			range: [200, 650],
+			spikes: true,
+		}, dark );
+		
+		// y2 - VA
+		const y2 = oePlotly.getAxis({
+			type:'y',
+			rightSide: true,
+			domain: [0, 0.7],
 			title: 'VA', 
 			useCategories: {
 				showAll: true, 
@@ -103,23 +114,14 @@
 			},
 			spikes: true,
 		}, dark );
-		
-		// y2 - IOP
-		const y2 = oePlotly.getAxis({
-			type:'y',
-			domain: [0.4, 0.75],
-			title: 'IOP', 
-			range: [0, 75],
-			spikes: true,
-		}, dark );
-		
+	
 		// y3 - Drugs
 		const y3 = oePlotly.getAxis({
 			type:'y',
 			domain: [0.8, 1],
 			useCategories: {
 				showAll: true, 
-				categoryarray: json.drugTypes.reverse()
+				categoryarray: json.events.reverse()
 			},
 			spikes: true,
 		}, dark );
@@ -138,49 +140,12 @@
 				plotTitle: 'Right Eye',
 				xaxis: x1,
 				yaxes: [ y1, y2, y3 ],
-				subplot: 3,
+				subplot: 2,
 				rangeSlider: true,
-				vLineLabel: {
-					x: Object.values( json.rightEye.procedures ),
-					h: 0.75,
-				},
-				hLineLabel: {
-					y: Object.values( json.rightEye.targetIOP ),
-					axis: 'y2'
-				}
 			});
 			
 			const leftDiv = buildDiv(`${oesTemplateType}RightEye`);
 			document.querySelector('.oes-left-side').appendChild( leftDiv );
-			
-			rightEye_layout.updatemenus = [{
-				visible: true,
-				type: "dropdown",
-				y: 0.35,
-				yanchor: 'top',
-				x: 0,
-				xanchor: 'left',
-				// base font settings
-
-				font: {
-					color: dark ? '#888' : '#333',
-				},
-
-				bgcolor: 'rgba(255,255,255,0.1)', 
-				activecolor: '#f00',
-				bordercolor: '#0ff',
-				borderwidth: 0.5,
-				buttons:[
-					{ 	method: 'update', // 'data' & 'layout'
-						args: ['visible', [true, false, false, false]],
-						label: 'Data set 0'						
-					}, {
-						method: 'update',
-						args: ['visible', [false, true, false, false]],
-						label: 'Data set 1'
-					}
-				]			
-			}];
 			
 			Plotly.newPlot(
 				leftDiv, 
@@ -207,18 +172,10 @@
 				legend: false,
 				colors: 'leftEye',
 				plotTitle: 'Left Eye',
-				subplot: 3,
+				subplot: 2,
 				xaxis: x1,
 				yaxes: [ y1, y2, y3 ],
 				rangeSlider: true,
-				vLineLabel: {
-					x: Object.values( json.leftEye.procedures ),
-					h: 0.75,
-				},
-				hLineLabel: {
-					y: Object.values( json.leftEye.targetIOP ),
-					axis: 'y2'
-				}
 			});
 			
 			const rightDiv = buildDiv(`${oesTemplateType}LeftEye`);
@@ -241,6 +198,6 @@
 	/**
 	* Extend API ... PHP will call with json when DOM is loaded
 	*/
-	bj.extend('oesGlaucoma', init);	
+	bj.extend('oesMedicalRetina', init);	
 		
 })( bluejay ); 

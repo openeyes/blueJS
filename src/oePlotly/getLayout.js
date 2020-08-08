@@ -146,8 +146,8 @@
 			      y1: height,
 			      line: {
 			        color: oePlotly.getBlue( dark ),
-			        width: 1,
-					dash:"1px,4px",
+			        width: 0.5,
+					//dash:"3px,4px,1px,4px,3px,1px",
 			      }
 			    };
 			}; 
@@ -198,7 +198,7 @@
 			      line: {
 			        color: oePlotly.getBlue( dark ),
 			        width: 2,
-			        dash:"3px,9px",
+			        dash:"3px,12px",
 			      }
 			    };
 			}; 

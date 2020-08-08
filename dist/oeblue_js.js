@@ -946,7 +946,7 @@ const oePlotly = (function ( bj ) {
 		if( options.title ){
 			axis.title = {
 				text: options.title,
-				standoff: isY ? 15 : 20, // px offset 
+				standoff: isY ? 10 : 20, // px offset 
 				font: {
 					size: 12,
 				}
@@ -1151,8 +1151,8 @@ const oePlotly = (function ( bj ) {
 			      y1: height,
 			      line: {
 			        color: oePlotly.getBlue( dark ),
-			        width: 1,
-					dash:"1px,4px",
+			        width: 0.5,
+					//dash:"3px,4px,1px,4px,3px,1px",
 			      }
 			    };
 			}; 
@@ -1203,7 +1203,7 @@ const oePlotly = (function ( bj ) {
 			      line: {
 			        color: oePlotly.getBlue( dark ),
 			        width: 2,
-			        dash:"3px,9px",
+			        dash:"3px,12px",
 			      }
 			    };
 			}; 
@@ -1346,7 +1346,7 @@ const oePlotly = (function ( bj ) {
 	const buildDiv = ( id ) => {
 		const div = document.createElement('div');
 		div.id = `oePlotly-${id}`;
-		div.style.height = "calc(100vh - 150px)";
+		div.style.height = "80vh";
 		div.style.minHeight = "850px";
 		return div;
 	};
@@ -1356,11 +1356,13 @@ const oePlotly = (function ( bj ) {
 	*/
 	const init = ( json = null ) => {
 		
+		const oesTemplateType = "Glaucoma";
+		
 		if(json === null){
-			bj.log('[oePlotly] - no JSON data provided for Plot.ly Glaucoma?');
+			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
 			return false;
 		} else {
-			bj.log('[oePlotly] - building Plot.ly Glaucoma');
+			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
 		}
 		
 		/**
@@ -1372,13 +1374,8 @@ const oePlotly = (function ( bj ) {
 		// x1
 		const x1 = oePlotly.getAxis({
 			type:'x',
-			domain: false,
-			title: false, 
 			numTicks: 10,
 			useDates: true, 
-			fixZoom: false,
-			range: false,
-			useCategories: false,
 			spikes: true,
 		}, dark );
 		
@@ -1440,8 +1437,37 @@ const oePlotly = (function ( bj ) {
 				}
 			});
 			
-			const leftDiv = buildDiv('glaucomaRightEye');
+			const leftDiv = buildDiv(`${oesTemplateType}RightEye`);
 			document.querySelector('.oes-left-side').appendChild( leftDiv );
+			
+			rightEye_layout.updatemenus = [{
+				visible: true,
+				type: "dropdown",
+				y: 0.35,
+				yanchor: 'top',
+				x: 0,
+				xanchor: 'left',
+				// base font settings
+
+				font: {
+					color: dark ? '#888' : '#333',
+				},
+
+				bgcolor: 'rgba(255,255,255,0.1)', 
+				activecolor: '#f00',
+				bordercolor: '#0ff',
+				borderwidth: 0.5,
+				buttons:[
+					{ 	method: 'update', // 'data' & 'layout'
+						args: ['visible', [true, false, false, false]],
+						label: 'Data set 0'						
+					}, {
+						method: 'update',
+						args: ['visible', [false, true, false, false]],
+						label: 'Data set 1'
+					}
+				]			
+			}];
 			
 			Plotly.newPlot(
 				leftDiv, 
@@ -1482,7 +1508,7 @@ const oePlotly = (function ( bj ) {
 				}
 			});
 			
-			const rightDiv = buildDiv('glaucomaLeftEye');
+			const rightDiv = buildDiv(`${oesTemplateType}LeftEye`);
 			document.querySelector('.oes-right-side').appendChild( rightDiv );
 			
 			Plotly.newPlot(
@@ -1503,6 +1529,209 @@ const oePlotly = (function ( bj ) {
 	* Extend API ... PHP will call with json when DOM is loaded
 	*/
 	bj.extend('oesGlaucoma', init);	
+		
+})( bluejay ); 
+(function ( bj ) {
+
+	'use strict';
+	
+	/**
+	* Build data trace format for Glaucoma
+	* @param { JSON } Eye data
+	* @returns {Array} for Plol.ly data
+	*/
+	const dataTraces = ( eye ) => {
+		
+		const CRT = {
+			x: eye.CRT.x,
+			y: eye.CRT.y,
+			name: eye.CRT.name,		
+			hovertemplate: 'CRT: %{y}<br>%{x}',
+			type: 'scatter',
+			mode: 'lines+markers',
+			line: oePlotly.dashedLine(),
+		};
+		
+		const VA_SnellenMetre = {
+			x: eye.va.snellenMetre.x,
+			y: eye.va.snellenMetre.y,
+			name: eye.va.snellenMetre.name,	
+			yaxis: 'y2',	
+			hovertemplate: 'Snellen Metre: %{y}<br>%{x}',
+			type: 'scatter',
+			mode: 'lines+markers',
+		};
+		
+		/**
+		Build Events data for right eye
+		*/
+		const events = [];
+		const arr = Object.values( eye.events );
+		// loop through array...
+		arr.forEach(( event ) => {
+			events.push({
+				x: event.x, 
+				y: event.y, 
+				customdata: event.customdata,
+				name:'', 
+				yaxis: 'y3',
+				hovertemplate: '%{y}<br>%{customdata}<br>%{x}',
+				type: 'scatter', 
+				mode: 'markers',
+				marker: oePlotly.markerFor( event.type )
+			});
+		});
+		
+		return [ CRT, VA_SnellenMetre ].concat( events );
+				
+	};
+	
+	/**
+	* Build DIV
+	* @param {String} id
+	*/
+	const buildDiv = ( id ) => {
+		const div = document.createElement('div');
+		div.id = `oePlotly-${id}`;
+		div.style.height = "70vh";
+		div.style.minHeight = "500px";
+		return div;
+	};
+	
+	/**
+	* init demo - needs to be called from the PHP page that needs it
+	*/
+	const init = ( json = null ) => {
+		
+		const oesTemplateType = "Medical Retina";
+		
+		if(json === null){
+			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			return false;
+		} else {
+			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+		}
+		
+		/**
+		* Axis templates 
+		*/
+		
+		const dark = oePlotly.isDarkTheme( window.oeThemeMode );
+		
+		// x1
+		const x1 = oePlotly.getAxis({
+			type:'x',
+			numTicks: 10,
+			useDates: true, 
+			spikes: true,
+		}, dark );
+		
+		// y1 - CRT
+		const y1 = oePlotly.getAxis({
+			type:'y',
+			domain: [0, 0.7],
+			title: 'CRT', 
+			range: [200, 650],
+			spikes: true,
+		}, dark );
+		
+		// y2 - VA
+		const y2 = oePlotly.getAxis({
+			type:'y',
+			rightSide: true,
+			domain: [0, 0.7],
+			title: 'VA', 
+			useCategories: {
+				showAll: true, 
+				categoryarray: json.rightEye.va.snellenMetre.yaxis.reverse()
+			},
+			spikes: true,
+		}, dark );
+	
+		// y3 - Drugs
+		const y3 = oePlotly.getAxis({
+			type:'y',
+			domain: [0.8, 1],
+			useCategories: {
+				showAll: true, 
+				categoryarray: json.events.reverse()
+			},
+			spikes: true,
+		}, dark );
+		
+		/**
+		* Data & Layout - Right Eye
+		*/	
+		if( json.rightEye ){
+			
+			const rightEye_data = dataTraces( json.rightEye );
+			
+			const rightEye_layout = oePlotly.getLayout({
+				theme: window.oeThemeMode, 
+				legend: false,
+				colors: 'rightEye',
+				plotTitle: 'Right Eye',
+				xaxis: x1,
+				yaxes: [ y1, y2, y3 ],
+				subplot: 2,
+				rangeSlider: true,
+			});
+			
+			const leftDiv = buildDiv(`${oesTemplateType}RightEye`);
+			document.querySelector('.oes-left-side').appendChild( leftDiv );
+			
+			Plotly.newPlot(
+				leftDiv, 
+				rightEye_data, 
+				rightEye_layout, 
+				{ displayModeBar: false, responsive: true }
+			);
+			
+			// bluejay custom event (user changes layout)
+			document.addEventListener('oesLayoutChange', () => {
+				Plotly.relayout( leftDiv, rightEye_layout );
+			});	
+		} 
+		
+		/**
+		* Data & Layout - Left Eye
+		*/
+		if( json.leftEye ){
+			
+			const leftEye_data = dataTraces( json.leftEye );
+			
+			const leftEye_layout = oePlotly.getLayout({
+				theme: window.oeThemeMode, 
+				legend: false,
+				colors: 'leftEye',
+				plotTitle: 'Left Eye',
+				subplot: 2,
+				xaxis: x1,
+				yaxes: [ y1, y2, y3 ],
+				rangeSlider: true,
+			});
+			
+			const rightDiv = buildDiv(`${oesTemplateType}LeftEye`);
+			document.querySelector('.oes-right-side').appendChild( rightDiv );
+			
+			Plotly.newPlot(
+				rightDiv, 
+				leftEye_data, 
+				leftEye_layout, 
+				{ displayModeBar: false, responsive: true }
+			);
+			
+			// bluejay custom event (user changes layout)
+			document.addEventListener('oesLayoutChange', () => {
+				Plotly.relayout( rightDiv, leftEye_layout );
+			});	
+		}
+	};
+	
+	/**
+	* Extend API ... PHP will call with json when DOM is loaded
+	*/
+	bj.extend('oesMedicalRetina', init);	
 		
 })( bluejay ); 
 (function (uiApp) {

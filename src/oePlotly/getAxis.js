@@ -52,7 +52,7 @@
 		if( options.title ){
 			axis.title = {
 				text: options.title,
-				standoff: isY ? 15 : 20, // px offset 
+				standoff: isY ? 10 : 20, // px offset 
 				font: {
 					size: 12,
 				}
