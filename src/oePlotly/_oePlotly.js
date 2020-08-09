@@ -6,6 +6,7 @@ const oePlotly = (function ( bj ) {
 
 	'use strict';
 	
+	bj.log('Plot.ly version: ' + Plotly.version );
 	bj.log('oePlotly - Plot.ly layout builder');
 	
 	const colours = {

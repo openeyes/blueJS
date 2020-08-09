@@ -634,6 +634,7 @@ const oePlotly = (function ( bj ) {
 
 	'use strict';
 	
+	bj.log('Plot.ly version: ' + Plotly.version );
 	bj.log('oePlotly - Plot.ly layout builder');
 	
 	const colours = {
@@ -927,7 +928,7 @@ const oePlotly = (function ( bj ) {
 			tickcolor: dark ? '#666' : '#ccc',
 			automargin: true, //  long tick labels automatically grow the figure margins.
 			mirror: true, //  ( true | "ticks" | false | "all" | "allticks" )
-			connectgaps: false,
+			connectgaps: false, // this allows for 'null' value gaps! 
 		};
 		
 		// axis? x or y
@@ -1310,7 +1311,7 @@ const oePlotly = (function ( bj ) {
 	
 	
 })( oePlotly );
-(function( oePlotly ) {
+(function( oePlotly, bj ) {
 	
 	'use strict';
 	
@@ -1346,7 +1347,27 @@ const oePlotly = (function ( bj ) {
 		},
 	});
 	
-})( oePlotly );
+	/**
+	* Click events
+	* div {Element} Plot DOM element
+	*/ 
+	
+	oePlotly.addClickEvent = ( div ) => {
+		div.on('plotly_click', (function( data ){
+			// pass back the JSON data relavant to the data clicked
+			let obj = {
+				name: data.points[0].data.name,
+				x: data.points[0].x,
+				y: data.points[0].y 
+			};
+					
+		    bj.customEvent('oesPlotlyClick', obj );
+		    bj.log('"oesPlotClick" Event data: ' + JSON.stringify( obj ));
+		}));
+	};
+
+	
+})( oePlotly, bluejay );
 (function ( bj ) {
 
 	'use strict';
@@ -1445,7 +1466,7 @@ const oePlotly = (function ( bj ) {
 			},
 			hLineLabel: {
 				y: Object.values( setup.targetIOP ),
-				axis: 'y2'
+				axis: 'y3'
 			}
 		});
 			
@@ -1458,6 +1479,9 @@ const oePlotly = (function ( bj ) {
 			layout, 
 			{ displayModeBar: false, responsive: true }
 		);
+	
+		// set up click through
+		oePlotly.addClickEvent( div );
 		
 		// bluejay custom event (user changes layout)
 		document.addEventListener('oesLayoutChange', () => {
@@ -1689,6 +1713,9 @@ const oePlotly = (function ( bj ) {
 			layout, 
 			{ displayModeBar: false, responsive: true }
 		);
+		
+		// set up click through
+		oePlotly.addClickEvent( div );
 		
 		// bluejay custom event (user changes layout)
 		document.addEventListener('oesLayoutChange', () => {

@@ -94,6 +94,9 @@
 			{ displayModeBar: false, responsive: true }
 		);
 		
+		// set up click through
+		oePlotly.addClickEvent( div );
+		
 		// bluejay custom event (user changes layout)
 		document.addEventListener('oesLayoutChange', () => {
 			Plotly.relayout( div, layout );

@@ -38,7 +38,7 @@
 			tickcolor: dark ? '#666' : '#ccc',
 			automargin: true, //  long tick labels automatically grow the figure margins.
 			mirror: true, //  ( true | "ticks" | false | "all" | "allticks" )
-			connectgaps: false,
+			connectgaps: false, // this allows for 'null' value gaps! 
 		};
 		
 		// axis? x or y

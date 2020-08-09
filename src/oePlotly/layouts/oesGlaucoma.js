@@ -96,7 +96,7 @@
 			},
 			hLineLabel: {
 				y: Object.values( setup.targetIOP ),
-				axis: 'y2'
+				axis: 'y3'
 			}
 		});
 			
@@ -109,6 +109,9 @@
 			layout, 
 			{ displayModeBar: false, responsive: true }
 		);
+	
+		// set up click through
+		oePlotly.addClickEvent( div );
 		
 		// bluejay custom event (user changes layout)
 		document.addEventListener('oesLayoutChange', () => {

@@ -1,4 +1,4 @@
-(function( oePlotly ) {
+(function( oePlotly, bj ) {
 	
 	'use strict';
 	
@@ -34,4 +34,24 @@
 		},
 	});
 	
-})( oePlotly );
+	/**
+	* Click events
+	* div {Element} Plot DOM element
+	*/ 
+	
+	oePlotly.addClickEvent = ( div ) => {
+		div.on('plotly_click', function( data ){
+			// pass back the JSON data relavant to the data clicked
+			let obj = {
+				name: data.points[0].data.name,
+				x: data.points[0].x,
+				y: data.points[0].y 
+			};
+					
+		    bj.customEvent('oesPlotlyClick', obj );
+		    bj.log('"oesPlotClick" Event data: ' + JSON.stringify( obj ));
+		});
+	};
+
+	
+})( oePlotly, bluejay );
