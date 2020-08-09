@@ -759,60 +759,56 @@ const oePlotly = (function ( bj ) {
 		return {}; // unknown type?
 	};
 	
-	const addSpikes = ( axis, dark ) => {
-		if( typeof dark === "string" ){
-			dark = isDarkTheme( dark );
-		}
-		
-		axis.showspikes = true; 
-		axis.spikecolor = dark ? '#0ff' : '#00f';
-		axis.spikethickness = dark ? 0.5 : 1;
-		axis.spikedash = dark ? "1px,3px" : "2px,3px";
-	};
+	const buttonStyling = ( dark ) => ({
+		font: {
+			color: dark ? '#ccc' : '#666',
+		},
+		bgcolor: dark ? 'rgb(30,46,66)' : 'rgb(255,255,255)', 
+		activecolor: dark ? 'rgb(7,69,152)' : 'rgb(205,205,255)',
+		bordercolor: dark ? 'rgb(10,26,36))' : 'rgb(255,255,255)',
+		borderwidth: 2,
+	}); 
 	
+
 	/**
-	* Build an axis object IN layout lines 
-	* @param {Object} customise - overwrite or add to default settings
-	* @param {Boolean} dark - use dark theme options?
+	* Add Plotly dropdown to layouta
+	* @param {Objec} layout
 	*/
-	const defaultAxis = ( customise, dark ) => {
-		if( typeof dark === "string" ){
-			dark = isDarkTheme( dark );
-		}
-		
-		let axisDefaults = {
-			// color: '#fff', // override base font
-			linecolor: dark ? '#666' : '#999', // axis line colour
-			linewidth:1,
-			showgrid: true,
-			gridcolor: dark ? '#292929' : '#e6e6e6',
-			tickmode: "auto",
-			nticks: 20, // number of ticks
-			ticks: "outside",
-			ticklen: 3, // px
-			tickcolor: dark ? '#666' : '#ccc',
-			automargin: true, //  long tick labels automatically grow the figure margins.
+	const addDropDown = ( layout ) => {
+	
+		let buttons = [];
 			
-			mirror: true, //  ( true | "ticks" | false | "all" | "allticks" )
-		};
+		buttons.push({ 	
+			method: 'update', // 'data' & 'layout'
+			args: ['visible', [true, false, false, false]],
+			label: 'Option 1'						
+		});
 		
-		return Object.assign( axisDefaults, customise );
+		buttons.push({ 	
+			method: 'update', // update args: [data, layout] 
+			// 'args' is an 
+			args: [ {}, {
+			    title: 'some new title', // updates the title
+			    colorway: oePlotly.getColorSeries( "default", true )
+			}],
+			//args2: layout,
+			label: 'Options Title'						
+		});
+	
+ 		let menu = Object.assign({
+			type: "dropdown",
+			xanchor: 'left',
+			yanchor: 'top',
+			x: 0,
+			y: 0.35,
+			buttons: buttons, // add buttons to menu
+ 		}, oePlotly.buttonStyling() );
+ 		
+		
+		// could be multiple menus
+		layout.updatemenus = [ menu ];	
 	};
 	
-	/**
-	* set up to show all catorgies or just the ones with data
-	* @param {Object} axis
-	* @param {Array} categories (for axis)
-	* @param {Boolean} all - show all categories (even if they don't have data)
-	* @returns {Object} updated axis
-	*/
-	const makeCategoryAxis = ( axis, categories, all = true ) => {
-		axis.type = "category";
-		// categories on yaxis start at 0, add a blank to push up
-		axis.categoryarray = [' '].concat(categories);
-		if(all) axis.range = [0, categories.length + 1];
-		return axis; 
-	};
 
 	// public 
 	return {
@@ -822,9 +818,8 @@ const oePlotly = (function ( bj ) {
 		getColorFor,
 		dashedLine,
 		markerFor,
-		defaultAxis,
-		makeCategoryAxis,
-		addSpikes
+		addDropDown,
+		buttonStyling
 	};
 
 })( bluejay );
@@ -932,6 +927,7 @@ const oePlotly = (function ( bj ) {
 			tickcolor: dark ? '#666' : '#ccc',
 			automargin: true, //  long tick labels automatically grow the figure margins.
 			mirror: true, //  ( true | "ticks" | false | "all" | "allticks" )
+			connectgaps: false,
 		};
 		
 		// axis? x or y
@@ -967,7 +963,7 @@ const oePlotly = (function ( bj ) {
 		
 		// use Dates? - OE data formatting
 		if( options.useDates ){
-			axis.tickformat = "%e %b %Y";	
+			axis.tickformat = "%b %Y"; // d Mth Y	
 		}
 	
 		// turn off zoom?
@@ -1023,7 +1019,8 @@ const oePlotly = (function ( bj ) {
 		subplot: false,			// Optional {Number} number of 'rows' (number of verical plots)
 		vLineLabel: false		// Optional {Object} e.g. { x: [ ... ], h: 0.75 }
 		hLineLabel: false		// Optional {Object} e.g. { y: [ ... ], axis: 'y2' }
-		rangeslider: false,		// Optional {Boolean}
+		rangeslider: false,		// Optional {Boolean || Array} e.g. [firstDate, lastDate]
+		dateRangeButtons: false // Optional {Boolean}
 	}
 	*/
 	oePlotly.getLayout = function( options ){
@@ -1084,7 +1081,7 @@ const oePlotly = (function ( bj ) {
 		/*
 		Colour theme	
 		*/ 
-		if(options.colors){
+		if( options.colors ){
 			layout.colorway = oePlotly.getColorSeries( options.colors, dark );			
 		} else {
 			layout.colorway = oePlotly.getColorSeries( "default", dark );
@@ -1093,7 +1090,7 @@ const oePlotly = (function ( bj ) {
 		/*
 		Plot title
 		*/
-		if(options.plotTitle){
+		if( options.plotTitle ){
 			layout.title = {
 				text: options.plotTitle,
 				xref: 'paper', //  "container" | "paper" (as in, align too)
@@ -1113,7 +1110,7 @@ const oePlotly = (function ( bj ) {
 		Subplots (n charts on a single plot)
 		Assumes always vertically stacked
 		*/
-		if(options.subplot){
+		if( options.subplot ){
 			layout.grid = {
 		    	rows: options.subplot,
 				columns: 1,
@@ -1124,7 +1121,6 @@ const oePlotly = (function ( bj ) {
 		/*
 		Shapes and Annotations
 		*/
-		
 		layout.shapes = [];
 		layout.annotations = [];
 		
@@ -1132,15 +1128,13 @@ const oePlotly = (function ( bj ) {
 		Vertical marker line
 		{array} = [{x:x, y:1, name:"name"}]
 		*/
-		if(options.vLineLabel){
+		if( options.vLineLabel ){
 			
 			// vLineLabel must be an array of objects
 			const verticals = options.vLineLabel.x;
 			const height = options.vLineLabel.h;
 		
 			const line = ( my, index ) => {
-				console.log(my);
-				
 				return {
 			      type: 'line',
 			      layer: 'above', // or "below"
@@ -1183,7 +1177,7 @@ const oePlotly = (function ( bj ) {
 		Horizontal marker line
 		{array} = [{ axis:'y3', y:15, name: "Target IOP"}]
 		*/
-		if(options.hLineLabel){
+		if( options.hLineLabel ){
 			
 			// hLineLabel must be an array of objects
 			const horizontals = options.hLineLabel.y;
@@ -1230,13 +1224,13 @@ const oePlotly = (function ( bj ) {
 		}
 		
 		/*
-		Axes
+		X & Y Axes
 		*/
-		if(options.xaxis){
+		if( options.xaxis ){
 			layout.xaxis = options.xaxis; // only 1 axis per layout
 		}
 		
-		if(options.yaxes){
+		if( options.yaxes ){
 			options.yaxes.forEach((y, index) => {
 				if( index ){
 					layout['yaxis'+(index + 1)] = y;
@@ -1259,24 +1253,55 @@ const oePlotly = (function ( bj ) {
 		*/
 		if(options.rangeSlider){
 			
+			const rangeslider = {
+				thickness: 0.08
+			};
+			
 			if(dark){
-				// this is a pain.
+				// this is a pain. Plot.ly does not handles this well
 				// can't find a setting to change the slide cover color!
-				// it's set at a black opacity, so to make this usable:
-				layout.xaxis.rangeslider = {
-					bgcolor: layout.paper_bgcolor,
-					borderwidth: 1,
-					bordercolor: layout.plot_bgcolor,
-					thickness: 0.1, // 0 - 1, default 0.15 (height of area)
-				};
-			} else {
-				// Plot.ly handles this well in 'light' theme mode
-				layout.xaxis.rangeslider = {
-					thickness: 0.1, // 0 - 1, default 0.15 (height of area)
-				};
+				// it's set at a black opacity, so to make it usable...
+				rangeslider.bgcolor = layout.paper_bgcolor;
+				rangeslider.borderwidth = 1;
+				rangeslider.bordercolor = layout.plot_bgcolor;
+			} 
+			
+			
+			/*
+			if not a boolean assume a range array
+			note: there is bug in Plot.ly (known) that this won't
+			restrict the range, but it helps with the dateRangebuttons
+			*/
+			if( typeof options.rangeSlider !== "boolean" ){
+				rangeslider.range = options.rangeSlider; 
 			}
 			
+			// update layout:
+			layout.xaxis.rangeslider = rangeslider;
 			layout.margin.b = 15;
+		}
+		
+		if( options.dateRangeButtons ){
+			layout.xaxis.rangeselector = Object.assign({
+				x:1,
+				xanchor: 'right',
+				buttons: [{
+					label: 'Show all',
+					step: "all",
+				}, {
+					label: '2 Yr',
+					step: "year",
+					count: 2, // 1 = year, 2 = 2 years
+				}, {
+					label: '1 Yr',
+					step: "year",
+					count: 1, // 1 = year, 2 = 2 years
+				}, {
+					label: '6 Mth',
+					step: "month",
+					count: 6, // 1 = year, 2 = 2 years
+				}]
+			}, oePlotly.buttonStyling( dark ) );
 		}
 		
 		// ok, all done
@@ -1285,10 +1310,54 @@ const oePlotly = (function ( bj ) {
 	
 	
 })( oePlotly );
+(function( oePlotly ) {
+	
+	'use strict';
+	
+	/**
+	* Build DIV
+	* @param {String} id
+	* @param {String} height (80vh)
+	* @param {String} min-height (500px)
+	*/
+	oePlotly.buildDiv = ( id, height, minHeight ) => {
+		const div = document.createElement('div');
+		div.id = `oePlotly-${id}`;
+		div.style.height = height;
+		div.style.minHeight = minHeight;
+		return div;
+	};
+	
+	/**
+	* For use in layout templates
+	* Helper to work out first and last dates
+	* @returns {Object} 
+	*/
+	oePlotly.fullDateRange = () => ({
+		all:[], 
+		add( xArr ){
+			this.all = this.all.concat( xArr );
+			this.all.sort();
+		}, 
+		firstLast(){
+			// watch out for null values
+			let noNulls = this.all.filter(( i ) => i !== null );
+			return [ noNulls[0], noNulls.pop() ];	
+		},
+	});
+	
+})( oePlotly );
 (function ( bj ) {
 
 	'use strict';
 	
+	const oesTemplateType = "Glaucoma";
+	
+	/**
+	* Work out full date range for all data
+	*/
+	const dateRange = oePlotly.fullDateRange();
+
 	/**
 	* Build data trace format for Glaucoma
 	* @param { JSON } Eye data
@@ -1296,67 +1365,112 @@ const oePlotly = (function ( bj ) {
 	*/
 	const dataTraces = ( eye ) => {
 		
-		const VA_SnellenMetre = {
-			x: eye.va.snellenMetre.x,
-			y: eye.va.snellenMetre.y,
-			name: eye.va.snellenMetre.name,		
-			hovertemplate: 'Snellen Metre: %{y}<br>%{x}',
+		const VA_offScale = {
+			x: eye.va.offScale.x,
+			y: eye.va.offScale.y,
+			name: eye.va.offScale.name,		
+			hovertemplate: '%{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
 		};
 		
+		const VA_SnellenMetre = {
+			x: eye.va.snellenMetre.x,
+			y: eye.va.snellenMetre.y,
+			name: eye.va.snellenMetre.name,	
+			yaxis: 'y2',	
+			hovertemplate: 'Snellen Metre: %{y}<br>%{x}',
+			type: 'scatter',
+			mode: 'lines+markers',
+		};
+				
 		const IOP = {
 			x: eye.IOP.x,
 			y: eye.IOP.y,
 			name: eye.IOP.name,		
-			yaxis: 'y2',
+			yaxis: 'y3',
 			hovertemplate: 'IOP: %{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
 		};
 		
+		dateRange.add( eye.va.offScale.x );
+		dateRange.add( eye.va.snellenMetre.x );
+		dateRange.add( eye.IOP.x );
+		
 		/**
 		Build Drugs data for right eye
 		*/
 		const drugs = [];
-		const arr = Object.values( eye.drugs );
+		//const arr = Object.values( eye.drugs );
 		// loop through array...
-		arr.forEach(( drug ) => {
+		Object.values( eye.drugs ).forEach(( drug ) => {			
 			drugs.push({
 				x: drug.x, 
 				y: drug.y, 
 				customdata: drug.customdata,
 				name:'', 
-				yaxis: 'y3',
+				yaxis: 'y4',
 				hovertemplate: '%{y}<br>%{customdata}<br>%{x}',
 				type: 'scatter', 
 				mode: 'lines+markers',
 				marker: oePlotly.markerFor('drug')
 			});
+			
+			dateRange.add( drug.x );
 		});
 		
-		return [ VA_SnellenMetre, IOP ].concat( drugs );
-				
+		return [ VA_offScale, VA_SnellenMetre, IOP ].concat( drugs );		
 	};
 	
 	/**
-	* Build DIV
-	* @param {String} id
+	* build layout and initialise Plotly 
+	* @param {Object} setup
 	*/
-	const buildDiv = ( id ) => {
-		const div = document.createElement('div');
-		div.id = `oePlotly-${id}`;
-		div.style.height = "80vh";
-		div.style.minHeight = "850px";
-		return div;
-	};
+	const plotlyInit = ( setup ) => {
+		
+		const layout = oePlotly.getLayout({
+			theme: window.oeThemeMode, 
+			legend: false,
+			colors: setup.colors,
+			plotTitle: setup.title,
+			xaxis: setup.xaxis,
+			yaxes: setup.yaxes,
+			subplot: 4,		// offScale, VA, IOP, meds 
+			rangeSlider: dateRange.firstLast(),
+			dateRangeButtons: true,
+			vLineLabel: {
+				x: Object.values( setup.procedures ),
+				h: 0.85,
+			},
+			hLineLabel: {
+				y: Object.values( setup.targetIOP ),
+				axis: 'y2'
+			}
+		});
+			
+		const div = oePlotly.buildDiv(`${oesTemplateType}-${setup.eye}Eye`, '80vh', '850px');
+		document.querySelector( setup.parentDOM ).appendChild( div );
+		
+		Plotly.newPlot(
+			div, 
+			setup.data, 
+			layout, 
+			{ displayModeBar: false, responsive: true }
+		);
+		
+		// bluejay custom event (user changes layout)
+		document.addEventListener('oesLayoutChange', () => {
+			Plotly.relayout( div, layout );
+		});	
+	}; 
+	
 	
 	/**
-	* init demo - needs to be called from the PHP page that needs it
+	* init - called from the PHP page that needs it
+	* @param {JSON} json - PHP supplies the data for charts
 	*/
 	const init = ( json = null ) => {
-		
-		const oesTemplateType = "Glaucoma";
 		
 		if(json === null){
 			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
@@ -1366,9 +1480,22 @@ const oePlotly = (function ( bj ) {
 		}
 		
 		/**
-		* Axis templates 
+		* Data 
 		*/
+		let rightEye_data = null;
+		let leftEye_data = null;
 		
+		if( json.rightEye ){
+			rightEye_data = dataTraces( json.rightEye );
+		}
+		
+		if( json.leftEye ){
+			leftEye_data = dataTraces( json.leftEye );
+		}
+	
+		/**
+		* Axes templates 
+		*/
 		const dark = oePlotly.isDarkTheme( window.oeThemeMode );
 		
 		// x1
@@ -1377,12 +1504,25 @@ const oePlotly = (function ( bj ) {
 			numTicks: 10,
 			useDates: true, 
 			spikes: true,
+			range: dateRange.firstLast(),
+		}, dark );
+		
+		
+		// y0 - offscale 
+		const y0 = oePlotly.getAxis({
+			type:'y',
+			domain: [0, 0.1], 
+			useCategories: {
+				showAll: true, 
+				categoryarray: json.rightEye.va.offScale.yaxis.reverse()
+			},
+			spikes: true,
 		}, dark );
 		
 		// y1 - VA
 		const y1 = oePlotly.getAxis({
 			type:'y',
-			domain: [0, 0.35],
+			domain: [0.1, 0.45],
 			title: 'VA', 
 			useCategories: {
 				showAll: true, 
@@ -1394,7 +1534,7 @@ const oePlotly = (function ( bj ) {
 		// y2 - IOP
 		const y2 = oePlotly.getAxis({
 			type:'y',
-			domain: [0.4, 0.75],
+			domain: [0.5, 0.85],
 			title: 'IOP', 
 			range: [0, 75],
 			spikes: true,
@@ -1403,7 +1543,7 @@ const oePlotly = (function ( bj ) {
 		// y3 - Drugs
 		const y3 = oePlotly.getAxis({
 			type:'y',
-			domain: [0.8, 1],
+			domain: [0.88, 1],
 			useCategories: {
 				showAll: true, 
 				categoryarray: json.drugTypes.reverse()
@@ -1412,116 +1552,39 @@ const oePlotly = (function ( bj ) {
 		}, dark );
 		
 		/**
-		* Data & Layout - Right Eye
+		* Layout & Build - Right Eye
 		*/	
-		if( json.rightEye ){
+		if( rightEye_data ){
 			
-			const rightEye_data = dataTraces( json.rightEye );
-			
-			const rightEye_layout = oePlotly.getLayout({
-				theme: window.oeThemeMode, 
-				legend: false,
-				colors: 'rightEye',
-				plotTitle: 'Right Eye',
-				xaxis: x1,
-				yaxes: [ y1, y2, y3 ],
-				subplot: 3,
-				rangeSlider: true,
-				vLineLabel: {
-					x: Object.values( json.rightEye.procedures ),
-					h: 0.75,
-				},
-				hLineLabel: {
-					y: Object.values( json.rightEye.targetIOP ),
-					axis: 'y2'
-				}
+			plotlyInit({
+				data: rightEye_data,
+				title: "Right Eye",
+				eye: "right",
+				colors: "rightEye",
+				xaxis: x1, 
+				yaxes: [ y0, y1, y2, y3 ],
+				procedures: json.rightEye.procedures,
+				targetIOP: json.rightEye.targetIOP,
+				parentDOM: '.oes-left-side',
 			});
-			
-			const leftDiv = buildDiv(`${oesTemplateType}RightEye`);
-			document.querySelector('.oes-left-side').appendChild( leftDiv );
-			
-			rightEye_layout.updatemenus = [{
-				visible: true,
-				type: "dropdown",
-				y: 0.35,
-				yanchor: 'top',
-				x: 0,
-				xanchor: 'left',
-				// base font settings
-
-				font: {
-					color: dark ? '#888' : '#333',
-				},
-
-				bgcolor: 'rgba(255,255,255,0.1)', 
-				activecolor: '#f00',
-				bordercolor: '#0ff',
-				borderwidth: 0.5,
-				buttons:[
-					{ 	method: 'update', // 'data' & 'layout'
-						args: ['visible', [true, false, false, false]],
-						label: 'Data set 0'						
-					}, {
-						method: 'update',
-						args: ['visible', [false, true, false, false]],
-						label: 'Data set 1'
-					}
-				]			
-			}];
-			
-			Plotly.newPlot(
-				leftDiv, 
-				rightEye_data, 
-				rightEye_layout, 
-				{ displayModeBar: false, responsive: true }
-			);
-			
-			// bluejay custom event (user changes layout)
-			document.addEventListener('oesLayoutChange', () => {
-				Plotly.relayout( leftDiv, rightEye_layout );
-			});	
 		} 
 		
 		/**
-		* Data & Layout - Left Eye
+		* Layout & Build -  Left Eye
 		*/
-		if( json.leftEye ){
+		if( leftEye_data ){
 			
-			const leftEye_data = dataTraces( json.leftEye );
-			
-			const leftEye_layout = oePlotly.getLayout({
-				theme: window.oeThemeMode, 
-				legend: false,
-				colors: 'leftEye',
-				plotTitle: 'Left Eye',
-				subplot: 3,
-				xaxis: x1,
-				yaxes: [ y1, y2, y3 ],
-				rangeSlider: true,
-				vLineLabel: {
-					x: Object.values( json.leftEye.procedures ),
-					h: 0.75,
-				},
-				hLineLabel: {
-					y: Object.values( json.leftEye.targetIOP ),
-					axis: 'y2'
-				}
+			plotlyInit({
+				data: leftEye_data,
+				title: "Left Eye",
+				eye: "left",
+				colors: "leftEye",
+				xaxis: x1, 
+				yaxes: [ y0, y1, y2, y3 ],
+				procedures: json.leftEye.procedures,
+				targetIOP: json.leftEye.targetIOP,
+				parentDOM: '.oes-right-side',
 			});
-			
-			const rightDiv = buildDiv(`${oesTemplateType}LeftEye`);
-			document.querySelector('.oes-right-side').appendChild( rightDiv );
-			
-			Plotly.newPlot(
-				rightDiv, 
-				leftEye_data, 
-				leftEye_layout, 
-				{ displayModeBar: false, responsive: true }
-			);
-			
-			// bluejay custom event (user changes layout)
-			document.addEventListener('oesLayoutChange', () => {
-				Plotly.relayout( rightDiv, leftEye_layout );
-			});	
 		}
 	};
 	
@@ -1534,6 +1597,13 @@ const oePlotly = (function ( bj ) {
 (function ( bj ) {
 
 	'use strict';
+	
+	const oesTemplateType = "Medical Retina";
+	
+	/**
+	* Work out full date range for all data
+	*/
+	const dateRange = oePlotly.fullDateRange();
 	
 	/**
 	* Build data trace format for Glaucoma
@@ -1562,6 +1632,9 @@ const oePlotly = (function ( bj ) {
 			mode: 'lines+markers',
 		};
 		
+		dateRange.add( eye.CRT.x );
+		dateRange.add( eye.va.snellenMetre.x );
+		
 		/**
 		Build Events data for right eye
 		*/
@@ -1580,6 +1653,8 @@ const oePlotly = (function ( bj ) {
 				mode: 'markers',
 				marker: oePlotly.markerFor( event.type )
 			});
+			
+			dateRange.add( event.x );
 		});
 		
 		return [ CRT, VA_SnellenMetre ].concat( events );
@@ -1587,23 +1662,46 @@ const oePlotly = (function ( bj ) {
 	};
 	
 	/**
-	* Build DIV
-	* @param {String} id
+	* build layout and initialise Plotly 
+	* @param {Object} setup
 	*/
-	const buildDiv = ( id ) => {
-		const div = document.createElement('div');
-		div.id = `oePlotly-${id}`;
-		div.style.height = "70vh";
-		div.style.minHeight = "500px";
-		return div;
-	};
+	const plotlyInit = ( setup ) => {
+		
+		const layout = oePlotly.getLayout({
+			theme: window.oeThemeMode, 
+			legend: false,
+			colors: setup.colors,
+			plotTitle: setup.title,
+			xaxis: setup.xaxis,
+			yaxes: setup.yaxes,
+			subplot: 2,		// offScale, VA, IOP, meds 
+			rangeSlider: dateRange.firstLast(),
+			dateRangeButtons: true,
+			
+		});
+			
+		const div = oePlotly.buildDiv(`${oesTemplateType}-${setup.eye}Eye`, '70vh', '550px');
+		document.querySelector( setup.parentDOM ).appendChild( div );
+		
+		Plotly.newPlot(
+			div, 
+			setup.data, 
+			layout, 
+			{ displayModeBar: false, responsive: true }
+		);
+		
+		// bluejay custom event (user changes layout)
+		document.addEventListener('oesLayoutChange', () => {
+			Plotly.relayout( div, layout );
+		});	
+	}; 
+	
 	
 	/**
-	* init demo - needs to be called from the PHP page that needs it
+	* init - called from the PHP page that needs it
+	* @param {JSON} json - PHP supplies the data for charts
 	*/
 	const init = ( json = null ) => {
-		
-		const oesTemplateType = "Medical Retina";
 		
 		if(json === null){
 			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
@@ -1613,9 +1711,22 @@ const oePlotly = (function ( bj ) {
 		}
 		
 		/**
-		* Axis templates 
+		* Data 
 		*/
+		let rightEye_data = null;
+		let leftEye_data = null;
 		
+		if( json.rightEye ){
+			rightEye_data = dataTraces( json.rightEye );
+		}
+		
+		if( json.leftEye ){
+			leftEye_data = dataTraces( json.leftEye );
+		}
+
+		/**
+		* Axes templates 
+		*/
 		const dark = oePlotly.isDarkTheme( window.oeThemeMode );
 		
 		// x1
@@ -1660,71 +1771,35 @@ const oePlotly = (function ( bj ) {
 		}, dark );
 		
 		/**
-		* Data & Layout - Right Eye
+		* Layout & Build  - Right Eye
 		*/	
-		if( json.rightEye ){
+		if( rightEye_data ){
 			
-			const rightEye_data = dataTraces( json.rightEye );
-			
-			const rightEye_layout = oePlotly.getLayout({
-				theme: window.oeThemeMode, 
-				legend: false,
-				colors: 'rightEye',
-				plotTitle: 'Right Eye',
-				xaxis: x1,
+			plotlyInit({
+				data: rightEye_data,
+				title: "Right Eye",
+				eye: "right",
+				colors: "rightEye",
+				xaxis: x1, 
 				yaxes: [ y1, y2, y3 ],
-				subplot: 2,
-				rangeSlider: true,
-			});
-			
-			const leftDiv = buildDiv(`${oesTemplateType}RightEye`);
-			document.querySelector('.oes-left-side').appendChild( leftDiv );
-			
-			Plotly.newPlot(
-				leftDiv, 
-				rightEye_data, 
-				rightEye_layout, 
-				{ displayModeBar: false, responsive: true }
-			);
-			
-			// bluejay custom event (user changes layout)
-			document.addEventListener('oesLayoutChange', () => {
-				Plotly.relayout( leftDiv, rightEye_layout );
+				parentDOM: '.oes-left-side',
 			});	
 		} 
 		
 		/**
-		* Data & Layout - Left Eye
+		* Layout & Build - Left Eye
 		*/
-		if( json.leftEye ){
+		if( leftEye_data ){
 			
-			const leftEye_data = dataTraces( json.leftEye );
-			
-			const leftEye_layout = oePlotly.getLayout({
-				theme: window.oeThemeMode, 
-				legend: false,
-				colors: 'leftEye',
-				plotTitle: 'Left Eye',
-				subplot: 2,
-				xaxis: x1,
+			plotlyInit({
+				data: leftEye_data,
+				title: "Left Eye",
+				eye: "left",
+				colors: "leftEye",
+				xaxis: x1, 
 				yaxes: [ y1, y2, y3 ],
-				rangeSlider: true,
-			});
-			
-			const rightDiv = buildDiv(`${oesTemplateType}LeftEye`);
-			document.querySelector('.oes-right-side').appendChild( rightDiv );
-			
-			Plotly.newPlot(
-				rightDiv, 
-				leftEye_data, 
-				leftEye_layout, 
-				{ displayModeBar: false, responsive: true }
-			);
-			
-			// bluejay custom event (user changes layout)
-			document.addEventListener('oesLayoutChange', () => {
-				Plotly.relayout( rightDiv, leftEye_layout );
-			});	
+				parentDOM: '.oes-right-side',
+			});			
 		}
 	};
 	

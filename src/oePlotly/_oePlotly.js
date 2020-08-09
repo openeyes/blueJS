@@ -131,60 +131,56 @@ const oePlotly = (function ( bj ) {
 		return {}; // unknown type?
 	};
 	
-	const addSpikes = ( axis, dark ) => {
-		if( typeof dark === "string" ){
-			dark = isDarkTheme( dark );
-		}
-		
-		axis.showspikes = true; 
-		axis.spikecolor = dark ? '#0ff' : '#00f';
-		axis.spikethickness = dark ? 0.5 : 1;
-		axis.spikedash = dark ? "1px,3px" : "2px,3px";
-	};
+	const buttonStyling = ( dark ) => ({
+		font: {
+			color: dark ? '#ccc' : '#666',
+		},
+		bgcolor: dark ? 'rgb(30,46,66)' : 'rgb(255,255,255)', 
+		activecolor: dark ? 'rgb(7,69,152)' : 'rgb(205,205,255)',
+		bordercolor: dark ? 'rgb(10,26,36))' : 'rgb(255,255,255)',
+		borderwidth: 2,
+	}); 
 	
+
 	/**
-	* Build an axis object IN layout lines 
-	* @param {Object} customise - overwrite or add to default settings
-	* @param {Boolean} dark - use dark theme options?
+	* Add Plotly dropdown to layouta
+	* @param {Objec} layout
 	*/
-	const defaultAxis = ( customise, dark ) => {
-		if( typeof dark === "string" ){
-			dark = isDarkTheme( dark );
-		}
-		
-		let axisDefaults = {
-			// color: '#fff', // override base font
-			linecolor: dark ? '#666' : '#999', // axis line colour
-			linewidth:1,
-			showgrid: true,
-			gridcolor: dark ? '#292929' : '#e6e6e6',
-			tickmode: "auto",
-			nticks: 20, // number of ticks
-			ticks: "outside",
-			ticklen: 3, // px
-			tickcolor: dark ? '#666' : '#ccc',
-			automargin: true, //  long tick labels automatically grow the figure margins.
+	const addDropDown = ( layout ) => {
+	
+		let buttons = [];
 			
-			mirror: true, //  ( true | "ticks" | false | "all" | "allticks" )
-		};
+		buttons.push({ 	
+			method: 'update', // 'data' & 'layout'
+			args: ['visible', [true, false, false, false]],
+			label: 'Option 1'						
+		});
 		
-		return Object.assign( axisDefaults, customise );
+		buttons.push({ 	
+			method: 'update', // update args: [data, layout] 
+			// 'args' is an 
+			args: [ {}, {
+			    title: 'some new title', // updates the title
+			    colorway: oePlotly.getColorSeries( "default", true )
+			}],
+			//args2: layout,
+			label: 'Options Title'						
+		});
+	
+ 		let menu = Object.assign({
+			type: "dropdown",
+			xanchor: 'left',
+			yanchor: 'top',
+			x: 0,
+			y: 0.35,
+			buttons: buttons, // add buttons to menu
+ 		}, oePlotly.buttonStyling() );
+ 		
+		
+		// could be multiple menus
+		layout.updatemenus = [ menu ];	
 	};
 	
-	/**
-	* set up to show all catorgies or just the ones with data
-	* @param {Object} axis
-	* @param {Array} categories (for axis)
-	* @param {Boolean} all - show all categories (even if they don't have data)
-	* @returns {Object} updated axis
-	*/
-	const makeCategoryAxis = ( axis, categories, all = true ) => {
-		axis.type = "category";
-		// categories on yaxis start at 0, add a blank to push up
-		axis.categoryarray = [' '].concat(categories);
-		if(all) axis.range = [0, categories.length + 1];
-		return axis; 
-	};
 
 	// public 
 	return {
@@ -194,9 +190,8 @@ const oePlotly = (function ( bj ) {
 		getColorFor,
 		dashedLine,
 		markerFor,
-		defaultAxis,
-		makeCategoryAxis,
-		addSpikes
+		addDropDown,
+		buttonStyling
 	};
 
 })( bluejay );

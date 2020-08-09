@@ -18,7 +18,8 @@ const baseModules = [
 	'./src/app/app.js',				// load in the app file first
 	'./src/app/*.js',				// other app parts, then modules... 
 	'./src/oePlotly/_oePlotly.js',	// oePlotly moved from newblue
-	'./src/oePlotly/**/*.js',		
+	'./src/oePlotly/*.js',		
+	'./src/oePlotly/layouts/*.js',
 	'./src/openeyes/**/*.js',   	// OE distribution modules
 ];
 

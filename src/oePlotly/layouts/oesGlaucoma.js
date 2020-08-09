@@ -2,6 +2,13 @@
 
 	'use strict';
 	
+	const oesTemplateType = "Glaucoma";
+	
+	/**
+	* Work out full date range for all data
+	*/
+	const dateRange = oePlotly.fullDateRange();
+
 	/**
 	* Build data trace format for Glaucoma
 	* @param { JSON } Eye data
@@ -9,67 +16,112 @@
 	*/
 	const dataTraces = ( eye ) => {
 		
-		const VA_SnellenMetre = {
-			x: eye.va.snellenMetre.x,
-			y: eye.va.snellenMetre.y,
-			name: eye.va.snellenMetre.name,		
-			hovertemplate: 'Snellen Metre: %{y}<br>%{x}',
+		const VA_offScale = {
+			x: eye.va.offScale.x,
+			y: eye.va.offScale.y,
+			name: eye.va.offScale.name,		
+			hovertemplate: '%{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
 		};
 		
+		const VA_SnellenMetre = {
+			x: eye.va.snellenMetre.x,
+			y: eye.va.snellenMetre.y,
+			name: eye.va.snellenMetre.name,	
+			yaxis: 'y2',	
+			hovertemplate: 'Snellen Metre: %{y}<br>%{x}',
+			type: 'scatter',
+			mode: 'lines+markers',
+		};
+				
 		const IOP = {
 			x: eye.IOP.x,
 			y: eye.IOP.y,
 			name: eye.IOP.name,		
-			yaxis: 'y2',
+			yaxis: 'y3',
 			hovertemplate: 'IOP: %{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
 		};
 		
+		dateRange.add( eye.va.offScale.x );
+		dateRange.add( eye.va.snellenMetre.x );
+		dateRange.add( eye.IOP.x );
+		
 		/**
 		Build Drugs data for right eye
 		*/
 		const drugs = [];
-		const arr = Object.values( eye.drugs );
+		//const arr = Object.values( eye.drugs );
 		// loop through array...
-		arr.forEach(( drug ) => {
+		Object.values( eye.drugs ).forEach(( drug ) => {			
 			drugs.push({
 				x: drug.x, 
 				y: drug.y, 
 				customdata: drug.customdata,
 				name:'', 
-				yaxis: 'y3',
+				yaxis: 'y4',
 				hovertemplate: '%{y}<br>%{customdata}<br>%{x}',
 				type: 'scatter', 
 				mode: 'lines+markers',
 				marker: oePlotly.markerFor('drug')
 			});
+			
+			dateRange.add( drug.x );
 		});
 		
-		return [ VA_SnellenMetre, IOP ].concat( drugs );
-				
+		return [ VA_offScale, VA_SnellenMetre, IOP ].concat( drugs );		
 	};
 	
 	/**
-	* Build DIV
-	* @param {String} id
+	* build layout and initialise Plotly 
+	* @param {Object} setup
 	*/
-	const buildDiv = ( id ) => {
-		const div = document.createElement('div');
-		div.id = `oePlotly-${id}`;
-		div.style.height = "80vh";
-		div.style.minHeight = "850px";
-		return div;
-	};
+	const plotlyInit = ( setup ) => {
+		
+		const layout = oePlotly.getLayout({
+			theme: window.oeThemeMode, 
+			legend: false,
+			colors: setup.colors,
+			plotTitle: setup.title,
+			xaxis: setup.xaxis,
+			yaxes: setup.yaxes,
+			subplot: 4,		// offScale, VA, IOP, meds 
+			rangeSlider: dateRange.firstLast(),
+			dateRangeButtons: true,
+			vLineLabel: {
+				x: Object.values( setup.procedures ),
+				h: 0.85,
+			},
+			hLineLabel: {
+				y: Object.values( setup.targetIOP ),
+				axis: 'y2'
+			}
+		});
+			
+		const div = oePlotly.buildDiv(`${oesTemplateType}-${setup.eye}Eye`, '80vh', '850px');
+		document.querySelector( setup.parentDOM ).appendChild( div );
+		
+		Plotly.newPlot(
+			div, 
+			setup.data, 
+			layout, 
+			{ displayModeBar: false, responsive: true }
+		);
+		
+		// bluejay custom event (user changes layout)
+		document.addEventListener('oesLayoutChange', () => {
+			Plotly.relayout( div, layout );
+		});	
+	}; 
+	
 	
 	/**
-	* init demo - needs to be called from the PHP page that needs it
+	* init - called from the PHP page that needs it
+	* @param {JSON} json - PHP supplies the data for charts
 	*/
 	const init = ( json = null ) => {
-		
-		const oesTemplateType = "Glaucoma";
 		
 		if(json === null){
 			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
@@ -79,9 +131,22 @@
 		}
 		
 		/**
-		* Axis templates 
+		* Data 
 		*/
+		let rightEye_data = null;
+		let leftEye_data = null;
 		
+		if( json.rightEye ){
+			rightEye_data = dataTraces( json.rightEye );
+		}
+		
+		if( json.leftEye ){
+			leftEye_data = dataTraces( json.leftEye );
+		}
+	
+		/**
+		* Axes templates 
+		*/
 		const dark = oePlotly.isDarkTheme( window.oeThemeMode );
 		
 		// x1
@@ -90,12 +155,25 @@
 			numTicks: 10,
 			useDates: true, 
 			spikes: true,
+			range: dateRange.firstLast(),
+		}, dark );
+		
+		
+		// y0 - offscale 
+		const y0 = oePlotly.getAxis({
+			type:'y',
+			domain: [0, 0.1], 
+			useCategories: {
+				showAll: true, 
+				categoryarray: json.rightEye.va.offScale.yaxis.reverse()
+			},
+			spikes: true,
 		}, dark );
 		
 		// y1 - VA
 		const y1 = oePlotly.getAxis({
 			type:'y',
-			domain: [0, 0.35],
+			domain: [0.1, 0.45],
 			title: 'VA', 
 			useCategories: {
 				showAll: true, 
@@ -107,7 +185,7 @@
 		// y2 - IOP
 		const y2 = oePlotly.getAxis({
 			type:'y',
-			domain: [0.4, 0.75],
+			domain: [0.5, 0.85],
 			title: 'IOP', 
 			range: [0, 75],
 			spikes: true,
@@ -116,7 +194,7 @@
 		// y3 - Drugs
 		const y3 = oePlotly.getAxis({
 			type:'y',
-			domain: [0.8, 1],
+			domain: [0.88, 1],
 			useCategories: {
 				showAll: true, 
 				categoryarray: json.drugTypes.reverse()
@@ -125,116 +203,39 @@
 		}, dark );
 		
 		/**
-		* Data & Layout - Right Eye
+		* Layout & Build - Right Eye
 		*/	
-		if( json.rightEye ){
+		if( rightEye_data ){
 			
-			const rightEye_data = dataTraces( json.rightEye );
-			
-			const rightEye_layout = oePlotly.getLayout({
-				theme: window.oeThemeMode, 
-				legend: false,
-				colors: 'rightEye',
-				plotTitle: 'Right Eye',
-				xaxis: x1,
-				yaxes: [ y1, y2, y3 ],
-				subplot: 3,
-				rangeSlider: true,
-				vLineLabel: {
-					x: Object.values( json.rightEye.procedures ),
-					h: 0.75,
-				},
-				hLineLabel: {
-					y: Object.values( json.rightEye.targetIOP ),
-					axis: 'y2'
-				}
+			plotlyInit({
+				data: rightEye_data,
+				title: "Right Eye",
+				eye: "right",
+				colors: "rightEye",
+				xaxis: x1, 
+				yaxes: [ y0, y1, y2, y3 ],
+				procedures: json.rightEye.procedures,
+				targetIOP: json.rightEye.targetIOP,
+				parentDOM: '.oes-left-side',
 			});
-			
-			const leftDiv = buildDiv(`${oesTemplateType}RightEye`);
-			document.querySelector('.oes-left-side').appendChild( leftDiv );
-			
-			rightEye_layout.updatemenus = [{
-				visible: true,
-				type: "dropdown",
-				y: 0.35,
-				yanchor: 'top',
-				x: 0,
-				xanchor: 'left',
-				// base font settings
-
-				font: {
-					color: dark ? '#888' : '#333',
-				},
-
-				bgcolor: 'rgba(255,255,255,0.1)', 
-				activecolor: '#f00',
-				bordercolor: '#0ff',
-				borderwidth: 0.5,
-				buttons:[
-					{ 	method: 'update', // 'data' & 'layout'
-						args: ['visible', [true, false, false, false]],
-						label: 'Data set 0'						
-					}, {
-						method: 'update',
-						args: ['visible', [false, true, false, false]],
-						label: 'Data set 1'
-					}
-				]			
-			}];
-			
-			Plotly.newPlot(
-				leftDiv, 
-				rightEye_data, 
-				rightEye_layout, 
-				{ displayModeBar: false, responsive: true }
-			);
-			
-			// bluejay custom event (user changes layout)
-			document.addEventListener('oesLayoutChange', () => {
-				Plotly.relayout( leftDiv, rightEye_layout );
-			});	
 		} 
 		
 		/**
-		* Data & Layout - Left Eye
+		* Layout & Build -  Left Eye
 		*/
-		if( json.leftEye ){
+		if( leftEye_data ){
 			
-			const leftEye_data = dataTraces( json.leftEye );
-			
-			const leftEye_layout = oePlotly.getLayout({
-				theme: window.oeThemeMode, 
-				legend: false,
-				colors: 'leftEye',
-				plotTitle: 'Left Eye',
-				subplot: 3,
-				xaxis: x1,
-				yaxes: [ y1, y2, y3 ],
-				rangeSlider: true,
-				vLineLabel: {
-					x: Object.values( json.leftEye.procedures ),
-					h: 0.75,
-				},
-				hLineLabel: {
-					y: Object.values( json.leftEye.targetIOP ),
-					axis: 'y2'
-				}
+			plotlyInit({
+				data: leftEye_data,
+				title: "Left Eye",
+				eye: "left",
+				colors: "leftEye",
+				xaxis: x1, 
+				yaxes: [ y0, y1, y2, y3 ],
+				procedures: json.leftEye.procedures,
+				targetIOP: json.leftEye.targetIOP,
+				parentDOM: '.oes-right-side',
 			});
-			
-			const rightDiv = buildDiv(`${oesTemplateType}LeftEye`);
-			document.querySelector('.oes-right-side').appendChild( rightDiv );
-			
-			Plotly.newPlot(
-				rightDiv, 
-				leftEye_data, 
-				leftEye_layout, 
-				{ displayModeBar: false, responsive: true }
-			);
-			
-			// bluejay custom event (user changes layout)
-			document.addEventListener('oesLayoutChange', () => {
-				Plotly.relayout( rightDiv, leftEye_layout );
-			});	
 		}
 	};
 	

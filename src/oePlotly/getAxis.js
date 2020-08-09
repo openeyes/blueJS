@@ -38,6 +38,7 @@
 			tickcolor: dark ? '#666' : '#ccc',
 			automargin: true, //  long tick labels automatically grow the figure margins.
 			mirror: true, //  ( true | "ticks" | false | "all" | "allticks" )
+			connectgaps: false,
 		};
 		
 		// axis? x or y
@@ -73,7 +74,7 @@
 		
 		// use Dates? - OE data formatting
 		if( options.useDates ){
-			axis.tickformat = "%e %b %Y";	
+			axis.tickformat = "%b %Y"; // d Mth Y	
 		}
 	
 		// turn off zoom?

@@ -2,6 +2,13 @@
 
 	'use strict';
 	
+	const oesTemplateType = "Medical Retina";
+	
+	/**
+	* Work out full date range for all data
+	*/
+	const dateRange = oePlotly.fullDateRange();
+	
 	/**
 	* Build data trace format for Glaucoma
 	* @param { JSON } Eye data
@@ -29,6 +36,9 @@
 			mode: 'lines+markers',
 		};
 		
+		dateRange.add( eye.CRT.x );
+		dateRange.add( eye.va.snellenMetre.x );
+		
 		/**
 		Build Events data for right eye
 		*/
@@ -47,6 +57,8 @@
 				mode: 'markers',
 				marker: oePlotly.markerFor( event.type )
 			});
+			
+			dateRange.add( event.x );
 		});
 		
 		return [ CRT, VA_SnellenMetre ].concat( events );
@@ -54,23 +66,46 @@
 	};
 	
 	/**
-	* Build DIV
-	* @param {String} id
+	* build layout and initialise Plotly 
+	* @param {Object} setup
 	*/
-	const buildDiv = ( id ) => {
-		const div = document.createElement('div');
-		div.id = `oePlotly-${id}`;
-		div.style.height = "70vh";
-		div.style.minHeight = "500px";
-		return div;
-	};
+	const plotlyInit = ( setup ) => {
+		
+		const layout = oePlotly.getLayout({
+			theme: window.oeThemeMode, 
+			legend: false,
+			colors: setup.colors,
+			plotTitle: setup.title,
+			xaxis: setup.xaxis,
+			yaxes: setup.yaxes,
+			subplot: 2,		// offScale, VA, IOP, meds 
+			rangeSlider: dateRange.firstLast(),
+			dateRangeButtons: true,
+			
+		});
+			
+		const div = oePlotly.buildDiv(`${oesTemplateType}-${setup.eye}Eye`, '70vh', '550px');
+		document.querySelector( setup.parentDOM ).appendChild( div );
+		
+		Plotly.newPlot(
+			div, 
+			setup.data, 
+			layout, 
+			{ displayModeBar: false, responsive: true }
+		);
+		
+		// bluejay custom event (user changes layout)
+		document.addEventListener('oesLayoutChange', () => {
+			Plotly.relayout( div, layout );
+		});	
+	}; 
+	
 	
 	/**
-	* init demo - needs to be called from the PHP page that needs it
+	* init - called from the PHP page that needs it
+	* @param {JSON} json - PHP supplies the data for charts
 	*/
 	const init = ( json = null ) => {
-		
-		const oesTemplateType = "Medical Retina";
 		
 		if(json === null){
 			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
@@ -80,9 +115,22 @@
 		}
 		
 		/**
-		* Axis templates 
+		* Data 
 		*/
+		let rightEye_data = null;
+		let leftEye_data = null;
 		
+		if( json.rightEye ){
+			rightEye_data = dataTraces( json.rightEye );
+		}
+		
+		if( json.leftEye ){
+			leftEye_data = dataTraces( json.leftEye );
+		}
+
+		/**
+		* Axes templates 
+		*/
 		const dark = oePlotly.isDarkTheme( window.oeThemeMode );
 		
 		// x1
@@ -127,71 +175,35 @@
 		}, dark );
 		
 		/**
-		* Data & Layout - Right Eye
+		* Layout & Build  - Right Eye
 		*/	
-		if( json.rightEye ){
+		if( rightEye_data ){
 			
-			const rightEye_data = dataTraces( json.rightEye );
-			
-			const rightEye_layout = oePlotly.getLayout({
-				theme: window.oeThemeMode, 
-				legend: false,
-				colors: 'rightEye',
-				plotTitle: 'Right Eye',
-				xaxis: x1,
+			plotlyInit({
+				data: rightEye_data,
+				title: "Right Eye",
+				eye: "right",
+				colors: "rightEye",
+				xaxis: x1, 
 				yaxes: [ y1, y2, y3 ],
-				subplot: 2,
-				rangeSlider: true,
-			});
-			
-			const leftDiv = buildDiv(`${oesTemplateType}RightEye`);
-			document.querySelector('.oes-left-side').appendChild( leftDiv );
-			
-			Plotly.newPlot(
-				leftDiv, 
-				rightEye_data, 
-				rightEye_layout, 
-				{ displayModeBar: false, responsive: true }
-			);
-			
-			// bluejay custom event (user changes layout)
-			document.addEventListener('oesLayoutChange', () => {
-				Plotly.relayout( leftDiv, rightEye_layout );
+				parentDOM: '.oes-left-side',
 			});	
 		} 
 		
 		/**
-		* Data & Layout - Left Eye
+		* Layout & Build - Left Eye
 		*/
-		if( json.leftEye ){
+		if( leftEye_data ){
 			
-			const leftEye_data = dataTraces( json.leftEye );
-			
-			const leftEye_layout = oePlotly.getLayout({
-				theme: window.oeThemeMode, 
-				legend: false,
-				colors: 'leftEye',
-				plotTitle: 'Left Eye',
-				subplot: 2,
-				xaxis: x1,
+			plotlyInit({
+				data: leftEye_data,
+				title: "Left Eye",
+				eye: "left",
+				colors: "leftEye",
+				xaxis: x1, 
 				yaxes: [ y1, y2, y3 ],
-				rangeSlider: true,
-			});
-			
-			const rightDiv = buildDiv(`${oesTemplateType}LeftEye`);
-			document.querySelector('.oes-right-side').appendChild( rightDiv );
-			
-			Plotly.newPlot(
-				rightDiv, 
-				leftEye_data, 
-				leftEye_layout, 
-				{ displayModeBar: false, responsive: true }
-			);
-			
-			// bluejay custom event (user changes layout)
-			document.addEventListener('oesLayoutChange', () => {
-				Plotly.relayout( rightDiv, leftEye_layout );
-			});	
+				parentDOM: '.oes-right-side',
+			});			
 		}
 	};
 	

@@ -759,60 +759,56 @@ const oePlotly = (function ( bj ) {
 		return {}; // unknown type?
 	};
 	
-	const addSpikes = ( axis, dark ) => {
-		if( typeof dark === "string" ){
-			dark = isDarkTheme( dark );
-		}
-		
-		axis.showspikes = true; 
-		axis.spikecolor = dark ? '#0ff' : '#00f';
-		axis.spikethickness = dark ? 0.5 : 1;
-		axis.spikedash = dark ? "1px,3px" : "2px,3px";
-	};
+	const buttonStyling = ( dark ) => ({
+		font: {
+			color: dark ? '#ccc' : '#666',
+		},
+		bgcolor: dark ? 'rgb(30,46,66)' : 'rgb(255,255,255)', 
+		activecolor: dark ? 'rgb(7,69,152)' : 'rgb(205,205,255)',
+		bordercolor: dark ? 'rgb(10,26,36))' : 'rgb(255,255,255)',
+		borderwidth: 2,
+	}); 
 	
+
 	/**
-	* Build an axis object IN layout lines 
-	* @param {Object} customise - overwrite or add to default settings
-	* @param {Boolean} dark - use dark theme options?
+	* Add Plotly dropdown to layouta
+	* @param {Objec} layout
 	*/
-	const defaultAxis = ( customise, dark ) => {
-		if( typeof dark === "string" ){
-			dark = isDarkTheme( dark );
-		}
-		
-		let axisDefaults = {
-			// color: '#fff', // override base font
-			linecolor: dark ? '#666' : '#999', // axis line colour
-			linewidth:1,
-			showgrid: true,
-			gridcolor: dark ? '#292929' : '#e6e6e6',
-			tickmode: "auto",
-			nticks: 20, // number of ticks
-			ticks: "outside",
-			ticklen: 3, // px
-			tickcolor: dark ? '#666' : '#ccc',
-			automargin: true, //  long tick labels automatically grow the figure margins.
+	const addDropDown = ( layout ) => {
+	
+		let buttons = [];
 			
-			mirror: true, //  ( true | "ticks" | false | "all" | "allticks" )
-		};
+		buttons.push({ 	
+			method: 'update', // 'data' & 'layout'
+			args: ['visible', [true, false, false, false]],
+			label: 'Option 1'						
+		});
 		
-		return Object.assign( axisDefaults, customise );
+		buttons.push({ 	
+			method: 'update', // update args: [data, layout] 
+			// 'args' is an 
+			args: [ {}, {
+			    title: 'some new title', // updates the title
+			    colorway: oePlotly.getColorSeries( "default", true )
+			}],
+			//args2: layout,
+			label: 'Options Title'						
+		});
+	
+ 		let menu = Object.assign({
+			type: "dropdown",
+			xanchor: 'left',
+			yanchor: 'top',
+			x: 0,
+			y: 0.35,
+			buttons: buttons, // add buttons to menu
+ 		}, oePlotly.buttonStyling() );
+ 		
+		
+		// could be multiple menus
+		layout.updatemenus = [ menu ];	
 	};
 	
-	/**
-	* set up to show all catorgies or just the ones with data
-	* @param {Object} axis
-	* @param {Array} categories (for axis)
-	* @param {Boolean} all - show all categories (even if they don't have data)
-	* @returns {Object} updated axis
-	*/
-	const makeCategoryAxis = ( axis, categories, all = true ) => {
-		axis.type = "category";
-		// categories on yaxis start at 0, add a blank to push up
-		axis.categoryarray = [' '].concat(categories);
-		if(all) axis.range = [0, categories.length + 1];
-		return axis; 
-	};
 
 	// public 
 	return {
@@ -822,9 +818,8 @@ const oePlotly = (function ( bj ) {
 		getColorFor,
 		dashedLine,
 		markerFor,
-		defaultAxis,
-		makeCategoryAxis,
-		addSpikes
+		addDropDown,
+		buttonStyling
 	};
 
 })( bluejay );
@@ -932,6 +927,7 @@ const oePlotly = (function ( bj ) {
 			tickcolor: dark ? '#666' : '#ccc',
 			automargin: true, //  long tick labels automatically grow the figure margins.
 			mirror: true, //  ( true | "ticks" | false | "all" | "allticks" )
+			connectgaps: false,
 		};
 		
 		// axis? x or y
@@ -967,7 +963,7 @@ const oePlotly = (function ( bj ) {
 		
 		// use Dates? - OE data formatting
 		if( options.useDates ){
-			axis.tickformat = "%e %b %Y";	
+			axis.tickformat = "%b %Y"; // d Mth Y	
 		}
 	
 		// turn off zoom?
@@ -1023,7 +1019,8 @@ const oePlotly = (function ( bj ) {
 		subplot: false,			// Optional {Number} number of 'rows' (number of verical plots)
 		vLineLabel: false		// Optional {Object} e.g. { x: [ ... ], h: 0.75 }
 		hLineLabel: false		// Optional {Object} e.g. { y: [ ... ], axis: 'y2' }
-		rangeslider: false,		// Optional {Boolean}
+		rangeslider: false,		// Optional {Boolean || Array} e.g. [firstDate, lastDate]
+		dateRangeButtons: false // Optional {Boolean}
 	}
 	*/
 	oePlotly.getLayout = function( options ){
@@ -1084,7 +1081,7 @@ const oePlotly = (function ( bj ) {
 		/*
 		Colour theme	
 		*/ 
-		if(options.colors){
+		if( options.colors ){
 			layout.colorway = oePlotly.getColorSeries( options.colors, dark );			
 		} else {
 			layout.colorway = oePlotly.getColorSeries( "default", dark );
@@ -1093,7 +1090,7 @@ const oePlotly = (function ( bj ) {
 		/*
 		Plot title
 		*/
-		if(options.plotTitle){
+		if( options.plotTitle ){
 			layout.title = {
 				text: options.plotTitle,
 				xref: 'paper', //  "container" | "paper" (as in, align too)
@@ -1113,7 +1110,7 @@ const oePlotly = (function ( bj ) {
 		Subplots (n charts on a single plot)
 		Assumes always vertically stacked
 		*/
-		if(options.subplot){
+		if( options.subplot ){
 			layout.grid = {
 		    	rows: options.subplot,
 				columns: 1,
@@ -1124,7 +1121,6 @@ const oePlotly = (function ( bj ) {
 		/*
 		Shapes and Annotations
 		*/
-		
 		layout.shapes = [];
 		layout.annotations = [];
 		
@@ -1132,15 +1128,13 @@ const oePlotly = (function ( bj ) {
 		Vertical marker line
 		{array} = [{x:x, y:1, name:"name"}]
 		*/
-		if(options.vLineLabel){
+		if( options.vLineLabel ){
 			
 			// vLineLabel must be an array of objects
 			const verticals = options.vLineLabel.x;
 			const height = options.vLineLabel.h;
 		
 			const line = ( my, index ) => {
-				console.log(my);
-				
 				return {
 			      type: 'line',
 			      layer: 'above', // or "below"
@@ -1183,7 +1177,7 @@ const oePlotly = (function ( bj ) {
 		Horizontal marker line
 		{array} = [{ axis:'y3', y:15, name: "Target IOP"}]
 		*/
-		if(options.hLineLabel){
+		if( options.hLineLabel ){
 			
 			// hLineLabel must be an array of objects
 			const horizontals = options.hLineLabel.y;
@@ -1230,13 +1224,13 @@ const oePlotly = (function ( bj ) {
 		}
 		
 		/*
-		Axes
+		X & Y Axes
 		*/
-		if(options.xaxis){
+		if( options.xaxis ){
 			layout.xaxis = options.xaxis; // only 1 axis per layout
 		}
 		
-		if(options.yaxes){
+		if( options.yaxes ){
 			options.yaxes.forEach((y, index) => {
 				if( index ){
 					layout['yaxis'+(index + 1)] = y;
@@ -1259,24 +1253,55 @@ const oePlotly = (function ( bj ) {
 		*/
 		if(options.rangeSlider){
 			
+			const rangeslider = {
+				thickness: 0.08
+			};
+			
 			if(dark){
-				// this is a pain.
+				// this is a pain. Plot.ly does not handles this well
 				// can't find a setting to change the slide cover color!
-				// it's set at a black opacity, so to make this usable:
-				layout.xaxis.rangeslider = {
-					bgcolor: layout.paper_bgcolor,
-					borderwidth: 1,
-					bordercolor: layout.plot_bgcolor,
-					thickness: 0.1, // 0 - 1, default 0.15 (height of area)
-				};
-			} else {
-				// Plot.ly handles this well in 'light' theme mode
-				layout.xaxis.rangeslider = {
-					thickness: 0.1, // 0 - 1, default 0.15 (height of area)
-				};
+				// it's set at a black opacity, so to make it usable...
+				rangeslider.bgcolor = layout.paper_bgcolor;
+				rangeslider.borderwidth = 1;
+				rangeslider.bordercolor = layout.plot_bgcolor;
+			} 
+			
+			
+			/*
+			if not a boolean assume a range array
+			note: there is bug in Plot.ly (known) that this won't
+			restrict the range, but it helps with the dateRangebuttons
+			*/
+			if( typeof options.rangeSlider !== "boolean" ){
+				rangeslider.range = options.rangeSlider; 
 			}
 			
+			// update layout:
+			layout.xaxis.rangeslider = rangeslider;
 			layout.margin.b = 15;
+		}
+		
+		if( options.dateRangeButtons ){
+			layout.xaxis.rangeselector = Object.assign({
+				x:1,
+				xanchor: 'right',
+				buttons: [{
+					label: 'Show all',
+					step: "all",
+				}, {
+					label: '2 Yr',
+					step: "year",
+					count: 2, // 1 = year, 2 = 2 years
+				}, {
+					label: '1 Yr',
+					step: "year",
+					count: 1, // 1 = year, 2 = 2 years
+				}, {
+					label: '6 Mth',
+					step: "month",
+					count: 6, // 1 = year, 2 = 2 years
+				}]
+			}, oePlotly.buttonStyling( dark ) );
 		}
 		
 		// ok, all done
@@ -1285,10 +1310,54 @@ const oePlotly = (function ( bj ) {
 	
 	
 })( oePlotly );
+(function( oePlotly ) {
+	
+	'use strict';
+	
+	/**
+	* Build DIV
+	* @param {String} id
+	* @param {String} height (80vh)
+	* @param {String} min-height (500px)
+	*/
+	oePlotly.buildDiv = ( id, height, minHeight ) => {
+		const div = document.createElement('div');
+		div.id = `oePlotly-${id}`;
+		div.style.height = height;
+		div.style.minHeight = minHeight;
+		return div;
+	};
+	
+	/**
+	* For use in layout templates
+	* Helper to work out first and last dates
+	* @returns {Object} 
+	*/
+	oePlotly.fullDateRange = () => ({
+		all:[], 
+		add( xArr ){
+			this.all = this.all.concat( xArr );
+			this.all.sort();
+		}, 
+		firstLast(){
+			// watch out for null values
+			let noNulls = this.all.filter(( i ) => i !== null );
+			return [ noNulls[0], noNulls.pop() ];	
+		},
+	});
+	
+})( oePlotly );
 (function ( bj ) {
 
 	'use strict';
 	
+	const oesTemplateType = "Glaucoma";
+	
+	/**
+	* Work out full date range for all data
+	*/
+	const dateRange = oePlotly.fullDateRange();
+
 	/**
 	* Build data trace format for Glaucoma
 	* @param { JSON } Eye data
@@ -1296,67 +1365,112 @@ const oePlotly = (function ( bj ) {
 	*/
 	const dataTraces = ( eye ) => {
 		
-		const VA_SnellenMetre = {
-			x: eye.va.snellenMetre.x,
-			y: eye.va.snellenMetre.y,
-			name: eye.va.snellenMetre.name,		
-			hovertemplate: 'Snellen Metre: %{y}<br>%{x}',
+		const VA_offScale = {
+			x: eye.va.offScale.x,
+			y: eye.va.offScale.y,
+			name: eye.va.offScale.name,		
+			hovertemplate: '%{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
 		};
 		
+		const VA_SnellenMetre = {
+			x: eye.va.snellenMetre.x,
+			y: eye.va.snellenMetre.y,
+			name: eye.va.snellenMetre.name,	
+			yaxis: 'y2',	
+			hovertemplate: 'Snellen Metre: %{y}<br>%{x}',
+			type: 'scatter',
+			mode: 'lines+markers',
+		};
+				
 		const IOP = {
 			x: eye.IOP.x,
 			y: eye.IOP.y,
 			name: eye.IOP.name,		
-			yaxis: 'y2',
+			yaxis: 'y3',
 			hovertemplate: 'IOP: %{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
 		};
 		
+		dateRange.add( eye.va.offScale.x );
+		dateRange.add( eye.va.snellenMetre.x );
+		dateRange.add( eye.IOP.x );
+		
 		/**
 		Build Drugs data for right eye
 		*/
 		const drugs = [];
-		const arr = Object.values( eye.drugs );
+		//const arr = Object.values( eye.drugs );
 		// loop through array...
-		arr.forEach(( drug ) => {
+		Object.values( eye.drugs ).forEach(( drug ) => {			
 			drugs.push({
 				x: drug.x, 
 				y: drug.y, 
 				customdata: drug.customdata,
 				name:'', 
-				yaxis: 'y3',
+				yaxis: 'y4',
 				hovertemplate: '%{y}<br>%{customdata}<br>%{x}',
 				type: 'scatter', 
 				mode: 'lines+markers',
 				marker: oePlotly.markerFor('drug')
 			});
+			
+			dateRange.add( drug.x );
 		});
 		
-		return [ VA_SnellenMetre, IOP ].concat( drugs );
-				
+		return [ VA_offScale, VA_SnellenMetre, IOP ].concat( drugs );		
 	};
 	
 	/**
-	* Build DIV
-	* @param {String} id
+	* build layout and initialise Plotly 
+	* @param {Object} setup
 	*/
-	const buildDiv = ( id ) => {
-		const div = document.createElement('div');
-		div.id = `oePlotly-${id}`;
-		div.style.height = "80vh";
-		div.style.minHeight = "850px";
-		return div;
-	};
+	const plotlyInit = ( setup ) => {
+		
+		const layout = oePlotly.getLayout({
+			theme: window.oeThemeMode, 
+			legend: false,
+			colors: setup.colors,
+			plotTitle: setup.title,
+			xaxis: setup.xaxis,
+			yaxes: setup.yaxes,
+			subplot: 4,		// offScale, VA, IOP, meds 
+			rangeSlider: dateRange.firstLast(),
+			dateRangeButtons: true,
+			vLineLabel: {
+				x: Object.values( setup.procedures ),
+				h: 0.85,
+			},
+			hLineLabel: {
+				y: Object.values( setup.targetIOP ),
+				axis: 'y2'
+			}
+		});
+			
+		const div = oePlotly.buildDiv(`${oesTemplateType}-${setup.eye}Eye`, '80vh', '850px');
+		document.querySelector( setup.parentDOM ).appendChild( div );
+		
+		Plotly.newPlot(
+			div, 
+			setup.data, 
+			layout, 
+			{ displayModeBar: false, responsive: true }
+		);
+		
+		// bluejay custom event (user changes layout)
+		document.addEventListener('oesLayoutChange', () => {
+			Plotly.relayout( div, layout );
+		});	
+	}; 
+	
 	
 	/**
-	* init demo - needs to be called from the PHP page that needs it
+	* init - called from the PHP page that needs it
+	* @param {JSON} json - PHP supplies the data for charts
 	*/
 	const init = ( json = null ) => {
-		
-		const oesTemplateType = "Glaucoma";
 		
 		if(json === null){
 			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
@@ -1366,9 +1480,22 @@ const oePlotly = (function ( bj ) {
 		}
 		
 		/**
-		* Axis templates 
+		* Data 
 		*/
+		let rightEye_data = null;
+		let leftEye_data = null;
 		
+		if( json.rightEye ){
+			rightEye_data = dataTraces( json.rightEye );
+		}
+		
+		if( json.leftEye ){
+			leftEye_data = dataTraces( json.leftEye );
+		}
+	
+		/**
+		* Axes templates 
+		*/
 		const dark = oePlotly.isDarkTheme( window.oeThemeMode );
 		
 		// x1
@@ -1377,12 +1504,25 @@ const oePlotly = (function ( bj ) {
 			numTicks: 10,
 			useDates: true, 
 			spikes: true,
+			range: dateRange.firstLast(),
+		}, dark );
+		
+		
+		// y0 - offscale 
+		const y0 = oePlotly.getAxis({
+			type:'y',
+			domain: [0, 0.1], 
+			useCategories: {
+				showAll: true, 
+				categoryarray: json.rightEye.va.offScale.yaxis.reverse()
+			},
+			spikes: true,
 		}, dark );
 		
 		// y1 - VA
 		const y1 = oePlotly.getAxis({
 			type:'y',
-			domain: [0, 0.35],
+			domain: [0.1, 0.45],
 			title: 'VA', 
 			useCategories: {
 				showAll: true, 
@@ -1394,7 +1534,7 @@ const oePlotly = (function ( bj ) {
 		// y2 - IOP
 		const y2 = oePlotly.getAxis({
 			type:'y',
-			domain: [0.4, 0.75],
+			domain: [0.5, 0.85],
 			title: 'IOP', 
 			range: [0, 75],
 			spikes: true,
@@ -1403,7 +1543,7 @@ const oePlotly = (function ( bj ) {
 		// y3 - Drugs
 		const y3 = oePlotly.getAxis({
 			type:'y',
-			domain: [0.8, 1],
+			domain: [0.88, 1],
 			useCategories: {
 				showAll: true, 
 				categoryarray: json.drugTypes.reverse()
@@ -1412,116 +1552,39 @@ const oePlotly = (function ( bj ) {
 		}, dark );
 		
 		/**
-		* Data & Layout - Right Eye
+		* Layout & Build - Right Eye
 		*/	
-		if( json.rightEye ){
+		if( rightEye_data ){
 			
-			const rightEye_data = dataTraces( json.rightEye );
-			
-			const rightEye_layout = oePlotly.getLayout({
-				theme: window.oeThemeMode, 
-				legend: false,
-				colors: 'rightEye',
-				plotTitle: 'Right Eye',
-				xaxis: x1,
-				yaxes: [ y1, y2, y3 ],
-				subplot: 3,
-				rangeSlider: true,
-				vLineLabel: {
-					x: Object.values( json.rightEye.procedures ),
-					h: 0.75,
-				},
-				hLineLabel: {
-					y: Object.values( json.rightEye.targetIOP ),
-					axis: 'y2'
-				}
+			plotlyInit({
+				data: rightEye_data,
+				title: "Right Eye",
+				eye: "right",
+				colors: "rightEye",
+				xaxis: x1, 
+				yaxes: [ y0, y1, y2, y3 ],
+				procedures: json.rightEye.procedures,
+				targetIOP: json.rightEye.targetIOP,
+				parentDOM: '.oes-left-side',
 			});
-			
-			const leftDiv = buildDiv(`${oesTemplateType}RightEye`);
-			document.querySelector('.oes-left-side').appendChild( leftDiv );
-			
-			rightEye_layout.updatemenus = [{
-				visible: true,
-				type: "dropdown",
-				y: 0.35,
-				yanchor: 'top',
-				x: 0,
-				xanchor: 'left',
-				// base font settings
-
-				font: {
-					color: dark ? '#888' : '#333',
-				},
-
-				bgcolor: 'rgba(255,255,255,0.1)', 
-				activecolor: '#f00',
-				bordercolor: '#0ff',
-				borderwidth: 0.5,
-				buttons:[
-					{ 	method: 'update', // 'data' & 'layout'
-						args: ['visible', [true, false, false, false]],
-						label: 'Data set 0'						
-					}, {
-						method: 'update',
-						args: ['visible', [false, true, false, false]],
-						label: 'Data set 1'
-					}
-				]			
-			}];
-			
-			Plotly.newPlot(
-				leftDiv, 
-				rightEye_data, 
-				rightEye_layout, 
-				{ displayModeBar: false, responsive: true }
-			);
-			
-			// bluejay custom event (user changes layout)
-			document.addEventListener('oesLayoutChange', () => {
-				Plotly.relayout( leftDiv, rightEye_layout );
-			});	
 		} 
 		
 		/**
-		* Data & Layout - Left Eye
+		* Layout & Build -  Left Eye
 		*/
-		if( json.leftEye ){
+		if( leftEye_data ){
 			
-			const leftEye_data = dataTraces( json.leftEye );
-			
-			const leftEye_layout = oePlotly.getLayout({
-				theme: window.oeThemeMode, 
-				legend: false,
-				colors: 'leftEye',
-				plotTitle: 'Left Eye',
-				subplot: 3,
-				xaxis: x1,
-				yaxes: [ y1, y2, y3 ],
-				rangeSlider: true,
-				vLineLabel: {
-					x: Object.values( json.leftEye.procedures ),
-					h: 0.75,
-				},
-				hLineLabel: {
-					y: Object.values( json.leftEye.targetIOP ),
-					axis: 'y2'
-				}
+			plotlyInit({
+				data: leftEye_data,
+				title: "Left Eye",
+				eye: "left",
+				colors: "leftEye",
+				xaxis: x1, 
+				yaxes: [ y0, y1, y2, y3 ],
+				procedures: json.leftEye.procedures,
+				targetIOP: json.leftEye.targetIOP,
+				parentDOM: '.oes-right-side',
 			});
-			
-			const rightDiv = buildDiv(`${oesTemplateType}LeftEye`);
-			document.querySelector('.oes-right-side').appendChild( rightDiv );
-			
-			Plotly.newPlot(
-				rightDiv, 
-				leftEye_data, 
-				leftEye_layout, 
-				{ displayModeBar: false, responsive: true }
-			);
-			
-			// bluejay custom event (user changes layout)
-			document.addEventListener('oesLayoutChange', () => {
-				Plotly.relayout( rightDiv, leftEye_layout );
-			});	
 		}
 	};
 	
@@ -1534,6 +1597,13 @@ const oePlotly = (function ( bj ) {
 (function ( bj ) {
 
 	'use strict';
+	
+	const oesTemplateType = "Medical Retina";
+	
+	/**
+	* Work out full date range for all data
+	*/
+	const dateRange = oePlotly.fullDateRange();
 	
 	/**
 	* Build data trace format for Glaucoma
@@ -1562,6 +1632,9 @@ const oePlotly = (function ( bj ) {
 			mode: 'lines+markers',
 		};
 		
+		dateRange.add( eye.CRT.x );
+		dateRange.add( eye.va.snellenMetre.x );
+		
 		/**
 		Build Events data for right eye
 		*/
@@ -1580,6 +1653,8 @@ const oePlotly = (function ( bj ) {
 				mode: 'markers',
 				marker: oePlotly.markerFor( event.type )
 			});
+			
+			dateRange.add( event.x );
 		});
 		
 		return [ CRT, VA_SnellenMetre ].concat( events );
@@ -1587,23 +1662,46 @@ const oePlotly = (function ( bj ) {
 	};
 	
 	/**
-	* Build DIV
-	* @param {String} id
+	* build layout and initialise Plotly 
+	* @param {Object} setup
 	*/
-	const buildDiv = ( id ) => {
-		const div = document.createElement('div');
-		div.id = `oePlotly-${id}`;
-		div.style.height = "70vh";
-		div.style.minHeight = "500px";
-		return div;
-	};
+	const plotlyInit = ( setup ) => {
+		
+		const layout = oePlotly.getLayout({
+			theme: window.oeThemeMode, 
+			legend: false,
+			colors: setup.colors,
+			plotTitle: setup.title,
+			xaxis: setup.xaxis,
+			yaxes: setup.yaxes,
+			subplot: 2,		// offScale, VA, IOP, meds 
+			rangeSlider: dateRange.firstLast(),
+			dateRangeButtons: true,
+			
+		});
+			
+		const div = oePlotly.buildDiv(`${oesTemplateType}-${setup.eye}Eye`, '70vh', '550px');
+		document.querySelector( setup.parentDOM ).appendChild( div );
+		
+		Plotly.newPlot(
+			div, 
+			setup.data, 
+			layout, 
+			{ displayModeBar: false, responsive: true }
+		);
+		
+		// bluejay custom event (user changes layout)
+		document.addEventListener('oesLayoutChange', () => {
+			Plotly.relayout( div, layout );
+		});	
+	}; 
+	
 	
 	/**
-	* init demo - needs to be called from the PHP page that needs it
+	* init - called from the PHP page that needs it
+	* @param {JSON} json - PHP supplies the data for charts
 	*/
 	const init = ( json = null ) => {
-		
-		const oesTemplateType = "Medical Retina";
 		
 		if(json === null){
 			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
@@ -1613,9 +1711,22 @@ const oePlotly = (function ( bj ) {
 		}
 		
 		/**
-		* Axis templates 
+		* Data 
 		*/
+		let rightEye_data = null;
+		let leftEye_data = null;
 		
+		if( json.rightEye ){
+			rightEye_data = dataTraces( json.rightEye );
+		}
+		
+		if( json.leftEye ){
+			leftEye_data = dataTraces( json.leftEye );
+		}
+
+		/**
+		* Axes templates 
+		*/
 		const dark = oePlotly.isDarkTheme( window.oeThemeMode );
 		
 		// x1
@@ -1660,71 +1771,35 @@ const oePlotly = (function ( bj ) {
 		}, dark );
 		
 		/**
-		* Data & Layout - Right Eye
+		* Layout & Build  - Right Eye
 		*/	
-		if( json.rightEye ){
+		if( rightEye_data ){
 			
-			const rightEye_data = dataTraces( json.rightEye );
-			
-			const rightEye_layout = oePlotly.getLayout({
-				theme: window.oeThemeMode, 
-				legend: false,
-				colors: 'rightEye',
-				plotTitle: 'Right Eye',
-				xaxis: x1,
+			plotlyInit({
+				data: rightEye_data,
+				title: "Right Eye",
+				eye: "right",
+				colors: "rightEye",
+				xaxis: x1, 
 				yaxes: [ y1, y2, y3 ],
-				subplot: 2,
-				rangeSlider: true,
-			});
-			
-			const leftDiv = buildDiv(`${oesTemplateType}RightEye`);
-			document.querySelector('.oes-left-side').appendChild( leftDiv );
-			
-			Plotly.newPlot(
-				leftDiv, 
-				rightEye_data, 
-				rightEye_layout, 
-				{ displayModeBar: false, responsive: true }
-			);
-			
-			// bluejay custom event (user changes layout)
-			document.addEventListener('oesLayoutChange', () => {
-				Plotly.relayout( leftDiv, rightEye_layout );
+				parentDOM: '.oes-left-side',
 			});	
 		} 
 		
 		/**
-		* Data & Layout - Left Eye
+		* Layout & Build - Left Eye
 		*/
-		if( json.leftEye ){
+		if( leftEye_data ){
 			
-			const leftEye_data = dataTraces( json.leftEye );
-			
-			const leftEye_layout = oePlotly.getLayout({
-				theme: window.oeThemeMode, 
-				legend: false,
-				colors: 'leftEye',
-				plotTitle: 'Left Eye',
-				subplot: 2,
-				xaxis: x1,
+			plotlyInit({
+				data: leftEye_data,
+				title: "Left Eye",
+				eye: "left",
+				colors: "leftEye",
+				xaxis: x1, 
 				yaxes: [ y1, y2, y3 ],
-				rangeSlider: true,
-			});
-			
-			const rightDiv = buildDiv(`${oesTemplateType}LeftEye`);
-			document.querySelector('.oes-right-side').appendChild( rightDiv );
-			
-			Plotly.newPlot(
-				rightDiv, 
-				leftEye_data, 
-				leftEye_layout, 
-				{ displayModeBar: false, responsive: true }
-			);
-			
-			// bluejay custom event (user changes layout)
-			document.addEventListener('oesLayoutChange', () => {
-				Plotly.relayout( rightDiv, leftEye_layout );
-			});	
+				parentDOM: '.oes-right-side',
+			});			
 		}
 	};
 	
@@ -2098,6 +2173,597 @@ const oePlotly = (function ( bj ) {
 	bj.userLeave(m.selector, userOut);
 	
 	
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';
+	
+	if(document.querySelector('#tinymce-letterheader-editor') === null) return;
+	
+	let tinyEditor = null;
+	
+	const inserts = {
+		"user_name": {"label":"User Name","value":"<span>Admin Admin</span>"},
+		"firm_name": {"label":"Firm Name","value":"<span>Glaucoma Clinic</span>"},
+		"site_name": {"label":"Site Name","value":"<span>Kings Hospital</span>"},
+		"site_phone": {"label":"Site Phone","value":"<span>0123456789</span>"},
+		"site_fax": {"label":"Site Fax","value":null},
+		"site_email": {"label":"Site Email","value":null},
+		"site_address": {"label":"Site Address","value":"<span>100 Main Road</span>"},
+		"site_city":{"label":"Site City", "value":"<span>London</span>"},
+		"site_postcode": {"label":"Site Postcode","value":"<span>W1 1AA</span>"},
+		"primary_logo": {"label":"Primary Logo","value":'<img src="/idg-php/imgDemo/correspondence/letterhead-logo.png">'},
+		"secondary_logo": {"label":"Secondary Logo","value":null},
+		"current_date": {"label":"Today's Date","value":"<span>" + document.documentElement.dataset.today + "</span>"}
+	};
+
+	const insertData = (key, value) => {
+		tinyEditor.insertContent('<span contenteditable="false" data-substitution="' + key + '">' + value + '</span>');
+	};
+	
+	const quickInsertBtns = () => {
+		var frag = new DocumentFragment();
+		
+		// build Buttons
+		for (const key in inserts) {
+			let label = inserts[key].label;
+			let value = inserts[key].value;
+			if(value === null) continue; // not much point in adding this as a button!
+			
+			var btn = document.createElement('button');
+			btn.className = "idg-quick-insert";
+			btn.textContent = label;
+			btn.setAttribute('data-insert', JSON.stringify({key, value}));
+			
+			// build the Fragment
+			frag.appendChild(btn);
+		}
+		
+		document.querySelector('.editor-quick-insert-btns').appendChild(frag);
+	};
+
+	/*
+	tinyMCE editor - initialise
+	*/
+	tinymce.init({
+		selector: '#tinymce-letterheader-editor',
+		schema: 'html5-strict',
+		branding: false,
+		min_height:400, // can be dragged bigger
+		menubar: false,
+		plugins: ['lists table paste code'],
+		contextmenu: 'table',
+		toolbar: "undo redo | bold italic underline | alignleft aligncenter alignright | table | code",
+		//body_class: 'tiny_oe_body',	
+		custom_undo_redo_levels: 10, // save memory
+		//object_resizing : false
+		hidden_input: false,
+		block_formats: 'Paragraph=p; Header 2=h2; Header 3=h3',
+		content_css : '/newblue/css/style_oe3_print.min.css',
+		setup: function(editor) {
+			editor.on('init', (function(e) {
+				tinyEditor = editor;
+				quickInsertBtns();
+			}));
+		}
+	}); 
+		
+	uiApp.userDown('.idg-quick-insert', (ev) => {
+		let obj = JSON.parse(ev.target.dataset.insert);
+		insertData(obj.key, obj.value);
+	});
+	
+/*
+	$('select#substitution-selection').on('change', function () {
+                let key = $(this).val();
+                if (key !== '' && key !== 'none_selected') {
+                    let value = that.getSubstitution(key);
+                    editor_ref.insertContent('<span contenteditable="false" data-substitution="' + key + '">' + value + '</span>');
+                    console.log(key);
+                }
+
+                $(this).val('none_selected');
+            });
+	
+			
+			
+
+    $(document).ready(function () {
+        let html_editor_controller =
+            new OpenEyes.HTMLSettingEditorController(
+                "letter_header",
+                {"plugins":"lists table paste code pagebreak","branding":false,"visual":false,"min_height":400,"toolbar":"undo redo | bold italic underline | alignleft aligncenter alignright | bullist numlist | table | subtitle | labelitem | label-r-l | inputcheckbox | pagebreak code","valid_children":"+body[style]","custom_undo_redo_levels":10,"object_resizing":false,"menubar":false,"paste_as_text":true,"table_toolbar":"tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol","browser_spellcheck":true,"extended_valid_elements":"i[*]","valid_elements":"*[*]","pagebreak_separator":"<div class=\"pageBreak\" \/>","content_css":"\/assets\/ca6609ee\/css\/style_oe3_print.min.css"},
+                }            );
+    });
+*/
+			
+			
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';
+	
+	/*
+	IDG DEMO of some UX functionality
+	Eyedraw v2 (2.5)
+	*/
+	
+	if(document.querySelector('.js-idg-demo-ed2') === null) return;
+
+
+	uiApp.userDown('.js-idg-demo-doodle-drawer', (ev) => {
+		let icon = ev.target; 
+		let li = uiApp.getParent(icon,'li');
+		li.classList.toggle('ed2-drawer-open');
+	});
+	
+	
+	uiApp.userDown('.ed-canvas-edit', (ev) => {
+		let canvas = ev.target; 
+		let editor = uiApp.getParent(canvas,'.ed2-editor');
+		let popup = editor.querySelector('.ed2-doodle-popup');
+		popup.classList.toggle('closed');	
+	});
+	
+	uiApp.userDown('#js-idg-demo-ed2-search-input', (ev) => {
+		let autocomplete = ev.target.nextElementSibling;
+		console.log('hi');
+		if(autocomplete.style.display == "none"){
+			autocomplete.style.display = 'block';
+		} else {
+			autocomplete.style.display = 'none';
+		}
+	});
+	
+			
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';
+	
+	const demo = () => {
+		const div = document.createElement('div');
+		div.className = "oe-popup-wrap dark";
+		document.body.appendChild( div );
+		
+		const template = [
+			'<div class="oe-login timeout">',
+			'<div class="login">',
+			'<h1>Timed out</h1>',
+			'<div class="user">',
+			'<input type="text" placeholder="Username">',
+			'<input type="password" placeholder="Password">',
+			'<button class="green hint" id="js-login">Login</button>',
+			'</div>',
+			'<div class="info">',
+			'For security reasons you have been logged out. Please login again',
+			'</div>',
+			'</div>',
+			'</div>'].join('');
+			
+		div.innerHTML = Mustache.render( template, {} );
+		
+	};
+
+	bluejay.demoLoginTimeOut = demo;	
+			
+})( bluejay ); 
+(function (uiApp) {
+
+	'use strict';
+	
+	/*
+	IDG DEMO of some UX functionality
+	*/
+	
+	// tr class hook: .js-idg-demo-13420;
+	if(document.querySelector('.js-idg-demo-13420') === null) return;
+	
+	
+	
+	// state change is based on the prescribed toggle switch
+	document.addEventListener('input',(ev) => {
+		let me = ev.target;
+		if(me.matches('.js-idg-demo-13420 .toggle-switch input')){
+			/*
+			toggling the presciption: 
+			ON: show 'Stop' / hide: Duration/dispense & taper
+			*/
+			let tr = uiApp.getParent(me, 'tr');
+			let ongoingTxt = tr.querySelector('.js-idg-ongoing-text');
+			let stopBtn = tr.querySelector('.js-idg-date-stop');
+			let durDis = tr.querySelector('.js-idg-duration-dispense');
+			let taperBtn = tr.querySelector('.js-idg-taper-btn');
+			let reasons = tr.querySelector('.js-idg-stopped-reasons');
+			
+			if(me.checked){
+				// on
+				uiApp.hide(stopBtn);
+				uiApp.hide(reasons);
+				uiApp.show(ongoingTxt, 'block');
+				uiApp.show(durDis, 'block');
+				uiApp.show(taperBtn, 'block');	
+			} else {
+				// off
+				uiApp.show(stopBtn, 'block');
+				uiApp.hide(ongoingTxt);	
+				uiApp.hide(durDis);
+				uiApp.hide(taperBtn);
+			}	
+		}
+	});
+	
+	const updateStopState = (td, stop) => {
+		
+		let stopBtn = td.querySelector('.js-idg-stop-btn');
+		let stopDate = td.querySelector('.js-idg-stop-date');
+		let reasons = td.querySelector('.js-idg-stopped-reasons');
+		let cancelIcon = td.querySelector('.js-idg-cancel-stop');
+		
+		if(stop){
+			uiApp.hide(stopBtn);
+			uiApp.show(stopDate, 'block');
+			uiApp.show(reasons, 'block');
+			uiApp.show(cancelIcon, 'block');
+		} else {
+			uiApp.show(stopBtn, 'block');
+			uiApp.hide(stopDate);
+			uiApp.hide(reasons);
+			uiApp.hide(cancelIcon);
+		}
+	};
+	
+	// 'stop' button
+	document.addEventListener('click', (ev) => {
+		if(ev.target.matches(".js-idg-stop-btn")){
+			updateStopState( uiApp.getParent(ev.target, 'td'), true);
+		}
+	});
+	
+	// cancel 'stop'
+	document.addEventListener('mousedown', (ev) => {
+		if(ev.target.matches('.js-idg-cancel-stop')){
+			updateStopState( uiApp.getParent(ev.target, 'td'), false);
+		}
+	});
+
+	
+	// Show history
+	document.addEventListener('mousedown',(ev) => {
+		let me = ev.target;
+		if(me.matches('.js-show-medication-history')){
+			let tableRows = document.querySelectorAll('.js-idg-medication-history-' + me.dataset.idgdemo);
+			tableRows.forEach((row) => {
+				if(row.style.visibility == "collapse"){
+					row.style.visibility = "visible";
+				} else {
+					row.style.visibility = "collapse";
+				}
+				
+			});
+		}
+	});
+			
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';
+	
+	/*
+	IDG DEMO of some UX functionality
+	for Ophthalmic Diagnosis v2!
+	*/
+	
+	if(document.querySelector('.js-idg-diagnosis-active-switcher') === null) return;
+	
+	/*
+	Update VIEW states to demo UX
+	*/
+	const updateActiveState = (div, state) => {
+		let text = div.querySelector('.js-idg-diagnosis-text');
+		let toggle = div.querySelector('.toggle-switch');
+		let remove = div.querySelector('.remove-circle');
+		let btn = div.querySelector('.js-idg-diagnosis-add-btn');
+		let doubt = div.querySelector('.js-idg-diagnosis-doubt');
+		let doubtInput = div.querySelector('.js-idg-diagnosis-doubt-input');
+		
+		let side = div.dataset.idgside;
+		let eyelatIcon = div.parentNode.previousElementSibling.querySelector('.oe-eye-lat-icons .oe-i');
+		
+		let date = div.parentNode.nextElementSibling.querySelector('.js-idg-diagnosis-date');	
+				
+		switch(state){
+			case 'active':
+			uiApp.reshow(text);
+			uiApp.reshow(toggle);
+			uiApp.reshow(doubt);
+			uiApp.hide(remove);
+			uiApp.hide(btn);
+			uiApp.reshow(date);
+			text.textContent = 'Active (confirmed)';
+			text.classList.remove('fade');
+			doubt.querySelector('input').checked = false;
+			toggle.querySelector('input').checked = true;
+			setEyeLatIcon(eyelatIcon, side, 'active');
+			break;
+			
+			case 'confirmed':
+			uiApp.hide(doubtInput);
+			uiApp.reshow(text);
+			break;
+			
+			case 'doubt':
+			uiApp.reshow(doubtInput);
+			uiApp.hide(text);
+			break;
+			
+			case 'inactive':
+			uiApp.reshow(text);
+			uiApp.reshow(toggle);
+			uiApp.reshow(remove);
+			uiApp.hide(btn);
+			uiApp.hide(doubt);
+			uiApp.hide(doubtInput);
+			uiApp.reshow(date);
+			text.textContent = 'Inactive from';
+			text.classList.add('fade');
+			setEyeLatIcon(eyelatIcon, side, 'inactive');
+			break;
+			
+			case 'removed':
+			uiApp.hide(toggle);
+			uiApp.hide(remove);
+			uiApp.reshow(btn);
+			uiApp.hide(date);
+			text.textContent = 'Not present';
+			setEyeLatIcon(eyelatIcon, side, 'none');
+			break; 
+		}
+	};
+	
+	const setEyeLatIcon = (i, side, state) => {
+		/*
+		oe-i laterality L small pad
+		oe-i laterality NA small pad	
+		*/
+		if(i === null) return;
+		
+		let css = ['oe-i'];
+		let eye = side == 'left' ? 'L' : 'R';
+		
+		switch(state){
+			case 'active':
+			css.push('laterality', eye);
+			break;
+			case 'inactive':
+			css.push('laterality', eye+'i');
+			break;
+			case 'none':
+			css.push('laterality', 'NA');
+			break;
+		}
+		
+		css.push('small', 'pad');
+		
+		i.className = css.join(' ');
+	};
+	
+	
+	// store the default <td> 
+	let tdDefault = null;
+	
+	let td1 = '<span class="oe-eye-lat-icons"><i class="oe-i laterality NA small pad"></i></span>';
+	let td2 = '<div class="flex-layout cols-11 js-idg-diagnosis-active-switcher" data-idgdemo="-r-nSysEx2" data-idgside="right"><div class="js-idg-diagnosis-actions"><label class="toggle-switch" style="display: none;"><input type="checkbox"><div class="toggle-btn"></div></label><label class="inline highlight js-idg-diagnosis-doubt" style="display: none;"><input value="diagnosis-doubt" name="idg-4131" type="checkbox"> <i class="oe-i doubt small-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="? = doubts; suspected, etc"></i></label><i class="oe-i remove-circle small-icon pad-left" style="display: none;"></i><button class="js-idg-diagnosis-add-btn ">Add right side</button></div><div class="js-idg-diagnosis-state"><input class="js-idg-diagnosis-doubt-input" value="Suspected" placeholder="Suspected" maxlength="32" style="display: none;"><span class="js-idg-diagnosis-text js-active-state fade ">Not present</span></div></div>';
+	let td3 = '<div class="js-idg-diagnosis-date"><input type="text" class="date" value="30 Apr 2020"></div>';
+	//td3.className = 'valign-top';
+	
+	
+	const updateSystemic = (tr, num) => {
+		
+		let sidesCheck = tr.querySelector('.js-idg-sides');
+		let text = tr.querySelector('.js-idg-diagnosis-text');
+		
+		let div = tr.querySelector('.js-idg-diagnosis-active-switcher');
+		let toggle = div.querySelector('.toggle-switch');
+		let doubt = div.querySelector('.js-idg-diagnosis-doubt');
+		let doubtInput = div.querySelector('.js-idg-diagnosis-doubt-input');
+		
+		let systemicIcons = tr.querySelector('.js-idg-right-icon .oe-systemic-icons');
+
+
+		if(tdDefault == null){
+			tdDefault = tr.querySelector('.js-idg-diagnosis-state-options').innerHTML;
+			uiApp.reshow(text);
+		}
+
+		
+		switch(num){
+			case '0':
+				uiApp.reshow(sidesCheck);
+				uiApp.reshow(text);
+				text.textContent = 'Active (confirmed)';
+				text.classList.remove('fade');
+				uiApp.reshow(toggle);
+				toggle.querySelector('input').checked = true;
+				uiApp.reshow(doubt);
+				doubt.querySelector('input').checked = false;
+				uiApp.hide(doubtInput);
+				systemicIcons.querySelector('.oe-i').className = "oe-i person-green small pad";
+				
+				
+			break;
+			
+			case '1':
+				uiApp.hide(sidesCheck);
+				uiApp.reshow(text);
+				text.textContent = 'Not present';
+				text.classList.add('fade');
+				uiApp.hide(toggle);
+				uiApp.reshow(doubt);
+				doubt.querySelector('input').checked = false;
+				uiApp.hide(doubtInput);
+				systemicIcons.querySelector('.oe-i').className = "oe-i NA small pad";
+			break;
+			
+			case '2':
+				uiApp.hide(sidesCheck);
+				uiApp.reshow(text);
+				text.textContent = 'Not checked';
+				text.classList.add('fade');
+				uiApp.hide(toggle);
+				uiApp.hide(doubt);
+				uiApp.hide(doubtInput);
+				systemicIcons.querySelector('.oe-i').className = "oe-i NA small pad";
+			break;
+		}
+	};
+	
+	const systemicSidesChange = (tr, val) => {
+		let td = tr.querySelector('.js-idg-diagnosis-state-options');
+		let systemicIcons = tr.querySelector('.js-idg-right-icon .oe-systemic-icons');
+		let eyeLatIcons = tr.querySelector('.js-idg-right-icon .oe-eye-lat-icons .oe-i');
+	
+		
+		if(val){
+			// show sides
+			td.innerHTML = td1;
+			td.colSpan = 0;
+			let newCell1 = tr.insertCell(2);
+			let newCell2 = tr.insertCell(3);
+			newCell1.innerHTML = td2;
+			newCell2.innerHTML = td3;	
+			
+			uiApp.hide(tr.cells[5].querySelector('.toggle-switch'));
+			uiApp.hide(tr.cells[5].querySelector('.highlight'));
+		
+			if(tr.cells[5].querySelector('.js-idg-diagnosis-actions .js-idg-diagnosis-add-btn') === null){
+				let btn = document.createElement('button');
+				btn.className = "js-idg-diagnosis-add-btn";
+				btn.textContent = "Add left side";
+				tr.cells[5].querySelector('.js-idg-diagnosis-actions').appendChild(btn);
+			} else {
+				uiApp.reshow(tr.cells[5].querySelector('.js-idg-diagnosis-add-btn'));
+			}
+			
+			let text = tr.cells[5].querySelector('.js-idg-diagnosis-text');
+			text.textContent = 'Inactive from';
+			text.classList.add('fade');
+			
+			systemicIcons.style.display = "none";
+			eyeLatIcons.style.display = "inline-block";
+			
+		} else {
+			// no sides
+			tr.deleteCell(2);
+			tr.deleteCell(2); // was 3, now 2!
+			td.innerHTML = tdDefault;
+			td.colSpan = 3;
+			
+			uiApp.hide(tr.cells[3].querySelector('.js-idg-diagnosis-add-btn'));
+			uiApp.reshow(tr.cells[3].querySelector('.toggle-switch'));
+			tr.cells[3].querySelector('.toggle-switch').checked = true;
+			uiApp.reshow(tr.cells[3].querySelector('.highlight'));
+			
+			td.querySelector('input').checked = true;
+			
+			systemicIcons.style.display = "inline-block";
+			eyeLatIcons.style.display = "none";
+		}		
+	};
+
+	const showAuditHistory = (id) => {
+		let tableRows = document.querySelectorAll('.js-idg-diagnosis-history-' + id);
+		tableRows.forEach((row) => {
+			// toggle the audit rows
+			if(row.style.visibility == "collapse"){
+				row.style.visibility = "visible";
+			} else {
+				row.style.visibility = "collapse";
+			}
+		});
+	};
+	
+
+	// Active Switcher
+	document.addEventListener('input',(ev) => {
+		let me = ev.target;
+		if(me.matches('.js-idg-diagnosis-active-switcher .toggle-switch input')){
+			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
+			updateActiveState(parent, (me.checked ? 'active' : 'inactive'));		
+		}
+		
+		if(me.matches('.js-idg-diagnosis-doubt input')){
+			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
+			updateActiveState(parent, (me.checked ? 'doubt' : 'confirmed'));
+		}
+		
+		// demo the Present, Not Present and Not checked raido
+		if(me.matches('.js-idg-demo-sys-diag-side-switcher .js-idg-diagnosis-state-options input')){
+			let parent = uiApp.getParent(me, '.js-idg-demo-sys-diag-side-switcher');
+			updateSystemic(parent, me.value);
+		}
+		
+	});
+	
+	document.addEventListener('click', (ev) => {
+		let me = ev.target;
+		if(me.matches('.js-idg-demo-sys-diag-side-switcher .js-idg-sides')){
+			let parent = uiApp.getParent(me, '.js-idg-demo-sys-diag-side-switcher');
+			let icon = me.querySelector('.oe-i');
+			if(me.dataset.state == "no-sides"){
+				systemicSidesChange(parent, true);
+				me.dataset.state = "sides";
+				icon.classList.replace("person", "person-split");
+			} else {
+				systemicSidesChange(parent, false);
+				me.dataset.state = "no-sides";
+				icon.classList.replace("person-split", "person");
+			}
+		}
+	});
+	
+	document.addEventListener('mousedown',(ev) => {
+		let me = ev.target;
+		
+		// show
+		if(me.matches('.js-show-diagnosis-history')){
+			showAuditHistory(me.dataset.idgdemo);
+		}
+		
+		if(me.matches('.js-idg-diagnosis-active-switcher .remove-circle')){
+			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
+			updateActiveState(parent, 'removed');
+		}
+		
+		if(me.matches('.js-idg-diagnosis-add-btn')){
+			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
+			updateActiveState(parent, 'active');
+		}
+
+	});
+	
+	const showDeletePopup = (ev) => {
+		// xhr returns a Promise... 
+		uiApp.xhr('/idg-php/v3/_load/specific/exam-oph-diag-delete.php')
+			.then( html => {
+				const div = document.createElement('div');
+				div.className = "oe-popup-wrap";
+				div.innerHTML = html;
+				div.querySelector('.close-icon-btn').addEventListener("mousedown", (ev) => {
+					ev.stopPropagation();
+					uiApp.removeElement(div);
+				}, {once:true} );
+				
+				// reflow DOM
+				uiApp.appendTo('body',div);
+			})
+			.catch(e => console.log('failed to load',e));  // maybe output this to UI at somepoint, but for now... 
+	};
+
+	uiApp.userDown('.js-idg-demo-remove-oph-diag', showDeletePopup);
+	
+	
+			
 })(bluejay); 
 (function (uiApp) {
 
@@ -6339,597 +7005,6 @@ Updated to Vanilla JS for IDG
 
 
 
-(function (uiApp) {
-
-	'use strict';
-	
-	if(document.querySelector('#tinymce-letterheader-editor') === null) return;
-	
-	let tinyEditor = null;
-	
-	const inserts = {
-		"user_name": {"label":"User Name","value":"<span>Admin Admin</span>"},
-		"firm_name": {"label":"Firm Name","value":"<span>Glaucoma Clinic</span>"},
-		"site_name": {"label":"Site Name","value":"<span>Kings Hospital</span>"},
-		"site_phone": {"label":"Site Phone","value":"<span>0123456789</span>"},
-		"site_fax": {"label":"Site Fax","value":null},
-		"site_email": {"label":"Site Email","value":null},
-		"site_address": {"label":"Site Address","value":"<span>100 Main Road</span>"},
-		"site_city":{"label":"Site City", "value":"<span>London</span>"},
-		"site_postcode": {"label":"Site Postcode","value":"<span>W1 1AA</span>"},
-		"primary_logo": {"label":"Primary Logo","value":'<img src="/idg-php/imgDemo/correspondence/letterhead-logo.png">'},
-		"secondary_logo": {"label":"Secondary Logo","value":null},
-		"current_date": {"label":"Today's Date","value":"<span>" + document.documentElement.dataset.today + "</span>"}
-	};
-
-	const insertData = (key, value) => {
-		tinyEditor.insertContent('<span contenteditable="false" data-substitution="' + key + '">' + value + '</span>');
-	};
-	
-	const quickInsertBtns = () => {
-		var frag = new DocumentFragment();
-		
-		// build Buttons
-		for (const key in inserts) {
-			let label = inserts[key].label;
-			let value = inserts[key].value;
-			if(value === null) continue; // not much point in adding this as a button!
-			
-			var btn = document.createElement('button');
-			btn.className = "idg-quick-insert";
-			btn.textContent = label;
-			btn.setAttribute('data-insert', JSON.stringify({key, value}));
-			
-			// build the Fragment
-			frag.appendChild(btn);
-		}
-		
-		document.querySelector('.editor-quick-insert-btns').appendChild(frag);
-	};
-
-	/*
-	tinyMCE editor - initialise
-	*/
-	tinymce.init({
-		selector: '#tinymce-letterheader-editor',
-		schema: 'html5-strict',
-		branding: false,
-		min_height:400, // can be dragged bigger
-		menubar: false,
-		plugins: ['lists table paste code'],
-		contextmenu: 'table',
-		toolbar: "undo redo | bold italic underline | alignleft aligncenter alignright | table | code",
-		//body_class: 'tiny_oe_body',	
-		custom_undo_redo_levels: 10, // save memory
-		//object_resizing : false
-		hidden_input: false,
-		block_formats: 'Paragraph=p; Header 2=h2; Header 3=h3',
-		content_css : '/newblue/css/style_oe3_print.min.css',
-		setup: function(editor) {
-			editor.on('init', (function(e) {
-				tinyEditor = editor;
-				quickInsertBtns();
-			}));
-		}
-	}); 
-		
-	uiApp.userDown('.idg-quick-insert', (ev) => {
-		let obj = JSON.parse(ev.target.dataset.insert);
-		insertData(obj.key, obj.value);
-	});
-	
-/*
-	$('select#substitution-selection').on('change', function () {
-                let key = $(this).val();
-                if (key !== '' && key !== 'none_selected') {
-                    let value = that.getSubstitution(key);
-                    editor_ref.insertContent('<span contenteditable="false" data-substitution="' + key + '">' + value + '</span>');
-                    console.log(key);
-                }
-
-                $(this).val('none_selected');
-            });
-	
-			
-			
-
-    $(document).ready(function () {
-        let html_editor_controller =
-            new OpenEyes.HTMLSettingEditorController(
-                "letter_header",
-                {"plugins":"lists table paste code pagebreak","branding":false,"visual":false,"min_height":400,"toolbar":"undo redo | bold italic underline | alignleft aligncenter alignright | bullist numlist | table | subtitle | labelitem | label-r-l | inputcheckbox | pagebreak code","valid_children":"+body[style]","custom_undo_redo_levels":10,"object_resizing":false,"menubar":false,"paste_as_text":true,"table_toolbar":"tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol","browser_spellcheck":true,"extended_valid_elements":"i[*]","valid_elements":"*[*]","pagebreak_separator":"<div class=\"pageBreak\" \/>","content_css":"\/assets\/ca6609ee\/css\/style_oe3_print.min.css"},
-                }            );
-    });
-*/
-			
-			
-})(bluejay); 
-(function (uiApp) {
-
-	'use strict';
-	
-	/*
-	IDG DEMO of some UX functionality
-	Eyedraw v2 (2.5)
-	*/
-	
-	if(document.querySelector('.js-idg-demo-ed2') === null) return;
-
-
-	uiApp.userDown('.js-idg-demo-doodle-drawer', (ev) => {
-		let icon = ev.target; 
-		let li = uiApp.getParent(icon,'li');
-		li.classList.toggle('ed2-drawer-open');
-	});
-	
-	
-	uiApp.userDown('.ed-canvas-edit', (ev) => {
-		let canvas = ev.target; 
-		let editor = uiApp.getParent(canvas,'.ed2-editor');
-		let popup = editor.querySelector('.ed2-doodle-popup');
-		popup.classList.toggle('closed');	
-	});
-	
-	uiApp.userDown('#js-idg-demo-ed2-search-input', (ev) => {
-		let autocomplete = ev.target.nextElementSibling;
-		console.log('hi');
-		if(autocomplete.style.display == "none"){
-			autocomplete.style.display = 'block';
-		} else {
-			autocomplete.style.display = 'none';
-		}
-	});
-	
-			
-})(bluejay); 
-(function (uiApp) {
-
-	'use strict';
-	
-	const demo = () => {
-		const div = document.createElement('div');
-		div.className = "oe-popup-wrap dark";
-		document.body.appendChild( div );
-		
-		const template = [
-			'<div class="oe-login timeout">',
-			'<div class="login">',
-			'<h1>Timed out</h1>',
-			'<div class="user">',
-			'<input type="text" placeholder="Username">',
-			'<input type="password" placeholder="Password">',
-			'<button class="green hint" id="js-login">Login</button>',
-			'</div>',
-			'<div class="info">',
-			'For security reasons you have been logged out. Please login again',
-			'</div>',
-			'</div>',
-			'</div>'].join('');
-			
-		div.innerHTML = Mustache.render( template, {} );
-		
-	};
-
-	bluejay.demoLoginTimeOut = demo;	
-			
-})( bluejay ); 
-(function (uiApp) {
-
-	'use strict';
-	
-	/*
-	IDG DEMO of some UX functionality
-	*/
-	
-	// tr class hook: .js-idg-demo-13420;
-	if(document.querySelector('.js-idg-demo-13420') === null) return;
-	
-	
-	
-	// state change is based on the prescribed toggle switch
-	document.addEventListener('input',(ev) => {
-		let me = ev.target;
-		if(me.matches('.js-idg-demo-13420 .toggle-switch input')){
-			/*
-			toggling the presciption: 
-			ON: show 'Stop' / hide: Duration/dispense & taper
-			*/
-			let tr = uiApp.getParent(me, 'tr');
-			let ongoingTxt = tr.querySelector('.js-idg-ongoing-text');
-			let stopBtn = tr.querySelector('.js-idg-date-stop');
-			let durDis = tr.querySelector('.js-idg-duration-dispense');
-			let taperBtn = tr.querySelector('.js-idg-taper-btn');
-			let reasons = tr.querySelector('.js-idg-stopped-reasons');
-			
-			if(me.checked){
-				// on
-				uiApp.hide(stopBtn);
-				uiApp.hide(reasons);
-				uiApp.show(ongoingTxt, 'block');
-				uiApp.show(durDis, 'block');
-				uiApp.show(taperBtn, 'block');	
-			} else {
-				// off
-				uiApp.show(stopBtn, 'block');
-				uiApp.hide(ongoingTxt);	
-				uiApp.hide(durDis);
-				uiApp.hide(taperBtn);
-			}	
-		}
-	});
-	
-	const updateStopState = (td, stop) => {
-		
-		let stopBtn = td.querySelector('.js-idg-stop-btn');
-		let stopDate = td.querySelector('.js-idg-stop-date');
-		let reasons = td.querySelector('.js-idg-stopped-reasons');
-		let cancelIcon = td.querySelector('.js-idg-cancel-stop');
-		
-		if(stop){
-			uiApp.hide(stopBtn);
-			uiApp.show(stopDate, 'block');
-			uiApp.show(reasons, 'block');
-			uiApp.show(cancelIcon, 'block');
-		} else {
-			uiApp.show(stopBtn, 'block');
-			uiApp.hide(stopDate);
-			uiApp.hide(reasons);
-			uiApp.hide(cancelIcon);
-		}
-	};
-	
-	// 'stop' button
-	document.addEventListener('click', (ev) => {
-		if(ev.target.matches(".js-idg-stop-btn")){
-			updateStopState( uiApp.getParent(ev.target, 'td'), true);
-		}
-	});
-	
-	// cancel 'stop'
-	document.addEventListener('mousedown', (ev) => {
-		if(ev.target.matches('.js-idg-cancel-stop')){
-			updateStopState( uiApp.getParent(ev.target, 'td'), false);
-		}
-	});
-
-	
-	// Show history
-	document.addEventListener('mousedown',(ev) => {
-		let me = ev.target;
-		if(me.matches('.js-show-medication-history')){
-			let tableRows = document.querySelectorAll('.js-idg-medication-history-' + me.dataset.idgdemo);
-			tableRows.forEach((row) => {
-				if(row.style.visibility == "collapse"){
-					row.style.visibility = "visible";
-				} else {
-					row.style.visibility = "collapse";
-				}
-				
-			});
-		}
-	});
-			
-})(bluejay); 
-(function (uiApp) {
-
-	'use strict';
-	
-	/*
-	IDG DEMO of some UX functionality
-	for Ophthalmic Diagnosis v2!
-	*/
-	
-	if(document.querySelector('.js-idg-diagnosis-active-switcher') === null) return;
-	
-	/*
-	Update VIEW states to demo UX
-	*/
-	const updateActiveState = (div, state) => {
-		let text = div.querySelector('.js-idg-diagnosis-text');
-		let toggle = div.querySelector('.toggle-switch');
-		let remove = div.querySelector('.remove-circle');
-		let btn = div.querySelector('.js-idg-diagnosis-add-btn');
-		let doubt = div.querySelector('.js-idg-diagnosis-doubt');
-		let doubtInput = div.querySelector('.js-idg-diagnosis-doubt-input');
-		
-		let side = div.dataset.idgside;
-		let eyelatIcon = div.parentNode.previousElementSibling.querySelector('.oe-eye-lat-icons .oe-i');
-		
-		let date = div.parentNode.nextElementSibling.querySelector('.js-idg-diagnosis-date');	
-				
-		switch(state){
-			case 'active':
-			uiApp.reshow(text);
-			uiApp.reshow(toggle);
-			uiApp.reshow(doubt);
-			uiApp.hide(remove);
-			uiApp.hide(btn);
-			uiApp.reshow(date);
-			text.textContent = 'Active (confirmed)';
-			text.classList.remove('fade');
-			doubt.querySelector('input').checked = false;
-			toggle.querySelector('input').checked = true;
-			setEyeLatIcon(eyelatIcon, side, 'active');
-			break;
-			
-			case 'confirmed':
-			uiApp.hide(doubtInput);
-			uiApp.reshow(text);
-			break;
-			
-			case 'doubt':
-			uiApp.reshow(doubtInput);
-			uiApp.hide(text);
-			break;
-			
-			case 'inactive':
-			uiApp.reshow(text);
-			uiApp.reshow(toggle);
-			uiApp.reshow(remove);
-			uiApp.hide(btn);
-			uiApp.hide(doubt);
-			uiApp.hide(doubtInput);
-			uiApp.reshow(date);
-			text.textContent = 'Inactive from';
-			text.classList.add('fade');
-			setEyeLatIcon(eyelatIcon, side, 'inactive');
-			break;
-			
-			case 'removed':
-			uiApp.hide(toggle);
-			uiApp.hide(remove);
-			uiApp.reshow(btn);
-			uiApp.hide(date);
-			text.textContent = 'Not present';
-			setEyeLatIcon(eyelatIcon, side, 'none');
-			break; 
-		}
-	};
-	
-	const setEyeLatIcon = (i, side, state) => {
-		/*
-		oe-i laterality L small pad
-		oe-i laterality NA small pad	
-		*/
-		if(i === null) return;
-		
-		let css = ['oe-i'];
-		let eye = side == 'left' ? 'L' : 'R';
-		
-		switch(state){
-			case 'active':
-			css.push('laterality', eye);
-			break;
-			case 'inactive':
-			css.push('laterality', eye+'i');
-			break;
-			case 'none':
-			css.push('laterality', 'NA');
-			break;
-		}
-		
-		css.push('small', 'pad');
-		
-		i.className = css.join(' ');
-	};
-	
-	
-	// store the default <td> 
-	let tdDefault = null;
-	
-	let td1 = '<span class="oe-eye-lat-icons"><i class="oe-i laterality NA small pad"></i></span>';
-	let td2 = '<div class="flex-layout cols-11 js-idg-diagnosis-active-switcher" data-idgdemo="-r-nSysEx2" data-idgside="right"><div class="js-idg-diagnosis-actions"><label class="toggle-switch" style="display: none;"><input type="checkbox"><div class="toggle-btn"></div></label><label class="inline highlight js-idg-diagnosis-doubt" style="display: none;"><input value="diagnosis-doubt" name="idg-4131" type="checkbox"> <i class="oe-i doubt small-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="? = doubts; suspected, etc"></i></label><i class="oe-i remove-circle small-icon pad-left" style="display: none;"></i><button class="js-idg-diagnosis-add-btn ">Add right side</button></div><div class="js-idg-diagnosis-state"><input class="js-idg-diagnosis-doubt-input" value="Suspected" placeholder="Suspected" maxlength="32" style="display: none;"><span class="js-idg-diagnosis-text js-active-state fade ">Not present</span></div></div>';
-	let td3 = '<div class="js-idg-diagnosis-date"><input type="text" class="date" value="30 Apr 2020"></div>';
-	//td3.className = 'valign-top';
-	
-	
-	const updateSystemic = (tr, num) => {
-		
-		let sidesCheck = tr.querySelector('.js-idg-sides');
-		let text = tr.querySelector('.js-idg-diagnosis-text');
-		
-		let div = tr.querySelector('.js-idg-diagnosis-active-switcher');
-		let toggle = div.querySelector('.toggle-switch');
-		let doubt = div.querySelector('.js-idg-diagnosis-doubt');
-		let doubtInput = div.querySelector('.js-idg-diagnosis-doubt-input');
-		
-		let systemicIcons = tr.querySelector('.js-idg-right-icon .oe-systemic-icons');
-
-
-		if(tdDefault == null){
-			tdDefault = tr.querySelector('.js-idg-diagnosis-state-options').innerHTML;
-			uiApp.reshow(text);
-		}
-
-		
-		switch(num){
-			case '0':
-				uiApp.reshow(sidesCheck);
-				uiApp.reshow(text);
-				text.textContent = 'Active (confirmed)';
-				text.classList.remove('fade');
-				uiApp.reshow(toggle);
-				toggle.querySelector('input').checked = true;
-				uiApp.reshow(doubt);
-				doubt.querySelector('input').checked = false;
-				uiApp.hide(doubtInput);
-				systemicIcons.querySelector('.oe-i').className = "oe-i person-green small pad";
-				
-				
-			break;
-			
-			case '1':
-				uiApp.hide(sidesCheck);
-				uiApp.reshow(text);
-				text.textContent = 'Not present';
-				text.classList.add('fade');
-				uiApp.hide(toggle);
-				uiApp.reshow(doubt);
-				doubt.querySelector('input').checked = false;
-				uiApp.hide(doubtInput);
-				systemicIcons.querySelector('.oe-i').className = "oe-i NA small pad";
-			break;
-			
-			case '2':
-				uiApp.hide(sidesCheck);
-				uiApp.reshow(text);
-				text.textContent = 'Not checked';
-				text.classList.add('fade');
-				uiApp.hide(toggle);
-				uiApp.hide(doubt);
-				uiApp.hide(doubtInput);
-				systemicIcons.querySelector('.oe-i').className = "oe-i NA small pad";
-			break;
-		}
-	};
-	
-	const systemicSidesChange = (tr, val) => {
-		let td = tr.querySelector('.js-idg-diagnosis-state-options');
-		let systemicIcons = tr.querySelector('.js-idg-right-icon .oe-systemic-icons');
-		let eyeLatIcons = tr.querySelector('.js-idg-right-icon .oe-eye-lat-icons .oe-i');
-	
-		
-		if(val){
-			// show sides
-			td.innerHTML = td1;
-			td.colSpan = 0;
-			let newCell1 = tr.insertCell(2);
-			let newCell2 = tr.insertCell(3);
-			newCell1.innerHTML = td2;
-			newCell2.innerHTML = td3;	
-			
-			uiApp.hide(tr.cells[5].querySelector('.toggle-switch'));
-			uiApp.hide(tr.cells[5].querySelector('.highlight'));
-		
-			if(tr.cells[5].querySelector('.js-idg-diagnosis-actions .js-idg-diagnosis-add-btn') === null){
-				let btn = document.createElement('button');
-				btn.className = "js-idg-diagnosis-add-btn";
-				btn.textContent = "Add left side";
-				tr.cells[5].querySelector('.js-idg-diagnosis-actions').appendChild(btn);
-			} else {
-				uiApp.reshow(tr.cells[5].querySelector('.js-idg-diagnosis-add-btn'));
-			}
-			
-			let text = tr.cells[5].querySelector('.js-idg-diagnosis-text');
-			text.textContent = 'Inactive from';
-			text.classList.add('fade');
-			
-			systemicIcons.style.display = "none";
-			eyeLatIcons.style.display = "inline-block";
-			
-		} else {
-			// no sides
-			tr.deleteCell(2);
-			tr.deleteCell(2); // was 3, now 2!
-			td.innerHTML = tdDefault;
-			td.colSpan = 3;
-			
-			uiApp.hide(tr.cells[3].querySelector('.js-idg-diagnosis-add-btn'));
-			uiApp.reshow(tr.cells[3].querySelector('.toggle-switch'));
-			tr.cells[3].querySelector('.toggle-switch').checked = true;
-			uiApp.reshow(tr.cells[3].querySelector('.highlight'));
-			
-			td.querySelector('input').checked = true;
-			
-			systemicIcons.style.display = "inline-block";
-			eyeLatIcons.style.display = "none";
-		}		
-	};
-
-	const showAuditHistory = (id) => {
-		let tableRows = document.querySelectorAll('.js-idg-diagnosis-history-' + id);
-		tableRows.forEach((row) => {
-			// toggle the audit rows
-			if(row.style.visibility == "collapse"){
-				row.style.visibility = "visible";
-			} else {
-				row.style.visibility = "collapse";
-			}
-		});
-	};
-	
-
-	// Active Switcher
-	document.addEventListener('input',(ev) => {
-		let me = ev.target;
-		if(me.matches('.js-idg-diagnosis-active-switcher .toggle-switch input')){
-			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
-			updateActiveState(parent, (me.checked ? 'active' : 'inactive'));		
-		}
-		
-		if(me.matches('.js-idg-diagnosis-doubt input')){
-			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
-			updateActiveState(parent, (me.checked ? 'doubt' : 'confirmed'));
-		}
-		
-		// demo the Present, Not Present and Not checked raido
-		if(me.matches('.js-idg-demo-sys-diag-side-switcher .js-idg-diagnosis-state-options input')){
-			let parent = uiApp.getParent(me, '.js-idg-demo-sys-diag-side-switcher');
-			updateSystemic(parent, me.value);
-		}
-		
-	});
-	
-	document.addEventListener('click', (ev) => {
-		let me = ev.target;
-		if(me.matches('.js-idg-demo-sys-diag-side-switcher .js-idg-sides')){
-			let parent = uiApp.getParent(me, '.js-idg-demo-sys-diag-side-switcher');
-			let icon = me.querySelector('.oe-i');
-			if(me.dataset.state == "no-sides"){
-				systemicSidesChange(parent, true);
-				me.dataset.state = "sides";
-				icon.classList.replace("person", "person-split");
-			} else {
-				systemicSidesChange(parent, false);
-				me.dataset.state = "no-sides";
-				icon.classList.replace("person-split", "person");
-			}
-		}
-	});
-	
-	document.addEventListener('mousedown',(ev) => {
-		let me = ev.target;
-		
-		// show
-		if(me.matches('.js-show-diagnosis-history')){
-			showAuditHistory(me.dataset.idgdemo);
-		}
-		
-		if(me.matches('.js-idg-diagnosis-active-switcher .remove-circle')){
-			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
-			updateActiveState(parent, 'removed');
-		}
-		
-		if(me.matches('.js-idg-diagnosis-add-btn')){
-			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
-			updateActiveState(parent, 'active');
-		}
-
-	});
-	
-	const showDeletePopup = (ev) => {
-		// xhr returns a Promise... 
-		uiApp.xhr('/idg-php/v3/_load/specific/exam-oph-diag-delete.php')
-			.then( html => {
-				const div = document.createElement('div');
-				div.className = "oe-popup-wrap";
-				div.innerHTML = html;
-				div.querySelector('.close-icon-btn').addEventListener("mousedown", (ev) => {
-					ev.stopPropagation();
-					uiApp.removeElement(div);
-				}, {once:true} );
-				
-				// reflow DOM
-				uiApp.appendTo('body',div);
-			})
-			.catch(e => console.log('failed to load',e));  // maybe output this to UI at somepoint, but for now... 
-	};
-
-	uiApp.userDown('.js-idg-demo-remove-oph-diag', showDeletePopup);
-	
-	
-			
-})(bluejay); 
 /*
 Add Select Search insert Popup (v2)
 Updated to Vanilla JS for IDG

@@ -18,7 +18,8 @@
 		subplot: false,			// Optional {Number} number of 'rows' (number of verical plots)
 		vLineLabel: false		// Optional {Object} e.g. { x: [ ... ], h: 0.75 }
 		hLineLabel: false		// Optional {Object} e.g. { y: [ ... ], axis: 'y2' }
-		rangeslider: false,		// Optional {Boolean}
+		rangeslider: false,		// Optional {Boolean || Array} e.g. [firstDate, lastDate]
+		dateRangeButtons: false // Optional {Boolean}
 	}
 	*/
 	oePlotly.getLayout = function( options ){
@@ -79,7 +80,7 @@
 		/*
 		Colour theme	
 		*/ 
-		if(options.colors){
+		if( options.colors ){
 			layout.colorway = oePlotly.getColorSeries( options.colors, dark );			
 		} else {
 			layout.colorway = oePlotly.getColorSeries( "default", dark );
@@ -88,7 +89,7 @@
 		/*
 		Plot title
 		*/
-		if(options.plotTitle){
+		if( options.plotTitle ){
 			layout.title = {
 				text: options.plotTitle,
 				xref: 'paper', //  "container" | "paper" (as in, align too)
@@ -108,7 +109,7 @@
 		Subplots (n charts on a single plot)
 		Assumes always vertically stacked
 		*/
-		if(options.subplot){
+		if( options.subplot ){
 			layout.grid = {
 		    	rows: options.subplot,
 				columns: 1,
@@ -119,7 +120,6 @@
 		/*
 		Shapes and Annotations
 		*/
-		
 		layout.shapes = [];
 		layout.annotations = [];
 		
@@ -127,15 +127,13 @@
 		Vertical marker line
 		{array} = [{x:x, y:1, name:"name"}]
 		*/
-		if(options.vLineLabel){
+		if( options.vLineLabel ){
 			
 			// vLineLabel must be an array of objects
 			const verticals = options.vLineLabel.x;
 			const height = options.vLineLabel.h;
 		
 			const line = ( my, index ) => {
-				console.log(my);
-				
 				return {
 			      type: 'line',
 			      layer: 'above', // or "below"
@@ -178,7 +176,7 @@
 		Horizontal marker line
 		{array} = [{ axis:'y3', y:15, name: "Target IOP"}]
 		*/
-		if(options.hLineLabel){
+		if( options.hLineLabel ){
 			
 			// hLineLabel must be an array of objects
 			const horizontals = options.hLineLabel.y;
@@ -225,13 +223,13 @@
 		}
 		
 		/*
-		Axes
+		X & Y Axes
 		*/
-		if(options.xaxis){
+		if( options.xaxis ){
 			layout.xaxis = options.xaxis; // only 1 axis per layout
 		}
 		
-		if(options.yaxes){
+		if( options.yaxes ){
 			options.yaxes.forEach((y, index) => {
 				if( index ){
 					layout['yaxis'+(index + 1)] = y;
@@ -254,24 +252,55 @@
 		*/
 		if(options.rangeSlider){
 			
+			const rangeslider = {
+				thickness: 0.08
+			};
+			
 			if(dark){
-				// this is a pain.
+				// this is a pain. Plot.ly does not handles this well
 				// can't find a setting to change the slide cover color!
-				// it's set at a black opacity, so to make this usable:
-				layout.xaxis.rangeslider = {
-					bgcolor: layout.paper_bgcolor,
-					borderwidth: 1,
-					bordercolor: layout.plot_bgcolor,
-					thickness: 0.1, // 0 - 1, default 0.15 (height of area)
-				};
-			} else {
-				// Plot.ly handles this well in 'light' theme mode
-				layout.xaxis.rangeslider = {
-					thickness: 0.1, // 0 - 1, default 0.15 (height of area)
-				};
+				// it's set at a black opacity, so to make it usable...
+				rangeslider.bgcolor = layout.paper_bgcolor;
+				rangeslider.borderwidth = 1;
+				rangeslider.bordercolor = layout.plot_bgcolor;
+			} 
+			
+			
+			/*
+			if not a boolean assume a range array
+			note: there is bug in Plot.ly (known) that this won't
+			restrict the range, but it helps with the dateRangebuttons
+			*/
+			if( typeof options.rangeSlider !== "boolean" ){
+				rangeslider.range = options.rangeSlider; 
 			}
 			
+			// update layout:
+			layout.xaxis.rangeslider = rangeslider;
 			layout.margin.b = 15;
+		}
+		
+		if( options.dateRangeButtons ){
+			layout.xaxis.rangeselector = Object.assign({
+				x:1,
+				xanchor: 'right',
+				buttons: [{
+					label: 'Show all',
+					step: "all",
+				}, {
+					label: '2 Yr',
+					step: "year",
+					count: 2, // 1 = year, 2 = 2 years
+				}, {
+					label: '1 Yr',
+					step: "year",
+					count: 1, // 1 = year, 2 = 2 years
+				}, {
+					label: '6 Mth',
+					step: "month",
+					count: 6, // 1 = year, 2 = 2 years
+				}]
+			}, oePlotly.buttonStyling( dark ) );
 		}
 		
 		// ok, all done
