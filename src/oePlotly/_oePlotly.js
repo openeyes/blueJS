@@ -13,9 +13,9 @@ const oePlotly = (function ( bj ) {
 		dark: {
 			blue:'#63d7d6',
 			green: '#65d235',
-			greenSeries: ['#65d235', '#94d712', '#36be8d', '#099f18', '#9bd727'],
+			greenSeries: ['#65d235', '#A5D712', '#36be8d', '#02B546'],
 			red: '#ea2b34',
-			redSeries: ['#ea2b34','#F65B20','#D41C81','#D4341C'],
+			redSeries: ['#ea2b34','#F65B20','#D41C50','#D44304'],
 			standard: ['#1451b3', '#175ece', '#1a69e5'],
 			varied:  ['#0a83ea', '#18949f', '#781cea','#3f0aea'],
 			dual: ['#3f0aea','#7b3131'],
@@ -23,9 +23,9 @@ const oePlotly = (function ( bj ) {
 		light: {
 			blue: '#00f',
 			green: '#418c20',
-			greenSeries: ['#418c20','#99991C','#1DA323','#74A31D','#1C9944'],
+			greenSeries: ['#418c20','#708017','#147019','#667D3C'],
 			red: '#da3e43',
-			redSeries: ['#da3e43', '#F0379A', '#E66735', '#F05037'],
+			redSeries: ['#da3e43', '#AB274A', '#BA4B2B', '#AB2C22'],
 			standard: ['#0a4198', '#1451b3', '#175ece'],
 			varied: ['#0a2aea', '#ea0a8e', '#00b827','#890aea'],
 			dual: ['#0a4198','#874e4e'],

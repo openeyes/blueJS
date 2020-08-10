@@ -145,7 +145,8 @@
 		const x1 = oePlotly.getAxis({
 			type:'x',
 			numTicks: 10,
-			useDates: true, 
+			useDates: true,
+			range: dateRange.firstLast(), 
 			spikes: true,
 		}, dark );
 		
