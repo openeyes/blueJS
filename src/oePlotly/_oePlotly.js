@@ -98,101 +98,12 @@ const oePlotly = (function ( bj ) {
 		return theme === "dark" ? true : false;	
 	};
 	
-	/**
-	* return settings for "line" style in data
-	* @param {Number} optional
-	* @returns {Object}
-	*/
-	const dashedLine = ( n ) => {
-		return {
-			dash: "2px,2px",
-			width: 2,
-		};
-	};
-
-	/**
-	* return settings for "marker" style in data
-	* @param {String} type: "Drugs", etc 
-	* @returns {Object}
-	*/
-	const markerFor = ( type ) => {
-		if( type == "image"){
-			return {
-				symbol: "triangle-down",
-				size: 10
-			};
-		}
-		if( type == "drug"){
-			return {
-				symbol: "star-diamond",
-				size: 9
-			};
-		}
-		
-		return {}; // unknown type?
-	};
-	
-	const buttonStyling = ( dark ) => ({
-		font: {
-			color: dark ? '#ccc' : '#666',
-		},
-		bgcolor: dark ? 'rgb(30,46,66)' : 'rgb(255,255,255)', 
-		activecolor: dark ? 'rgb(7,69,152)' : 'rgb(205,205,255)',
-		bordercolor: dark ? 'rgb(10,26,36))' : 'rgb(255,255,255)',
-		borderwidth: 2,
-	}); 
-	
-
-	/**
-	* Add Plotly dropdown to layouta
-	* @param {Objec} layout
-	*/
-	const addDropDown = ( layout ) => {
-	
-		let buttons = [];
-			
-		buttons.push({ 	
-			method: 'update', // 'data' & 'layout'
-			args: ['visible', [true, false, false, false]],
-			label: 'Option 1'						
-		});
-		
-		buttons.push({ 	
-			method: 'update', // update args: [data, layout] 
-			// 'args' is an 
-			args: [ {}, {
-			    title: 'some new title', // updates the title
-			    colorway: oePlotly.getColorSeries( "default", true )
-			}],
-			//args2: layout,
-			label: 'Options Title'						
-		});
-	
- 		let menu = Object.assign({
-			type: "dropdown",
-			xanchor: 'left',
-			yanchor: 'top',
-			x: 0,
-			y: 0.35,
-			buttons: buttons, // add buttons to menu
- 		}, oePlotly.buttonStyling() );
- 		
-		
-		// could be multiple menus
-		layout.updatemenus = [ menu ];	
-	};
-	
-
 	// public 
 	return {
 		isDarkTheme,
 		getBlue,
 		getColorSeries, 
-		getColorFor,
-		dashedLine,
-		markerFor,
-		addDropDown,
-		buttonStyling
+		getColorFor
 	};
 
 })( bluejay );

@@ -10,7 +10,7 @@
 	Options:
 	{
 		theme: "dark",  		// Required {String} OE Theme  
-		legend: true, 			// Required {Boolean}
+		legend: false, 			// Optional {Boolean || Object} customise any of the defaults
 		colors: 'varied', 		// Optional {String} varied" or "twoPosNeg" or "rightEye" (defaults to "blues")
 		plotTitle: false, 		// Optional {String}
 		xaxis: x1,				// Required {Object} xaxis
@@ -52,20 +52,6 @@
 				color: dark ? '#aaa' : '#333',
 			},
 			
-			// legend?
-			showlegend: options.legend,
-			// if so, it will be like this:
-			legend: {
-				font: {
-					size: 10
-				},
-				orientation: 'h', // 'v' || 'h'				
-				xanchor:'right',
-				yanchor:'top',
-				x:1,
-				y:1,
-			}, 
-			
 			// default set up for hoverlabels
 			hoverlabel: {
 				bgcolor: dark ? "#003" : '#fff',
@@ -104,6 +90,39 @@
 			// adjust the margin area
 			layout.margin.t = 60;
 		}
+		
+		/*
+		Plot legend
+		*/
+		if( options.legend ){
+			
+			layout.showlegend = true; // default is true. 
+			// basic set up for legend
+			// note: if "legendgroup" is add to the data traces
+			// the legends will be automatically grouped
+			const legendDefaults = {
+				font: {
+					size: 10
+				},
+				itemclick: 'toggleothers', //  ( default: "toggle" | "toggleothers" | false )
+ 				orientation: 'h', // 'v' || 'h'		
+				// traceorder: "grouped", // or "reversed+grouped"		
+				xanchor:'right',
+				yanchor:'bottom',
+				x:1,
+				y:1,
+			};
+			
+			if( typeof options.legend === "boolean"){
+				layout.legend = legendDefaults;
+			} else {
+				// customise the defaults
+				layout.legend = Object.assign( legendDefaults, options.legend );
+			}
+		} else {
+			layout.showlegend = false; // defaults to true otherwise
+		}
+		
 		
 		/*
 		Subplots (n charts on a single plot)

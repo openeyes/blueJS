@@ -43,21 +43,23 @@
 		Build Events data for right eye
 		*/
 		const events = [];
-		const arr = Object.values( eye.events );
 		// loop through array...
-		arr.forEach(( event ) => {
-			events.push({
-				x: event.x, 
-				y: event.y, 
-				customdata: event.customdata,
-				name:'', 
-				yaxis: 'y3',
-				hovertemplate: '%{y}<br>%{customdata}<br>%{x}',
-				type: 'scatter', 
-				mode: 'markers',
-				marker: oePlotly.markerFor( event.type )
-			});
+		Object.values( eye.events ).forEach(( event ) => {
 			
+			let template = event.customdata ? '%{y}<br>%{customdata}<br>%{x}' : '%{y}<br>%{x}';
+			
+			let newEvent = Object.assign({
+					x: event.x, 
+					y: event.y, 
+					customdata: event.customdata,
+					name: event.name, 
+					yaxis: 'y3',
+					hovertemplate: template,
+					type: 'scatter',
+					showlegend: false,
+				}, oePlotly.eventStyle(  event.event ));
+			
+			events.push( newEvent );
 			dateRange.add( event.x );
 		});
 		
@@ -73,7 +75,10 @@
 		
 		const layout = oePlotly.getLayout({
 			theme: window.oeThemeMode, 
-			legend: false,
+			legend: {
+				yanchor:'bottom',
+				y:0.71,
+			},
 			colors: setup.colors,
 			plotTitle: setup.title,
 			xaxis: setup.xaxis,
@@ -84,7 +89,7 @@
 			
 		});
 			
-		const div = oePlotly.buildDiv(`${oesTemplateType}-${setup.eye}Eye`, '70vh', '550px');
+		const div = oePlotly.buildDiv(`${oesTemplateType}-${setup.eye}Eye`, '70vh', '600px');
 		document.querySelector( setup.parentDOM ).appendChild( div );
 		
 		Plotly.newPlot(
@@ -156,12 +161,12 @@
 		// y2 - VA
 		const y2 = oePlotly.getAxis({
 			type:'y',
-			rightSide: true,
+			rightSide: 'y1',
 			domain: [0, 0.7],
 			title: 'VA', 
 			useCategories: {
 				showAll: true, 
-				categoryarray: json.rightEye.va.snellenMetre.yaxis.reverse()
+				categoryarray: json.yaxis.snellenMetre.reverse()
 			},
 			spikes: true,
 		}, dark );
@@ -172,7 +177,7 @@
 			domain: [0.8, 1],
 			useCategories: {
 				showAll: true, 
-				categoryarray: json.events.reverse()
+				categoryarray: json.eventTypes.reverse()
 			},
 			spikes: true,
 		}, dark );
@@ -213,6 +218,6 @@
 	/**
 	* Extend API ... PHP will call with json when DOM is loaded
 	*/
-	bj.extend('oesMedicalRetina', init);	
+	bj.extend('plotSummaryMedicalRetina', init);	
 		
 })( bluejay ); 

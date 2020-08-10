@@ -25,6 +25,17 @@
 			mode: 'lines+markers',
 		};
 		
+		const VFI = {
+			x: eye.va.VFI.x,
+			y: eye.va.VFI.y,
+			name: eye.va.VFI.name,	
+			yaxis: 'y5',	
+			hovertemplate: '%{y}<br>%{x}',
+			type: 'scatter',
+			mode: 'lines+markers',
+			line: oePlotly.dashedLine(),
+		};
+		
 		const VA_SnellenMetre = {
 			x: eye.va.snellenMetre.x,
 			y: eye.va.snellenMetre.y,
@@ -50,28 +61,31 @@
 		dateRange.add( eye.IOP.x );
 		
 		/**
-		Build Drugs data for right eye
+		* Events
 		*/
-		const drugs = [];
+		const events = [];
 		//const arr = Object.values( eye.drugs );
 		// loop through array...
-		Object.values( eye.drugs ).forEach(( drug ) => {			
-			drugs.push({
-				x: drug.x, 
-				y: drug.y, 
-				customdata: drug.customdata,
-				name:'', 
-				yaxis: 'y4',
-				hovertemplate: '%{y}<br>%{customdata}<br>%{x}',
-				type: 'scatter', 
-				mode: 'lines+markers',
-				marker: oePlotly.markerFor('drug')
-			});
+		Object.values( eye.events ).forEach(( event ) => {
 			
-			dateRange.add( drug.x );
+			let template = event.customdata ? '%{y}<br>%{customdata}<br>%{x}' : '%{y}<br>%{x}';
+			
+			let newEvent = Object.assign({
+					x: event.x, 
+					y: event.y, 
+					customdata: event.customdata,
+					name: event.name, 
+					yaxis: 'y4',
+					hovertemplate: template,
+					type: 'scatter',
+					showlegend: false,
+				}, oePlotly.eventStyle(  event.event ));
+			
+			events.push( newEvent );
+			dateRange.add( event.x );
 		});
 		
-		return [ VA_offScale, VA_SnellenMetre, IOP ].concat( drugs );		
+		return [ VA_offScale, VFI, VA_SnellenMetre, IOP ].concat( events );		
 	};
 	
 	/**
@@ -82,7 +96,14 @@
 		
 		const layout = oePlotly.getLayout({
 			theme: window.oeThemeMode, 
-			legend: false,
+			legend: {
+				orientation: 'v',
+				traceorder: "reversed",
+				xanchor:'left',
+				yanchor:'top',
+				x:1.01,
+				y:0.85,
+			},
 			colors: setup.colors,
 			plotTitle: setup.title,
 			xaxis: setup.xaxis,
@@ -159,16 +180,17 @@
 			useDates: true, 
 			spikes: true,
 			range: dateRange.firstLast(),
+			noMirrorLines: true,
 		}, dark );
 		
 		
 		// y0 - offscale 
 		const y0 = oePlotly.getAxis({
 			type:'y',
-			domain: [0, 0.1], 
+			domain: [0, 0.07], 
 			useCategories: {
 				showAll: true, 
-				categoryarray: json.rightEye.va.offScale.yaxis.reverse()
+				categoryarray: json.yaxis.offScale.reverse()
 			},
 			spikes: true,
 		}, dark );
@@ -176,11 +198,11 @@
 		// y1 - VA
 		const y1 = oePlotly.getAxis({
 			type:'y',
-			domain: [0.1, 0.45],
+			domain: [0.1, 0.46],
 			title: 'VA', 
 			useCategories: {
 				showAll: true, 
-				categoryarray: json.rightEye.va.snellenMetre.yaxis.reverse()
+				categoryarray: json.yaxis.snellenMetre.reverse()
 			},
 			spikes: true,
 		}, dark );
@@ -188,7 +210,7 @@
 		// y2 - IOP
 		const y2 = oePlotly.getAxis({
 			type:'y',
-			domain: [0.5, 0.85],
+			domain: [0.49, 0.85],
 			title: 'IOP', 
 			range: [0, 75],
 			spikes: true,
@@ -200,8 +222,18 @@
 			domain: [0.88, 1],
 			useCategories: {
 				showAll: true, 
-				categoryarray: json.drugTypes.reverse()
+				categoryarray: json.eventTypes.reverse()
 			},
+			spikes: true,
+		}, dark );
+		
+		// y4 - VFI
+		const y4 = oePlotly.getAxis({
+			type:'y',
+			domain: [0.1, 0.45],
+			title: 'VFI',
+			range: [-30, 5],
+			rightSide: 'y2',
 			spikes: true,
 		}, dark );
 		
@@ -216,7 +248,7 @@
 				eye: "right",
 				colors: "rightEye",
 				xaxis: x1, 
-				yaxes: [ y0, y1, y2, y3 ],
+				yaxes: [ y0, y1, y2, y3, y4 ],
 				procedures: json.rightEye.procedures,
 				targetIOP: json.rightEye.targetIOP,
 				parentDOM: '.oes-left-side',
@@ -234,7 +266,7 @@
 				eye: "left",
 				colors: "leftEye",
 				xaxis: x1, 
-				yaxes: [ y0, y1, y2, y3 ],
+				yaxes: [ y0, y1, y2, y3, y4 ],
 				procedures: json.leftEye.procedures,
 				targetIOP: json.leftEye.targetIOP,
 				parentDOM: '.oes-right-side',
@@ -245,6 +277,7 @@
 	/**
 	* Extend API ... PHP will call with json when DOM is loaded
 	*/
-	bj.extend('oesGlaucoma', init);	
+	bj.extend('plotSummaryGlaucoma', init);	
+	
 		
 })( bluejay ); 

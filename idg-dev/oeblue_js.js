@@ -726,101 +726,12 @@ const oePlotly = (function ( bj ) {
 		return theme === "dark" ? true : false;	
 	};
 	
-	/**
-	* return settings for "line" style in data
-	* @param {Number} optional
-	* @returns {Object}
-	*/
-	const dashedLine = ( n ) => {
-		return {
-			dash: "2px,2px",
-			width: 2,
-		};
-	};
-
-	/**
-	* return settings for "marker" style in data
-	* @param {String} type: "Drugs", etc 
-	* @returns {Object}
-	*/
-	const markerFor = ( type ) => {
-		if( type == "image"){
-			return {
-				symbol: "triangle-down",
-				size: 10
-			};
-		}
-		if( type == "drug"){
-			return {
-				symbol: "star-diamond",
-				size: 9
-			};
-		}
-		
-		return {}; // unknown type?
-	};
-	
-	const buttonStyling = ( dark ) => ({
-		font: {
-			color: dark ? '#ccc' : '#666',
-		},
-		bgcolor: dark ? 'rgb(30,46,66)' : 'rgb(255,255,255)', 
-		activecolor: dark ? 'rgb(7,69,152)' : 'rgb(205,205,255)',
-		bordercolor: dark ? 'rgb(10,26,36))' : 'rgb(255,255,255)',
-		borderwidth: 2,
-	}); 
-	
-
-	/**
-	* Add Plotly dropdown to layouta
-	* @param {Objec} layout
-	*/
-	const addDropDown = ( layout ) => {
-	
-		let buttons = [];
-			
-		buttons.push({ 	
-			method: 'update', // 'data' & 'layout'
-			args: ['visible', [true, false, false, false]],
-			label: 'Option 1'						
-		});
-		
-		buttons.push({ 	
-			method: 'update', // update args: [data, layout] 
-			// 'args' is an 
-			args: [ {}, {
-			    title: 'some new title', // updates the title
-			    colorway: oePlotly.getColorSeries( "default", true )
-			}],
-			//args2: layout,
-			label: 'Options Title'						
-		});
-	
- 		let menu = Object.assign({
-			type: "dropdown",
-			xanchor: 'left',
-			yanchor: 'top',
-			x: 0,
-			y: 0.35,
-			buttons: buttons, // add buttons to menu
- 		}, oePlotly.buttonStyling() );
- 		
-		
-		// could be multiple menus
-		layout.updatemenus = [ menu ];	
-	};
-	
-
 	// public 
 	return {
 		isDarkTheme,
 		getBlue,
 		getColorSeries, 
-		getColorFor,
-		dashedLine,
-		markerFor,
-		addDropDown,
-		buttonStyling
+		getColorFor
 	};
 
 })( bluejay );
@@ -903,13 +814,14 @@ const oePlotly = (function ( bj ) {
 		type: 'x' or 'y' 		// Required {String} axis 
 		domain: false, 			// Optional {Array} e.g. [0, 0.75] (if subplot)
 		title: false, 			// Optional {String}
-		rightSide: false		// Options 	{Boolean} - shift to right side of plot (only Yaxis)
+		rightSide: false		// Options 	{String} - yAxis to overlay 'y'
 		numTicks: false, 		// Optional {Number}
 		useDates: false, 		// Options 	{Boolean}
 		fixRange: false,		// Options 	{Boolean}
 		range: false, 			// Optional {Array} e.g. [0, 100]
 		useCategories: 			// Optional {Object} e.g. { showAll:true, categoryarray:[] }
-		spikes: false, 			// Optional {Boolean} 
+		spikes: false, 			// Optional {Boolean}
+		noMirrorLines: false	// Optional {Boolean}
 	}
 	
 	*/
@@ -934,6 +846,11 @@ const oePlotly = (function ( bj ) {
 		// axis? x or y
 		const isY = options.type == 'y' ? true : false; 
 		
+		// balance axis lines on other side of plot area
+		if( options.noMirrorLines ){
+			axis.mirror = false;
+		}
+		
 		// subplot?
 		if( options.domain && isY ){
 			axis.domain = options.domain;
@@ -952,9 +869,11 @@ const oePlotly = (function ( bj ) {
 		
 		// mirror Y axis (left one has priority)
 		if( options.rightSide && isY ){
-			axis.overlaying = 'y'; // set to y1
+			axis.overlaying = options.rightSide; // set to y1
 			axis.side = 'right';
 			axis.showgrid = false;
+			axis.zeroline = false;
+			axis.title.standoff = 15;
 		}
 		
 		// set nticks
@@ -1012,7 +931,7 @@ const oePlotly = (function ( bj ) {
 	Options:
 	{
 		theme: "dark",  		// Required {String} OE Theme  
-		legend: true, 			// Required {Boolean}
+		legend: false, 			// Optional {Boolean || Object} customise any of the defaults
 		colors: 'varied', 		// Optional {String} varied" or "twoPosNeg" or "rightEye" (defaults to "blues")
 		plotTitle: false, 		// Optional {String}
 		xaxis: x1,				// Required {Object} xaxis
@@ -1054,20 +973,6 @@ const oePlotly = (function ( bj ) {
 				color: dark ? '#aaa' : '#333',
 			},
 			
-			// legend?
-			showlegend: options.legend,
-			// if so, it will be like this:
-			legend: {
-				font: {
-					size: 10
-				},
-				orientation: 'h', // 'v' || 'h'				
-				xanchor:'right',
-				yanchor:'top',
-				x:1,
-				y:1,
-			}, 
-			
 			// default set up for hoverlabels
 			hoverlabel: {
 				bgcolor: dark ? "#003" : '#fff',
@@ -1106,6 +1011,39 @@ const oePlotly = (function ( bj ) {
 			// adjust the margin area
 			layout.margin.t = 60;
 		}
+		
+		/*
+		Plot legend
+		*/
+		if( options.legend ){
+			
+			layout.showlegend = true; // default is true. 
+			// basic set up for legend
+			// note: if "legendgroup" is add to the data traces
+			// the legends will be automatically grouped
+			const legendDefaults = {
+				font: {
+					size: 10
+				},
+				itemclick: 'toggleothers', //  ( default: "toggle" | "toggleothers" | false )
+ 				orientation: 'h', // 'v' || 'h'		
+				// traceorder: "grouped", // or "reversed+grouped"		
+				xanchor:'right',
+				yanchor:'bottom',
+				x:1,
+				y:1,
+			};
+			
+			if( typeof options.legend === "boolean"){
+				layout.legend = legendDefaults;
+			} else {
+				// customise the defaults
+				layout.legend = Object.assign( legendDefaults, options.legend );
+			}
+		} else {
+			layout.showlegend = false; // defaults to true otherwise
+		}
+		
 		
 		/*
 		Subplots (n charts on a single plot)
@@ -1361,9 +1299,131 @@ const oePlotly = (function ( bj ) {
 				y: data.points[0].y 
 			};
 					
-		    bj.customEvent('oesPlotlyClick', obj );
-		    bj.log('"oesPlotClick" Event data: ' + JSON.stringify( obj ));
+		    bj.customEvent('oePlotlyClick', obj );
+		    bj.log('"oePlotlyClick" Event data: ' + JSON.stringify( obj ));
 		}));
+	};
+	
+	/**
+	* return settings for "line" style in data
+	* @param {Number} optional
+	* @returns {Object}
+	*/
+	oePlotly.dashedLine = ( n ) => {
+		return {
+			dash: "2px,2px",
+			width: 2,
+		};
+	};
+
+	/**
+	* return settings for "marker" style in data
+	* @param {String} Event type: "Drugs", etc 
+	* @returns {Object}
+	*/
+	oePlotly.markerFor = ( type ) => {
+		const marker = {};
+		
+		switch( type){
+			case 'image':
+				marker.symbol = "triangle-down";
+				marker.size = 10;
+			break;
+			case 'drug':
+				marker.symbol = "diamond";
+				marker.size = 8;
+			break;
+			case 'injection':
+				marker.symbol = "star-diamond";
+				marker.size = 9;
+			break; 
+		}
+		
+		return marker;
+	};
+	
+	
+	/**
+	* Consistent buttons styling
+	* @param {String} type - 'image', 'drug', 'injection'  
+	* @returns {Object}
+	*/
+	oePlotly.eventStyle = ( type ) => {
+		const style = {
+			marker: oePlotly.markerFor( type )
+		};
+		
+		switch( type ){
+			case 'image':
+				style.mode = "markers";
+			break;
+			case 'drug':
+				style.mode = "lines+markers";
+				style.line = {
+					width: 3,
+				};
+			break;
+			case 'injection':
+				style.mode = "markers";
+			break; 
+		}
+		
+		return style;
+	}; 
+	
+	/**
+	* Consistent buttons styling
+	* @param {Boolean} dark  
+	* @returns {Object}
+	*/
+	oePlotly.buttonStyling = ( dark ) => ({
+		font: {
+			color: dark ? '#ccc' : '#666',
+		},
+		bgcolor: dark ? 'rgb(30,46,66)' : 'rgb(255,255,255)', 
+		activecolor: dark ? 'rgb(7,69,152)' : 'rgb(205,205,255)',
+		bordercolor: dark ? 'rgb(10,26,36))' : 'rgb(255,255,255)',
+		borderwidth: 2,
+	}); 
+	
+
+	/**
+	* Add Plotly dropdown to layouta
+	* @param {Objec} layout
+	*/
+	oePlotly.addDropDown = ( layout ) => {
+	
+		let buttons = [];
+			
+		buttons.push({ 	
+			method: 'update', // 'data' & 'layout'
+			args: ['visible', [true, false, false, false]],
+			label: 'Option 1'						
+		});
+		
+		buttons.push({ 	
+			method: 'update', // update args: [data, layout] 
+			// 'args' is an 
+			args: [ {}, {
+			    title: 'some new title', // updates the title
+			    colorway: oePlotly.getColorSeries( "default", true )
+			}],
+			//args2: layout,
+			label: 'Options Title'						
+		});
+	
+ 		let menu = Object.assign({
+			type: "dropdown",
+			xanchor: 'left',
+			yanchor: 'top',
+			x: 0,
+			y: 0.35,
+			buttons: buttons, // add buttons to menu
+ 		}, oePlotly.buttonStyling() );
+ 		
+		
+		// could be multiple menus
+		layout.updatemenus = [ menu ];	
 	};
 
 	
@@ -1395,6 +1455,17 @@ const oePlotly = (function ( bj ) {
 			mode: 'lines+markers',
 		};
 		
+		const VFI = {
+			x: eye.va.VFI.x,
+			y: eye.va.VFI.y,
+			name: eye.va.VFI.name,	
+			yaxis: 'y5',	
+			hovertemplate: '%{y}<br>%{x}',
+			type: 'scatter',
+			mode: 'lines+markers',
+			line: oePlotly.dashedLine(),
+		};
+		
 		const VA_SnellenMetre = {
 			x: eye.va.snellenMetre.x,
 			y: eye.va.snellenMetre.y,
@@ -1420,28 +1491,31 @@ const oePlotly = (function ( bj ) {
 		dateRange.add( eye.IOP.x );
 		
 		/**
-		Build Drugs data for right eye
+		* Events
 		*/
-		const drugs = [];
+		const events = [];
 		//const arr = Object.values( eye.drugs );
 		// loop through array...
-		Object.values( eye.drugs ).forEach(( drug ) => {			
-			drugs.push({
-				x: drug.x, 
-				y: drug.y, 
-				customdata: drug.customdata,
-				name:'', 
-				yaxis: 'y4',
-				hovertemplate: '%{y}<br>%{customdata}<br>%{x}',
-				type: 'scatter', 
-				mode: 'lines+markers',
-				marker: oePlotly.markerFor('drug')
-			});
+		Object.values( eye.events ).forEach(( event ) => {
 			
-			dateRange.add( drug.x );
+			let template = event.customdata ? '%{y}<br>%{customdata}<br>%{x}' : '%{y}<br>%{x}';
+			
+			let newEvent = Object.assign({
+					x: event.x, 
+					y: event.y, 
+					customdata: event.customdata,
+					name: event.name, 
+					yaxis: 'y4',
+					hovertemplate: template,
+					type: 'scatter',
+					showlegend: false,
+				}, oePlotly.eventStyle(  event.event ));
+			
+			events.push( newEvent );
+			dateRange.add( event.x );
 		});
 		
-		return [ VA_offScale, VA_SnellenMetre, IOP ].concat( drugs );		
+		return [ VA_offScale, VFI, VA_SnellenMetre, IOP ].concat( events );		
 	};
 	
 	/**
@@ -1452,7 +1526,14 @@ const oePlotly = (function ( bj ) {
 		
 		const layout = oePlotly.getLayout({
 			theme: window.oeThemeMode, 
-			legend: false,
+			legend: {
+				orientation: 'v',
+				traceorder: "reversed",
+				xanchor:'left',
+				yanchor:'top',
+				x:1.01,
+				y:0.85,
+			},
 			colors: setup.colors,
 			plotTitle: setup.title,
 			xaxis: setup.xaxis,
@@ -1529,16 +1610,17 @@ const oePlotly = (function ( bj ) {
 			useDates: true, 
 			spikes: true,
 			range: dateRange.firstLast(),
+			noMirrorLines: true,
 		}, dark );
 		
 		
 		// y0 - offscale 
 		const y0 = oePlotly.getAxis({
 			type:'y',
-			domain: [0, 0.1], 
+			domain: [0, 0.07], 
 			useCategories: {
 				showAll: true, 
-				categoryarray: json.rightEye.va.offScale.yaxis.reverse()
+				categoryarray: json.yaxis.offScale.reverse()
 			},
 			spikes: true,
 		}, dark );
@@ -1546,11 +1628,11 @@ const oePlotly = (function ( bj ) {
 		// y1 - VA
 		const y1 = oePlotly.getAxis({
 			type:'y',
-			domain: [0.1, 0.45],
+			domain: [0.1, 0.46],
 			title: 'VA', 
 			useCategories: {
 				showAll: true, 
-				categoryarray: json.rightEye.va.snellenMetre.yaxis.reverse()
+				categoryarray: json.yaxis.snellenMetre.reverse()
 			},
 			spikes: true,
 		}, dark );
@@ -1558,7 +1640,7 @@ const oePlotly = (function ( bj ) {
 		// y2 - IOP
 		const y2 = oePlotly.getAxis({
 			type:'y',
-			domain: [0.5, 0.85],
+			domain: [0.49, 0.85],
 			title: 'IOP', 
 			range: [0, 75],
 			spikes: true,
@@ -1570,8 +1652,18 @@ const oePlotly = (function ( bj ) {
 			domain: [0.88, 1],
 			useCategories: {
 				showAll: true, 
-				categoryarray: json.drugTypes.reverse()
+				categoryarray: json.eventTypes.reverse()
 			},
+			spikes: true,
+		}, dark );
+		
+		// y4 - VFI
+		const y4 = oePlotly.getAxis({
+			type:'y',
+			domain: [0.1, 0.45],
+			title: 'VFI',
+			range: [-30, 5],
+			rightSide: 'y2',
 			spikes: true,
 		}, dark );
 		
@@ -1586,7 +1678,7 @@ const oePlotly = (function ( bj ) {
 				eye: "right",
 				colors: "rightEye",
 				xaxis: x1, 
-				yaxes: [ y0, y1, y2, y3 ],
+				yaxes: [ y0, y1, y2, y3, y4 ],
 				procedures: json.rightEye.procedures,
 				targetIOP: json.rightEye.targetIOP,
 				parentDOM: '.oes-left-side',
@@ -1604,7 +1696,7 @@ const oePlotly = (function ( bj ) {
 				eye: "left",
 				colors: "leftEye",
 				xaxis: x1, 
-				yaxes: [ y0, y1, y2, y3 ],
+				yaxes: [ y0, y1, y2, y3, y4 ],
 				procedures: json.leftEye.procedures,
 				targetIOP: json.leftEye.targetIOP,
 				parentDOM: '.oes-right-side',
@@ -1615,7 +1707,8 @@ const oePlotly = (function ( bj ) {
 	/**
 	* Extend API ... PHP will call with json when DOM is loaded
 	*/
-	bj.extend('oesGlaucoma', init);	
+	bj.extend('plotSummaryGlaucoma', init);	
+	
 		
 })( bluejay ); 
 (function ( bj ) {
@@ -1663,21 +1756,23 @@ const oePlotly = (function ( bj ) {
 		Build Events data for right eye
 		*/
 		const events = [];
-		const arr = Object.values( eye.events );
 		// loop through array...
-		arr.forEach(( event ) => {
-			events.push({
-				x: event.x, 
-				y: event.y, 
-				customdata: event.customdata,
-				name:'', 
-				yaxis: 'y3',
-				hovertemplate: '%{y}<br>%{customdata}<br>%{x}',
-				type: 'scatter', 
-				mode: 'markers',
-				marker: oePlotly.markerFor( event.type )
-			});
+		Object.values( eye.events ).forEach(( event ) => {
 			
+			let template = event.customdata ? '%{y}<br>%{customdata}<br>%{x}' : '%{y}<br>%{x}';
+			
+			let newEvent = Object.assign({
+					x: event.x, 
+					y: event.y, 
+					customdata: event.customdata,
+					name: event.name, 
+					yaxis: 'y3',
+					hovertemplate: template,
+					type: 'scatter',
+					showlegend: false,
+				}, oePlotly.eventStyle(  event.event ));
+			
+			events.push( newEvent );
 			dateRange.add( event.x );
 		});
 		
@@ -1693,7 +1788,10 @@ const oePlotly = (function ( bj ) {
 		
 		const layout = oePlotly.getLayout({
 			theme: window.oeThemeMode, 
-			legend: false,
+			legend: {
+				yanchor:'bottom',
+				y:0.71,
+			},
 			colors: setup.colors,
 			plotTitle: setup.title,
 			xaxis: setup.xaxis,
@@ -1704,7 +1802,7 @@ const oePlotly = (function ( bj ) {
 			
 		});
 			
-		const div = oePlotly.buildDiv(`${oesTemplateType}-${setup.eye}Eye`, '70vh', '550px');
+		const div = oePlotly.buildDiv(`${oesTemplateType}-${setup.eye}Eye`, '70vh', '600px');
 		document.querySelector( setup.parentDOM ).appendChild( div );
 		
 		Plotly.newPlot(
@@ -1776,12 +1874,12 @@ const oePlotly = (function ( bj ) {
 		// y2 - VA
 		const y2 = oePlotly.getAxis({
 			type:'y',
-			rightSide: true,
+			rightSide: 'y1',
 			domain: [0, 0.7],
 			title: 'VA', 
 			useCategories: {
 				showAll: true, 
-				categoryarray: json.rightEye.va.snellenMetre.yaxis.reverse()
+				categoryarray: json.yaxis.snellenMetre.reverse()
 			},
 			spikes: true,
 		}, dark );
@@ -1792,7 +1890,7 @@ const oePlotly = (function ( bj ) {
 			domain: [0.8, 1],
 			useCategories: {
 				showAll: true, 
-				categoryarray: json.events.reverse()
+				categoryarray: json.eventTypes.reverse()
 			},
 			spikes: true,
 		}, dark );
@@ -1833,7 +1931,7 @@ const oePlotly = (function ( bj ) {
 	/**
 	* Extend API ... PHP will call with json when DOM is loaded
 	*/
-	bj.extend('oesMedicalRetina', init);	
+	bj.extend('plotSummaryMedicalRetina', init);	
 		
 })( bluejay ); 
 (function (uiApp) {

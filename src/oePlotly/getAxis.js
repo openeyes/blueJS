@@ -13,13 +13,14 @@
 		type: 'x' or 'y' 		// Required {String} axis 
 		domain: false, 			// Optional {Array} e.g. [0, 0.75] (if subplot)
 		title: false, 			// Optional {String}
-		rightSide: false		// Options 	{Boolean} - shift to right side of plot (only Yaxis)
+		rightSide: false		// Options 	{String} - yAxis to overlay 'y'
 		numTicks: false, 		// Optional {Number}
 		useDates: false, 		// Options 	{Boolean}
 		fixRange: false,		// Options 	{Boolean}
 		range: false, 			// Optional {Array} e.g. [0, 100]
 		useCategories: 			// Optional {Object} e.g. { showAll:true, categoryarray:[] }
-		spikes: false, 			// Optional {Boolean} 
+		spikes: false, 			// Optional {Boolean}
+		noMirrorLines: false	// Optional {Boolean}
 	}
 	
 	*/
@@ -44,6 +45,11 @@
 		// axis? x or y
 		const isY = options.type == 'y' ? true : false; 
 		
+		// balance axis lines on other side of plot area
+		if( options.noMirrorLines ){
+			axis.mirror = false;
+		}
+		
 		// subplot?
 		if( options.domain && isY ){
 			axis.domain = options.domain;
@@ -62,9 +68,11 @@
 		
 		// mirror Y axis (left one has priority)
 		if( options.rightSide && isY ){
-			axis.overlaying = 'y'; // set to y1
+			axis.overlaying = options.rightSide; // set to y1
 			axis.side = 'right';
 			axis.showgrid = false;
+			axis.zeroline = false;
+			axis.title.standoff = 15;
 		}
 		
 		// set nticks
