@@ -69,7 +69,7 @@
 		
 		// mirror Y axis (left one has priority)
 		if( options.rightSide && isY ){
-			axis.overlaying = options.rightSide; // set to y1
+			axis.overlaying = options.rightSide; // set to y1, y2, etc
 			axis.side = 'right';
 			axis.showgrid = false;
 			axis.zeroline = false;

@@ -71,14 +71,10 @@ const oePlotly = (function ( bj ) {
 	* in the data (trace) objects. This provides a way to 
 	* theme and standardise 
 	* @param {String} colour type e.g. "error_y"  for: error_y.color 
-	* @param {String} theme - OE Theme setting "dark" || "light"?
+	* @param {Boolean} dark
 	* @returns {String} colour for request element (or "pink" if fails)
 	*/
-	const getColorFor = (plotlyElement, dark) => {
-		if( typeof dark === "string" ){
-			dark = isDarkTheme( dark );
-		}
-		
+	const getColorFor = ( plotlyElement, dark ) => {
 		switch(plotlyElement){
 			case 'rightEye': return dark ? colours.dark.green : colours.light.green;
 			case 'leftEye': return dark ? colours.dark.red : colours.light.red;	
@@ -91,11 +87,10 @@ const oePlotly = (function ( bj ) {
 	/**
 	* Can not just set layout to dark theme bases on oeTheme setting
 	* layout may be used in "pro" area (such as patient popup)
-	* @param {String} theme
 	* @returns {Boolean}
 	*/
-	const isDarkTheme = ( theme ) => {
-		return theme === "dark" ? true : false;	
+	const isDarkTheme = () => {
+		return window.oeThemeMode === "dark" ? true : false;	
 	};
 	
 	// public 

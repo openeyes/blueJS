@@ -4,6 +4,9 @@
 	
 	const oesTemplateType = "Glaucoma";
 	
+	// oe CSS theme!
+	const darkTheme = oePlotly.isDarkTheme();
+	
 	/**
 	* Plotly parameters
 	* Map top level parameters for each plot (R & L)
@@ -28,9 +31,9 @@
 	const dataTraces = ( eyeJSON, eyeSide ) => {
 		
 		const VA_offScale = {
-			x: eyeJSON.va.offScale.x,
-			y: eyeJSON.va.offScale.y,
-			name: eyeJSON.va.offScale.name,		
+			x: eyeJSON.VA.offScale.x,
+			y: eyeJSON.VA.offScale.y,
+			name: eyeJSON.VA.offScale.name,		
 			hovertemplate: '%{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
@@ -39,9 +42,9 @@
 		dateRange.add( eyeJSON.va.offScale.x );
 		
 		const VFI = {
-			x: eyeJSON.va.VFI.x,
-			y: eyeJSON.va.VFI.y,
-			name: eyeJSON.va.VFI.name,	
+			x: eyeJSON.VFI.x,
+			y: eyeJSON.VFI.y,
+			name: eyeJSON.VFI.name,	
 			yaxis: 'y5',	
 			hovertemplate: '%{y}<br>%{x}',
 			type: 'scatter',
@@ -49,7 +52,7 @@
 			line: oePlotly.dashedLine(),
 		};
 		
-		dateRange.add( eyeJSON.va.VFI.x );
+		dateRange.add( eyeJSON.VFI.x );
 		
 		const IOP = {
 			x: eyeJSON.IOP.x,
@@ -66,7 +69,7 @@
 		/**
 		* User selectable VA data traces
 		*/
-		Object.values( eyeJSON.va.units ).forEach(( unit, index ) => {
+		Object.values( eyeJSON.VA.units ).forEach(( unit, index ) => {
 			
 			userSelecterUnits.addTrace( eyeSide, {
 				x: unit.x,
@@ -110,9 +113,8 @@
 		*/
 		const all = [ VA_offScale, VFI, userSelecterUnits.selectedTrace( eyeSide ), IOP ].concat( events );
 		
-		myPlotly.get( eyeSide ).set('data', all);
-		
-		return 	all;	
+		// store data traces
+		myPlotly.get( eyeSide ).set('data', all);	
 	};
 	
 	/**
@@ -121,20 +123,20 @@
 	* @param {String} which eye side?
 	*/
 	const plotlyReacts = ( eyeSide ) => {
-		// get the eyeMap for the correct side
-		let eyeMap = myPlotly.get( eyeSide );
+		// get the eyePlot for the eye side
+		let eyePlot = myPlotly.get( eyeSide );
 		
-		// update SPECIFIC data traces in data array = [n]
-		eyeMap.get('data')[2] = userSelecterUnits.selectedTrace( eyeSide );
+		// update SPECIFIC data trace in data array. note: [n]
+		eyePlot.get('data')[2] = userSelecterUnits.selectedTrace( eyeSide );
 		
 		// update layout specific axis
-		eyeMap.get('layout').yaxis2 = Object.assign({}, userSelecterUnits.selectedAxis());
+		eyePlot.get('layout').yaxis2 = Object.assign({}, userSelecterUnits.selectedAxis());
 
 		// build new (or rebuild)
 		Plotly.react(
-			eyeMap.get('div'), 
-			eyeMap.get('data'), 
-			eyeMap.get('layout'), 
+			eyePlot.get('div'), 
+			eyePlot.get('data'), 
+			eyePlot.get('layout'), 
 			{ displayModeBar: false, responsive: true }
 		);
 	};
@@ -145,17 +147,14 @@
 	* @param {Object} setup
 	*/
 	const plotlyInit = ( setup ) => {
-	
+		
 		const eyeSide = setup.eye;
 		
 		const layout = oePlotly.getLayout({
-			theme: window.oeThemeMode, 
+			darkTheme, // dark? 
 			legend: {
-				//orientation: 'v',
 				traceorder: "reversed",
-				//xanchor:'left',
 				yanchor:'bottom',
-				//x:1.01,
 				y:0.82,
 			},
 			colors: setup.colors,
@@ -209,9 +208,6 @@
 			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
 		}
 
-		// oe CSS theme!
-		const dark = oePlotly.isDarkTheme( window.oeThemeMode );
-		
 		// for all subplot rows
 		const domainRow = [
 			[0, 0.08],
@@ -222,6 +218,7 @@
 		
 		// user selectable units for VA units:
 		userSelecterUnits.init({
+			darkTheme,
 			plotlyUpdate: plotlyReacts,
 			axisDefaults: {
 				type:'y',
@@ -230,21 +227,18 @@
 				spikes: true,
 			}, 
 			unitRanges: Object.values( json.yaxis.unitRanges ),
-			dark
 		});
 		
 		/**
 		* Data 
 		*/
-		let rightEye_data = null;
-		let leftEye_data = null;
 		
 		if( json.rightEye ){
-			rightEye_data = dataTraces( json.rightEye, 'right' );
+			dataTraces( json.rightEye, 'right' );
 		}
 		
 		if( json.leftEye ){
-			leftEye_data = dataTraces( json.leftEye, 'left' );
+			dataTraces( json.leftEye, 'left' );
 		}
 	
 		/**
@@ -259,7 +253,7 @@
 			spikes: true,
 			range: dateRange.firstLast(),
 			noMirrorLines: true,
-		}, dark );
+		}, darkTheme );
 		
 		
 		// y0 - offscale 
@@ -271,7 +265,7 @@
 				categoryarray: json.yaxis.offScale.reverse()
 			},
 			spikes: true,
-		}, dark );
+		}, darkTheme );
 		
 		// y2 - IOP
 		const y2 = oePlotly.getAxis({
@@ -280,7 +274,7 @@
 			title: 'IOP', 
 			range: [0, 75],
 			spikes: true,
-		}, dark );
+		}, darkTheme );
 		
 		// y3 - Drugs
 		const y3 = oePlotly.getAxis({
@@ -291,7 +285,7 @@
 				categoryarray: json.eventTypes.reverse()
 			},
 			spikes: true,
-		}, dark );
+		}, darkTheme );
 		
 		// y4 - VFI
 		const y4 = oePlotly.getAxis({
@@ -301,21 +295,20 @@
 			range: [-30, 5],
 			rightSide: 'y2',
 			spikes: true,
-		}, dark );
+		}, darkTheme );
 		
 		/*
 		* Dynamic axis
-		* y1 - VA axis depends on selected unit state
+		* VA axis depends on selected unit state
 		*/
 		const y1 = userSelecterUnits.selectedAxis();
 		
 		/**
-		* Layout & Build - Right Eye
+		* Layout & Build - Eyes
 		*/	
-		if( rightEye_data ){
+		if( myPlotly.has('right') ){
 			
 			plotlyInit({
-				data: rightEye_data,
 				title: "Right Eye",
 				eye: "right",
 				colors: "rightEye",
@@ -326,14 +319,10 @@
 				parentDOM: json.rightEye.dom,
 			});
 		} 
-		
-		/**
-		* Layout & Build -  Left Eye
-		*/
-		if( leftEye_data ){
+	
+		if( myPlotly.has('left') ){
 			
 			plotlyInit({
-				data: leftEye_data,
 				title: "Left Eye",
 				eye: "left",
 				colors: "leftEye",

@@ -9,7 +9,7 @@
 	*
 	Options:
 	{
-		theme: "dark",  		// Required {String} OE Theme  
+		darkTheme: "dark",  	// Required {Boolean} oePlotly Theme  
 		legend: false, 			// Optional {Boolean || Object} customise any of the defaults
 		colors: 'varied', 		// Optional {String} varied" or "twoPosNeg" or "rightEye" (defaults to "blues")
 		plotTitle: false, 		// Optional {String}
@@ -24,7 +24,7 @@
 	*/
 	oePlotly.getLayout = function( options ){
 		// set up layout colours based on OE theme settings: "dark" or "light"
-		const dark = oePlotly.isDarkTheme( options.theme );
+		const dark = options.darkTheme;
 		
 		// build the Plotly layout obj
 		let layout = {

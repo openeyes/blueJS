@@ -109,7 +109,7 @@
 			// callback for updating Plotly
 			updatePlotly = options.plotlyUpdate; 
 
-			const dark = options.dark;
+			const dark = options.darkTheme;
 			const axisDefault = options.axisDefaults;
 			const title = axisDefault.title;
 			const userOptions = [];
