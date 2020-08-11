@@ -81,14 +81,18 @@
 				xref: 'paper', //  "container" | "paper" (as in, align too)
 				yref: 'container', 
 				x: 0, // 0 - 1
-				y: 0.97,
+				y: 1,
+				yanchor: 'top',
+				pad: {
+					t: 20 // px gap from top 
+ 				},
 				font: {
 					size: 15,
 					// color:'#f00' - can override base font
 				}, 		
 			};
 			// adjust the margin area
-			layout.margin.t = 60;
+			layout.margin.t = 50;
 		}
 		
 		/*
@@ -102,7 +106,7 @@
 			// the legends will be automatically grouped
 			const legendDefaults = {
 				font: {
-					size: 10
+					size: 9
 				},
 				itemclick: 'toggleothers', //  ( default: "toggle" | "toggleothers" | false )
  				orientation: 'h', // 'v' || 'h'		
@@ -117,7 +121,7 @@
 				layout.legend = legendDefaults;
 			} else {
 				// customise the defaults
-				layout.legend = Object.assign( legendDefaults, options.legend );
+				layout.legend = Object.assign( legendDefaults, options.legend );				
 			}
 		} else {
 			layout.showlegend = false; // defaults to true otherwise

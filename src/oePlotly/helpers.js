@@ -36,22 +36,49 @@
 	
 	/**
 	* Click events
-	* div {Element} Plot DOM element
+	* @param {Element} Plot DOM element
+	* @param {String} eye side
 	*/ 
-	
-	oePlotly.addClickEvent = ( div ) => {
+	oePlotly.addClickEvent = ( div, eye ) => {
 		div.on('plotly_click', function( data ){
+			const point = data.points[0];
 			// pass back the JSON data relavant to the data clicked
 			let obj = {
-				name: data.points[0].data.name,
-				x: data.points[0].x,
-				y: data.points[0].y 
+				eye,
+				name: point.data.name,
+				index: point.pointIndex,
+				x: point.x,
+				y: point.y 
 			};
 					
 		    bj.customEvent('oePlotlyClick', obj );
 		    bj.log('"oePlotlyClick" Event data: ' + JSON.stringify( obj ));
 		});
 	};
+	
+	/**
+	* Hover events
+	* @param {Element} Plot DOM element
+	* @param {String} eye side
+	*/
+	oePlotly.addHoverEvent = ( div, eye ) => {
+		bj.log('"oePlotlyHover" ('+eye+') Event available (click point to see data structure)');
+		
+		div.on('plotly_hover', function( data ){
+			const point = data.points[0];
+			// pass back the JSON data relavant to the data clicked
+			let obj = {
+				eye,
+				name: point.data.name,
+				index: point.pointIndex,
+				x: point.x,
+				y: point.y 
+			};
+					
+		    bj.customEvent('oePlotlyHover', obj );
+		});
+	};
+	
 	
 	/**
 	* return settings for "line" style in data

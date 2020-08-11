@@ -26,6 +26,8 @@
 			line: oePlotly.dashedLine(),
 		};
 		
+		dateRange.add( eye.CRT.x );
+		
 		const VA_SnellenMetre = {
 			x: eye.va.snellenMetre.x,
 			y: eye.va.snellenMetre.y,
@@ -36,7 +38,6 @@
 			mode: 'lines+markers',
 		};
 		
-		dateRange.add( eye.CRT.x );
 		dateRange.add( eye.va.snellenMetre.x );
 		
 		/**
@@ -60,9 +61,13 @@
 				}, oePlotly.eventStyle(  event.event ));
 			
 			events.push( newEvent );
+			
 			dateRange.add( event.x );
 		});
 		
+		/*
+		Data trace array
+		*/
 		return [ CRT, VA_SnellenMetre ].concat( events );
 				
 	};
@@ -100,7 +105,7 @@
 		);
 		
 		// set up click through
-		oePlotly.addClickEvent( div );
+		oePlotly.addClickEvent( div, setup.eye );
 		
 		// bluejay custom event (user changes layout)
 		document.addEventListener('oesLayoutChange', () => {

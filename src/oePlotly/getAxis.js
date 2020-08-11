@@ -18,6 +18,7 @@
 		useDates: false, 		// Options 	{Boolean}
 		fixRange: false,		// Options 	{Boolean}
 		range: false, 			// Optional {Array} e.g. [0, 100]
+		axisType: false			// Optional {String} 
 		useCategories: 			// Optional {Object} e.g. { showAll:true, categoryarray:[] }
 		spikes: false, 			// Optional {Boolean}
 		noMirrorLines: false	// Optional {Boolean}
@@ -93,6 +94,11 @@
 		// manually set axes data range
 		if(options.range){
 			axis.range = options.range;
+		}
+		
+		// set range type... other wise Plotly will figure it out
+		if(options.axisType){
+			axis.type = options.axisType;
 		}
 		
 		// categories (assuming this will only be used for yAxis)
