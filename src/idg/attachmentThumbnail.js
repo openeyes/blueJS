@@ -66,7 +66,7 @@
 		Load in PNG or PDF
 		PNG needs the resize options
 		*/
-		if(json.type === "png"){
+		if(json.type !== "pdf"){
 			/*
 			Load PNG as a background AND as an IMG
 			*/

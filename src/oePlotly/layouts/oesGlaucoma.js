@@ -11,10 +11,7 @@
 	* Plotly parameters
 	* Map top level parameters for each plot (R & L)
 	*/
-	const myPlotly = new Map([
-		[ 'right', new Map() ],
-		[ 'left', new Map() ]
-	]);	
+	const myPlotly = new Map();	
 	
 	/**
 	* Helpers
@@ -39,7 +36,7 @@
 			mode: 'lines+markers',
 		};
 		
-		dateRange.add( eyeJSON.va.offScale.x );
+		dateRange.add( eyeJSON.VA.offScale.x );
 		
 		const VFI = {
 			x: eyeJSON.VFI.x,
@@ -234,10 +231,12 @@
 		*/
 		
 		if( json.rightEye ){
+			myPlotly.set('right', new Map());
 			dataTraces( json.rightEye, 'right' );
 		}
 		
 		if( json.leftEye ){
+			myPlotly.set('left', new Map());
 			dataTraces( json.leftEye, 'left' );
 		}
 	

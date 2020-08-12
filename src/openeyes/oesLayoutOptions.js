@@ -68,9 +68,9 @@
 		div.className = model.selector.options.replace('.','');
 		div.innerHTML = Mustache.render( template, {
 			'sides' : [
-				//{ eyelat: { r:'R', l:'NA'}},
+				{ eyelat: { r:'R', l:'NA'}},
 				{ eyelat: { r:'R', l:'L'}},
-				//{ eyelat: { r:'NA', l:'L'}}
+				{ eyelat: { r:'NA', l:'L'}}
 			],
 			'layouts' : ['1-0', '2-1', '1-1', '1-2', '0-1'], 
 		} );
@@ -102,9 +102,11 @@
 		const update = () => {
 			
 			layout.className = css.layout + '  i-' + model.layout;
-		
 			let eyes = model.eye.split('-'); 
 			eyelat.innerHTML = Mustache.render( iconTemplate, { eyes });
+			
+			// other JS may be updating on this.
+			bj.customEvent('oesLayoutEyeSide', eyes );
 		};
 		
 		// add to observers

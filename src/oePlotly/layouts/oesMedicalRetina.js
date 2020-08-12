@@ -11,10 +11,7 @@
 	* Plotly parameters
 	* Map top level parameters for each plot (R & L)
 	*/
-	const myPlotly = new Map([
-		[ 'right', new Map() ],
-		[ 'left', new Map() ]
-	]);
+	const myPlotly = new Map();	
 	
 	/**
 	* Helpers
@@ -198,17 +195,19 @@
 			}, 
 			unitRanges: Object.values( json.yaxis.unitRanges ),
 		});
-		
-		
+
+
 		/**
 		* Data 
 		*/
 	
 		if( json.rightEye ){
+			myPlotly.set('right', new Map());
 			dataTraces( json.rightEye, 'right' );
 		}
 		
 		if( json.leftEye ){
+			myPlotly.set('left', new Map());
 			dataTraces( json.leftEye, 'left' );
 		}
 

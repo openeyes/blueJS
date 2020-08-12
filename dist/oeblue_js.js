@@ -646,7 +646,7 @@ const oePlotly = (function ( bj ) {
 			redSeries: ['#ea2b34','#F65B20','#D41C50','#D44304'],
 			standard: ['#1451b3', '#175ece', '#1a69e5'],
 			varied:  ['#0a83ea', '#18949f', '#781cea','#3f0aea'],
-			dual: ['#3f0aea','#7b3131'],
+			dual: ['#1472DE','#2E4259'],
 		}, 
 		light: {
 			blue: '#00f',
@@ -656,7 +656,7 @@ const oePlotly = (function ( bj ) {
 			redSeries: ['#da3e43', '#AB274A', '#BA4B2B', '#AB2C22'],
 			standard: ['#0a4198', '#1451b3', '#175ece'],
 			varied: ['#0a2aea', '#ea0a8e', '#00b827','#890aea'],
-			dual: ['#0a4198','#874e4e'],
+			dual: ['#2126C2','#8FAEC2'],
 		}
 	};
 	
@@ -681,7 +681,7 @@ const oePlotly = (function ( bj ) {
 		switch( colorName ){
 			case "varied": colorWay = dark ?  colours.dark.varied : colours.light.varied;
 			break;	
-			case "twoPosNeg": colorWay = dark ?  colours.dark.dual : colours.light.dual;   // assumes Postive trace is first! 
+			case "posNeg": colorWay = dark ?  colours.dark.dual : colours.light.dual;   // assumes Postive trace is first! 
 			break;
 			case "rightEye": colorWay = dark ?  colours.dark.greenSeries : colours.light.greenSeries;
 			break; 
@@ -1634,6 +1634,262 @@ const oePlotly = (function ( bj ) {
 
 	'use strict';
 	
+	const oesTemplateType = "Bar Chart";
+	
+	// oe CSS theme!
+	const darkTheme = oePlotly.isDarkTheme();
+
+	/**
+	* Build data trace format for Glaucoma
+	* @param {JSON} json data
+	* @returns {Array} for Plol.ly data
+	*/
+	const dataTraces = ( json ) => {
+	
+		const trace = {
+			y: json.data.y,
+			name: json.data.name,		
+			type: 'bar'
+		};
+		
+		// optional settings
+		
+		if( json.data.x ){
+			trace.x = json.data.x;
+		}
+		
+		if( json.data.hovertemplate ){
+			trace.hovertemplate = json.data.hovertemplate;
+		}
+		
+		/*
+		Data trace array
+		*/
+		return [ trace ];			
+	};
+
+	
+	/**
+	* build layout and initialise Plotly 
+	* @param {Object} setup
+	*/
+	const plotlyInit = ( setup ) => {
+		
+		const layout = oePlotly.getLayout({
+			darkTheme, // dark? 
+			plotTitle: setup.title,
+			xaxis: setup.xaxis,
+			yaxes: setup.yaxes,
+		});
+		
+		// stack the 2 yaxis
+		layout.barmode = 'stack';
+			
+		// build new (or rebuild)
+		Plotly.react(
+			setup.div, 
+			setup.data, 
+			layout, 
+			{ displayModeBar: false, responsive: true }
+		);	
+	}; 
+	
+	
+	/**
+	* init - called from the PHP page that needs it
+	* @param {JSON} json - PHP supplies the data for charts
+	*/
+	const init = ( json = null ) => {
+		
+		if(json === null){
+			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			return false;
+		} else {
+			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+		}
+
+		/**
+		* Data 
+		*/
+	
+		const data = dataTraces( json );
+		
+		/**
+		* Axes templates 
+		*/
+		
+		// x1
+		const x1 = oePlotly.getAxis({
+			type:'x',
+			numTicks: 20,
+		}, darkTheme );
+		
+		// y1
+		const y1 = oePlotly.getAxis({
+			type:'y', 
+			numTicks: 20,
+		}, darkTheme );
+		
+		// optional
+		if( json.title.xaxis ){
+			x1.title = json.title.xaxis;
+		}
+		
+		if( json.title.yaxis ){
+			y1.title = json.title.yaxis;
+		}
+		
+		
+		/**
+		* Layout & Build - Eyes
+		*/	
+		console.log( json );
+		
+		plotlyInit({
+			div: document.querySelector( json.dom ),
+			title: json.title.plot,
+			data,
+			xaxis: x1, 
+			yaxes: [ y1 ],
+		});
+		
+	};
+	
+	/**
+	* Extend API ... PHP will call with json when DOM is loaded
+	*/
+	bj.extend('plotBarChart', init);	
+	
+		
+})( bluejay ); 
+(function ( bj ) {
+
+	'use strict';
+	
+	const oesTemplateType = "Bar Percent Complete";
+	
+	// oe CSS theme!
+	const darkTheme = oePlotly.isDarkTheme();
+
+	/**
+	* Build data trace format for Glaucoma
+	* @param {JSON} json data
+	* @returns {Array} for Plol.ly data
+	*/
+	const dataTraces = ( json ) => {
+		
+		let percentIncomplete = json.percentComplete.map( p => 100 - p );
+		
+		const complete = {
+			x: json.xAxis,
+			y: json.percentComplete,
+			name: '',		
+			hovertemplate: 'Complete<br>%{y}%',
+			type: 'bar'
+		};
+		
+		const incomplete = {
+			x: json.xAxis,
+			y: percentIncomplete,
+			name: '',		
+			hovertemplate: 'Incomplete<br>%{y}%',
+			type: 'bar'
+		};
+	
+		/*
+		Data trace array
+		*/
+		return [ complete, incomplete ];			
+	};
+
+	
+	/**
+	* build layout and initialise Plotly 
+	* @param {Object} setup
+	*/
+	const plotlyInit = ( setup ) => {
+		
+		const layout = oePlotly.getLayout({
+			darkTheme, // dark? 
+			colors: 'posNeg',
+			xaxis: setup.xaxis,
+			yaxes: setup.yaxes,
+		});
+		
+		// stack the 2 yaxis
+		layout.barmode = 'stack';
+			
+		// build new (or rebuild)
+		Plotly.react(
+			setup.div, 
+			setup.data, 
+			layout, 
+			{ displayModeBar: false, responsive: true }
+		);	
+	}; 
+	
+	
+	/**
+	* init - called from the PHP page that needs it
+	* @param {JSON} json - PHP supplies the data for charts
+	*/
+	const init = ( json = null ) => {
+		
+		if(json === null){
+			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			return false;
+		} else {
+			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+		}
+
+		/**
+		* Data 
+		*/
+	
+		const data = dataTraces( json );
+		
+		/**
+		* Axes templates 
+		*/
+		
+		// x1
+		const x1 = oePlotly.getAxis({
+			type:'x',
+			numTicks: 20,
+		}, darkTheme );
+		
+		
+		// y1
+		const y1 = oePlotly.getAxis({
+			type:'y', 
+			range: [0, 100],
+			numTicks: 20,
+		}, darkTheme );
+		
+		/**
+		* Layout & Build - Eyes
+		*/	
+		
+		plotlyInit({
+			div: document.querySelector( json.dom ),
+			data,
+			xaxis: x1, 
+			yaxes: [ y1 ],
+		});
+		
+	};
+	
+	/**
+	* Extend API ... PHP will call with json when DOM is loaded
+	*/
+	bj.extend('plotBarPercentComplete', init);	
+	
+		
+})( bluejay ); 
+(function ( bj ) {
+
+	'use strict';
+	
 	const oesTemplateType = "Glaucoma";
 	
 	// oe CSS theme!
@@ -1643,10 +1899,7 @@ const oePlotly = (function ( bj ) {
 	* Plotly parameters
 	* Map top level parameters for each plot (R & L)
 	*/
-	const myPlotly = new Map([
-		[ 'right', new Map() ],
-		[ 'left', new Map() ]
-	]);	
+	const myPlotly = new Map();	
 	
 	/**
 	* Helpers
@@ -1671,7 +1924,7 @@ const oePlotly = (function ( bj ) {
 			mode: 'lines+markers',
 		};
 		
-		dateRange.add( eyeJSON.va.offScale.x );
+		dateRange.add( eyeJSON.VA.offScale.x );
 		
 		const VFI = {
 			x: eyeJSON.VFI.x,
@@ -1866,10 +2119,12 @@ const oePlotly = (function ( bj ) {
 		*/
 		
 		if( json.rightEye ){
+			myPlotly.set('right', new Map());
 			dataTraces( json.rightEye, 'right' );
 		}
 		
 		if( json.leftEye ){
+			myPlotly.set('left', new Map());
 			dataTraces( json.leftEye, 'left' );
 		}
 	
@@ -1987,10 +2242,7 @@ const oePlotly = (function ( bj ) {
 	* Plotly parameters
 	* Map top level parameters for each plot (R & L)
 	*/
-	const myPlotly = new Map([
-		[ 'right', new Map() ],
-		[ 'left', new Map() ]
-	]);
+	const myPlotly = new Map();	
 	
 	/**
 	* Helpers
@@ -2174,17 +2426,19 @@ const oePlotly = (function ( bj ) {
 			}, 
 			unitRanges: Object.values( json.yaxis.unitRanges ),
 		});
-		
-		
+
+
 		/**
 		* Data 
 		*/
 	
 		if( json.rightEye ){
+			myPlotly.set('right', new Map());
 			dataTraces( json.rightEye, 'right' );
 		}
 		
 		if( json.leftEye ){
+			myPlotly.set('left', new Map());
 			dataTraces( json.leftEye, 'left' );
 		}
 
@@ -2262,371 +2516,391 @@ const oePlotly = (function ( bj ) {
 	bj.extend('plotSummaryMedicalRetina', init);	
 		
 })( bluejay ); 
-(function (uiApp) {
+(function ( bj ) {
 
-	'use strict';	
+	'use strict';
 	
-	uiApp.addModule('collapseExpand');
+	const oesTemplateType = "Outcomes with Error bars";
 	
-	/*
-	(Collapse) Data & Group DOMs: 
-	.collapse-data
-	- .collapse-data-header-icon (expand/collapse)
-	- .collapse-data-content
-	
-	.collapse-group
-	- .header-icon (expand/collapse)
-	- .collapse-group-content
-	*/
-	const states = [];
+	// oe CSS theme!
+	const darkTheme = oePlotly.isDarkTheme();
 
-	/*
-	Methods	
-	*/
-	const _change = () => ({
-		change: function(){
-			if(this.open)	this.hide();
-			else			this.show();
-		}
-	});
-	
-	const _show = () => ({
-		show: function(){
-			uiApp.show(this.content, "block");
-			this.btn.classList.replace('expand','collapse');
-			this.open = true;
-		}
-	});
-	
-	const _hide = () => ({
-		hide: function(){
-			uiApp.hide(this.content);
-			this.btn.classList.replace('collapse','expand');
-			this.open = false;
-		}
-	});
-	
 	/**
-	* @Class
-	* @param {Object} me - initialise
-	* @returns new Object
+	* Build data trace format for Glaucoma
+	* @param {JSON} json data
+	* @returns {Array} for Plol.ly data
 	*/
-	const Expander = (me) => {
-		return Object.assign(	me, 
-								_change(),
-								_show(),
-								_hide() );
+	const dataTraces = ( json ) => {
+		
+		const VA = {
+			x: json.VA.x,
+			y: json.VA.y,
+			name: 'VA',		
+			hovertemplate: 'Mean ± SD<br>VA: %{y}<br>(N: %{x})',
+			type: 'scatter',
+			yaxis:'y1',
+			error_y: {
+			  type: 'data',
+			  array: json.VA.error_y,
+			  visible: true,
+			  thickness: 0.5,
+			}
+		};
+		
+		const IOP = {
+			x: json.IOP.x,
+			y: json.IOP.y,
+			name: 'IOP',		
+			hovertemplate: 'Mean ± SD<br>IOP: %{y}<br>(N: %{x})',
+			type: 'scatter',
+			yaxis:'y2',
+			error_y: {
+			  type: 'data',
+			  array: json.IOP.error_y,
+			  visible: true,
+			  thickness: 0.5,
+			}
+		};
+	
+		/*
+		Data trace array
+		*/
+		return [ VA, IOP ];			
 	};
 
+	
 	/**
-	* Callback for 'Click' (header btn)
-	* @param {event} event
+	* build layout and initialise Plotly 
+	* @param {Object} setup
 	*/
-	const userClick = (ev, type) => {
-		let btn = ev.target;
-		let stateRef = uiApp.getDataAttr(btn);
-		if(stateRef){
-			// DOM already setup, change it's current state
-			states[parseFloat(stateRef)].change();
+	const plotlyInit = ( setup ) => {
+		
+		const layout = oePlotly.getLayout({
+			darkTheme, // dark? 
+			colors: 'varied',
+			legend: true,
+			xaxis: setup.xaxis,
+			yaxes: setup.yaxes,
+			rangeSlider: true,
+		});
+		
+		// build new (or rebuild)
+		Plotly.react(
+			setup.div, 
+			setup.data, 
+			layout, 
+			{ displayModeBar: false, responsive: true }
+		);	
+	}; 
+	
+	
+	/**
+	* init - called from the PHP page that needs it
+	* @param {JSON} json - PHP supplies the data for charts
+	*/
+	const init = ( json = null ) => {
+		
+		if(json === null){
+			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			return false;
 		} else {
-			// ...not set up yet, record state ref in DOM
-			uiApp.setDataAttr(btn, states.length); 
-			/*
-			Data/Group are generally collapsed by default
-			but can be set in the DOM to be expanded, check 
-			this by the class used on the btn
-			*/
-			let me = {
-				btn: btn,
-				content: btn.parentNode.querySelector('.collapse-' + type + '-content'),
-				open: btn.classList.contains('collapse')
-			};
-			
-			// create new Expander
-			let expander = Expander(me);
-			expander.change(); 	
-			
-			// store state							
-			states.push(expander); 			
+			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
 		}
+
+		/**
+		* Data 
+		*/
+	
+		const data = dataTraces( json );
+		
+		/**
+		* Axes templates 
+		*/
+		
+		// x1
+		const x1 = oePlotly.getAxis({
+			type:'x',
+			title: 'Weeks',
+			numTicks: 20,
+			range: [-20, 220],
+		}, darkTheme );
+		
+		
+		// y1
+		const y1 = oePlotly.getAxis({
+			type:'y', 
+			title: 'VA (change) from baseline (LogMAR)',
+			range: [70, 110],
+			numTicks: 20,
+		}, darkTheme );
+		
+		// y2
+		const y2 = oePlotly.getAxis({
+			type:'y', 
+			title: 'IOP (mm Hg))',
+			rightSide: 'y1',
+			numTicks: 20,
+		}, darkTheme );
+		
+		/**
+		* Layout & Build - Eyes
+		*/	
+		
+		plotlyInit({
+			div: document.querySelector( json.dom ),
+			data,
+			xaxis: x1, 
+			yaxes: [ y1, y2],
+		});
+		
 	};
-
-	/*
-	Events
+	
+	/**
+	* Extend API ... PHP will call with json when DOM is loaded
 	*/
-	uiApp.userDown( ".collapse-data-header-icon", ev => userClick(ev, "data"));
-	uiApp.userDown( ".collapse-group > .header-icon", ev => userClick(ev, "group"));
-
-})(bluejay); 
-(function (uiApp) {
-
-	'use strict';
+	bj.extend('plotOutcomesWithErrors', init);	
 	
-	/*
-	To avoid a 'flickering' effect
-	DOM elements that need to be 'hidden'
-	on page load need to use "hidden" CSS class
-	after JS loads it switches it over
-	*/ 
-	
-	const hidden = uiApp.nodeArray(document.querySelectorAll('.hidden'));
-	if(hidden.length){
-		hidden.forEach( (elem) => {
-			uiApp.hide(elem);
-			elem.classList.remove('hidden');
-		});
-	}
-	
-	// Table rows use a different technique
-	const trCollapse = uiApp.nodeArray(document.querySelectorAll('.tr-collapse'));
-	if(trCollapse.length){
-		trCollapse.forEach( (elem) => {
-			elem.style.visibility = 'collapse';
-			elem.classList.remove('tr-collapse');
-		});
-	}
-	
-
-	
-})(bluejay);
-(function (bj) {
+		
+})( bluejay ); 
+(function( bj ) {
 	
 	'use strict';
 	
-	bj.addModule('tooltip'); 
+	bj.addModule('oesLayoutOptions'); 
+	
+	const dataLayoutElem = document.querySelector('.oes-hd-data-layout');
+	
+	// check for DOM...
+	if( dataLayoutElem == null ) return; 
 	
 	/** 
-	M.V.C
-	*/
-	const m = {
-		selector: ".js-has-tooltip",
-		/*
-		OE tooltips: 1) Basic, 2) Bilateral (eyelat icons are optional)
-		Tooltip widths are set by newnblue CSS	
-		*/
-		css: {
-			basicWidth: 200, // match CSS
-			bilateralWidth: 400, // match CSS
+	* Model
+	* extended with views
+	*/	
+	const model = Object.assign({ 
+		selector: {
+			rootElem: 	'.oes-hd-data-layout',
+			btn: 		'.oes-hd-data-layout .layout-select-btn',
+			optionBtn: 	'.oes-hd-data-layout .option-btn',
+			options: 	'.layout-options',
 		},
 		
-		showing:false,
-		target:null,
-		type: "basic", // or, bilateral
-		tip: null, // tooltip content
-		eyeIcons: null, // only applies to bilateral popups
-		 
-		/**
-		* a Model change notifies View, simple, but tight coupling
-		* @param {Funciton} f - view callback
-		*/
-		onChange(f){
-			if(typeof f !== "function") throw new Error('Tooltip Model requires View callback as funciton');
-			this.onChange = f;
+		current: {
+			eye: JSON.parse( dataLayoutElem.dataset.oes ).eyeIcons,
+			layout: JSON.parse( dataLayoutElem.dataset.oes ).layout,
+		},
+
+		get eye(){
+			return this.current.eye;
+		}, 
+		
+		set eye( val ){
+			if( val === this.current.eye ) return false;
+			this.current.eye = val;
+			this.views.notify();
 		},
 		
-		/**
-		* Reset the Model
-		*/
-		reset(){
-			this.showing = false;
-			this.target = null;
-			this.onChange();
+		get layout(){
+			return this.current.layout;
 		},
 		
-		/**
-		* Update the Model
-		* @param {EventTarget} target
-		*/
-		update(target){
-			this.showing = true;
-			this.target = target;
-					
-			if(target.dataset.ttType == "bilateral"){
-				// split tooltip for R/L
-				this.type = "bilateral";
-				this.eyeIcons = target.dataset.ttEyeicons === 'no' ? false : true;
-				this.tip = {
-					r: target.dataset.ttRight,
-					l: target.dataset.ttLeft
-				};
-			} else {
-				// original tooltip
-				this.type = "basic";
-				this.tip = target.dataset.tooltipContent;
-			}
-			this.onChange();
+		set layout( val ){
+			if( this.current.layout === val) return false;
+			this.current.layout = val;
+			this.views.notify();
 		}
-	};
-
+	
+	}, bj.ModelViews());
+	
+	
 	/**
-	* View
-	* @param {model} 
+	* Build DOM for eye and layout options and insert for user selection
 	*/
-	const view = ((model) => {
-		let div = null; // only build DOM when required
-		let display = "block"; // bilateral requires 'flex'
-		let width = model.css.basicWidth;
-		let content; 
+	const buildOptions = (() => {
+		// Mustache template
+		const template = [
+			'{{#sides}}',
+			'<div class="option-btn" data-oes=\'{"opt":"eye.{{eyelat.r}}-{{eyelat.l}}"}\'><span class="oe-eye-lat-icons"><i class="oe-i laterality {{eyelat.r}} small"></i><i class="oe-i laterality {{eyelat.l}} small"></i></span></div>',
+			'{{/sides}}',
+			'{{#layouts}}',
+			'<div class="option-btn" data-oes=\'{"opt":"layout.{{.}}"}\'><i class="oes-layout-icon i-{{.}}"></i></div>',
+			'{{/layouts}}',
+		].join('');
 		
-		// innerWidth forces a reflow, only update when necessary
-		let winWidth = window.innerWidth;
-		bj.listenForResize(() => winWidth = window.innerWidth);
+		// build layout DOM
+		const div = document.createElement('div');
+		div.className = model.selector.options.replace('.','');
+		div.innerHTML = Mustache.render( template, {
+			'sides' : [
+				{ eyelat: { r:'R', l:'NA'}},
+				{ eyelat: { r:'R', l:'L'}},
+				{ eyelat: { r:'NA', l:'L'}}
+			],
+			'layouts' : ['1-0', '2-1', '1-1', '1-2', '0-1'], 
+		} );
 		
-		/**
-		hide
-		*/
-		const hide = () => {
-			div.innerHTML = "";
-			div.className = "oe-tooltip"; // clear all CSS classes
-			div.style.cssText = "display:none"; // clear ALL styles & hide
-		};
+		bj.hide( div );
+		dataLayoutElem.appendChild( div );
 		
-		// only build DOM when needed
-		const buildDOM = () => {
-			div = document.createElement('div');
-			bj.appendTo('body', div);
-			hide();
-			return div;
-		};
-		
-		/**
-		show
-		*/
-		const show = () => {
-			// build the DOM, if not done already
-			div = div || buildDOM();
-			
-			/*
-			Content of the tooltip depends on the type:
-			Basic is a straightforward HTML string
-			Bilateral needs dividing with HTMLStrings assigned to each side
-			*/
-			if(display == "block"){
-				// basic: HTML string, may contain basic tags
-				div.innerHTML = model.tip;
-			} else {
-				/*
-				Bilateral enhances the basic tooltip
-				with 2 content areas for Right and Left 	
-				*/
-				div.classList.add('bilateral');
-				
-				// hide R / L icons?
-				if(!model.eyeIcons){
-					div.classList.add('no-icons');
-				}
-				
-				div.innerHTML = '<div class="right"></div><div class="left"></div>';
-				div.querySelector('.right').innerHTML = model.tip.r;
-				div.querySelector('.left').innerHTML = model.tip.l; 
-			}
-			
-			/*
-			Check the tooltip height to see if content fits default positioning	
-			*/
-			let offsetW = width/2; 
-			let offsetH = 8; // visual offset, which allows for the arrow
-			
-			// can't get the DOM height without some trickery...
-			let h = bj.getHiddenElemSize(div).h;
-							
-			/*
-			work out positioning based on icon
-			this is a little more complex due to the hotlist being
-			fixed open by CSS above a certain browser size, the
-			tooltip could be cropped on the right side if it is.
-			*/
-			let domRect = model.target.getBoundingClientRect();
-			let center = domRect.right - (domRect.width/2);
-			let top = domRect.top - h - offsetH;
-		
-			// watch out for the hotlist, which may overlay the tooltip content
-			let extendedBrowser = bj.settings("cssHotlistFixed");
-			let maxRightPos = winWidth > extendedBrowser ? extendedBrowser : winWidth;
-			
-			/*
-			setup CSS classes to visually position the 
-			arrow correctly based on tooltip positoning
-			*/
-			
-			// too close to the left?
-			if(center <= offsetW){
-				offsetW = 20; 			// position to the right of icon, needs to match CSS arrow position
-				div.classList.add("offset-right");
-			}
-			
-			// too close to the right?
-			if (center > (maxRightPos - offsetW)) {
-				offsetW = (width - 20); 			// position to the left of icon, needs to match CSS arrow position
-				div.classList.add("offset-left");
-			}
-			
-			// is there enough space above icon for standard posiitoning?
-			if( domRect.top < h ){
-				top = domRect.bottom + offsetH; // nope, invert and position below
-				div.classList.add("inverted");
-			} 
-			
-			// update DOM and show the tooltip
-			div.style.top = top + 'px';
-			div.style.left = (center - offsetW) + 'px';
-			div.style.display = display;
-		};
+	})();
 
+	/** 
+	* View 
+	* show current state of model in UI
+	*/
+	const currentState = (() => {
+		// btn DOM elements
+		const css = {
+			layout: 'oes-layout-icon'
+		};
+		
+		const layoutBtn = document.querySelector( model.selector.btn );
+		const layout = layoutBtn.querySelector( '.' + css.layout );
+		const eyelat = layoutBtn.querySelector( '.oe-eye-lat-icons' );
+
+		const iconTemplate ='{{#eyes}}<i class="oe-i laterality {{.}} small pad"></i>{{/eyes}}';
+		
 		/**
-		Callback for any Model changes
+		*  make sure UI reflects model updates
 		*/
-		model.onChange(() => {
-			// check the model state
-			if(model.showing == false){
+		const update = () => {
+			
+			layout.className = css.layout + '  i-' + model.layout;
+			let eyes = model.eye.split('-'); 
+			eyelat.innerHTML = Mustache.render( iconTemplate, { eyes });
+			
+			// other JS may be updating on this.
+			bj.customEvent('oesLayoutEyeSide', eyes );
+		};
+		
+		// add to observers
+		model.views.add( update );
+		
+	})();
+	
+	
+	const oesSides = (() => {
+		// dom side divs
+		let layout = null;
+		const right = document.querySelector('.oes-v2 .oes-right-side');
+		const left = document.querySelector('.oes-v2 .oes-left-side');
+		
+		/**
+		* set layout proportions to match the model
+		*/
+		const resize = () => {
+			if(model.layout === layout) return; 
+			layout = model.layout;
+		
+			// options (see buildOptions above)
+			// ['1-0', '2-1', '1-1', '1-2', '0-1']
+			switch( layout ){
+				case '1-0': 
+					left.style.width = "";
+					bj.show( left );
+					bj.hide( right );			
+				break;
+				case '0-1': 
+					right.style.width = "";
+					bj.hide( left );
+					bj.show( right );			
+				break;
+				case '2-1':
+					left.style.width = "66%"; 
+					right.style.width = "33%";
+					bj.show( left );
+					bj.show( right );			
+				break;
+				case '1-2':
+					left.style.width = "33%"; 
+					right.style.width = "66%";
+					bj.show( left );
+					bj.show( right );			
+				break;
+				case '1-1':
+					left.style.width = "50%"; 
+					right.style.width = "50%";
+					bj.show( left );
+					bj.show( right );			
+				break;
+				
+				default: 
+					throw new TypeError('[bluejay] [oesLayoutOptions] - unknown layout: ' + layout);
+			}
+			
+			bj.customEvent('oesLayoutChange', layout);
+		};
+		
+		// make widths are set correctly on initalisation
+		resize();
+		
+		// add to observers
+		model.views.add( resize );
+	})();
+	
+	
+	/** 
+	* View 
+	* Data and Layout options bar
+	*/
+	const options = (() => {
+		
+		let showing = false;
+		const btn = dataLayoutElem.querySelector(  model.selector.btn );
+		const elem = dataLayoutElem.querySelector( model.selector.options );
+		
+		/**
+		* Event callbacks
+		*/
+		const show = ( ev ) => {
+			showing = true;
+			bj.show( elem); 
+			btn.classList.add('active'); 
+		};
+		
+		const hide = ( ev ) => {
+			showing = false;
+			bj.hide( elem );
+			btn.classList.remove('active'); 
+		}; 
+		
+		const change = ( ev ) => {
+			if( showing ){
 				hide();
 			} else {
-				content = model.tip;
-				if(model.type == "basic"){
-					display = "block";
-					width = model.css.basicWidth;
-				} else {
-					display = "flex";
-					width = model.css.bilateralWidth;
-				}
 				show();
 			}
-		});
+		};
 		
-	})(m); // link to Model, easy & basic
+		// public
+		return { show, hide, change };
+				
+	})();
+
+	/**
+	* Handler
+	* @param {JSON} dataAttr - see Mustache template above
+	*/
+	const requestOption = ( dataAttr ) => {
+		let json = JSON.parse( dataAttr ); 
+		let arr = json.opt.split('.');
+	
+		if( arr[0] == 'eye' ) model.eye = arr[1];
+		if( arr[0] == 'layout' ) model.layout = arr[1];
+		
+	};
 	
 	/**
-	* Controllers for user Events	
-	* @param {Event} ev
+	* Events
 	*/
-	const userOver = (ev) => {
-		m.update(ev.target); // update the Model with DOM data
-		// if the user scrolls, remove the tooltip (as it will be out of position)
-		window.addEventListener('scroll', userOut, {capture:true, once:true});
-	};
-	
-	const userOut = (ev) => {
-		if(!m.showing) return; 
-		m.reset();  // reset the Model
-	};
-	
-	const userClick = (ev) => {
-		if(ev.target.isSameNode(m.target) && m.showing){
-			userOut();
-		} else {
-			userOver(ev);
-		}
-	};
-		
-	/**
-	Listeners 
-	*/
-	bj.userDown(m.selector, userClick);
-	bj.userEnter(m.selector, userOver);
-	bj.userLeave(m.selector, userOut);
+	bj.userDown( model.selector.btn, options.change );
+	bj.userEnter( model.selector.btn, options.show );
+	bj.userLeave( model.selector.rootElem, options.hide );
+	// select an option 
+	bj.userDown( model.selector.optionBtn, ( ev ) => requestOption( ev.target.dataset.oes ) );
 	
 	
-})(bluejay); 
+})( bluejay ); 
 /**
 * Last loaded
 */

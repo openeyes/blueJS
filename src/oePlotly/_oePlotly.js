@@ -18,7 +18,7 @@ const oePlotly = (function ( bj ) {
 			redSeries: ['#ea2b34','#F65B20','#D41C50','#D44304'],
 			standard: ['#1451b3', '#175ece', '#1a69e5'],
 			varied:  ['#0a83ea', '#18949f', '#781cea','#3f0aea'],
-			dual: ['#3f0aea','#7b3131'],
+			dual: ['#1472DE','#2E4259'],
 		}, 
 		light: {
 			blue: '#00f',
@@ -28,7 +28,7 @@ const oePlotly = (function ( bj ) {
 			redSeries: ['#da3e43', '#AB274A', '#BA4B2B', '#AB2C22'],
 			standard: ['#0a4198', '#1451b3', '#175ece'],
 			varied: ['#0a2aea', '#ea0a8e', '#00b827','#890aea'],
-			dual: ['#0a4198','#874e4e'],
+			dual: ['#2126C2','#8FAEC2'],
 		}
 	};
 	
@@ -53,7 +53,7 @@ const oePlotly = (function ( bj ) {
 		switch( colorName ){
 			case "varied": colorWay = dark ?  colours.dark.varied : colours.light.varied;
 			break;	
-			case "twoPosNeg": colorWay = dark ?  colours.dark.dual : colours.light.dual;   // assumes Postive trace is first! 
+			case "posNeg": colorWay = dark ?  colours.dark.dual : colours.light.dual;   // assumes Postive trace is first! 
 			break;
 			case "rightEye": colorWay = dark ?  colours.dark.greenSeries : colours.light.greenSeries;
 			break; 
