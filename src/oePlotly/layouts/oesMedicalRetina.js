@@ -28,10 +28,22 @@
 	*/
 	const dataTraces = ( eyeJSON, eyeSide  ) => {
 		
+		const VA_offScale = {
+			x: eyeJSON.VA.offScale.x,
+			y: eyeJSON.VA.offScale.y,
+			name: eyeJSON.VA.offScale.name,		
+			hovertemplate: '%{y}<br>%{x}',
+			type: 'scatter',
+			mode: 'lines+markers',
+		};
+		
+		dateRange.add( eyeJSON.VA.offScale.x );
+		
 		const CRT = {
 			x: eyeJSON.CRT.x,
 			y: eyeJSON.CRT.y,
-			name: eyeJSON.CRT.name,		
+			name: eyeJSON.CRT.name,	
+			yaxis: 'y2',	
 			hovertemplate: 'CRT: %{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
@@ -49,7 +61,7 @@
 				x: unit.x,
 				y: unit.y,
 				name: unit.name,	
-				yaxis: 'y2',	
+				yaxis: 'y3',	
 				hovertemplate: unit.name + ': %{y}<br>%{x}',
 				type: 'scatter',
 				mode: 'lines+markers',
@@ -73,7 +85,7 @@
 					y: event.y, 
 					customdata: event.customdata,
 					name: event.name, 
-					yaxis: 'y3',
+					yaxis: 'y4',
 					hovertemplate: template,
 					type: 'scatter',
 					showlegend: false,
@@ -87,7 +99,7 @@
 		/*
 		Data trace array
 		*/
-		const all = [ CRT, userSelecterUnits.selectedTrace( eyeSide ) ].concat( events );
+		const all = [ VA_offScale, CRT, userSelecterUnits.selectedTrace( eyeSide ) ].concat( events );
 		
 		// store data traces
 		myPlotly.get( eyeSide ).set('data', all);
@@ -103,10 +115,10 @@
 		let eyePlot = myPlotly.get( eyeSide );
 		
 		// update SPECIFIC data trace in data array. note: [n]
-		eyePlot.get('data')[1] = userSelecterUnits.selectedTrace( eyeSide );
+		eyePlot.get('data')[2] = userSelecterUnits.selectedTrace( eyeSide );
 		
 		// update layout specific axis
-		eyePlot.get('layout').yaxis2 = Object.assign({}, userSelecterUnits.selectedAxis());
+		eyePlot.get('layout').yaxis3 = Object.assign({}, userSelecterUnits.selectedAxis());
 
 		// build new (or rebuild)
 		Plotly.react(
@@ -129,19 +141,19 @@
 			darkTheme, // dark?
 			legend: {
 				yanchor:'bottom',
-				y:0.80,
+				y:0.82,
 			},
 			colors: setup.colors,
 			plotTitle: setup.title,
 			xaxis: setup.xaxis,
 			yaxes: setup.yaxes,
-			subplot: 2,		// offScale, VA, IOP, meds 
+			subplot: 3,		// offScale, VA, IOP, meds 
 			rangeSlider: dateRange.firstLast(),
 			dateRangeButtons: true,
 			
 		});
 			
-		const div = oePlotly.buildDiv(`${oesTemplateType}-${setup.eye}Eye`, '80vh', '600px');
+		const div = oePlotly.buildDiv(`${oesTemplateType}-${setup.eye}Eye`, '80vh', '650px');
 		document.querySelector( setup.parentDOM ).appendChild( div );
 		
 		// store details
@@ -175,10 +187,11 @@
 			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
 		}
 		
+
 		// for all subplot rows
 		const domainRow = [
-			[0, 0.08],
-			[0.1, 0.80],
+			[0, 0.15],
+			[0.2, 0.82],
 			[0.88, 1],
 		];
 		
@@ -188,7 +201,7 @@
 			plotlyUpdate: plotlyReacts,
 			axisDefaults: {
 				type:'y',
-				rightSide: 'y1',
+				rightSide: 'y2',
 				domain: domainRow[1],
 				title: 'VA',  // prefix for title
 				spikes: true,
@@ -222,6 +235,18 @@
 			useDates: true,
 			range: dateRange.firstLast(), 
 			spikes: true,
+			noMirrorLines: true,
+		}, darkTheme );
+		
+		// y0 - offscale 
+		const y0 = oePlotly.getAxis({
+			type:'y',
+			domain: domainRow[0], 
+			useCategories: {
+				showAll: true, 
+				categoryarray: json.yaxis.offScale.reverse()
+			},
+			spikes: true,
 		}, darkTheme );
 		
 		// y1 - CRT
@@ -229,7 +254,7 @@
 			type:'y',
 			domain: domainRow[1],
 			title: 'CRT', 
-			range: [200, 650],
+			range: [200, 650], // hard coded range
 			spikes: true,
 		}, darkTheme );
 		
@@ -261,7 +286,7 @@
 				eye: "right",
 				colors: "rightEye",
 				xaxis: x1, 
-				yaxes: [ y1, y2, y3 ],
+				yaxes: [ y0, y1, y2, y3 ],
 				parentDOM: '.oes-left-side',
 			});	
 		} 
@@ -273,7 +298,7 @@
 				eye: "left",
 				colors: "leftEye",
 				xaxis: x1, 
-				yaxes: [ y1, y2, y3 ],
+				yaxes: [ y0, y1, y2, y3 ],
 				parentDOM: '.oes-right-side',
 			});			
 		}
