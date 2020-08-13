@@ -310,7 +310,7 @@
 				// reflow DOM
 				uiApp.appendTo('body',div);
 			})
-			.catch(e => console.log('failed to load',e));  // maybe output this to UI at somepoint, but for now... 
+			.catch( e => console.log('failed to copy',e));  // maybe output this to UI at somepoint, but for now... 
 	};
 
 	uiApp.userDown('.js-idg-demo-remove-oph-diag', showDeletePopup);

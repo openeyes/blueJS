@@ -23,10 +23,16 @@
 	/**
 	* Build data trace format for Glaucoma
 	* @param {JSON} eyeJSON data
-	* @param {String} eyeSide - 'left' or 'right'
+	* @param {String} eyeSide - 'leftEye' or 'rightEye'
 	* @returns {Array} for Plol.ly data
 	*/
-	const dataTraces = ( eyeJSON, eyeSide  ) => {
+	const buildDataTraces = ( eyeJSON, eyeSide  ) => {
+		
+		/**
+		* store data traces with own keys
+		* traces can then be accessed by their JSON name
+		*/
+		myPlotly.get( eyeSide ).set('data', new Map());
 		
 		const VA_offScale = {
 			x: eyeJSON.VA.offScale.x,
@@ -37,6 +43,7 @@
 			mode: 'lines+markers',
 		};
 		
+		myPlotly.get( eyeSide ).get('data').set( eyeJSON.VA.offScale.name, VA_offScale);
 		dateRange.add( eyeJSON.VA.offScale.x );
 		
 		const CRT = {
@@ -50,6 +57,7 @@
 			line: oePlotly.dashedLine(),
 		};
 		
+		myPlotly.get( eyeSide ).get('data').set( eyeJSON.CRT.name, CRT);
 		dateRange.add( eyeJSON.CRT.x );
 		
 		/**
@@ -67,14 +75,15 @@
 				mode: 'lines+markers',
 			});
 			
-			if( !index ) dateRange.add( unit.x ); // only need 1 of these 
+			// only need to check one of these dates
+			if( !index ) dateRange.add( unit.x );
 		});
 		
+		myPlotly.get( eyeSide ).get('data').set( 'VA', userSelecterUnits.selectedTrace( eyeSide ));
 		
 		/**
 		Build Events data for right eye
 		*/
-		const events = [];
 		// loop through array...
 		Object.values( eyeJSON.events ).forEach(( event ) => {
 			
@@ -91,18 +100,9 @@
 					showlegend: false,
 				}, oePlotly.eventStyle(  event.event ));
 			
-			events.push( newEvent );
-			
+			myPlotly.get( eyeSide ).get('data').set( event.name, newEvent);
 			dateRange.add( event.x );
 		});
-		
-		/*
-		Data trace array
-		*/
-		const all = [ VA_offScale, CRT, userSelecterUnits.selectedTrace( eyeSide ) ].concat( events );
-		
-		// store data traces
-		myPlotly.get( eyeSide ).set('data', all);
 	};
 	
 	/**
@@ -114,16 +114,19 @@
 		// get the eyePlot for the eye side
 		let eyePlot = myPlotly.get( eyeSide );
 		
-		// update SPECIFIC data trace in data array. note: [n]
-		eyePlot.get('data')[2] = userSelecterUnits.selectedTrace( eyeSide );
-		
-		// update layout specific axis
+		/*
+		Update user selected units for VA
+		*/
+		eyePlot.get('data').set('VA', userSelecterUnits.selectedTrace( eyeSide ));
 		eyePlot.get('layout').yaxis3 = Object.assign({}, userSelecterUnits.selectedAxis());
+		
+		// get Data Array of all traces
+		const data = Array.from( eyePlot.get('data').values());
 
 		// build new (or rebuild)
 		Plotly.react(
 			eyePlot.get('div'), 
-			eyePlot.get('data'), 
+			data, 
 			eyePlot.get('layout'), 
 			{ displayModeBar: false, responsive: true }
 		);
@@ -135,7 +138,7 @@
 	*/
 	const plotlyInit = ( setup ) => {
 		
-		const eyeSide = setup.eye;
+		const eyeSide = setup.eyeSide;
 		
 		const layout = oePlotly.getLayout({
 			darkTheme, // dark?
@@ -153,7 +156,7 @@
 			
 		});
 			
-		const div = oePlotly.buildDiv(`${oesTemplateType}-${setup.eye}Eye`, '80vh', '650px');
+		const div = oePlotly.buildDiv(`${oesTemplateType}-${eyeSide}`, '80vh', '650px');
 		document.querySelector( setup.parentDOM ).appendChild( div );
 		
 		// store details
@@ -215,13 +218,13 @@
 		*/
 	
 		if( json.rightEye ){
-			myPlotly.set('right', new Map());
-			dataTraces( json.rightEye, 'right' );
+			myPlotly.set('rightEye', new Map());
+			buildDataTraces( json.rightEye, 'rightEye' );
 		}
 		
 		if( json.leftEye ){
-			myPlotly.set('left', new Map());
-			dataTraces( json.leftEye, 'left' );
+			myPlotly.set('leftEye', new Map());
+			buildDataTraces( json.leftEye, 'leftEye' );
 		}
 
 		/**
@@ -279,24 +282,24 @@
 		/**
 		* Layout & Build  - Eyes
 		*/	
-		if( myPlotly.has('right') ){
+		if( myPlotly.has('rightEye') ){
 			
 			plotlyInit({
 				title: "Right Eye",
-				eye: "right",
-				colors: "rightEye",
+				eyeSide: "rightEye",
+				colors: "rightEyeSeries",
 				xaxis: x1, 
 				yaxes: [ y0, y1, y2, y3 ],
 				parentDOM: '.oes-left-side',
 			});	
 		} 
 		
-		if( myPlotly.has('left') ){
+		if( myPlotly.has('leftEye') ){
 			
 			plotlyInit({
 				title: "Left Eye",
-				eye: "left",
-				colors: "leftEye",
+				eyeSide: "leftEye",
+				colors: "leftEyeSeries",
 				xaxis: x1, 
 				yaxes: [ y0, y1, y2, y3 ],
 				parentDOM: '.oes-right-side',

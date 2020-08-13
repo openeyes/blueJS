@@ -22,10 +22,16 @@
 	/**
 	* Build data trace format for Glaucoma
 	* @param {JSON} eyeJSON data
-	* @param {String} eyeSide - 'left' or 'right'
+	* @param {String} eyeSide - 'leftEye' or 'rightEye'
 	* @returns {Array} for Plol.ly data
 	*/
-	const dataTraces = ( eyeJSON, eyeSide ) => {
+	const buildDataTraces = ( eyeJSON, eyeSide ) => {
+		
+		/**
+		* store data traces with own keys
+		* traces can then be accessed by their JSON name
+		*/
+		myPlotly.get( eyeSide ).set('data', new Map());
 		
 		const VA_offScale = {
 			x: eyeJSON.VA.offScale.x,
@@ -36,6 +42,7 @@
 			mode: 'lines+markers',
 		};
 		
+		myPlotly.get( eyeSide ).get('data').set( eyeJSON.VA.offScale.name, VA_offScale);
 		dateRange.add( eyeJSON.VA.offScale.x );
 		
 		const VFI = {
@@ -49,6 +56,7 @@
 			line: oePlotly.dashedLine(),
 		};
 		
+		myPlotly.get( eyeSide ).get('data').set( eyeJSON.VFI.name, VFI);
 		dateRange.add( eyeJSON.VFI.x );
 		
 		const IOP = {
@@ -56,11 +64,12 @@
 			y: eyeJSON.IOP.y,
 			name: eyeJSON.IOP.name,		
 			yaxis: 'y3',
-			hovertemplate: 'IOP: %{y}<br>%{x}',
+			hovertemplate: 'IOP: %{y}<br>%{x}',	
 			type: 'scatter',
 			mode: 'lines+markers',
 		};
 		
+		myPlotly.get( eyeSide ).get('data').set( eyeJSON.IOP.name, IOP);
 		dateRange.add( eyeJSON.IOP.x );
 		
 		/**
@@ -78,13 +87,15 @@
 				mode: 'lines+markers',
 			});
 			
-			if( !index ) dateRange.add( unit.x ); // only need 1 of these 
+			// only need to check one of these dates
+			if( !index ) dateRange.add( unit.x );  
 		});
+		
+		myPlotly.get( eyeSide ).get('data').set( 'VA', userSelecterUnits.selectedTrace( eyeSide ));
 		
 		/**
 		* Events
 		*/
-		const events = [];
 		Object.values( eyeJSON.events ).forEach(( event ) => {
 			
 			let template = event.customdata ? '%{y}<br>%{customdata}<br>%{x}' : '%{y}<br>%{x}';
@@ -100,18 +111,42 @@
 					showlegend: false,
 				}, oePlotly.eventStyle(  event.event ));
 			
-			events.push( newEvent );
-			
+			myPlotly.get( eyeSide ).get('data').set( event.name, newEvent);
 			dateRange.add( event.x );
-		});
+		});		
+	};
+	
+	/**
+	* External API 
+	* (note: used as a callback by selectableUnits)
+	* @param {String} flattened objects e.g 'leftEye.OCT'
+	* @param {Number} index of point
+	*/
+	const highlightTraceMarker = ( flattenedObj, indexPoint ) => {
+		// find trace
+		let objPath = flattenedObj.split('.');
 		
-		/*
-		Data trace array
-		*/
-		const all = [ VA_offScale, VFI, userSelecterUnits.selectedTrace( eyeSide ), IOP ].concat( events );
+		let traceArray = myPlotly.get( objPath[0] ); // .get( objPath[1] );
 		
-		// store data traces
-		myPlotly.get( eyeSide ).set('data', all);	
+		console.log( 'highlightTraceMarker', traceArray );
+		
+		
+		
+		
+/*
+		var pn='',
+      tn='',
+      colors=[];
+  for(var i=0; i < data.points.length; i++){
+    pn = data.points[i].pointNumber;
+    tn = data.points[i].curveNumber;
+    colors = data.points[i].data.marker.color;
+  };
+  colors[pn] = '#C54C82';
+
+  var update = {'marker':{color: colors, size:16}};
+  Plotly.restyle('myDiv', update, [tn]);
+*/
 	};
 	
 	/**
@@ -123,16 +158,19 @@
 		// get the eyePlot for the eye side
 		let eyePlot = myPlotly.get( eyeSide );
 		
-		// update SPECIFIC data trace in data array. note: [n]
-		eyePlot.get('data')[2] = userSelecterUnits.selectedTrace( eyeSide );
-		
-		// update layout specific axis
+		/*
+		Update user selected units for VA
+		*/
+		eyePlot.get('data').set('VA', userSelecterUnits.selectedTrace( eyeSide ));
 		eyePlot.get('layout').yaxis2 = Object.assign({}, userSelecterUnits.selectedAxis());
+		
+		// get Data Array of all traces
+		const data = Array.from( eyePlot.get('data').values());
 
 		// build new (or rebuild)
 		Plotly.react(
 			eyePlot.get('div'), 
-			eyePlot.get('data'), 
+			data, 
 			eyePlot.get('layout'), 
 			{ displayModeBar: false, responsive: true }
 		);
@@ -145,7 +183,7 @@
 	*/
 	const plotlyInit = ( setup ) => {
 		
-		const eyeSide = setup.eye;
+		const eyeSide = setup.eyeSide;
 		
 		const layout = oePlotly.getLayout({
 			darkTheme, // dark? 
@@ -171,9 +209,9 @@
 			}
 		});
 			
-		const div = oePlotly.buildDiv(`${oesTemplateType}-${eyeSide}Eye`, '80vh', '850px');
+		const div = oePlotly.buildDiv(`${oesTemplateType}-${eyeSide}`, '80vh', '850px');
 		document.querySelector( setup.parentDOM ).appendChild( div );
-		
+	
 		// store details
 		myPlotly.get( eyeSide ).set('div', div);
 		myPlotly.get( eyeSide ).set('layout', layout);
@@ -231,13 +269,13 @@
 		*/
 		
 		if( json.rightEye ){
-			myPlotly.set('right', new Map());
-			dataTraces( json.rightEye, 'right' );
+			myPlotly.set('rightEye', new Map());
+			buildDataTraces( json.rightEye, 'rightEye' );
 		}
 		
 		if( json.leftEye ){
-			myPlotly.set('left', new Map());
-			dataTraces( json.leftEye, 'left' );
+			myPlotly.set('leftEye', new Map());
+			buildDataTraces( json.leftEye, 'leftEye' );
 		}
 	
 		/**
@@ -305,12 +343,12 @@
 		/**
 		* Layout & Build - Eyes
 		*/	
-		if( myPlotly.has('right') ){
+		if( myPlotly.has('rightEye') ){
 			
 			plotlyInit({
 				title: "Right Eye",
-				eye: "right",
-				colors: "rightEye",
+				eyeSide: 'rightEye',
+				colors: "rightEyeSeries",
 				xaxis: x1, 
 				yaxes: [ y0, y1, y2, y3, y4 ],
 				procedures: json.rightEye.procedures,
@@ -319,12 +357,12 @@
 			});
 		} 
 	
-		if( myPlotly.has('left') ){
+		if( myPlotly.has('leftEye') ){
 			
 			plotlyInit({
 				title: "Left Eye",
-				eye: "left",
-				colors: "leftEye",
+				eyeSide: 'leftEye',
+				colors: "leftEyeSeries",
 				xaxis: x1, 
 				yaxes: [ y0, y1, y2, y3, y4 ],
 				procedures: json.leftEye.procedures,
@@ -332,6 +370,15 @@
 				parentDOM: json.leftEye.dom,
 			});
 		}
+		
+		// API, OCT image stack is controlled externally
+		// allow it to update the related marker
+		bj.log('[oePlotly] - method available: highlightPoint()');
+		
+		return {
+			highlightPoint: highlightTraceMarker,
+		};
+		
 	};
 	
 	/**

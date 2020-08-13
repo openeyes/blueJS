@@ -55,9 +55,9 @@ const oePlotly = (function ( bj ) {
 			break;	
 			case "posNeg": colorWay = dark ?  colours.dark.dual : colours.light.dual;   // assumes Postive trace is first! 
 			break;
-			case "rightEye": colorWay = dark ?  colours.dark.greenSeries : colours.light.greenSeries;
+			case "rightEyeSeries": colorWay = dark ?  colours.dark.greenSeries : colours.light.greenSeries;
 			break; 
-			case "leftEye": colorWay = dark ?  colours.dark.redSeries : colours.light.redSeries;
+			case "leftEyeSeries": colorWay = dark ?  colours.dark.redSeries : colours.light.redSeries;
 			break; 
 			default: 
 				colorWay = dark ? colours.dark.standard : colours.light.standard;
