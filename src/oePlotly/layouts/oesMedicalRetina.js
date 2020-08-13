@@ -90,6 +90,7 @@
 			let template = event.customdata ? '%{y}<br>%{customdata}<br>%{x}' : '%{y}<br>%{x}';
 			
 			let newEvent = Object.assign({
+					oeEventType: event.event, // store event type
 					x: event.x, 
 					y: event.y, 
 					customdata: event.customdata,

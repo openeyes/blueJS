@@ -12,6 +12,7 @@ const oePlotly = (function ( bj ) {
 	const colours = {
 		dark: {
 			blue:'#63d7d6',
+			highlight:'#fff',
 			green: '#65d235',
 			greenSeries: ['#65d235', '#A5D712', '#36be8d', '#02B546'],
 			red: '#ea2b34',
@@ -22,6 +23,7 @@ const oePlotly = (function ( bj ) {
 		}, 
 		light: {
 			blue: '#00f',
+			highlight:'#000',
 			green: '#418c20',
 			greenSeries: ['#418c20','#708017','#147019','#667D3C'],
 			red: '#da3e43',
@@ -74,8 +76,9 @@ const oePlotly = (function ( bj ) {
 	* @param {Boolean} dark
 	* @returns {String} colour for request element (or "pink" if fails)
 	*/
-	const getColorFor = ( plotlyElement, dark ) => {
-		switch(plotlyElement){
+	const getColor = ( colour, dark ) => {
+		switch( colour ){
+			case 'highlight': return dark ? colours.dark.highlight : colours.light.highlight; 
 			case 'rightEye': return dark ? colours.dark.green : colours.light.green;
 			case 'leftEye': return dark ? colours.dark.red : colours.light.red;	
 			case 'error_y': return dark ? '#5b6c77' : '#7da7cb';
@@ -98,7 +101,7 @@ const oePlotly = (function ( bj ) {
 		isDarkTheme,
 		getBlue,
 		getColorSeries, 
-		getColorFor
+		getColor
 	};
 
 })( bluejay );

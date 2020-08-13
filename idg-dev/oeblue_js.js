@@ -296,9 +296,7 @@ const bluejay = (function () {
 	* @param {String} details
 	*/
 	const myEvent = ( eventType, eventDetail ) => {
-	
-		bluejay.log('[Custom Event] - "'+eventType+'"');
-		
+		// bluejay.log('[Custom Event] - "'+eventType+'"');
 		const event = new CustomEvent(eventType, {detail: eventDetail});
 		document.dispatchEvent(event);
 	};
@@ -640,6 +638,7 @@ const oePlotly = (function ( bj ) {
 	const colours = {
 		dark: {
 			blue:'#63d7d6',
+			highlight:'#fff',
 			green: '#65d235',
 			greenSeries: ['#65d235', '#A5D712', '#36be8d', '#02B546'],
 			red: '#ea2b34',
@@ -650,6 +649,7 @@ const oePlotly = (function ( bj ) {
 		}, 
 		light: {
 			blue: '#00f',
+			highlight:'#000',
 			green: '#418c20',
 			greenSeries: ['#418c20','#708017','#147019','#667D3C'],
 			red: '#da3e43',
@@ -702,8 +702,9 @@ const oePlotly = (function ( bj ) {
 	* @param {Boolean} dark
 	* @returns {String} colour for request element (or "pink" if fails)
 	*/
-	const getColorFor = ( plotlyElement, dark ) => {
-		switch(plotlyElement){
+	const getColor = ( colour, dark ) => {
+		switch( colour ){
+			case 'highlight': return dark ? colours.dark.highlight : colours.light.highlight; 
 			case 'rightEye': return dark ? colours.dark.green : colours.light.green;
 			case 'leftEye': return dark ? colours.dark.red : colours.light.red;	
 			case 'error_y': return dark ? '#5b6c77' : '#7da7cb';
@@ -726,7 +727,7 @@ const oePlotly = (function ( bj ) {
 		isDarkTheme,
 		getBlue,
 		getColorSeries, 
-		getColorFor
+		getColor
 	};
 
 })( bluejay );
@@ -1464,6 +1465,74 @@ const oePlotly = (function ( bj ) {
 	
 	'use strict';
 	
+	/**
+	* Init with template layout properties
+	*/
+	oePlotly.highlighPoint = ( myPlotly, darkTheme ) => {
+		
+		/**
+		* External API 
+		* (note: used as a callback by selectableUnits)
+		* @param {String} flattened objects e.g 'leftEye.OCT'
+		* @param {Number} index of point
+		*/
+		return ( flattenedObj, indexPoint ) => {
+			
+			// find trace obj from flattened Object path
+			let objPath = flattenedObj.split('.');
+			
+			if(objPath.length != 2){
+				bj.log('oePlotly - for highlightPoint to work it needs EyeSide & Date JSON name e.g. "leftEye.OCT" ');
+				return;
+			}
+			
+			let eyeSide = objPath[0];
+			let dataTraceName = objPath[1];
+			let traceData, traceIndex;
+			let i = 0;
+			/*
+			Have to loop through because i need an index ref to the array 
+			passed in when Plotly is built: see plotlyReacts below
+			*/
+			myPlotly.get( eyeSide ).get('data').forEach((value, key) => {
+				if( key === dataTraceName ){
+					traceData = value;
+					traceIndex = i;
+				}
+				i++;
+			});
+			
+			/*
+			Need do a bit of work with this.
+			1) create an array of colors for ALL marks in trace in default eye colour
+			2) set specific marker colour to blue
+			3) relayout	
+			*/
+			let eyeColor = oePlotly.getColor( eyeSide, darkTheme );
+			let markerColors = [];
+			for( let i=0; i < traceData.x.length; i++ ){
+				markerColors.push( eyeColor );
+			}
+			// set specific marker to blue
+			markerColors[ indexPoint ] = oePlotly.getColor( 'highlight', darkTheme );
+			
+			// get marker style for event type 
+			let markerObj = oePlotly.markerFor( traceData.oeEventType ); // added on creation of trace
+			// add colors
+			markerObj.color = markerColors;
+			
+			/**
+			* Update Plotly 
+			*/
+			Plotly.restyle( myPlotly.get( eyeSide ).get('div'), { 'marker': markerObj }, [ traceIndex ]);	
+		};
+	};
+	
+})( oePlotly );
+(function( oePlotly ) {
+	
+	'use strict';
+	
 	oePlotly.selectableUnits = () => {
 		/*
 		Either Right and Left Eye layouts
@@ -1907,6 +1976,9 @@ const oePlotly = (function ( bj ) {
 	const dateRange = oePlotly.fullDateRange();
 	const userSelecterUnits = oePlotly.selectableUnits();
 	
+	// add API:
+	const highlightPoint = oePlotly.highlighPoint( myPlotly, darkTheme );
+	
 	/**
 	* Build data trace format for Glaucoma
 	* @param {JSON} eyeJSON data
@@ -1989,6 +2061,7 @@ const oePlotly = (function ( bj ) {
 			let template = event.customdata ? '%{y}<br>%{customdata}<br>%{x}' : '%{y}<br>%{x}';
 			
 			let newEvent = Object.assign({
+					oeEventType: event.event, // store event type
 					x: event.x, 
 					y: event.y, 
 					customdata: event.customdata,
@@ -2003,40 +2076,7 @@ const oePlotly = (function ( bj ) {
 			dateRange.add( event.x );
 		});		
 	};
-	
-	/**
-	* External API 
-	* (note: used as a callback by selectableUnits)
-	* @param {String} flattened objects e.g 'leftEye.OCT'
-	* @param {Number} index of point
-	*/
-	const highlightTraceMarker = ( flattenedObj, indexPoint ) => {
-		// find trace
-		let objPath = flattenedObj.split('.');
 		
-		let traceArray = myPlotly.get( objPath[0] ); // .get( objPath[1] );
-		
-		console.log( 'highlightTraceMarker', traceArray );
-		
-		
-		
-		
-/*
-		var pn='',
-      tn='',
-      colors=[];
-  for(var i=0; i < data.points.length; i++){
-    pn = data.points[i].pointNumber;
-    tn = data.points[i].curveNumber;
-    colors = data.points[i].data.marker.color;
-  };
-  colors[pn] = '#C54C82';
-
-  var update = {'marker':{color: colors, size:16}};
-  Plotly.restyle('myDiv', update, [tn]);
-*/
-	};
-	
 	/**
 	* React to user request to change VA scale 
 	* (note: used as a callback by selectableUnits)
@@ -2259,14 +2299,14 @@ const oePlotly = (function ( bj ) {
 			});
 		}
 		
-		// API, OCT image stack is controlled externally
-		// allow it to update the related marker
-		bj.log('[oePlotly] - method available: highlightPoint()');
+		/**
+		API OCT image stack is controlled externally
+		but allow it to update the related marker
+		*/
 		
-		return {
-			highlightPoint: highlightTraceMarker,
-		};
+		bj.log('[oePlotly] - method: highlightPoint()');
 		
+		return { highlightPoint: highlightPoint };
 	};
 	
 	/**
@@ -2274,7 +2314,7 @@ const oePlotly = (function ( bj ) {
 	*/
 	bj.extend('plotSummaryGlaucoma', init);	
 	
-		
+	
 })( bluejay ); 
 (function ( bj ) {
 
@@ -2368,6 +2408,7 @@ const oePlotly = (function ( bj ) {
 			let template = event.customdata ? '%{y}<br>%{customdata}<br>%{x}' : '%{y}<br>%{x}';
 			
 			let newEvent = Object.assign({
+					oeEventType: event.event, // store event type
 					x: event.x, 
 					y: event.y, 
 					customdata: event.customdata,

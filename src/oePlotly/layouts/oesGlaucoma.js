@@ -19,6 +19,9 @@
 	const dateRange = oePlotly.fullDateRange();
 	const userSelecterUnits = oePlotly.selectableUnits();
 	
+	// add API:
+	const highlightPoint = oePlotly.highlighPoint( myPlotly, darkTheme );
+	
 	/**
 	* Build data trace format for Glaucoma
 	* @param {JSON} eyeJSON data
@@ -101,6 +104,7 @@
 			let template = event.customdata ? '%{y}<br>%{customdata}<br>%{x}' : '%{y}<br>%{x}';
 			
 			let newEvent = Object.assign({
+					oeEventType: event.event, // store event type
 					x: event.x, 
 					y: event.y, 
 					customdata: event.customdata,
@@ -115,40 +119,7 @@
 			dateRange.add( event.x );
 		});		
 	};
-	
-	/**
-	* External API 
-	* (note: used as a callback by selectableUnits)
-	* @param {String} flattened objects e.g 'leftEye.OCT'
-	* @param {Number} index of point
-	*/
-	const highlightTraceMarker = ( flattenedObj, indexPoint ) => {
-		// find trace
-		let objPath = flattenedObj.split('.');
 		
-		let traceArray = myPlotly.get( objPath[0] ); // .get( objPath[1] );
-		
-		console.log( 'highlightTraceMarker', traceArray );
-		
-		
-		
-		
-/*
-		var pn='',
-      tn='',
-      colors=[];
-  for(var i=0; i < data.points.length; i++){
-    pn = data.points[i].pointNumber;
-    tn = data.points[i].curveNumber;
-    colors = data.points[i].data.marker.color;
-  };
-  colors[pn] = '#C54C82';
-
-  var update = {'marker':{color: colors, size:16}};
-  Plotly.restyle('myDiv', update, [tn]);
-*/
-	};
-	
 	/**
 	* React to user request to change VA scale 
 	* (note: used as a callback by selectableUnits)
@@ -371,14 +342,14 @@
 			});
 		}
 		
-		// API, OCT image stack is controlled externally
-		// allow it to update the related marker
-		bj.log('[oePlotly] - method available: highlightPoint()');
+		/**
+		API OCT image stack is controlled externally
+		but allow it to update the related marker
+		*/
 		
-		return {
-			highlightPoint: highlightTraceMarker,
-		};
+		bj.log('[oePlotly] - method: highlightPoint()');
 		
+		return { highlightPoint: highlightPoint };
 	};
 	
 	/**
@@ -386,5 +357,5 @@
 	*/
 	bj.extend('plotSummaryGlaucoma', init);	
 	
-		
+	
 })( bluejay ); 
