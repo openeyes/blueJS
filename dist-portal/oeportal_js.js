@@ -628,10 +628,14 @@ const bluejay = (function () {
 
 	'use strict';	
 	
-	bj.addModule('navLogo');
+	bj.addModule('navSlidePanel');
 	
-	const selector = '#js-openeyes-btn';
-	
+	/**
+	Behaviour for the Logo Panel and the Menu Panel
+	is identical, however the Menu isn't included on 
+	the Login page
+	*/
+
 	const css = {
 		btnActive: 'active',
 		panelShow: 'show'
@@ -642,7 +646,7 @@ const bluejay = (function () {
 	*/
 	const _change = () => ({
 		/**
-		* Callback for 'click'
+		* Callback for 'down'
 		*/
 		change: function(){
 			if(this.open)	this.hide();
@@ -652,11 +656,9 @@ const bluejay = (function () {
 	
 	const _show = () => ({
 		/**
-		* Callback for 'hover'
-		* Enhanced behaviour for mouse/trackpad
+		* Callback for 'enter'
 		*/
 		show:function(){
-			console.log( 'show' );
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( css.btnActive );
@@ -665,75 +667,72 @@ const bluejay = (function () {
 			//clearTimeout( this.hideTimerID ); 
 			this.panel.classList.add( css.panelShow );
 			this.panel.style.pointerEvents = "auto";
-			
-			this.mouseOutHide();
 		}	
 	});
 	
 	const _hide = () => ({
 		/**
-		* Hide content
+		* Callback for 'leave'
 		*/
 		hide:function(){
 			if(this.open === false) return;
 			this.open = false;
 			this.btn.classList.remove( css.btnActive );
-
 			this.panel.classList.remove( css.panelShow );
 			this.panel.style.pointerEvents = "none";
 			
 		}
 	});
 	
-	const _mouseOutHide = () => ({
-		/**
-		* Enhanced behaviour for mouse/trackpad
-		*/
-		mouseOutHide: function(){
-			this.wrapper.addEventListener('mouseleave',(ev) => {
-				ev.stopPropagation();
-				this.hide();
-			},{once:true});
-		}
-	});
+	/**
+	* navSlidePanel.
+	* Pattern is the same for Logo and Menu
+	* @param {Object} me - setup object
+	* @returns navSlidePanel instance
+	*/
+	const navSlidePanel = ( me ) => {
+		return Object.assign( me, _change(), _show(), _hide() );
+	};
 	
 	/**
-	* oelogo singleton 
-	* (using IIFE to maintain code pattern)
+	Init - Logo
 	*/
-	const oelogo = (() => {
-		/**
-		* Big hit area for Logo Portal 
-		*/
-		const btn = document.querySelector( selector );
-		const panel = document.querySelector('.oe-portal-info');
-		panel.style.pointerEvents = "none";
-
-		return Object.assign({
-			hideTimerID: null, 	
-			btn,
-			panel,
-			wrapper: bj.getParent( btn, '.openeyes-brand'),
-			open: false,
-		},
-		_change(),
-		_show(),
-		_hide(),
-		_mouseOutHide() );
-	})();
+	const logoBtn = '#js-openeyes-btn';
 	
-	/*
-	on Login pop in the panel
-	*/
-	if(document.querySelector('.oe-login') !== null){
-		setTimeout( () => oelogo.show(), 1000 );	
+	const logo = navSlidePanel({
+		btn: document.querySelector( logoBtn ),
+		panel: document.querySelector('.oe-portal-info'),
+		open: false,
+	});
+	
+	// A little Bling: on Login page pop in the panel
+	if( document.querySelector('.oe-login') !== null && window.innerWidth > 800 ){
+		setTimeout( () => logo.show(), 1000 );	
 	}
 	
-	/*
-	Events
+	// Events
+	bj.userDown( logoBtn, () => logo.change());			
+	bj.userEnter( logoBtn, () => logo.show());
+	bj.userLeave('.openeyes-brand', () => logo.hide());
+	
+	
+	/**
+	Init - Menu
 	*/
-	bj.userDown(selector, () => oelogo.change());			
-	bj.userEnter(selector, () => oelogo.show());
+	const menuBtn = '#js-menu-btn';
+	
+	if( document.querySelector( menuBtn ) === null ) return; // login page
+	
+	const menu = navSlidePanel({
+		btn: document.querySelector( menuBtn ),
+		panel: document.querySelector('.menu-info'),
+		open: false,
+	});
+	
+	// Events
+	bj.userDown( menuBtn, () => menu.change());			
+	bj.userEnter( menuBtn, () => menu.show());
+	bj.userLeave('.portal-menu', () => menu.hide());
 	
 
 })( bluejay ); 
