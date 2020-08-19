@@ -628,6 +628,49 @@ const bluejay = (function () {
 
 	'use strict';	
 	
+	const demoPath = ( btnID, groupName, pathChoice ) => {
+		const btn = document.querySelector( btnID );
+		btn.disabled = true;
+		
+		const group = `idg-radio-g-${groupName}`;
+		const radios = bj.nodeArray( document.getElementsByName( groupName ));
+		
+		document.addEventListener('change', ( ev ) => {
+			const elem = ev.target; 
+			if( elem.name === group ){
+				btn.disabled = ( elem.value === pathChoice ) ? false : true;
+			}
+		});
+	};
+	
+	const demoCheckbox = ( btnID, checkboxName ) => {
+		const btn = document.querySelector( btnID );
+		btn.disabled = true;	
+		
+		const checkbox = bj.nodeArray( document.getElementsByName( checkboxName ))[0]; // only 1
+		
+		document.addEventListener('change', ( ev ) => {
+			const elem = ev.target; 
+			if( elem.name === checkboxName ){
+				btn.disabled = elem.checked ? false : true;
+			}
+		});
+		
+	};
+	
+	
+	/**
+	* Extend API ... PHP will call with json when DOM is loaded
+	*/
+	bj.extend('demoPath', demoPath);
+	bj.extend('demoCheckbox', demoCheckbox);
+	
+
+})( bluejay ); 
+(function( bj ) {
+
+	'use strict';	
+	
 	bj.addModule('navSlidePanel');
 	
 	/**
@@ -736,6 +779,51 @@ const bluejay = (function () {
 	
 
 })( bluejay ); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	uiApp.addModule('textAreaResize');	
+	
+	/**
+	* Resize textarea 
+	* @param {HTMLElement} <textarea>
+	*/ 
+	const resize = ( textArea ) => {
+		let h = textArea.scrollHeight;
+		if(h < 32) return;
+		textArea.style.height = 'auto';
+		textArea.style.height = ( h + 5 ) + 'px';
+	};
+	
+	/**
+	Make resize available for comments that reveal a textarea
+	*/
+	uiApp.extend('resizeTextArea',resize);	
+	
+
+	/**
+	* Resize textarea on 'input'
+	*/
+	document.addEventListener('input', (ev) => {
+		if(ev.target.matches('textarea')){
+			resize(ev.target);
+		}
+	},{capture:true});
+	
+	/**
+	* Expand textareas that are overflowing onLoad
+	*/
+	document.addEventListener('DOMContentLoaded', () => {
+		let all = uiApp.nodeArray( document.querySelectorAll('textarea') );
+		all.forEach((t)=>{
+			resize(t);
+		});
+	});
+	
+	
+	
+})(bluejay); 
 /**
 * Last loaded
 */
