@@ -32,12 +32,47 @@
 		
 	};
 	
+	const demoMultiPath = ( btnID, groupName, callBack ) => {
+		const btn = document.querySelector( btnID );
+		btn.disabled = true;
+		
+		const group = `idg-radio-g-${groupName}`;
+		
+		document.addEventListener('change', ( ev ) => {
+			const elem = ev.target; 
+			if( elem.name === group ){
+				callBack( btn, elem.value );
+			}
+		});	
+	};
+	
+	
+	
+	const otherCheckBox = ( groupName, otherTextID ) => {
+		const other = document.querySelector( otherTextID );
+		document.addEventListener('change', ( ev ) => {
+			const elem = ev.target; 
+			if( elem.name === groupName ){
+				let displayOther = elem.checked ? 'block' : 'none';
+				other.style.display = displayOther;
+			}
+		});		
+	};
+	
+	const demoOtherText = ( args ) => {
+		if( args.inputType ){
+			otherCheckBox( args.group, args.otherTextID );
+		}
+	};
+	
 	
 	/**
 	* Extend API ... PHP will call with json when DOM is loaded
 	*/
-	bj.extend('demoPath', demoPath);
-	bj.extend('demoCheckbox', demoCheckbox);
+	bj.extend('demoPath', demoPath );
+	bj.extend('demoCheckbox', demoCheckbox );
+	bj.extend('demoMultiPath', demoMultiPath );
+	bj.extend('demoOtherText', demoOtherText );
 	
 
 })( bluejay ); 
