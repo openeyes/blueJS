@@ -61,6 +61,24 @@
 	});
 
 	/*
+	Overflow popup?
+	*/
+	const overflowPopup = ( ev ) => {
+		const json = JSON.parse( ev.target.dataset.overflow );
+		let div = document.createElement('div');
+		div.className = "oe-popup-wrap clear";
+		div.innerHTML = `<div class="wb-data-overflow-popup">${json.data}</div>`;
+		document.body.appendChild( div );	
+		
+		// click anywhere to remove
+		div.addEventListener('mousedown', ( ev ) => {
+			uiApp.removeElement( div );
+		}, { once: true});
+	};
+	
+	uiApp.userDown('.overflow-icon-btn', overflowPopup );
+
+	/*
 	Biometry Report?
 	*/
 	if(document.querySelector('.multipage-nav') === null) return;
@@ -102,6 +120,11 @@
 		let pageScroll = parseInt(e.target.dataset.page * pageH);
 		scrollJump(pageScroll);
 	});
+	
+	
+	
+	
+	
 		
 })(bluejay); 
 
