@@ -69,14 +69,13 @@
 		div.className = "oe-popup-wrap clear";
 		div.innerHTML = `<div class="wb-data-overflow-popup">${json.data}</div>`;
 		document.body.appendChild( div );	
-		
-		// click anywhere to remove
-		div.addEventListener('mousedown', ( ev ) => {
-			uiApp.removeElement( div );
-		}, { once: true});
 	};
 	
 	uiApp.userDown('.overflow-icon-btn', overflowPopup );
+	uiApp.userDown('.wb-data-overflow-popup', ( ev ) => {
+		let wrap = uiApp.getParent( ev.target, '.oe-popup-wrap' );
+		uiApp.removeElement( wrap );
+	});
 
 	/*
 	Biometry Report?

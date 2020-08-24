@@ -39,7 +39,7 @@
 	* @returns {String} Key
 	*/
 	Collection.prototype.add = function( value, el ){
-		const key = getKey();
+		const key = getKey(); // from Generator (see above)
 		this.map.set( key, value );
 		el.setAttribute( this.dataAttr, key );	 
 		return key;
@@ -62,6 +62,33 @@
 	Collection.prototype.get = function( key ){
 		if( typeof key === "string") key = parseInt(key, 10);
 		return this.map.get( key );
+	};
+	
+	Collection.prototype.getFirst = function(){
+		const iterator = this.map.values();
+		return iterator.next().value;
+	};
+	
+	Collection.prototype.next = function( startKey ){
+		const it = this.map.keys();
+		let key = it.next();
+		while( !key.done ){
+			if( key.value === startKey ){
+				return it.next().value;
+			}
+			key = it.next();
+		}
+	};
+	
+	Collection.prototype.prev = function( startKey ){
+		let prevKey = false;
+		const keys = this.map.keys();
+		for (const key of keys) {
+		  if(key === startKey){
+			  return prevKey
+		  }
+		  prevKey = key;
+		}
 	};
 	
 	Collection.prototype.has = function( key ){
