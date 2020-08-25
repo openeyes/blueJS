@@ -270,42 +270,63 @@ const bluejay = (function () {
 		}
 	};
 	
+	/**
+	* Get value by key
+	* @returns value
+	*/
 	Collection.prototype.get = function( key ){
 		if( typeof key === "string") key = parseInt(key, 10);
 		return this.map.get( key );
 	};
 	
+	/**
+	* Get the First added value
+	* @returns value
+	*/
 	Collection.prototype.getFirst = function(){
 		const iterator = this.map.values();
 		return iterator.next().value;
 	};
 	
+	/**
+	* Get the 'next' value in collection
+	* @param {Key} startKey - next key from here
+	* @returns value
+	*/
 	Collection.prototype.next = function( startKey ){
 		const it = this.map.keys();
 		let key = it.next();
+		
 		while( !key.done ){
-			if( key.value === startKey ){
-				return it.next().value;
-			}
+			if( key.value === startKey ) return it.next().value;
 			key = it.next();
 		}
 	};
 	
+	/**
+	* Get the 'previous' value in collection
+	* @param {Key} startKey - previous key from here
+	* @returns value
+	*/
 	Collection.prototype.prev = function( startKey ){
+		const it = this.map.keys();
 		let prevKey = false;
-		const keys = this.map.keys();
-		for (const key of keys) {
-		  if(key === startKey){
-			  return prevKey
-		  }
+		
+		for (const key of it ) {
+		  if(key === startKey) return prevKey; // 
 		  prevKey = key;
 		}
 	};
 	
+	/**
+	* Has Key?
+	* @returns {Boolean}
+	*/
 	Collection.prototype.has = function( key ){
 		return this.map.has( key );
 	};
 	
+	// API
 	bj.extend( 'Collection', Collection );	
 
 })( bluejay );
@@ -3193,13 +3214,36 @@ const oePlotly = (function ( bj ) {
 	
 	if( document.querySelector('.oe-worklists.eferral-manager') === null ) return;
 	
+	/**
+	e-referral manaager demo
+	see: https://idg.knowego.com/v3/eferral-manager
+	demo shows UI/UX behaviour for setting Risk and Pathways
+	for selected patient lists.	
+	*/
+	
 	const collection = new bj.Collection();
 	
-	// MUST match array in PHP.
+	/**
+	This MUST match the array used in PHP.
+	*/
 	const pathways = ['DRSS', 'Cataract', 'Glaucoma', 'Uveitis', 'Lucentis', 'Glaucoma ODTC', 'Laser/YAG', 'General', 'Ocular Motility', 'Oculoplastic', 'Neuro', 'Botox', 'Corneal', 'VR', 'Paediatric Ophthalmology', 'Paediatric Neuro-Ophthalmology'];
 	
 	/**
-	* Work out Risk number from CSS class
+	* Get pathway index from Name
+	* @param {String} Pathway
+	* @returns {Number} index
+	*/
+	const getPathywayNum = ( str ) => {
+		let pathIndex = 99; // 99 = None 
+		pathways.forEach(( path, index ) => {
+			if( str == path ) pathIndex = index;
+		});
+		
+		return pathIndex; 
+	};
+	
+	/**
+	* Work out Risk number from CSS icon class
 	* @param {String} classes
 	* @returns {Number} risk
 	*/
@@ -3211,21 +3255,13 @@ const oePlotly = (function ( bj ) {
 	};
 	
 	/** 
-	* update patient risk icon
+	* update Patient Risk icon
 	* @params {Element} icon
 	* @params {Number} level
 	*/
 	const updateRiskIcon = ( icon, level ) => {
 		const colours = ['grey', 'red', 'amber', 'green'];
-		icon.className = `oe-i triangle-${colours[level]}`;
-	};
-	
-	const getPathywayNum = ( str ) => {
-		let pathIndex = 99;
-		pathways.forEach(( path, index ) => {
-			if( str == path ) pathIndex = index;
-		});
-		return pathIndex; // No pathway
+		icon.className = `oe-i triangle-${colours[level]} selected`; // selected to remove cursor pointer
 	};
 	
 	/**
@@ -3233,37 +3269,70 @@ const oePlotly = (function ( bj ) {
 	* Patient 
 	*/
 	const Patient = {
-		tr:null,
-		editIcon: "dom", 
+		accepted: null, // rejected is false, accepted = true, starts unknown 
+		tr:null, 
+		
+		// icons in <tr>
+		iEdit:null, // pencil icon
+		iState:null, // tick / cross
+		iRisk:null, // triangle
+		
+		// Strings
 		fullName: 'JONES, David (Mr)', 
+		nhs: '000',
 		age: '42',
 		gender: 'Male',
-		riskIcon: null,
+		
+		// states
 		riskNum: 0,
 		pathElem: null,
 		pathNum: 99, 
 		
+		/**
+		Active / Inactive <tr> state
+		*/
 		active(){
-			this.editIcon.classList.replace('pencil', 'direction-right');
-			this.editIcon.classList.replace('small-icon', 'large');
-			this.editIcon.classList.add('selected');	
+			this.iEdit.classList.replace('pencil', 'direction-right');
+			this.iEdit.classList.replace('small-icon', 'large');
+			this.iEdit.classList.add('selected');	
 			this.tr.classList.add('active');
 		},
 		inactive(){
-			this.editIcon.classList.replace('direction-right', 'pencil');
-			this.editIcon.classList.replace('large', 'small-icon');
-			this.editIcon.classList.remove('selected');	
+			this.iEdit.classList.replace('direction-right', 'pencil');
+			this.iEdit.classList.replace('large', 'small-icon');
+			this.iEdit.classList.remove('selected');	
 			this.tr.classList.remove('active');
 		},
 		
+		/**
+		User can reject the referral, if so update UI <tr> state
+		*/
+		accept(){
+			this.accepted = true;
+			this.iState.classList.replace('status-query', 'tick-green');
+			this.iState.classList.replace('cross-red', 'tick-green');
+		},
+		reject(){
+			this.accepted = false;
+			this.iState.classList.replace('status-query', 'cross-red');
+			this.iState.classList.replace('tick-green', 'cross-red');
+		},
+		
+		/**
+		Patient info (quick hack to show this)
+		*/
 		name(){
 			return this.fullName;
 		},
 		details(){
 			return `${this.gender}, ${this.age}y`;
 		}, 
+		
+		/**
+		Risk state
+		*/
 		setRisk( icon ){
-			this.riskIcon = icon;
+			this.iRisk = icon;
 			this.riskNum = riskLevelFromClass( icon.className );
 		}, 
 		get risk(){
@@ -3271,8 +3340,13 @@ const oePlotly = (function ( bj ) {
 		}, 
 		set risk( val ){
 			this.riskNum = parseInt(val, 10);
-			updateRiskIcon( this.riskIcon, val );
+			updateRiskIcon( this.iRisk, val );
+			if( this.accepted === null ) this.accept();
 		}, 
+		
+		/**
+		Clinical Pathway
+		*/
 		setPathway( elem ){
 			this.pathElem = elem;
 			this.pathNum = getPathywayNum( elem.textContent );
@@ -3286,27 +3360,44 @@ const oePlotly = (function ( bj ) {
 		}
 	};
 	
+	
 	/**
-	Could be a few tables that need setting up.
+	* Initalise Patients. 
+	* This is done from the DOM. It's set up to show a selection of lists
+	* There could be a few tables that need setting up.
 	*/
 	const tables = bj.nodeArray( document.querySelectorAll('table.eferrals'));
-	// loop through tables
+	
+	// loop through all the tables...
 	tables.forEach(( table ) => {
-		// loop through all <tr>
+		
+		// then loop through all <tr> ...
 		let rows = Array.from( table.tBodies[0].rows );
+		
 		rows.forEach(( row ) => {
 			// build Patient
 			let patient = Object.create( Patient );
 			patient.tr = row;
-			patient.editIcon = row.querySelector('.oe-i.pencil');
+			
+			patient.iEdit = row.querySelector('.oe-i.pencil');
+			patient.iState = row.querySelector('.oe-i.js-referral-status-icon');
+			
 			patient.fullName = row.querySelector('.patient-name').textContent;
 			patient.age = row.querySelector('.patient-age').textContent.substring(3);
 			patient.gender = row.querySelector('.patient-gender').textContent.substring(3);
+			patient.nhs = row.querySelector('.nhs-number').textContent.substring(3);
+			
 			patient.setRisk( row.querySelector('[class*="triangle-"]'));
 			patient.setPathway( row.querySelector('.js-pathway') );
 			
-			// build DOM collections
-			patient.myKey = collection.add( patient, patient.editIcon );
+			patient.hasImage = Math.random() >= 0.5; // show randomly a thumbnail attachment
+			
+			// Quick hack to get group header to show when patient is selected
+			let workGroup = bj.getParent( row, '.worklist-group' );
+			patient.group = workGroup.querySelector('.worklist-summary h2').textContent;
+			
+			// build DOM collections, store 'key', need it for 'next' / 'previous'
+			patient.myKey = collection.add( patient, patient.iEdit );
 		});
 	});
 
@@ -3328,18 +3419,40 @@ const oePlotly = (function ( bj ) {
 			view: {
 				overview: document.getElementById('sidebar-eferral-overview'), 
 				patient: document.getElementById('sidebar-manage-patient'), 
+				reject: document.getElementById('sidebar-reject-accept')
 			},
 			btn: {
 				overview: document.getElementById('idg-js-sidebar-viewmode-1'),
 				patient: document.getElementById('idg-js-sidebar-viewmode-2'),
+				
 			}, 
 			patient: {
 				fullName: document.getElementById('js-sidebar-patient-fullname'),
 				details: document.getElementById('js-sidebar-patient-details'),
+				group: document.getElementById('js-sidebar-referral-group'),
+				attachment: document.getElementById('js-demo-attachment-image'), 
 			}	
 		};
 		
-		// Set the radio selection
+		/**
+		* Update sidebar Reject / Accept area
+		* @param {Boolean} True or Null means 'accepted'
+		*/
+		const showAsAccepted = ( b ) => {
+			if( b || b === null ){
+				bj.show( ui.view.reject.querySelector('.js-reject'));
+				bj.hide( ui.view.reject.querySelector('.js-accept'));
+			} else {
+				bj.hide( ui.view.reject.querySelector('.js-reject'));
+				bj.show( ui.view.reject.querySelector('.js-accept'));
+			}
+		}; 
+		
+		/**
+		* Set Radio for Risk or Pathway
+		* @param {Array} arr
+		* @param {Number} num - radio to 'check'
+		*/
 		const setRadio = ( arr, num ) => {
 			arr.forEach(( radio ) => {
 				radio.checked = ( num == radio.value );
@@ -3347,9 +3460,33 @@ const oePlotly = (function ( bj ) {
 		};
 		
 		/** 
-		* public API
+		public API
 		*/
 		
+		/**
+		* Callback from either "Reject" or "Accept" btn
+		* Updates Patient. See Events.
+		* @param {EventTarget} btn 
+		*/
+		const rejectPatient = ( btn ) => {
+			// check which button by it's colour
+			if( btn.classList.contains('red') ){
+				// reject
+				showAsAccepted( false );
+				activePatient.reject();
+			} else {
+				// re-accept
+				showAsAccepted( true );
+				activePatient.accept();
+			}
+		};
+		
+		
+		/**
+		* Callback from "Overview" or "Manage Patient" buttons
+		* This updates the sidebar UI
+		* @param {String} view 
+		*/
 		const change = ( view ) => {
 			if( view == "overview" ){
 				bj.show( ui.view.overview );
@@ -3364,20 +3501,37 @@ const oePlotly = (function ( bj ) {
 			}
 		};
 		
+		/**
+		* Set up the Patient area in sidebar
+		* Controller calls this with the selected 'Patient'
+		* @param {Patient} custom Object. 
+		*/
 		const managePatient = ( patient ) => {
 			// inactive last patient?
 			if( activePatient !== null ) activePatient.inactive();
 			
 			ui.patient.fullName.textContent = patient.fullName;
-			ui.patient.details.textContent = `${patient.gender}, ${patient.age}`;
+			ui.patient.details.innerHTML = `<small class="fade">NHS</small> ${patient.nhs}  
+				&nbsp;<small class="fade">Gen</small> ${patient.gender} 
+				&nbsp;<small class="fade">Age</small> ${patient.age}`;
+				
+			ui.patient.group.textContent = patient.group;
+			
+			// hacky demo of attachment
+			ui.patient.attachment.style.display = patient.hasImage ? 'block' : 'none';
 			
 			setRadio( radioRisks, patient.riskNum );
 			setRadio( radioPathways, patient.pathNum );
+			
+			showAsAccepted( patient.accepted ); // ?
 			
 			patient.active();
 			activePatient = patient;
 		};
 		
+		/**
+		* User can step through the patients from the sidebar
+		*/
 		const nextPatient = ( dir ) => {
 			let patientKey;
 			
@@ -3387,13 +3541,15 @@ const oePlotly = (function ( bj ) {
 				patientKey  = collection.prev( activePatient.myKey );
 			}
 			
-			// if a key was found, show the patient data for it
+			// if a key exists, show the patient data for it
 			if( patientKey ){
 				sidebar.managePatient( collection.get( patientKey ));
 			}
 		};
 		
-		// User updates the settings
+		/** 
+		User updates the radio settings in the sidebar
+		*/
 		document.addEventListener('change', ( ev ) => {
 			let input = ev.target; 
 			if( input.name === 'idg-radio-g-patient-risk' ){
@@ -3405,23 +3561,29 @@ const oePlotly = (function ( bj ) {
 			}
 		});
 		
-		// public
-		return { change, managePatient, nextPatient };
+		// reveal the public methods
+		return { 
+			change, 
+			managePatient, 
+			nextPatient, 
+			rejectPatient 
+		};
 		
 	})();
 	
 	
 	/**
-	Setup first patient 
+	* Initise: setup the first patient by default
 	*/
 	document.addEventListener('DOMContentLoaded', () => {
 		sidebar.managePatient( collection.getFirst() ); // default to first patient
-		sidebar.change('patient');
+		//sidebar.change('patient');
 	}, { once: true });
-	
-	
+
+
 	/**
-	* User events
+	* Call back for <tr> edit icon
+	* @param {Event} ev - use target to get the right Patient Key.
 	*/
 	const editPatient = ( ev ) => {
 		let icon = ev.target; 
@@ -3430,29 +3592,37 @@ const oePlotly = (function ( bj ) {
 		sidebar.managePatient( collection.get( key ) );
 		sidebar.change('patient');
 	};
+	
 	/*
-	Events	
+	* Events	
 	*/
+	bj.userDown('.js-edit-patient-icon', editPatient );	 // pencil icon on <tr>
+	
 	bj.userDown('#idg-js-sidebar-viewmode-1', () => sidebar.change('overview'));
 	bj.userDown('#idg-js-sidebar-viewmode-2', () => sidebar.change('patient'));
 	
-	// navigating the patient list
+	// navigating the patient list 
 	bj.userDown('#side-patient-next-btn', () =>  sidebar.nextPatient("next"));
 	bj.userDown('#side-patient-previous-btn', () => sidebar.nextPatient("prev"));
 	
-	// use arrow keys
+	// rejecting (or accepting) buttons
+	bj.userDown('#sidebar-reject-accept button', ( ev ) => sidebar.rejectPatient( ev.target ));
+	
+	/**
+	Allow users to use Keys to navigate the patient list
+	*/
 	document.addEventListener("keydown", ( ev ) => {
+		console.log( ev.key );
 		ev.stopPropagation();
-		if( ev.key === "ArrowDown" ){
+		
+		if( ev.key === "z" ){
 			sidebar.nextPatient("next");
 		}
-		if( ev.key === "ArrowUp" ){
+		if( ev.key === "a" ){
 			sidebar.nextPatient("prev");
 		}
 	}, false );
 	
-	
-	bj.userDown('.js-edit-patient-icon', editPatient );	
 	
 })( bluejay ); 
 (function (uiApp) {

@@ -59,42 +59,63 @@
 		}
 	};
 	
+	/**
+	* Get value by key
+	* @returns value
+	*/
 	Collection.prototype.get = function( key ){
 		if( typeof key === "string") key = parseInt(key, 10);
 		return this.map.get( key );
 	};
 	
+	/**
+	* Get the First added value
+	* @returns value
+	*/
 	Collection.prototype.getFirst = function(){
 		const iterator = this.map.values();
 		return iterator.next().value;
 	};
 	
+	/**
+	* Get the 'next' value in collection
+	* @param {Key} startKey - next key from here
+	* @returns value
+	*/
 	Collection.prototype.next = function( startKey ){
 		const it = this.map.keys();
 		let key = it.next();
+		
 		while( !key.done ){
-			if( key.value === startKey ){
-				return it.next().value;
-			}
+			if( key.value === startKey ) return it.next().value;
 			key = it.next();
 		}
 	};
 	
+	/**
+	* Get the 'previous' value in collection
+	* @param {Key} startKey - previous key from here
+	* @returns value
+	*/
 	Collection.prototype.prev = function( startKey ){
+		const it = this.map.keys();
 		let prevKey = false;
-		const keys = this.map.keys();
-		for (const key of keys) {
-		  if(key === startKey){
-			  return prevKey
-		  }
+		
+		for (const key of it ) {
+		  if(key === startKey) return prevKey; // 
 		  prevKey = key;
 		}
 	};
 	
+	/**
+	* Has Key?
+	* @returns {Boolean}
+	*/
 	Collection.prototype.has = function( key ){
 		return this.map.has( key );
 	};
 	
+	// API
 	bj.extend( 'Collection', Collection );	
 
 })( bluejay );
