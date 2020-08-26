@@ -402,9 +402,7 @@
 	Allow users to use Keys to navigate the patient list
 	*/
 	document.addEventListener("keydown", ( ev ) => {
-		console.log( ev.key );
 		ev.stopPropagation();
-		
 		if( ev.key === "z" ){
 			sidebar.nextPatient("next");
 		}

@@ -7,10 +7,18 @@
 	* @param {String} id
 	* @param {String} height (80vh)
 	* @param {String} min-height (500px)
+	* @returns {Element}
 	*/
 	oePlotly.buildDiv = ( id, height, minHeight ) => {
 		const div = document.createElement('div');
-		div.id = `oePlotly-${id}`;
+		/*
+		ID is just a regular string (Template type)
+		*/
+		let divID = id.toLowerCase();
+		divID = divID.trim();
+		divID = divID.replace(' ','-');
+		// build <div>
+		div.id = `oePlotly-${divID}`;
 		div.style.height = height;
 		div.style.minHeight = minHeight;
 		return div;
@@ -81,11 +89,24 @@
 	
 	
 	/**
-	* return settings for "line" style in data
-	* @param {Number} optional
+	* return setting for line in data
+	* when multiple Eye data traces are added 
+	* to a single plot they need to style themselves
+	* @params {Object} args
+	* @returns {Object} 'line'
+	*/
+	oePlotly.dataLine = ( args ) => {
+		let line = {};
+		if( args.color )	line.color = args.color;
+		if( args.dashed )	line = Object.assign( line, oePlotly.dashedLine());
+		return line;
+	};
+	
+	/**
+	* return settings for dashed "line" style in data
 	* @returns {Object}
 	*/
-	oePlotly.dashedLine = ( n ) => {
+	oePlotly.dashedLine = () => {
 		return {
 			dash: "2px,2px",
 			width: 2,
@@ -122,9 +143,10 @@
 	/**
 	* Consistent buttons styling
 	* @param {String} type - 'image', 'drug', 'injection'  
+	* @param {String} color - if data is styling itself
 	* @returns {Object}
 	*/
-	oePlotly.eventStyle = ( type ) => {
+	oePlotly.eventStyle = ( type, color=false ) => {
 		const style = {
 			marker: oePlotly.markerFor( type )
 		};
@@ -142,6 +164,12 @@
 			case 'injection':
 				style.mode = "markers";
 			break; 
+		}
+		
+		// add color, but preserve other properties
+		if( color ){
+			if( style.marker ) style.marker.color = color;
+			if( style.line ) style.line.color = color;
 		}
 		
 		return style;

@@ -17,6 +17,7 @@ const oePlotly = (function ( bj ) {
 			greenSeries: ['#65d235', '#A5D712', '#36be8d', '#02B546'],
 			red: '#ea2b34',
 			redSeries: ['#ea2b34','#F65B20','#D41C50','#D44304'],
+			yellowSeries: ['#F2F233','#E8B131','#F2CC33'],
 			standard: ['#1451b3', '#175ece', '#1a69e5'],
 			varied:  ['#0a83ea', '#18949f', '#781cea','#3f0aea'],
 			dual: ['#1472DE','#2E4259'],
@@ -28,6 +29,7 @@ const oePlotly = (function ( bj ) {
 			greenSeries: ['#418c20','#708017','#147019','#667D3C'],
 			red: '#da3e43',
 			redSeries: ['#da3e43', '#AB274A', '#BA4B2B', '#AB2C22'],
+			yellowSeries: ['#F2F233','#E8B131','#F2CC33'],
 			standard: ['#0a4198', '#1451b3', '#175ece'],
 			varied: ['#0a2aea', '#ea0a8e', '#00b827','#890aea'],
 			dual: ['#2126C2','#8FAEC2'],
@@ -53,13 +55,15 @@ const oePlotly = (function ( bj ) {
 		let colorWay = null;
 		
 		switch( colorName ){
-			case "varied": colorWay = dark ?  colours.dark.varied : colours.light.varied;
+			case "varied": colorWay = dark ? colours.dark.varied : colours.light.varied;
 			break;	
-			case "posNeg": colorWay = dark ?  colours.dark.dual : colours.light.dual;   // assumes Postive trace is first! 
+			case "posNeg": colorWay = dark ? colours.dark.dual : colours.light.dual;   // assumes Postive trace is first! 
 			break;
-			case "rightEyeSeries": colorWay = dark ?  colours.dark.greenSeries : colours.light.greenSeries;
+			case "rightEyeSeries": colorWay = dark ? colours.dark.greenSeries : colours.light.greenSeries;
 			break; 
-			case "leftEyeSeries": colorWay = dark ?  colours.dark.redSeries : colours.light.redSeries;
+			case "leftEyeSeries": colorWay = dark ? colours.dark.redSeries : colours.light.redSeries;
+			break; 
+			case "BEOSeries": colorWay = dark ? colours.dark.yellowSeries : colours.light.yellowSeries;
 			break; 
 			default: 
 				colorWay = dark ? colours.dark.standard : colours.light.standard;
@@ -81,7 +85,7 @@ const oePlotly = (function ( bj ) {
 			case 'highlight': return dark ? colours.dark.highlight : colours.light.highlight; 
 			case 'rightEye': return dark ? colours.dark.green : colours.light.green;
 			case 'leftEye': return dark ? colours.dark.red : colours.light.red;	
-			case 'error_y': return dark ? '#5b6c77' : '#7da7cb';
+			//case 'error_y': return dark ? '#5b6c77' : '#7da7cb';
 			
 			default: return 'pink'; // no match, flag failure to match as pink!
 		}
