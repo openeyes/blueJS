@@ -35,7 +35,7 @@
 				l:50, // 80 default, if Y axis has a title this will need more
 				r:50, // change if y2 axis is added (see below)
 				t:30, // if there is a title will need upping to 60
-				b:80, // allow for xaxis title
+				b:40, // allow for xaxis title
 				pad:4, // px between plotting area and the axis lines
 				autoexpand:true, // auto margin expansion computations
 			},
@@ -250,6 +250,10 @@
 		*/
 		if( options.xaxis ){
 			layout.xaxis = options.xaxis; // only 1 axis per layout
+			
+			if( layout.xaxis.title ){
+				layout.margin.b = 80;
+			}
 		}
 		
 		if( options.yaxes ){

@@ -9,7 +9,7 @@
 	* @param {String} min-height (500px)
 	* @returns {Element}
 	*/
-	oePlotly.buildDiv = ( id, height, minHeight ) => {
+	oePlotly.buildDiv = ( id, height, minHeight, width=false ) => {
 		const div = document.createElement('div');
 		/*
 		ID is just a regular string (Template type)
@@ -21,6 +21,13 @@
 		div.id = `oePlotly-${divID}`;
 		div.style.height = height;
 		div.style.minHeight = minHeight;
+		
+		if( width ){
+			// sometimes need this to force plotly to layout it's SVG container at the right width
+			div.style.width = width;
+		}
+		
+		
 		return div;
 	};
 	

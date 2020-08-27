@@ -2,10 +2,10 @@
 
 	'use strict';
 	
-	const oesTemplateType = "Combined Medical Retina"; // used in ID for div
+	const oesTemplateType = "Patient Popup"; // used in ID for div
 	
-	// oe CSS theme!
-	const darkTheme = oePlotly.isDarkTheme();
+	// oe CSS theme - fixed, because in Patient Popup
+	const darkTheme = true; 
 	
 	/**
 	* Plotly parameters
@@ -13,13 +13,7 @@
 	*/
 	const myPlotly = new Map();	
 	
-	/**
-	* Helpers
-	*/
-	const dateRange = oePlotly.fullDateRange();
-	const userSelecterUnits = oePlotly.selectableUnits();
-	
-	
+
 	/**
 	* Build data trace format for Glaucoma
 	* @param {JSON} eyeJSON data
@@ -59,7 +53,6 @@
 		};
 		
 		myPlotly.get( eyeSide ).get('data').set( eyeJSON.VA.offScale.name, VA_offScale);
-		dateRange.add( eyeJSON.VA.offScale.x );
 		
 		const CRT = {
 			x: eyeJSON.CRT.x,
@@ -76,34 +69,22 @@
 		};
 		
 		myPlotly.get( eyeSide ).get('data').set( eyeJSON.CRT.name, CRT);
-		dateRange.add( eyeJSON.CRT.x );
 		
-		/**
-		* User selectable VA data traces
-		*/
 		
-		const vaColorTrace = getColour();
-		
-		Object.values( eyeJSON.VA.units ).forEach(( unit, index ) => {
-			
-			userSelecterUnits.addTrace( eyeSide, {
-				x: unit.x,
-				y: unit.y,
-				name: unit.name,	
-				yaxis: 'y3',	
-				hovertemplate: unit.name + ': %{y}<br>%{x}',
-				type: 'scatter',
-				mode: 'lines+markers',
-				line: oePlotly.dataLine({
-					color: vaColorTrace
-				}),
-			});
-			
-			// only need to check one of these dates
-			if( !index ) dateRange.add( unit.x );
-		});
-		
-		myPlotly.get( eyeSide ).get('data').set( 'VA', userSelecterUnits.selectedTrace( eyeSide ));
+		const VA = {
+			x: eyeJSON.VA.units.x,
+			y: eyeJSON.VA.units.y,
+			name: eyeJSON.VA.units.name,
+			yaxis: 'y3',		
+			hovertemplate: '%{y}<br>%{x}',
+			type: 'scatter',
+			mode: 'lines+markers',
+			line: oePlotly.dataLine({
+				color: getColour()
+			}),
+		};
+				
+		myPlotly.get( eyeSide ).get('data').set( 'VA', VA );
 
 	};
 	
@@ -117,24 +98,17 @@
 		Single plot can have RE, LE or BEO
 		Update all available traces and build data trace array
 		*/
-		let eyeKeys = ['rightEye', 'leftEye', 'BEO'];
+		let eyeKeys = ['rightEye', 'leftEye' ];
 		let data = [];
 		
 		eyeKeys.forEach(( key ) => {
 			if( myPlotly.has( key )){
 				
 				let eyePlot = myPlotly.get( key ).get('data'); 
-				
-				// update VA data
-				eyePlot.set('VA', userSelecterUnits.selectedTrace( key ));
-				
 				// build the Data array
 				data = data.concat( Array.from( eyePlot.values()) );
 			}
 		}); 
-		
-		// make sure variable yAxis is updated
-		myPlotly.get('layout').yaxis3 = Object.assign({}, userSelecterUnits.selectedAxis());
 		
 		// build new (or rebuild)
 		Plotly.react(
@@ -157,17 +131,18 @@
 				yanchor:'top',
 				y:1,
 			},
-			plotTitle: 'Right, Left and BEO',
+			//plotTitle: 'Right, Left and BEO',
 			xaxis: axes.x,
 			yaxes: axes.y,
 			subplot: 2,	 // offScale, VA 
-			rangeSlider: dateRange.firstLast(),
-			dateRangeButtons: true,
 		});
 		
-		
-		const div = oePlotly.buildDiv(`${oesTemplateType}`, '80vh', '650px');
-		document.querySelector( '.oes-left-side' ).appendChild( div );
+		/*
+		For the popup I couldn't get plotly to resize to available width
+		without adding a specific width!	
+		*/
+		const div = oePlotly.buildDiv(`${oesTemplateType}`, '415px', '415px', '1020px'); // 1020px best guess based on 1280px layout
+		document.getElementById('patient-popup-oeplolty').appendChild( div );
 		
 		/**
 		Comnbined data plots, therefore only 1 <div> and only 1 'layout'
@@ -208,21 +183,6 @@
 			[0.2, 1],
 		];
 		
-		// user selectable units for VA units:
-		userSelecterUnits.init({
-			darkTheme,
-			plotlyUpdate: plotlyReacts,
-			axisDefaults: {
-				type:'y',
-				rightSide: 'y2',
-				domain: domainRow[1],
-				title: 'VA',  // prefix for title
-				spikes: true,
-			}, 
-			unitRanges: Object.values( json.yaxis.unitRanges ),
-		});
-
-
 		/**
 		* Data 
 		* Combined Plot. Colours have to get set on the data!
@@ -241,12 +201,6 @@
 			);
 		}
 		
-		if( json.BEO ){
-			myPlotly.set('BEO', new Map());
-			buildDataTraces( json.BEO, 'BEO', 
-				oePlotly.getColorSeries('BEOSeries', darkTheme)
-			);
-		}
 
 		/**
 		* Axes templates 
@@ -257,7 +211,6 @@
 			type:'x',
 			numTicks: 10,
 			useDates: true,
-			range: dateRange.firstLast(), 
 			spikes: true,
 			noMirrorLines: true,
 		}, darkTheme );
@@ -282,11 +235,18 @@
 			spikes: true,
 		}, darkTheme );
 		
-		/*
-		* Dynamic axis
-		* VA axis depends on selected unit state
-		*/
-		const y2 = userSelecterUnits.selectedAxis();
+		// y2 - VA
+		const y2 = oePlotly.getAxis({
+			type:'y',
+			domain: domainRow[1], 
+			title: 'VA',
+			rightSide: 'y2',
+			useCategories: {
+				showAll: true, 
+				categoryarray: json.yaxis.unitRanges.snellenMetre.range.reverse()
+			},
+			spikes: true,
+		}, darkTheme );
 		
 		
 		plotlyInitCombined({
@@ -299,6 +259,6 @@
 	/**
 	* Extend API ... PHP will call with json when DOM is loaded
 	*/
-	bj.extend('plotCombinedMedRet', init);	
+	bj.extend('plotPatientPopup', init);	
 		
 })( bluejay ); 
