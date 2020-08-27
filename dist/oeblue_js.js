@@ -681,17 +681,17 @@ const oePlotly = (function ( bj ) {
 	'use strict';
 	
 	bj.log('Plot.ly version: ' + Plotly.version );
-	bj.log('oePlotly - Plot.ly layout builder');
+	bj.log('oePlotly - Plot.ly builder available');
 	
 	const colours = {
 		dark: {
 			blue:'#63d7d6',
 			highlight:'#fff',
 			green: '#65d235',
-			greenSeries: ['#65d235', '#A5D712', '#36be8d', '#02B546'],
 			red: '#ea2b34',
-			redSeries: ['#ea2b34','#F65B20','#D41C50','#D44304'],
-			yellowSeries: ['#F2F233','#E8B131','#F2CC33'],
+			greenSeries: ['#65d235', '#A5D712','#02B546'],
+			redSeries: ['#ea2b34','#F64A2D','#C92845'],
+			yellowSeries: ['#FAD94B','#E8B131','#F1F555'], // BEO
 			standard: ['#1451b3', '#175ece', '#1a69e5'],
 			varied:  ['#0a83ea', '#18949f', '#781cea','#3f0aea'],
 			dual: ['#1472DE','#2E4259'],
@@ -700,10 +700,10 @@ const oePlotly = (function ( bj ) {
 			blue: '#00f',
 			highlight:'#000',
 			green: '#418c20',
-			greenSeries: ['#418c20','#708017','#147019','#667D3C'],
 			red: '#da3e43',
-			redSeries: ['#da3e43', '#AB274A', '#BA4B2B', '#AB2C22'],
-			yellowSeries: ['#F2F233','#E8B131','#F2CC33'],
+			greenSeries: ['#418c20','#598617','#139149'],
+			redSeries: ['#da3e43', '#E64C02', '#E64562'],
+			yellowSeries: ['#FCCE14','#E69812','#FCBB21'], // BEO
 			standard: ['#0a4198', '#1451b3', '#175ece'],
 			varied: ['#0a2aea', '#ea0a8e', '#00b827','#890aea'],
 			dual: ['#2126C2','#8FAEC2'],
@@ -722,25 +722,33 @@ const oePlotly = (function ( bj ) {
 	/**
 	* Get color series
 	* @param {String} colour name
-	* @param {Boolean} dark 
+	* @param {Boolean} darkTheme 
 	* @returns {Array} of colour series
 	*/
-	const getColorSeries = ( colorName, dark ) => {
+	const getColorSeries = ( colorName, darkTheme ) => {
 		let colorWay = null;
+		const dark = colours.dark;
+		const light = colours.light; 
 		
 		switch( colorName ){
-			case "varied": colorWay = dark ? colours.dark.varied : colours.light.varied;
+			case "varied": 
+				colorWay = darkTheme ? dark.varied : light.varied;
 			break;	
-			case "posNeg": colorWay = dark ? colours.dark.dual : colours.light.dual;   // assumes Postive trace is first! 
+			case "posNeg": 
+				colorWay = darkTheme ? dark.dual : light.dual;   // assumes Postive trace is first! 
 			break;
-			case "rightEyeSeries": colorWay = dark ? colours.dark.greenSeries : colours.light.greenSeries;
+			case "rightEyeSeries": 
+				colorWay = darkTheme ? dark.greenSeries : light.greenSeries;
 			break; 
-			case "leftEyeSeries": colorWay = dark ? colours.dark.redSeries : colours.light.redSeries;
+			case "leftEyeSeries": 
+				colorWay = darkTheme ? dark.redSeries : light.redSeries;
 			break; 
-			case "BEOSeries": colorWay = dark ? colours.dark.yellowSeries : colours.light.yellowSeries;
+			case "BEOSeries": 
+				colorWay = darkTheme ? dark.yellowSeries : light.yellowSeries;
 			break; 
+			
 			default: 
-				colorWay = dark ? colours.dark.standard : colours.light.standard;
+				colorWay = darkTheme ? dark.standard : light.standard;
 		}	
 		
 		return colorWay;
@@ -2141,30 +2149,7 @@ const oePlotly = (function ( bj ) {
 		});
 		
 		myPlotly.get( eyeSide ).get('data').set( 'VA', userSelecterUnits.selectedTrace( eyeSide ));
-		
-		/**
-		Build Events data for right eye
-		*/
-		// loop through array...
-		Object.values( eyeJSON.events ).forEach(( event ) => {
-			
-			let template = event.customdata ? '%{y}<br>%{customdata}<br>%{x}' : '%{y}<br>%{x}';
-			
-			let newEvent = Object.assign({
-					oeEventType: event.event, // store event type
-					x: event.x, 
-					y: event.y, 
-					customdata: event.customdata,
-					name: event.name, 
-					yaxis: 'y4',
-					hovertemplate: template,
-					type: 'scatter',
-					showlegend: false,
-				}, oePlotly.eventStyle(  event.event, getColour() ));
-			
-			myPlotly.get( eyeSide ).get('data').set( event.name, newEvent);
-			dateRange.add( event.x );
-		});
+
 	};
 	
 	/**
@@ -2214,13 +2199,13 @@ const oePlotly = (function ( bj ) {
 		const layout = oePlotly.getLayout({
 			darkTheme, // dark?
 			legend: {
-				yanchor:'bottom',
-				y:0.82,
+				yanchor:'top',
+				y:1,
 			},
 			plotTitle: 'Right, Left and BEO',
 			xaxis: axes.x,
 			yaxes: axes.y,
-			subplot: 3,	 // offScale, VA, meds 
+			subplot: 2,	 // offScale, VA 
 			rangeSlider: dateRange.firstLast(),
 			dateRangeButtons: true,
 		});
@@ -2266,8 +2251,7 @@ const oePlotly = (function ( bj ) {
 		// for all subplot rows
 		const domainRow = [
 			[0, 0.15],
-			[0.2, 0.82],
-			[0.88, 1],
+			[0.2, 1],
 		];
 		
 		// user selectable units for VA units:
@@ -2291,23 +2275,22 @@ const oePlotly = (function ( bj ) {
 		*/
 		if( json.rightEye ){
 			myPlotly.set('rightEye', new Map());
-
 			buildDataTraces( json.rightEye, 'rightEye',
-				oePlotly.getColorSeries('rightEyeSeries')
+				oePlotly.getColorSeries('rightEyeSeries', darkTheme)
 			);
 		}
 		
 		if( json.leftEye ){
 			myPlotly.set('leftEye', new Map());
 			buildDataTraces( json.leftEye, 'leftEye', 
-				oePlotly.getColorSeries('leftEyeSeries')
+				oePlotly.getColorSeries('leftEyeSeries', darkTheme)
 			);
 		}
 		
 		if( json.BEO ){
 			myPlotly.set('BEO', new Map());
 			buildDataTraces( json.BEO, 'BEO', 
-				oePlotly.getColorSeries('BEOSeries')
+				oePlotly.getColorSeries('BEOSeries', darkTheme)
 			);
 		}
 
@@ -2345,18 +2328,6 @@ const oePlotly = (function ( bj ) {
 			spikes: true,
 		}, darkTheme );
 		
-
-		// y3 - Events
-		const y3 = oePlotly.getAxis({
-			type:'y',
-			domain: domainRow[2],
-			useCategories: {
-				showAll: true, 
-				categoryarray: json.eventTypes.reverse()
-			},
-			spikes: true,
-		}, darkTheme );
-		
 		/*
 		* Dynamic axis
 		* VA axis depends on selected unit state
@@ -2366,7 +2337,7 @@ const oePlotly = (function ( bj ) {
 		
 		plotlyInitCombined({
 			x: x1, 
-			y: [ y0, y1, y2, y3 ],
+			y: [ y0, y1, y2 ],
 		});	
 		 
 	};
