@@ -6,12 +6,12 @@
 	
 	/**
 	current: "js-copy-to-clipboard"
-	new: "js-copytext-to-clipboard"
+	new: "js-clipboard-copy"
 	*/
 	
-	const selector = '.js-copytext-to-clipboard';
+	const selector = '.js-clipboard-copy';
 	
-	if( document.querySelector( '.js-copytext-to-clipboard' ) === null ) return;
+	if( document.querySelector( selector ) === null ) return;
 	
 	/*
 	Added to the hospital number and nhs number, provide a UI clue	
@@ -83,10 +83,10 @@
 		}		
 	};
 	
+	/*
+	Events
+	*/
 	
-	bj.userDown('.js-copytext-to-clipboard', ( ev ) => {
-		copyToClipboard( ev.target );
-	});
-		
+	bj.userDown( selector, ( ev ) => copyToClipboard( ev.target ));
 		
 })( bluejay ); 
