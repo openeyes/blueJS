@@ -250,7 +250,7 @@ const bluejay = (function () {
 	* @returns {String} Key
 	*/
 	Collection.prototype.add = function( value, el ){
-		const key = getKey();
+		const key = getKey(); // from Generator (see above)
 		this.map.set( key, value );
 		el.setAttribute( this.dataAttr, key );	 
 		return key;
@@ -270,15 +270,63 @@ const bluejay = (function () {
 		}
 	};
 	
+	/**
+	* Get value by key
+	* @returns value
+	*/
 	Collection.prototype.get = function( key ){
 		if( typeof key === "string") key = parseInt(key, 10);
 		return this.map.get( key );
 	};
 	
+	/**
+	* Get the First added value
+	* @returns value
+	*/
+	Collection.prototype.getFirst = function(){
+		const iterator = this.map.values();
+		return iterator.next().value;
+	};
+	
+	/**
+	* Get the 'next' value in collection
+	* @param {Key} startKey - next key from here
+	* @returns value
+	*/
+	Collection.prototype.next = function( startKey ){
+		const it = this.map.keys();
+		let key = it.next();
+		
+		while( !key.done ){
+			if( key.value === startKey ) return it.next().value;
+			key = it.next();
+		}
+	};
+	
+	/**
+	* Get the 'previous' value in collection
+	* @param {Key} startKey - previous key from here
+	* @returns value
+	*/
+	Collection.prototype.prev = function( startKey ){
+		const it = this.map.keys();
+		let prevKey = false;
+		
+		for (const key of it ) {
+		  if(key === startKey) return prevKey; // 
+		  prevKey = key;
+		}
+	};
+	
+	/**
+	* Has Key?
+	* @returns {Boolean}
+	*/
 	Collection.prototype.has = function( key ){
 		return this.map.has( key );
 	};
 	
+	// API
 	bj.extend( 'Collection', Collection );	
 
 })( bluejay );
@@ -658,20 +706,30 @@ const bluejay = (function () {
 		
 	};
 	
-	const demoMultiPath = ( btnID, groupName, callBack ) => {
-		const btn = document.querySelector( btnID );
+	const demoChoosePathway = ( args ) => {
+		const href = '/oe-portal/';
+		const btn = document.querySelector( args.btn );
+		const group = `idg-radio-g-${args.group}`;
+		const paths = args.paths; 		
+		let location = "";
+
 		btn.disabled = true;
-		
-		const group = `idg-radio-g-${groupName}`;
 		
 		document.addEventListener('change', ( ev ) => {
 			const elem = ev.target; 
 			if( elem.name === group ){
-				callBack( btn, elem.value );
+				btn.disabled = true;
+				if( paths.has( elem.value) ){
+					location = paths.get( elem.value );
+					btn.disabled = false;
+				}
 			}
 		});	
+		
+		// when user clicks on btn, go on correct pathway
+		const next = () => window.location = href + location;
+		return next;
 	};
-	
 	
 	
 	const otherCheckBox = ( groupName, otherTextID ) => {
@@ -697,7 +755,7 @@ const bluejay = (function () {
 	*/
 	bj.extend('demoPath', demoPath );
 	bj.extend('demoCheckbox', demoCheckbox );
-	bj.extend('demoMultiPath', demoMultiPath );
+	bj.extend('demoChoosePathway', demoChoosePathway );
 	bj.extend('demoOtherText', demoOtherText );
 	
 

@@ -39,7 +39,7 @@ const paths = {
 	// builds: for OpenEyes
 	js: {	
 		input: baseModules.concat( oePlotly, productionModules, bjReady ), // Ready state loaded last 
-		output:	'./dist/',
+		output:	'./dist/oe/',
 	},
 	// builds: for IDG
 	idgDev: {
@@ -49,7 +49,7 @@ const paths = {
 	// oe Portal
 	portal: {
 		input: baseModules.concat( portalModules, bjReady ),
-		output:	'./dist-portal/',
+		output:	'./dist/portal/',
 	}
 };
 
@@ -123,11 +123,11 @@ var cleanDist = function ( done ) {
 };
 
 var distJS = function(){
-	return buildScripts( 'oeblue_js', paths.js.input, paths.js.output );
+	return buildScripts( 'oe-bluejay', paths.js.input, paths.js.output );
 };
 
 var idgDevJS = function(){
-	return buildScripts( 'oeblue_js', paths.idgDev.input, paths.idgDev.output );
+	return buildScripts( 'oe-bluejay', paths.idgDev.input, paths.idgDev.output );
 };
 
 var watchJS = function( done ){
@@ -147,7 +147,7 @@ var cleanPortal = function ( done ) {
 };
 
 var portalJS = function(){
-	return buildScripts( 'oeportal_js', paths.portal.input, paths.portal.output );
+	return buildScripts( 'oe-portal', paths.portal.input, paths.portal.output );
 }
 
 var watchPortalJS = function( done ){

@@ -32,20 +32,30 @@
 		
 	};
 	
-	const demoMultiPath = ( btnID, groupName, callBack ) => {
-		const btn = document.querySelector( btnID );
+	const demoChoosePathway = ( args ) => {
+		const href = '/oe-portal/';
+		const btn = document.querySelector( args.btn );
+		const group = `idg-radio-g-${args.group}`;
+		const paths = args.paths; 		
+		let location = "";
+
 		btn.disabled = true;
-		
-		const group = `idg-radio-g-${groupName}`;
 		
 		document.addEventListener('change', ( ev ) => {
 			const elem = ev.target; 
 			if( elem.name === group ){
-				callBack( btn, elem.value );
+				btn.disabled = true;
+				if( paths.has( elem.value) ){
+					location = paths.get( elem.value );
+					btn.disabled = false;
+				}
 			}
 		});	
+		
+		// when user clicks on btn, go on correct pathway
+		const next = () => window.location = href + location;
+		return next;
 	};
-	
 	
 	
 	const otherCheckBox = ( groupName, otherTextID ) => {
@@ -71,7 +81,7 @@
 	*/
 	bj.extend('demoPath', demoPath );
 	bj.extend('demoCheckbox', demoCheckbox );
-	bj.extend('demoMultiPath', demoMultiPath );
+	bj.extend('demoChoosePathway', demoChoosePathway );
 	bj.extend('demoOtherText', demoOtherText );
 	
 
