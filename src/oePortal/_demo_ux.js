@@ -69,10 +69,25 @@
 		});		
 	};
 	
+	const otherRadioOption = ( groupName, otherVal, otherTextID ) => {
+		const other = document.querySelector( otherTextID );
+		const group = `idg-radio-g-${groupName}`;
+		document.addEventListener('change', ( ev ) => {
+			const elem = ev.target; 
+			other.style.display = 'none';
+			if( elem.name === group && elem.value == otherVal ){
+				other.style.display = 'block';
+			}
+		});		
+	};
+	
 	const demoOtherText = ( args ) => {
-		if( args.inputType ){
+		if( args.inputType == "checkbox" ){
 			otherCheckBox( args.group, args.otherTextID );
+		} else {
+			otherRadioOption( args.group, args.value, args.otherTextID );
 		}
+		
 	};
 	
 	
