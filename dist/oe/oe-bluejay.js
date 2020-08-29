@@ -154,6 +154,9 @@ const bluejay = (function () {
 		return { delay };
 	})();
 	
+	// Throttle high rate events
+	window.onresize = () => resizeThrottle.delay();
+	
 	/**
 	* Event handlers
 	* Specific functions for each event, this is so that they can be removed
@@ -196,9 +199,6 @@ const bluejay = (function () {
 	document.addEventListener('mousedown', handleMouserDown, { capture:true }); 
 	document.addEventListener('mouseleave', handleMouserLeave, { capture:true });
 	document.addEventListener('touchstart', ( e ) => handleTouchStart( e ), { capture:true });
-	
-	// Throttle high rate events
-	window.onresize = () => resizeThrottle.delay();
 
 	// extend App
 	bj.extend('userEnter', ( selector, cb ) => addListener( mouseEnter, selector, cb ));

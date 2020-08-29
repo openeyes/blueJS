@@ -1,52 +1,36 @@
-(function (bj) {
+(function( bj ){
 	
 	'use strict';
 	
 	bj.addModule('tooltip'); 
 	
 	/** 
-	M.V.C
+	* Model
+	* extended with views
 	*/
-	const m = {
+	const model = Object.assign({
 		selector: ".js-has-tooltip",
-		/*
-		OE tooltips: 1) Basic, 2) Bilateral (eyelat icons are optional)
-		Tooltip widths are set by newnblue CSS	
-		*/
-		css: {
-			basicWidth: 200, // match CSS
-			bilateralWidth: 400, // match CSS
-		},
-		
 		showing:false,
 		target:null,
-		type: "basic", // or, bilateral
+		type: null, // or, bilateral
 		tip: null, // tooltip content
 		eyeIcons: null, // only applies to bilateral popups
-		 
-		/**
-		* a Model change notifies View, simple, but tight coupling
-		* @param {Funciton} f - view callback
-		*/
-		onChange(f){
-			if(typeof f !== "function") throw new Error('Tooltip Model requires View callback as funciton');
-			this.onChange = f;
-		},
 		
 		/**
 		* Reset the Model
 		*/
 		reset(){
 			this.showing = false;
+			this.type = null;
 			this.target = null;
-			this.onChange();
+			this.views.notify();
 		},
 		
 		/**
 		* Update the Model
 		* @param {EventTarget} target
 		*/
-		update(target){
+		update( target ){
 			this.showing = true;
 			this.target = target;
 					
@@ -63,73 +47,38 @@
 				this.type = "basic";
 				this.tip = target.dataset.tooltipContent;
 			}
-			this.onChange();
+			this.views.notify();
 		}
-	};
-
+		
+	}, bj.ModelViews());
+	
+	
 	/**
-	* View
-	* @param {model} 
+	* Views 
+	*
+	* Only one tooltip DIV: Basic and Bilateral both use it
+	* @returns API
 	*/
-	const view = ((model) => {
-		let div = null; // only build DOM when required
-		let display = "block"; // bilateral requires 'flex'
-		let width = model.css.basicWidth;
-		let content; 
+	const tooltip = (() => {
+		const div = document.createElement('div');
 		
 		// innerWidth forces a reflow, only update when necessary
 		let winWidth = window.innerWidth;
-		bj.listenForResize(() => winWidth = window.innerWidth);
-		
+		bj.listenForResize( () => winWidth = window.innerWidth );
+	
 		/**
-		hide
+		* Reset the tooltip DOM
 		*/
-		const hide = () => {
+		const reset = () => {
 			div.innerHTML = "";
 			div.className = "oe-tooltip"; // clear all CSS classes
 			div.style.cssText = "display:none"; // clear ALL styles & hide
 		};
 		
-		// only build DOM when needed
-		const buildDOM = () => {
-			div = document.createElement('div');
-			bj.appendTo('body', div);
-			hide();
-			return div;
-		};
-		
 		/**
-		show
+		* Show the tip and position
 		*/
-		const show = () => {
-			// build the DOM, if not done already
-			div = div || buildDOM();
-			
-			/*
-			Content of the tooltip depends on the type:
-			Basic is a straightforward HTML string
-			Bilateral needs dividing with HTMLStrings assigned to each side
-			*/
-			if(display == "block"){
-				// basic: HTML string, may contain basic tags
-				div.innerHTML = model.tip;
-			} else {
-				/*
-				Bilateral enhances the basic tooltip
-				with 2 content areas for Right and Left 	
-				*/
-				div.classList.add('bilateral');
-				
-				// hide R / L icons?
-				if(!model.eyeIcons){
-					div.classList.add('no-icons');
-				}
-				
-				div.innerHTML = '<div class="right"></div><div class="left"></div>';
-				div.querySelector('.right').innerHTML = model.tip.r;
-				div.querySelector('.left').innerHTML = model.tip.l; 
-			}
-			
+		const show = ( display, width ) => {
 			/*
 			Check the tooltip height to see if content fits default positioning	
 			*/
@@ -146,12 +95,11 @@
 			tooltip could be cropped on the right side if it is.
 			*/
 			let domRect = model.target.getBoundingClientRect();
-			let center = domRect.right - (domRect.width/2);
+			let center = domRect.right - ( domRect.width/2 );
 			let top = domRect.top - h - offsetH;
 		
 			// watch out for the hotlist, which may overlay the tooltip content
-			let extendedBrowser = bj.settings("cssHotlistFixed");
-			let maxRightPos = winWidth > extendedBrowser ? extendedBrowser : winWidth;
+			let maxRightPos = winWidth > bj.settings("cssHotlistFixed") ? bj.settings("cssExtended") : winWidth;
 			
 			/*
 			setup CSS classes to visually position the 
@@ -159,14 +107,14 @@
 			*/
 			
 			// too close to the left?
-			if(center <= offsetW){
+			if( center <= offsetW ){
 				offsetW = 20; 			// position to the right of icon, needs to match CSS arrow position
 				div.classList.add("offset-right");
 			}
 			
 			// too close to the right?
-			if (center > (maxRightPos - offsetW)) {
-				offsetW = (width - 20); 			// position to the left of icon, needs to match CSS arrow position
+			if ( center > ( maxRightPos - offsetW )){
+				offsetW = ( width - 20 ); 			// position to the left of icon, needs to match CSS arrow position
 				div.classList.add("offset-left");
 			}
 			
@@ -176,63 +124,116 @@
 				div.classList.add("inverted");
 			} 
 			
-			// update DOM and show the tooltip
+			/*
+			update DOM and show the tooltip
+			*/
 			div.style.top = top + 'px';
 			div.style.left = (center - offsetW) + 'px';
 			div.style.display = display;
 		};
-
+		
 		/**
-		Callback for any Model changes
+		* Reset tooltip if model resets
 		*/
-		model.onChange(() => {
-			// check the model state
-			if(model.showing == false){
-				hide();
-			} else {
-				content = model.tip;
-				if(model.type == "basic"){
-					display = "block";
-					width = model.css.basicWidth;
-				} else {
-					display = "flex";
-					width = model.css.bilateralWidth;
-				}
-				show();
-			}
+		model.views.add(() => {
+			if( !model.showing ) reset();
 		});
 		
-	})(m); // link to Model, easy & basic
+		/**
+		* intialise and append to DOM
+		*/
+		reset();
+		bj.appendTo('body', div);
+		
+		// public	
+		return { div, reset, show };
+	})();
+	
 	
 	/**
-	* Controllers for user Events	
+	* Basic tooltip
+	*/
+	const basic = () => {
+		if( model.type === 'basic' ){
+			/*
+			* basic: HTML 'tip' may contain HTML tags
+			*/
+			tooltip.reset();
+			tooltip.div.innerHTML = model.tip;
+			tooltip.show( "block", 200 ); // CSS width: must match 'newblue'
+		}
+	};
+	
+	// observe model
+	model.views.add( basic );
+	
+	/**
+	* Bilateral tooltip
+	* Use Mustache template
+	*/
+	const bilateral = (() => {
+		const template ='<div class="right">{{&r}}</div><div class="left">{{&l}}</div>';
+		
+		const update = () => {
+			if( model.type === 'bilateral'){
+				/** 
+				* Bilateral enhances the basic tooltip
+				* with 2 content areas for Right and Left 	
+				*/
+				tooltip.reset();
+				tooltip.div.classList.add('bilateral');
+				tooltip.div.innerHTML = Mustache.render( template, model.tip );
+				
+				// hide R / L icons?
+				if( !model.eyeIcons ) tooltip.div.classList.add('no-icons');
+				
+				tooltip.show( "flex", 400 );
+			}
+		};
+		
+		// observe model
+		model.views.add( update );
+	
+	})();
+	
+	/**
+	* Out (or click toggle tip)
 	* @param {Event} ev
 	*/
-	const userOver = (ev) => {
-		m.update(ev.target); // update the Model with DOM data
-		// if the user scrolls, remove the tooltip (as it will be out of position)
-		window.addEventListener('scroll', userOut, {capture:true, once:true});
-	};
-	
 	const userOut = (ev) => {
-		if(!m.showing) return; 
-		m.reset();  // reset the Model
+		if( model.showing === false ) return; 
+		model.reset();  // reset the Tooltip
+		window.removeEventListener('scroll', userOut, { capture:true, once:true });
 	};
 	
-	const userClick = (ev) => {
-		if(ev.target.isSameNode(m.target) && m.showing){
+	/**
+	* Over (or click toggle tip)
+	* if the user scrolls, remove the tooltip (as it will be out of position)
+	* @param {Event} ev
+	*/
+	const userOver = ( ev ) => {
+		model.update( ev.target ); 
+		window.addEventListener('scroll', userOut, { capture:true, once:true });
+	};
+	
+	/**
+	* Covers touch behaviour
+	* @param {Event} ev
+	*/
+	const userClick = ( ev ) => {
+		if( ev.target.isSameNode( model.target ) && model.showing ){
 			userOut();
 		} else {
-			userOver(ev);
+			userOver( ev );
 		}
 	};
 		
 	/**
-	Listeners 
+	Events
 	*/
-	bj.userDown(m.selector, userClick);
-	bj.userEnter(m.selector, userOver);
-	bj.userLeave(m.selector, userOut);
+	bj.userDown( model.selector, userClick );
+	bj.userEnter( model.selector, userOver );
+	bj.userLeave( model.selector, userOut );
 	
 	
 })(bluejay); 
