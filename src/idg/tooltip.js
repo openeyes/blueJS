@@ -13,6 +13,7 @@
 		showing:false,
 		target:null,
 		type: null, // or, bilateral
+		clickThrough: false, // does tooltip click through to a popup showing full details? Note: important for touch!
 		tip: null, // tooltip content
 		eyeIcons: null, // only applies to bilateral popups
 		
@@ -33,20 +34,35 @@
 		update( target ){
 			this.showing = true;
 			this.target = target;
-					
-			if(target.dataset.ttType == "bilateral"){
-				// split tooltip for R/L
-				this.type = "bilateral";
-				this.eyeIcons = target.dataset.ttEyeicons === 'no' ? false : true;
-				this.tip = {
-					r: target.dataset.ttRight,
-					l: target.dataset.ttLeft
-				};
-			} else {
-				// original tooltip
+			
+
+			if( target.hasAttribute('data-tooltip-content')){
+				/*
+				Support the old data attribute for basic tooltips
+				*/
 				this.type = "basic";
 				this.tip = target.dataset.tooltipContent;
+				
+			} else {
+				/*
+				New JSON approach for more advanced tooltips
+				*/
+				const json = JSON.parse( target.dataset.tt );
+				this.type = json.type;
+				this.clickThrough = json.clickPopup; // click through to a popup?
+				
+				if( this.type == 'bilateral' ){
+					this.tip = {
+						r: json.tipR,
+						l: json.tipL
+					};
+					this.eyeIcons = json.eyeIcons;
+				} else {
+					// basic
+					this.tip = json.tip;
+				}	
 			}
+			
 			this.views.notify();
 		}
 		
@@ -187,7 +203,7 @@
 				// hide R / L icons?
 				if( !model.eyeIcons ) tooltip.div.classList.add('no-icons');
 				
-				tooltip.show( "flex", 400 );
+				tooltip.show( "flex", 400 ); // CSS width: must match 'newblue'
 			}
 		};
 		
@@ -222,6 +238,8 @@
 	*/
 	const userClick = ( ev ) => {
 		if( ev.target.isSameNode( model.target ) && model.showing ){
+			// this will need updating to support clickThrough on touch.
+			// tooltip should not get shown.
 			userOut();
 		} else {
 			userOver( ev );
