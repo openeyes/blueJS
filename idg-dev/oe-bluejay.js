@@ -91,12 +91,13 @@ const bluejay = (function () {
 
 	'use strict';
 	
+	const urlHostName = new URL(window.location).hostname; // temporary for IDG, see "notifyListeners" below
+	
 	/**
 	* Event Aggregation Pattern
 	* To improve performance delegate all events for all Modules here.
 	* Modules register selectors (to match) along with callbacks
 	*/
-	
 	const mouseDown = new Map();	
 	const mouseEnter = new Map();	
 	const mouseLeave = new Map();	
@@ -123,8 +124,23 @@ const bluejay = (function () {
 	* @param {Map} - listeners
 	*/
 	const notifyListeners = ( event, listeners ) => {
+		/*
+		All mousedown, mouseenter, mouseleave events
+		must be register here, therefore, there is no need to 
+		let them continue to propagate throught the DOM.
+		*/
+		if( urlHostName === 'mac-oe' || urlHostName === 'idg.knowego.com' ){
+			/*
+			However, as this stops ALL: mousedown, mouseenter, mouseleave (& touchstart) events.
+			Only do this on IDG for now, maybe in the future, it can be added into production...
+			*/
+			event.stopPropagation();
+		}
 		
+		// who?
 		const target = event.target;
+		
+		// ignore if document
 		if( target === document ) return false;
 		
 		listeners.forEach( ( cb, key ) => {
@@ -159,7 +175,7 @@ const bluejay = (function () {
 	
 	/**
 	* Event handlers
-	* Specific functions for each event, this is so that they can be removed
+	* Specific functions for each event, this is so that they can be removed on Touch
 	*/
 	
 	function handleMouserEnter(e){
@@ -174,19 +190,20 @@ const bluejay = (function () {
 		notifyListeners( e, mouseLeave );
 	}
 	
+	/*
+	With touch I'll get: touchstart, mouseenter then mousedown.
+	This messes up the UI because of "mouseEnter" enhancment behaviour for mouse/track users.
+	*/
 	let handleTouchStart = ( e ) => {
-		/*
-		With touch I'll get: touchstart, mouseenter then mousedown.
-		This messes up the UI because of "mouseEnter" enhancment behaviour for mouse/track users.
-		*/
+		// remove mouse events
 		document.removeEventListener('mouseenter', handleMouserEnter, { capture:true });
 		document.removeEventListener('mousedown', handleMouserDown, { capture:true }); 
 		document.removeEventListener('mouseleave', handleMouserLeave, { capture:true });
 		
-		// basic "click" behaviour
+		// run basic "click" behaviour
 		notifyListeners( e, mouseDown );
 		
-		// only need the removeListeners once...
+		// lazy load - only need the removeListeners once...
 		handleTouchStart = ( e ) => {
 			notifyListeners( e, mouseDown );
 		};
@@ -470,11 +487,13 @@ const bluejay = (function () {
 	* @param {DOM Element} el 	currently out of the document flow
 	* @returns {Object} width and height as {w:w,h:h}
 	*/
-	const getHiddenElemSize = (el) => {
+	const getHiddenElemSize = ( el ) => {
 		// need to render with all the right CSS being applied
 		// displayed but hidden...
 		el.style.visibility = 'hidden';
 		el.style.display = ''; // this assumes that a display is set on CSS (or by default on the DOM)
+		
+		console.log( 'el', el );
 		
 		// get props...
 		let props = {	
@@ -483,7 +502,7 @@ const bluejay = (function () {
 		}; 	
 		
 		// ...and hide again
-		el.style.visibility = 'inherit';
+		el.style.visibility = '';
 		el.style.display = 'none';
 		
 		return props;
@@ -6420,7 +6439,7 @@ Updated to Vanilla JS for IDG
 	
 	
 })(bluejay); 
-(function (bj) {
+(function( bj ){
 
 	'use strict';	
 	
@@ -6429,7 +6448,8 @@ Updated to Vanilla JS for IDG
 	const cssActive = 'active';
 	const cssOpen = 'open';
 	const selector = '#js-nav-hotlist-btn';
-	const btn = document.querySelector(selector);
+	const wrapper = '#js-hotlist-panel-wrapper';
+	const btn = document.querySelector( selector );
 	
 	if(btn === null) return;
 	
@@ -6454,12 +6474,12 @@ Updated to Vanilla JS for IDG
 		* Hotlist can be quickly viewed or 'locked' open
 		*/
 		changeState:function(){
-			if(this.isFixed) return;
-			if(!this.open){
+			if( this.isFixed ) return;
+			if( !this.open ){
 				this.makeLocked();
 				this.over();
 			} else {
-				if(this.isLocked){
+				if( this.isLocked ){
 					this.isLocked = false;
 					this.hide();
 				} else {
@@ -6474,10 +6494,9 @@ Updated to Vanilla JS for IDG
 		* Show content
 		*/
 		show:function(){
-			if(this.open) return;
+			if( this.open ) return;
 			this.open = true;
 			bj.show(this.content, 'block');
-			this.mouseOutHide();
 		}	
 	});
 	
@@ -6486,22 +6505,10 @@ Updated to Vanilla JS for IDG
 		* Hide content
 		*/
 		hide:function(){
-			if(this.open === false || this.isLocked || this.isFixed ) return;
+			if( !this.open || this.isLocked || this.isFixed ) return;
 			this.open = false;
 			this.btn.classList.remove( cssActive, cssOpen );
-			bj.hide(this.content);
-		}
-	});
-	
-	const _mouseOutHide = () => ({
-		/**
-		* Enhanced behaviour for mouse/trackpad
-		*/
-		mouseOutHide: function(){
-			this.wrapper.addEventListener('mouseleave',(ev) => {
-				ev.stopPropagation();
-				this.hide();
-			}, {once:true});
+			bj.hide( this.content );
 		}
 	});
 	
@@ -6534,24 +6541,24 @@ Updated to Vanilla JS for IDG
 	});
 	
 	/**
-	* hotlist singleton 
-	* (using IIFE to maintain code pattern)
+	* IIFE
+	* builds required methods 
+	* @returns {Object} 
 	*/
 	const hotlist = (() => {
-		return Object.assign( 	{	btn:btn,
-									content: document.querySelector('#js-hotlist-panel'),
-									wrapper: document.querySelector('#js-hotlist-panel-wrapper'),
-									open: false,
-									isLocked: false,
-									isFixed: false,
-								},
-								_changeState(),
-								_over(),
-								_mouseOutHide(),
-								_makeLocked(),
-								_show(),
-								_hide(),
-								_fixedOpen() );
+		return Object.assign({	
+			btn:btn,
+			content: document.getElementById('js-hotlist-panel'),
+			open: false,
+			isLocked: false,
+			isFixed: false,
+		},
+		_changeState(),
+		_over(),
+		_makeLocked(),
+		_show(),
+		_hide(),
+		_fixedOpen() );
 	})();
 	
 	/*
@@ -6562,34 +6569,39 @@ Updated to Vanilla JS for IDG
 	const checkBrowserWidth = () => {
 		// note: Boolean is actually a string! 
 		if(btn.dataset.fixable === "true"){
-			hotlist.fixedOpen((window.innerWidth > bj.settings("cssHotlistFixed")));
+			hotlist.fixedOpen(( window.innerWidth > bj.settings("cssHotlistFixed" )));
 		}
 	};
 	
 	/*
 	Events
 	*/
-	bj.userDown(selector, () => hotlist.changeState() );			
-	bj.userEnter(selector, () => hotlist.over() );
-	bj.listenForResize(checkBrowserWidth);
+	bj.userDown(selector, () => hotlist.changeState());			
+	bj.userEnter(selector, () => hotlist.over());
+	bj.userLeave( wrapper, () => hotlist.hide());
+	
+	bj.listenForResize( checkBrowserWidth );
+	
 	checkBrowserWidth();
 
-})(bluejay); 
-(function (uiApp) {
+})( bluejay ); 
+(function ( bj ) {
 
 	'use strict';	
 	
-	uiApp.addModule('navLogo');
+	bj.addModule('navLogo');
 	
 	const cssActive = 'active';
 	const cssOpen = 'open';
 	const selector = '#js-openeyes-btn';
+	const wrapper = '.openeyes-brand';
 	
-	/*
-	on Login flag the logo
+	/**
+	Bling.
+	Login Page: Flag the logo
 	*/
 	if(document.querySelector('.oe-login') !== null){
-		document.querySelector(selector).classList.add(cssActive);	
+		document.querySelector(selector).classList.add( cssActive );	
 	}
 	
 	/*
@@ -6628,11 +6640,10 @@ Updated to Vanilla JS for IDG
 		* Show content
 		*/
 		show:function(){
-			if(this.open) return;
+			if( this.open ) return;
 			this.open = true;
 			this.btn.classList.add( cssOpen );
-			uiApp.show(this.content, 'block');
-			this.mouseOutHide();
+			bj.show( this.content, 'block' );
 		}	
 	});
 	
@@ -6641,62 +6652,131 @@ Updated to Vanilla JS for IDG
 		* Hide content
 		*/
 		hide:function(){
-			if(this.open === false) return;
+			if( !this.open ) return;
 			this.open = false;
 			this.btn.classList.remove( cssOpen, cssActive );
-			uiApp.hide(this.content);			
-		}
-	});
-	
-	const _mouseOutHide = () => ({
-		/**
-		* Enhanced behaviour for mouse/trackpad
-		*/
-		mouseOutHide: function(){
-			this.wrapper.addEventListener('mouseleave',(ev) => {
-				ev.stopPropagation();
-				this.hide();
-			},{once:true});
+			bj.hide( this.content );			
 		}
 	});
 	
 	/**
-	* oelogo singleton 
-	* (using IIFE to maintain code pattern)
+	* IIFE
+	* builds required methods 
+	* @returns {Object} 
 	*/
 	const oelogo = (() => {
-		let btn = document.querySelector(selector);
-		return Object.assign( 	{	btn: btn,
-									content: document.querySelector('#js-openeyes-info'),
-									wrapper: uiApp.getParent(btn, '.openeyes-brand'),
-									open: false
-								},
-								_over(),
-								_out(),
-								_change(),
-								_show(),
-								_hide(),
-								_mouseOutHide() );
+		
+		return Object.assign({	
+			btn: document.querySelector( selector ),
+			content: document.querySelector('#js-openeyes-info'),
+			open: false
+		},
+		_over(),
+		_out(),
+		_change(),
+		_show(),
+		_hide());
+		
 	})();
 	
 	/*
 	Events
 	*/
-	uiApp.userDown(selector, () => oelogo.change());			
-	uiApp.userEnter(selector, () => oelogo.over());
-	uiApp.userLeave(selector, () => oelogo.out());
+	bj.userDown( selector, () => oelogo.change());			
+	bj.userEnter( selector, () => oelogo.over());
+	bj.userLeave( selector, () => oelogo.out());
+	// wrapper
+	bj.userLeave( wrapper, () => oelogo.hide());
 	
-
-})(bluejay); 
-(function (uiApp) {
+})( bluejay) ; 
+(function( bj ) {
 
 	'use strict';	
 	
-	uiApp.addModule('navShortcuts');
+	bj.addModule('navPatientGroups');
+	
+	const cssActive = 'active';
+	const selector = '#js-nav-patientgroups-btn';
+	const wrapper = '#js-patientgroups-panel-wrapper';
+	const btn = document.querySelector( selector );
+	
+	if(btn === null) return; 
+		
+	/*
+	Methods	
+	*/
+	const _change = () => ({
+		/**
+		* Callback for 'click'
+		*/
+		change: function(){
+			if(this.open)	this.hide();
+			else			this.show();
+		}
+	});
+	
+	const _show = () => ({
+		/**
+		* Show content
+		*/
+		show:function(){
+			if( this.open ) return;
+			this.open = true;
+			this.btn.classList.add( cssActive );
+			bj.show( this.content, 'block' );
+		}	
+	});
+	
+	const _hide = () => ({
+		/**
+		* Hide content
+		*/
+		hide:function(){
+			if( !this.open ) return;
+			this.open = false;
+			this.btn.classList.remove( cssActive );
+			bj.hide( this.content );
+		}
+	});
+	
+	/**
+	* IIFE
+	* builds required methods 
+	* @returns {Object} 
+	*/
+	const patientGroups = (() => {
+		
+		return Object.assign({	
+			btn: btn,
+			content: document.getElementById('js-patientgroups-panel'),
+			open: false 
+		},
+		_change(),
+		_show(),
+		_hide());
+		
+	})();
+
+	/*
+	Events 
+	*/
+	bj.userDown( selector, () => patientGroups.change());			
+	bj.userEnter( selector, () => patientGroups.show());
+	bj.userLeave( wrapper, () => patientGroups.hide());
+	
+
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	bj.addModule('navShortcuts');
 	
 	const cssActive = 'active';
 	const selector = '#js-nav-shortcuts-btn';
+	const wrapper = '#js-nav-shortcuts';
 	const btn = document.querySelector(selector);
+	
 	if(btn === null) return;
 		
 	/*
@@ -6722,8 +6802,7 @@ Updated to Vanilla JS for IDG
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssActive );
-			uiApp.show(this.content, 'block');
-			this.mouseOutHide();
+			bj.show(this.content, 'block');
 		}	
 	});
 	
@@ -6735,133 +6814,38 @@ Updated to Vanilla JS for IDG
 			if(this.open === false) return;
 			this.open = false;
 			this.btn.classList.remove( cssActive );
-			uiApp.hide(this.content);
+			bj.hide(this.content);
 		}
 	});
 	
-	const _mouseOutHide = () => ({
-		/**
-		* Enhanced behaviour for mouse/trackpad
-		*/
-		mouseOutHide: function(){
-			this.wrapper.addEventListener('mouseleave',(ev) => {
-				ev.stopPropagation();
-				this.hide();
-			},{once:true});
-		}
-	});
-	
+
 	/**
-	* shortcuts singleton 
-	* (using IIFE to maintain code pattern)
+	* IIFE
+	* builds required methods 
+	* @returns {Object} 
 	*/
 	const shortcuts = (() => {
-		return Object.assign(	{	btn:btn,
-									content: document.querySelector('#js-nav-shortcuts-subnav'),
-									wrapper: document.querySelector('#js-nav-shortcuts'),
-									open: false 
-								},
-								_change(),
-								_show(),
-								_hide(),
-								_mouseOutHide() );
-	})();
-	
-	/*
-	Events 
-	*/
-	uiApp.userDown(selector, () => shortcuts.change() );			
-	uiApp.userEnter(selector, () => shortcuts.show() );
-	
-
-})(bluejay); 
-(function (uiApp) {
-
-	'use strict';	
-	
-	uiApp.addModule('navShortlists');
-	
-	const cssActive = 'active';
-	const selector = '#js-nav-shortlists-btn';
-	const btn = document.querySelector(selector);
-	if(btn === null) return;
 		
-	/*
-	Methods	
-	*/
-	
-	const _change = () => ({
-		/**
-		* Callback for 'click'
-		*/
-		change: function(){
-			if(this.open)	this.hide();
-			else			this.show();
-		}
-	});
-	
-	const _show = () => ({
-		/**
-		* Callback for 'hover'
-		* Enhanced behaviour for mouse/trackpad
-		*/
-		show:function(){
-			if(this.open) return;
-			this.open = true;
-			this.btn.classList.add( cssActive );
-			uiApp.show(this.content, 'block');
-			this.mouseOutHide();
-		}	
-	});
-	
-	const _hide = () => ({
-		/**
-		* Hide content
-		*/
-		hide:function(){
-			if(this.open === false) return;
-			this.open = false;
-			this.btn.classList.remove( cssActive );
-			uiApp.hide(this.content);
-		}
-	});
-	
-	const _mouseOutHide = () => ({
-		/**
-		* Enhanced behaviour for mouse/trackpad
-		*/
-		mouseOutHide: function(){
-			this.wrapper.addEventListener('mouseleave',(ev) => {
-				ev.stopPropagation();
-				this.hide();
-			},{once:true});
-		}
-	});
-	
-	/**
-	* shortcuts singleton 
-	* (using IIFE to maintain code pattern)
-	*/
-	const shortlists = (() => {
-		return Object.assign(	{	btn:btn,
-									content: document.querySelector('#js-shortlists-panel'),
-									wrapper: document.querySelector('#js-shortlists-panel-wrapper'),
-									open: false 
-								},
-								_change(),
-								_show(),
-								_hide(),
-								_mouseOutHide() );
+		return Object.assign({
+			btn:btn,
+			content: document.getElementById('js-nav-shortcuts-subnav'),
+			open: false 
+		},
+		_change(),
+		_show(),
+		_hide());
+		
 	})();
 	
 	/*
 	Events 
 	*/
-	uiApp.userDown(selector, () => shortlists.change() );			
-	uiApp.userEnter(selector, () => shortlists.show() );
+	bj.userDown(selector, () => shortcuts.change());			
+	bj.userEnter(selector, () => shortcuts.show());
+	bj.userLeave( wrapper, () => shortcuts.hide());
 	
 
-})(bluejay); 
+})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';	
@@ -7628,15 +7612,17 @@ Updated to Vanilla JS for IDG
 	uiApp.listenForResize(() => winHeight = window.inneHeight );
 	
 })(bluejay); 
-(function (uiApp) {
+(function( bj ){
 
 	'use strict';	
 	
-	uiApp.addModule('printOptions');
+	bj.addModule('printOptions');
 	
 	const cssActive = 'active';
 	const selector = '#js-header-print-dropdown-btn';
+	const wrapper = '#js-header-print-dropdown';
 	const btn = document.querySelector(selector);
+	
 	if(btn === null) return;
 		
 	/*
@@ -7662,8 +7648,7 @@ Updated to Vanilla JS for IDG
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssActive );
-			uiApp.show(this.content, 'block');
-			this.mouseOutHide();
+			bj.show(this.content, 'block');
 		}	
 	});
 	
@@ -7675,46 +7660,35 @@ Updated to Vanilla JS for IDG
 			if(this.open === false) return;
 			this.open = false;
 			this.btn.classList.remove( cssActive );
-			uiApp.hide(this.content);
-		}
-	});
-	
-	const _mouseOutHide = () => ({
-		/**
-		* Enhanced behaviour for mouse/trackpad
-		*/
-		mouseOutHide: function(){
-			this.wrapper.addEventListener('mouseleave',(ev) => {
-				ev.stopPropagation();
-				this.hide();
-			},{once:true});
+			bj.hide(this.content);
 		}
 	});
 	
 	/**
-	* shortcuts singleton 
-	* (using IIFE to maintain code pattern)
+	* IIFE
+	* builds required methods 
+	* @returns {Object} 
 	*/
-	const shortcuts = (() => {
-		return Object.assign(	{	btn:btn,
-									content: document.querySelector('#js-header-print-subnav'),
-									wrapper: document.querySelector('#js-header-print-dropdown'),
-									open: false 
-								},
-								_change(),
-								_show(),
-								_hide(),
-								_mouseOutHide() );
+	const printOptions = (() => {
+		return Object.assign({
+			btn:btn,
+			content: document.getElementById('js-header-print-subnav'),
+			open: false 
+		},
+		_change(),
+		_show(),
+		_hide());
 	})();
 	
 	/*
 	Events 
 	*/
-	uiApp.userDown(selector, () => shortcuts.change() );			
-	uiApp.userEnter(selector, () => shortcuts.show() );
+	bj.userDown( selector, () => printOptions.change());			
+	bj.userEnter( selector, () => printOptions.show());
+	bj.userLeave( wrapper, () => printOptions.hide());
 	
 
-})(bluejay); 
+})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';	
@@ -8143,6 +8117,136 @@ Updated to Vanilla JS for IDG
 	};
 			
 })(bluejay); 
+(function( bj ){
+	
+	'use strict';
+	
+	bj.addModule('quicktag'); 
+	
+	const demoTags = [ 'Apple', 'Avocado', 'Banana', 'Cucumber', 'Coconut', 'Datix', 'Donut', 'Elephant', 'Frisbee', 'Research', 'Teaching', 'Referred', 'Results_pending',  ];
+	
+	const model = {
+		qtags: demoTags.map( t => t.toLowerCase()), // I'll leave ordering to the backend
+	};
+	
+	/*
+	<div class="oe-qtags">
+		<span class="qtag">#tag1</span>
+		<span class="qtag selected">#tag2</span>
+		<span class="qtag">#tag3</span>
+	</div>	
+	*/
+	
+	
+	/**
+	Views
+	*/
+	const viewTags = (() => {
+		
+		const template = '{{#qtags}}<span class="qtag">#{{.}}</span> {{/qtags}}';
+		let div = null;
+		
+		const show = ( input ) => {
+			div = document.createElement('div');
+			div.className = "oe-qtags";
+			div.innerHTML = Mustache.render( template, model );
+			div.style.display = "none";
+			document.body.appendChild( div ); // CSS is display 'none';
+			
+			// can't get the DOM height without some trickery...
+			let h = bj.getHiddenElemSize( div ).h;
+		
+			
+			let domRect = input.getBoundingClientRect();
+			let top = domRect.top - h;
+			
+			div.style.top = top + 'px';
+			div.style.left = domRect.left + 'px';
+			div.style.display = "block";
+			
+			
+		}
+		
+		const select = () => {
+			
+		}
+		
+		
+		return { show, select }
+		
+			
+	})();
+	
+	
+	/**
+	Events
+	*/
+	const inputHandler = (() => {
+		
+		let tagging = false;
+		let input = null;
+		let charAt = 0;
+		
+		const reset = () => {
+			tagging = false;
+			charAt = 0;
+			// clean up 
+			document.removeEventListener("keyup", cancelTagging, false );
+			input.removeEventListener("blur", viewTags.remove, false );
+		}
+		
+		const watch = ( ev ) => {
+			if( tagging ){
+				// check for tag matches
+				viewTags.select( input.value.substring( charAt ));	
+			} else {
+				input = ev.target; 
+				if( input.tagName !== "SELECT" && ev.data === "#" ){
+					tagging = true;
+					charAt = ev.target.selectionStart;
+					viewTags.show( input );
+					// watch for spacebar and Enter
+					document.addEventListener("keyup", cancelTagging, false );
+					input.addEventListener("blur", viewTags.remove, false );
+				}
+			}
+		};
+		
+		return { watch, reset }
+		
+	})();
+	
+	
+	/**
+	* KeyUp Events (spacebar will cancel, Enter will add a match)
+	* These need to be on Key because of Enter
+	* @param {Event} ev
+	*/
+	const cancelTagging = ( ev ) => {
+		/*
+		ignore all keyup events that are part of composition
+		https://developer.mozilla.org/en-US/docs/Web/API/Document/keyup_event
+		*/
+		if( ev.isComposing || ev.keyCode === 229 ) return;
+		
+		// space bar (cancel)
+		if( event.key == ' ' ){
+			inputHandler.reset();
+		}
+		
+		if( event.key == 'Enter' ){
+			console.log( 'add selected tag (if there is a match)' );
+			inputHandler.reset();
+		} 
+	} 
+	
+	/**
+	Events
+	*/
+	document.addEventListener('input', inputHandler.watch, { capture:true });
+	
+	
+})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';	
@@ -8444,15 +8548,18 @@ Updated to Vanilla JS for IDG
 	
 
 })(bluejay); 
-(function (uiApp) {
+(function( bj ) {
 
 	'use strict';	
 	
-	uiApp.addModule('sidebarEventFilter');
+	bj.addModule('sidebarEventFilter');
 	
 	const cssActive = 'active';
 	const selector = '#js-sidebar-filter-btn';
-	const btn = document.querySelector(selector);
+	const wrapper = '#js-sidebar-filter';
+	
+	const btn = document.querySelector( selector );
+	
 	if(btn === null) return;
 
 	/*
@@ -8478,8 +8585,8 @@ Updated to Vanilla JS for IDG
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssActive );
-			uiApp.show(this.content, 'block');
-			this.mouseOutHide();
+			bj.show(this.content, 'block');
+			
 		}	
 	});
 	
@@ -8491,43 +8598,33 @@ Updated to Vanilla JS for IDG
 			if(this.open === false) return;
 			this.open = false;
 			this.btn.classList.remove( cssActive );
-			uiApp.hide(this.content);
+			bj.hide(this.content);
 		}
 	});
 	
-	const _mouseOutHide = () => ({
-		/**
-		* Enhanced behaviour for mouse/trackpad
-		*/
-		mouseOutHide: function(){
-			this.wrapper.addEventListener('mouseleave',(ev) => {
-				ev.stopPropagation();
-				this.hide();
-			},{once:true});
-		}
-	});
+	
 	
 	/**
 	* shortcuts singleton 
 	* (using IIFE to maintain code pattern)
 	*/
 	const eventFilter = (() => {
-		return Object.assign(	{	btn:btn,
-									content: document.querySelector('#js-sidebar-filter-options'),
-									wrapper: document.querySelector('#js-sidebar-filter'),
-									open: false 
-								},
-								_change(),
-								_show(),
-								_hide(),
-								_mouseOutHide() );
+		return Object.assign({	
+			btn:btn,
+			content: document.getElementById('js-sidebar-filter-options'),
+			open: false 
+		},
+		_change(),
+		_show(),
+		_hide());
 	})();
 	
 	/*
 	Events 
 	*/
-	uiApp.userDown(selector, () => eventFilter.change() );			
-	uiApp.userEnter(selector, () => eventFilter.show() );
+	bj.userDown( selector, () => eventFilter.change());			
+	bj.userEnter( selector, () => eventFilter.show());
+	bj.userLeave( wrapper, () => eventFilter.hide());
 
 	
 })(bluejay); 
@@ -8974,7 +9071,7 @@ Updated to Vanilla JS for IDG
 	bj.userLeave( model.selector, userOut );
 	
 	
-})(bluejay); 
+})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';	
@@ -9581,6 +9678,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	addSelect.Popup = function(greenBtn){	
 		
 		let popup = document.querySelector('#' + greenBtn.dataset.popup);
+		
+		if( popup == null ) return;
+		
 		let lists = [];
 		const reset = true;
 		const require = false; 

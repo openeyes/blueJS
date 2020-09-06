@@ -1,18 +1,20 @@
-(function (uiApp) {
+(function ( bj ) {
 
 	'use strict';	
 	
-	uiApp.addModule('navLogo');
+	bj.addModule('navLogo');
 	
 	const cssActive = 'active';
 	const cssOpen = 'open';
 	const selector = '#js-openeyes-btn';
+	const wrapper = '.openeyes-brand';
 	
-	/*
-	on Login flag the logo
+	/**
+	Bling.
+	Login Page: Flag the logo
 	*/
 	if(document.querySelector('.oe-login') !== null){
-		document.querySelector(selector).classList.add(cssActive);	
+		document.querySelector(selector).classList.add( cssActive );	
 	}
 	
 	/*
@@ -51,11 +53,10 @@
 		* Show content
 		*/
 		show:function(){
-			if(this.open) return;
+			if( this.open ) return;
 			this.open = true;
 			this.btn.classList.add( cssOpen );
-			uiApp.show(this.content, 'block');
-			this.mouseOutHide();
+			bj.show( this.content, 'block' );
 		}	
 	});
 	
@@ -64,50 +65,40 @@
 		* Hide content
 		*/
 		hide:function(){
-			if(this.open === false) return;
+			if( !this.open ) return;
 			this.open = false;
 			this.btn.classList.remove( cssOpen, cssActive );
-			uiApp.hide(this.content);			
-		}
-	});
-	
-	const _mouseOutHide = () => ({
-		/**
-		* Enhanced behaviour for mouse/trackpad
-		*/
-		mouseOutHide: function(){
-			this.wrapper.addEventListener('mouseleave',(ev) => {
-				ev.stopPropagation();
-				this.hide();
-			},{once:true});
+			bj.hide( this.content );			
 		}
 	});
 	
 	/**
-	* oelogo singleton 
-	* (using IIFE to maintain code pattern)
+	* IIFE
+	* builds required methods 
+	* @returns {Object} 
 	*/
 	const oelogo = (() => {
-		let btn = document.querySelector(selector);
-		return Object.assign( 	{	btn: btn,
-									content: document.querySelector('#js-openeyes-info'),
-									wrapper: uiApp.getParent(btn, '.openeyes-brand'),
-									open: false
-								},
-								_over(),
-								_out(),
-								_change(),
-								_show(),
-								_hide(),
-								_mouseOutHide() );
+		
+		return Object.assign({	
+			btn: document.querySelector( selector ),
+			content: document.querySelector('#js-openeyes-info'),
+			open: false
+		},
+		_over(),
+		_out(),
+		_change(),
+		_show(),
+		_hide());
+		
 	})();
 	
 	/*
 	Events
 	*/
-	uiApp.userDown(selector, () => oelogo.change());			
-	uiApp.userEnter(selector, () => oelogo.over());
-	uiApp.userLeave(selector, () => oelogo.out());
+	bj.userDown( selector, () => oelogo.change());			
+	bj.userEnter( selector, () => oelogo.over());
+	bj.userLeave( selector, () => oelogo.out());
+	// wrapper
+	bj.userLeave( wrapper, () => oelogo.hide());
 	
-
-})(bluejay); 
+})( bluejay) ; 

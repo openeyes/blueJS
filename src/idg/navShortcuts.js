@@ -1,12 +1,14 @@
-(function (uiApp) {
+(function( bj ){
 
 	'use strict';	
 	
-	uiApp.addModule('navShortcuts');
+	bj.addModule('navShortcuts');
 	
 	const cssActive = 'active';
 	const selector = '#js-nav-shortcuts-btn';
+	const wrapper = '#js-nav-shortcuts';
 	const btn = document.querySelector(selector);
+	
 	if(btn === null) return;
 		
 	/*
@@ -32,8 +34,7 @@
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssActive );
-			uiApp.show(this.content, 'block');
-			this.mouseOutHide();
+			bj.show(this.content, 'block');
 		}	
 	});
 	
@@ -45,43 +46,35 @@
 			if(this.open === false) return;
 			this.open = false;
 			this.btn.classList.remove( cssActive );
-			uiApp.hide(this.content);
+			bj.hide(this.content);
 		}
 	});
 	
-	const _mouseOutHide = () => ({
-		/**
-		* Enhanced behaviour for mouse/trackpad
-		*/
-		mouseOutHide: function(){
-			this.wrapper.addEventListener('mouseleave',(ev) => {
-				ev.stopPropagation();
-				this.hide();
-			},{once:true});
-		}
-	});
-	
+
 	/**
-	* shortcuts singleton 
-	* (using IIFE to maintain code pattern)
+	* IIFE
+	* builds required methods 
+	* @returns {Object} 
 	*/
 	const shortcuts = (() => {
-		return Object.assign(	{	btn:btn,
-									content: document.querySelector('#js-nav-shortcuts-subnav'),
-									wrapper: document.querySelector('#js-nav-shortcuts'),
-									open: false 
-								},
-								_change(),
-								_show(),
-								_hide(),
-								_mouseOutHide() );
+		
+		return Object.assign({
+			btn:btn,
+			content: document.getElementById('js-nav-shortcuts-subnav'),
+			open: false 
+		},
+		_change(),
+		_show(),
+		_hide());
+		
 	})();
 	
 	/*
 	Events 
 	*/
-	uiApp.userDown(selector, () => shortcuts.change() );			
-	uiApp.userEnter(selector, () => shortcuts.show() );
+	bj.userDown(selector, () => shortcuts.change());			
+	bj.userEnter(selector, () => shortcuts.show());
+	bj.userLeave( wrapper, () => shortcuts.hide());
 	
 
-})(bluejay); 
+})( bluejay ); 

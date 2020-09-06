@@ -116,11 +116,13 @@
 	* @param {DOM Element} el 	currently out of the document flow
 	* @returns {Object} width and height as {w:w,h:h}
 	*/
-	const getHiddenElemSize = (el) => {
+	const getHiddenElemSize = ( el ) => {
 		// need to render with all the right CSS being applied
 		// displayed but hidden...
 		el.style.visibility = 'hidden';
 		el.style.display = ''; // this assumes that a display is set on CSS (or by default on the DOM)
+		
+		console.log( 'el', el );
 		
 		// get props...
 		let props = {	
@@ -129,7 +131,7 @@
 		}; 	
 		
 		// ...and hide again
-		el.style.visibility = 'inherit';
+		el.style.visibility = '';
 		el.style.display = 'none';
 		
 		return props;

@@ -254,4 +254,4 @@
 	bj.userLeave( model.selector, userOut );
 	
 	
-})(bluejay); 
+})( bluejay ); 

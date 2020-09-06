@@ -1,12 +1,14 @@
-(function (uiApp) {
+(function( bj ){
 
 	'use strict';	
 	
-	uiApp.addModule('printOptions');
+	bj.addModule('printOptions');
 	
 	const cssActive = 'active';
 	const selector = '#js-header-print-dropdown-btn';
+	const wrapper = '#js-header-print-dropdown';
 	const btn = document.querySelector(selector);
+	
 	if(btn === null) return;
 		
 	/*
@@ -32,8 +34,7 @@
 			if(this.open) return;
 			this.open = true;
 			this.btn.classList.add( cssActive );
-			uiApp.show(this.content, 'block');
-			this.mouseOutHide();
+			bj.show(this.content, 'block');
 		}	
 	});
 	
@@ -45,43 +46,32 @@
 			if(this.open === false) return;
 			this.open = false;
 			this.btn.classList.remove( cssActive );
-			uiApp.hide(this.content);
-		}
-	});
-	
-	const _mouseOutHide = () => ({
-		/**
-		* Enhanced behaviour for mouse/trackpad
-		*/
-		mouseOutHide: function(){
-			this.wrapper.addEventListener('mouseleave',(ev) => {
-				ev.stopPropagation();
-				this.hide();
-			},{once:true});
+			bj.hide(this.content);
 		}
 	});
 	
 	/**
-	* shortcuts singleton 
-	* (using IIFE to maintain code pattern)
+	* IIFE
+	* builds required methods 
+	* @returns {Object} 
 	*/
-	const shortcuts = (() => {
-		return Object.assign(	{	btn:btn,
-									content: document.querySelector('#js-header-print-subnav'),
-									wrapper: document.querySelector('#js-header-print-dropdown'),
-									open: false 
-								},
-								_change(),
-								_show(),
-								_hide(),
-								_mouseOutHide() );
+	const printOptions = (() => {
+		return Object.assign({
+			btn:btn,
+			content: document.getElementById('js-header-print-subnav'),
+			open: false 
+		},
+		_change(),
+		_show(),
+		_hide());
 	})();
 	
 	/*
 	Events 
 	*/
-	uiApp.userDown(selector, () => shortcuts.change() );			
-	uiApp.userEnter(selector, () => shortcuts.show() );
+	bj.userDown( selector, () => printOptions.change());			
+	bj.userEnter( selector, () => printOptions.show());
+	bj.userLeave( wrapper, () => printOptions.hide());
 	
 
-})(bluejay); 
+})( bluejay ); 

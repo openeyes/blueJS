@@ -7,6 +7,9 @@
 	addSelect.Popup = function(greenBtn){	
 		
 		let popup = document.querySelector('#' + greenBtn.dataset.popup);
+		
+		if( popup == null ) return;
+		
 		let lists = [];
 		const reset = true;
 		const require = false; 

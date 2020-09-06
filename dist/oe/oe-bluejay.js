@@ -91,12 +91,13 @@ const bluejay = (function () {
 
 	'use strict';
 	
+	const urlHostName = new URL(window.location).hostname; // temporary for IDG, see "notifyListeners" below
+	
 	/**
 	* Event Aggregation Pattern
 	* To improve performance delegate all events for all Modules here.
 	* Modules register selectors (to match) along with callbacks
 	*/
-	
 	const mouseDown = new Map();	
 	const mouseEnter = new Map();	
 	const mouseLeave = new Map();	
@@ -123,8 +124,23 @@ const bluejay = (function () {
 	* @param {Map} - listeners
 	*/
 	const notifyListeners = ( event, listeners ) => {
+		/*
+		All mousedown, mouseenter, mouseleave events
+		must be register here, therefore, there is no need to 
+		let them continue to propagate throught the DOM.
+		*/
+		if( urlHostName === 'mac-oe' || urlHostName === 'idg.knowego.com' ){
+			/*
+			However, as this stops ALL: mousedown, mouseenter, mouseleave (& touchstart) events.
+			Only do this on IDG for now, maybe in the future, it can be added into production...
+			*/
+			event.stopPropagation();
+		}
 		
+		// who?
 		const target = event.target;
+		
+		// ignore if document
 		if( target === document ) return false;
 		
 		listeners.forEach( ( cb, key ) => {
@@ -159,7 +175,7 @@ const bluejay = (function () {
 	
 	/**
 	* Event handlers
-	* Specific functions for each event, this is so that they can be removed
+	* Specific functions for each event, this is so that they can be removed on Touch
 	*/
 	
 	function handleMouserEnter(e){
@@ -174,19 +190,20 @@ const bluejay = (function () {
 		notifyListeners( e, mouseLeave );
 	}
 	
+	/*
+	With touch I'll get: touchstart, mouseenter then mousedown.
+	This messes up the UI because of "mouseEnter" enhancment behaviour for mouse/track users.
+	*/
 	let handleTouchStart = ( e ) => {
-		/*
-		With touch I'll get: touchstart, mouseenter then mousedown.
-		This messes up the UI because of "mouseEnter" enhancment behaviour for mouse/track users.
-		*/
+		// remove mouse events
 		document.removeEventListener('mouseenter', handleMouserEnter, { capture:true });
 		document.removeEventListener('mousedown', handleMouserDown, { capture:true }); 
 		document.removeEventListener('mouseleave', handleMouserLeave, { capture:true });
 		
-		// basic "click" behaviour
+		// run basic "click" behaviour
 		notifyListeners( e, mouseDown );
 		
-		// only need the removeListeners once...
+		// lazy load - only need the removeListeners once...
 		handleTouchStart = ( e ) => {
 			notifyListeners( e, mouseDown );
 		};
@@ -470,11 +487,13 @@ const bluejay = (function () {
 	* @param {DOM Element} el 	currently out of the document flow
 	* @returns {Object} width and height as {w:w,h:h}
 	*/
-	const getHiddenElemSize = (el) => {
+	const getHiddenElemSize = ( el ) => {
 		// need to render with all the right CSS being applied
 		// displayed but hidden...
 		el.style.visibility = 'hidden';
 		el.style.display = ''; // this assumes that a display is set on CSS (or by default on the DOM)
+		
+		console.log( 'el', el );
 		
 		// get props...
 		let props = {	
@@ -483,7 +502,7 @@ const bluejay = (function () {
 		}; 	
 		
 		// ...and hide again
-		el.style.visibility = 'inherit';
+		el.style.visibility = '';
 		el.style.display = 'none';
 		
 		return props;

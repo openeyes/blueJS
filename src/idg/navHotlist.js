@@ -1,4 +1,4 @@
-(function (bj) {
+(function( bj ){
 
 	'use strict';	
 	
@@ -7,7 +7,8 @@
 	const cssActive = 'active';
 	const cssOpen = 'open';
 	const selector = '#js-nav-hotlist-btn';
-	const btn = document.querySelector(selector);
+	const wrapper = '#js-hotlist-panel-wrapper';
+	const btn = document.querySelector( selector );
 	
 	if(btn === null) return;
 	
@@ -32,12 +33,12 @@
 		* Hotlist can be quickly viewed or 'locked' open
 		*/
 		changeState:function(){
-			if(this.isFixed) return;
-			if(!this.open){
+			if( this.isFixed ) return;
+			if( !this.open ){
 				this.makeLocked();
 				this.over();
 			} else {
-				if(this.isLocked){
+				if( this.isLocked ){
 					this.isLocked = false;
 					this.hide();
 				} else {
@@ -52,10 +53,9 @@
 		* Show content
 		*/
 		show:function(){
-			if(this.open) return;
+			if( this.open ) return;
 			this.open = true;
 			bj.show(this.content, 'block');
-			this.mouseOutHide();
 		}	
 	});
 	
@@ -64,22 +64,10 @@
 		* Hide content
 		*/
 		hide:function(){
-			if(this.open === false || this.isLocked || this.isFixed ) return;
+			if( !this.open || this.isLocked || this.isFixed ) return;
 			this.open = false;
 			this.btn.classList.remove( cssActive, cssOpen );
-			bj.hide(this.content);
-		}
-	});
-	
-	const _mouseOutHide = () => ({
-		/**
-		* Enhanced behaviour for mouse/trackpad
-		*/
-		mouseOutHide: function(){
-			this.wrapper.addEventListener('mouseleave',(ev) => {
-				ev.stopPropagation();
-				this.hide();
-			}, {once:true});
+			bj.hide( this.content );
 		}
 	});
 	
@@ -112,24 +100,24 @@
 	});
 	
 	/**
-	* hotlist singleton 
-	* (using IIFE to maintain code pattern)
+	* IIFE
+	* builds required methods 
+	* @returns {Object} 
 	*/
 	const hotlist = (() => {
-		return Object.assign( 	{	btn:btn,
-									content: document.querySelector('#js-hotlist-panel'),
-									wrapper: document.querySelector('#js-hotlist-panel-wrapper'),
-									open: false,
-									isLocked: false,
-									isFixed: false,
-								},
-								_changeState(),
-								_over(),
-								_mouseOutHide(),
-								_makeLocked(),
-								_show(),
-								_hide(),
-								_fixedOpen() );
+		return Object.assign({	
+			btn:btn,
+			content: document.getElementById('js-hotlist-panel'),
+			open: false,
+			isLocked: false,
+			isFixed: false,
+		},
+		_changeState(),
+		_over(),
+		_makeLocked(),
+		_show(),
+		_hide(),
+		_fixedOpen() );
 	})();
 	
 	/*
@@ -140,16 +128,19 @@
 	const checkBrowserWidth = () => {
 		// note: Boolean is actually a string! 
 		if(btn.dataset.fixable === "true"){
-			hotlist.fixedOpen((window.innerWidth > bj.settings("cssHotlistFixed")));
+			hotlist.fixedOpen(( window.innerWidth > bj.settings("cssHotlistFixed" )));
 		}
 	};
 	
 	/*
 	Events
 	*/
-	bj.userDown(selector, () => hotlist.changeState() );			
-	bj.userEnter(selector, () => hotlist.over() );
-	bj.listenForResize(checkBrowserWidth);
+	bj.userDown(selector, () => hotlist.changeState());			
+	bj.userEnter(selector, () => hotlist.over());
+	bj.userLeave( wrapper, () => hotlist.hide());
+	
+	bj.listenForResize( checkBrowserWidth );
+	
 	checkBrowserWidth();
 
-})(bluejay); 
+})( bluejay ); 
