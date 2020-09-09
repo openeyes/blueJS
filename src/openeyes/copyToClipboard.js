@@ -40,7 +40,7 @@
 		div.style.left = ( center - 40 ) + 'px';
 		bj.appendTo('body', div);
 		
-		setTimeout(() => bj.removeElement( div ) , 2500 ); // CSS fade out takes 2 secs.
+		setTimeout(() => bj.remove( div ) , 2500 ); // CSS fade out takes 2 secs.
 	};
 	
 
@@ -79,7 +79,7 @@
 			success( elem );
 			
 			// clean up DOM
-			bj.removeElement( input );
+			bj.remove( input );
 		}		
 	};
 	

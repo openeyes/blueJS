@@ -1,7 +1,7 @@
 /**
 * Helper functions
 */
-(function (uiApp) {
+(function( bj ) {
 
 	'use strict';
 	
@@ -20,17 +20,54 @@
 	* @param {DOM Element} el - to attach
 	* @param {DOMElement} base - base Element for search (optional)
 	*/
-	const appendTo = (selector, el, base) => {
-		let dom = (base || document).querySelector(selector);
-		dom.appendChild(el);
+	const appendTo = ( selector, el, base ) => {
+		let dom = ( base || document ).querySelector( selector );
+		dom.appendChild( el );
 	};
 	
 	/**
 	* Remove a DOM Element 	
 	* @param {DOM Element} el
 	*/
-	const removeDOM = (el) => {
-		el.parentNode.removeChild(el);
+	const remove = ( el ) => {
+		el.parentNode.removeChild( el );
+	};
+	
+	/**
+	* wrap an element (https://plainjs.com/)
+	* @param {Element} elementToWrap
+	* @param {String} wrapClassName (optional)
+	* @returns {Element} new wrapper 
+	*/
+	const wrap = ( el, wrapClassName = '' ) => {
+		const wrap = document.createElement('div');
+		/*
+		match it's CSS width
+		*/
+		const compStyles = window.getComputedStyle( el );
+		wrap.style.width = compStyles.getPropertyValue('width'); // match wrapped el
+		wrap.style.position = "relative";
+		wrap.style.display = "inline-block"; // don't affect layout
+		
+		el.style.width = "100%"; // fill wrapper: "unwrap" reverses this
+		
+		el.parentNode.insertBefore( wrap, el );
+		wrap.appendChild( el ); // now move input into wrap
+		
+		return wrap;
+	};
+	
+	/**
+	* unwrap an element (https://plainjs.com/)
+	* @param {Element} unwrapElement
+	*/
+	const unwrap = ( el ) => {
+		const wrap = el.parentNode;
+		const parent = wrap.parentNode;
+		// clean up and reset the DOM
+		el.style.width = ""; // see "wrap" above
+		parent.insertBefore( el, wrap );
+		remove( wrap ); 
 	};
 	
 	/**
@@ -70,8 +107,8 @@
 	* @returns {HTMLElement} or False
 	*/
 	const getParent = (el, selector) => {
-		while(!el.matches('body')){
-			if(el.matches(selector)){
+		while( !el.matches('body')){
+			if( el.matches( selector )){
 				return el; // found it!
 			} else {
 				el = el.parentNode; // keep looking...
@@ -86,7 +123,7 @@
 	* @returns {Promise} resolve(responseText) or reject(errorMsg)
 	*/
 	const xhr = (url) => {
-		uiApp.log('[XHR] - '+url);
+		bj.log('[XHR] - '+url);
 		// wrap XHR in Promise
 		return new Promise((resolve, reject) => {
 			let xReq = new XMLHttpRequest();
@@ -96,12 +133,12 @@
 				if(xReq.readyState !== 4) return; // only run if request is fully complete 
 				
 				if(xReq.status >= 200 && xReq.status < 300){
-					uiApp.log('[XHR] - Success');
+					bj.log('[XHR] - Success');
 					resolve(xReq.responseText);
 					// success
 				} else {
 					// failure
-					uiApp.log('[XHR] - Failed');
+					bj.log('[XHR] - Failed');
 					reject(this.status + " " + this.statusText);
 				}			
 			};
@@ -121,9 +158,7 @@
 		// displayed but hidden...
 		el.style.visibility = 'hidden';
 		el.style.display = ''; // this assumes that a display is set on CSS (or by default on the DOM)
-		
-		console.log( 'el', el );
-		
+			
 		// get props...
 		let props = {	
 			w: el.offsetWidth,
@@ -138,7 +173,9 @@
 	};
 
 	/* 
-	Output messgaes onto UI
+	* Output messgaes onto UI
+	* useful for touch device testing
+	* @param {String} Message
 	*/  
 	const idgMsgReporter = (msg) => {
 		
@@ -157,18 +194,21 @@
 		li.appendChild( document.createTextNode(count +' - '+ msg) );
 		ul.appendChild(li);
 	};
-
-
-	// Extend App
-	uiApp.extend('nodeArray', NodeListToArray);
-	uiApp.extend('appendTo', appendTo);
-	uiApp.extend('getParent', getParent);
-	uiApp.extend('removeElement', removeDOM);
-	uiApp.extend('show', show);
-	uiApp.extend('reshow', reshow);
-	uiApp.extend('hide', hide);
-	uiApp.extend('xhr', xhr);
-	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
-	uiApp.extend('idgReporter', idgMsgReporter);
 	
-})(bluejay);
+	/*
+	Extend App
+	*/
+	bj.extend('nodeArray', NodeListToArray );
+	bj.extend('appendTo', appendTo );
+	bj.extend('getParent', getParent );
+	bj.extend('wrap', wrap );
+	bj.extend('unwrap', unwrap );
+	bj.extend('remove', remove );
+	bj.extend('show', show );
+	bj.extend('reshow', reshow );
+	bj.extend('hide', hide );
+	bj.extend('xhr', xhr );
+	bj.extend('getHiddenElemSize', getHiddenElemSize );
+	bj.extend('idgReporter', idgMsgReporter );
+	
+})( bluejay );

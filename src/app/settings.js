@@ -11,8 +11,8 @@
 	* @param {String} setting request
 	* @returns value || null
 	*/ 
-	const settings = (request) => {
-		switch(request){
+	const settings = ( request ) => {
+		switch( request ){
 			case "cssHeaderHeight": return 60; // mobile portrait, this doubles up! 
 			case "cssExtended": return 1440;
 			case "cssHotlistFixed": return 1890;

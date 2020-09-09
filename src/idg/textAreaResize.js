@@ -24,11 +24,11 @@
 	/**
 	* Resize textarea on 'input'
 	*/
-	document.addEventListener('input', (ev) => {
-		if(ev.target.matches('textarea')){
-			resize(ev.target);
+	document.addEventListener('input', ( ev ) => {
+		if(ev.target.tagName == "TEXTAREA"){
+			resize( ev.target );
 		}
-	},{capture:true});
+	}, false );
 	
 	/**
 	* Expand textareas that are overflowing onLoad

@@ -112,14 +112,14 @@
 	* shortcuts singleton 
 	* (using IIFE to maintain code pattern)
 	*/
-	const FilterOption = (me) => {
-		return Object.assign(	me,
-								_change(),
-								_show(),
-								_hide(),
-								_mouseOutHide(),
-								_closeIconBtn(),
-								_positionContent() );
+	const FilterOption = ( me ) => {
+		return Object.assign( me,
+			_change(),
+			_show(),
+			_hide(),
+			_mouseOutHide(),
+			_closeIconBtn(),
+			_positionContent());
 	};
 
 
@@ -155,4 +155,4 @@
 	// Regsiter for Events
 	uiApp.userDown('.oe-filter-options .oe-filter-btn', ev => userClick(ev) );	
 	
-})(bluejay); 
+})( bluejay ); 

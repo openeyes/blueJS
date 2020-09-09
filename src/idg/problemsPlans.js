@@ -150,7 +150,7 @@
 		
 		// update DOM
 		pps.forEach((list) => {
-			uiApp.removeElement(list.childNodes[i]);
+			uiApp.remove(list.childNodes[i]);
 		});
 		
 		// update listMap

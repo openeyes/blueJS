@@ -85,148 +85,6 @@ const bluejay = (function () {
 })();
 
 /**
-* DOM Event Delegation
-*/
-(function( bj ) {
-
-	'use strict';
-	
-	const urlHostName = new URL(window.location).hostname; // temporary for IDG, see "notifyListeners" below
-	
-	/**
-	* Event Aggregation Pattern
-	* To improve performance delegate all events for all Modules here.
-	* Modules register selectors (to match) along with callbacks
-	*/
-	const mouseDown = new Map();	
-	const mouseEnter = new Map();	
-	const mouseLeave = new Map();	
-	const resize = new Set(); // no selectors to match too.
-
-	/**
-	* Register a Module callback with an Event
-	* @param {May} map - for each EventListener
-	* @param {String} CSS selector to match
-	* @param {Function} callback 
-	*/
-	const addListener = ( map, selector, cb ) => {
-		
-		if( map.has(selector)){
-			throw new TypeError('DOM Events: selector already added : ' + selector); 
-		} 
-		
-		map.set( selector, cb );
-	};
-
-	/**
-	* When Event fires check for registered listeners	
-	* @param {Event} - event
-	* @param {Map} - listeners
-	*/
-	const notifyListeners = ( event, listeners ) => {
-		/*
-		All mousedown, mouseenter, mouseleave events
-		must be register here, therefore, there is no need to 
-		let them continue to propagate throught the DOM.
-		*/
-		if( urlHostName === 'mac-oe' || urlHostName === 'idg.knowego.com' ){
-			/*
-			However, as this stops ALL: mousedown, mouseenter, mouseleave (& touchstart) events.
-			Only do this on IDG for now, maybe in the future, it can be added into production...
-			*/
-			event.stopPropagation();
-		}
-		
-		// who?
-		const target = event.target;
-		
-		// ignore if document
-		if( target === document ) return false;
-		
-		listeners.forEach( ( cb, key ) => {
-			if( target.matches( key )){
-				cb( event );
-			}
-		});
-	};
-
-	/**
-	* Throttle Resize Event	
-	*/
-	const resizeThrottle = (() => {
-		
-		let throttleID = 0;
-		
-		const delay = () => {
-			clearTimeout(throttleID);
-			throttleID = setTimeout( () => {
-				resize.forEach( ( cb ) => {
-					cb();
-				});
-			}, 150);
-		};
-		
-		// public
-		return { delay };
-	})();
-	
-	// Throttle high rate events
-	window.onresize = () => resizeThrottle.delay();
-	
-	/**
-	* Event handlers
-	* Specific functions for each event, this is so that they can be removed on Touch
-	*/
-	
-	function handleMouserEnter(e){
-		notifyListeners( e, mouseEnter );
-	}
-	
-	function handleMouserDown(e){
-		notifyListeners( e, mouseDown );
-	}
-	
-	function handleMouserLeave(e){
-		notifyListeners( e, mouseLeave );
-	}
-	
-	/*
-	With touch I'll get: touchstart, mouseenter then mousedown.
-	This messes up the UI because of "mouseEnter" enhancment behaviour for mouse/track users.
-	*/
-	let handleTouchStart = ( e ) => {
-		// remove mouse events
-		document.removeEventListener('mouseenter', handleMouserEnter, { capture:true });
-		document.removeEventListener('mousedown', handleMouserDown, { capture:true }); 
-		document.removeEventListener('mouseleave', handleMouserLeave, { capture:true });
-		
-		// run basic "click" behaviour
-		notifyListeners( e, mouseDown );
-		
-		// lazy load - only need the removeListeners once...
-		handleTouchStart = ( e ) => {
-			notifyListeners( e, mouseDown );
-		};
-	};
-	
-	/**
-	* Event Listeners
-	*/
-	document.addEventListener('mouseenter', handleMouserEnter, { capture:true });
-	document.addEventListener('mousedown', handleMouserDown, { capture:true }); 
-	document.addEventListener('mouseleave', handleMouserLeave, { capture:true });
-	document.addEventListener('touchstart', ( e ) => handleTouchStart( e ), { capture:true });
-
-	// extend App
-	bj.extend('userEnter', ( selector, cb ) => addListener( mouseEnter, selector, cb ));
-	bj.extend('userDown', ( selector, cb ) => addListener( mouseDown, selector, cb ));
-	bj.extend('userLeave', ( selector, cb ) => addListener( mouseLeave, selector, cb ));
-	
-	// window resize, no need for selectors
-	bj.extend('listenForResize', ( cb ) => resize.add( cb ));
-
-})( bluejay );
-/**
 * Handle DOM collections
 * Modules tend to handle DOM collections. 
 * this should be of help... 
@@ -370,9 +228,151 @@ const bluejay = (function () {
 	
 })( bluejay );
 /**
+* DOM Event Delegation
+*/
+(function( bj ) {
+
+	'use strict';
+	
+	const urlHostName = new URL(window.location).hostname; // temporary for IDG, see "notifyListeners" below
+	
+	/**
+	* Event Aggregation Pattern
+	* To improve performance delegate all events for all Modules here.
+	* Modules register selectors (to match) along with callbacks
+	*/
+	const mouseDown = new Map();	
+	const mouseEnter = new Map();	
+	const mouseLeave = new Map();	
+	const resize = new Set(); // no selectors to match too.
+
+	/**
+	* Register a Module callback with an Event
+	* @param {May} map - for each EventListener
+	* @param {String} CSS selector to match
+	* @param {Function} callback 
+	*/
+	const addListener = ( map, selector, cb ) => {
+		
+		if( map.has(selector)){
+			throw new TypeError('Event Delegation: selector already added : ' + selector); 
+		} 
+		
+		map.set( selector, cb );
+	};
+
+	/**
+	* When Event fires check for registered listeners	
+	* @param {Event} - event
+	* @param {Map} - listeners
+	*/
+	const notifyListeners = ( event, listeners ) => {
+		/*
+		All mousedown, mouseenter, mouseleave events
+		must be register here, therefore, there is no need to 
+		let them continue to propagate throught the DOM.
+		*/
+		if( urlHostName === 'mac-oe' || urlHostName === 'idg.knowego.com' ){
+			/*
+			However, as this stops ALL: mousedown, mouseenter, mouseleave (& touchstart) events.
+			Only do this on IDG for now, maybe in the future, it can be added into production...
+			*/
+			// event.stopPropagation(); 
+		}
+		
+		// who?
+		const target = event.target;
+		
+		// ignore if document
+		if( target === document ) return false;
+		
+		listeners.forEach( ( cb, key ) => {
+			if( target.matches( key )){
+				cb( event );
+			}
+		});
+	};
+
+	/**
+	* Throttle Resize Event	
+	*/
+	const resizeThrottle = (() => {
+		
+		let throttleID = 0;
+		
+		const delay = () => {
+			clearTimeout(throttleID);
+			throttleID = setTimeout( () => {
+				resize.forEach( ( cb ) => {
+					cb();
+				});
+			}, 150);
+		};
+		
+		// public
+		return { delay };
+	})();
+	
+	// Throttle high rate events
+	window.onresize = () => resizeThrottle.delay();
+	
+	/**
+	* Event handlers
+	* Specific functions for each event, this is so that they can be removed on Touch
+	*/
+	
+	function handleMouserEnter(e){
+		notifyListeners( e, mouseEnter );
+	}
+	
+	function handleMouserDown(e){
+		notifyListeners( e, mouseDown );
+	}
+	
+	function handleMouserLeave(e){
+		notifyListeners( e, mouseLeave );
+	}
+	
+	/*
+	With touch I'll get: touchstart, mouseenter then mousedown.
+	This messes up the UI because of "mouseEnter" enhancment behaviour for mouse/track users.
+	*/
+	let handleTouchStart = ( e ) => {
+		// remove mouse events
+		document.removeEventListener('mouseenter', handleMouserEnter, { capture:true });
+		document.removeEventListener('mousedown', handleMouserDown, { capture:true }); 
+		document.removeEventListener('mouseleave', handleMouserLeave, { capture:true });
+		
+		// run basic "click" behaviour
+		notifyListeners( e, mouseDown );
+		
+		// lazy load - only need the removeListeners once...
+		handleTouchStart = ( e ) => {
+			notifyListeners( e, mouseDown );
+		};
+	};
+	
+	/**
+	* Event Listeners
+	*/
+	document.addEventListener('mouseenter', handleMouserEnter, { capture:true });
+	document.addEventListener('mousedown', handleMouserDown, { capture:true }); 
+	document.addEventListener('mouseleave', handleMouserLeave, { capture:true });
+	document.addEventListener('touchstart', ( e ) => handleTouchStart( e ), { capture:true });
+
+	// extend App
+	bj.extend('userEnter', ( selector, cb ) => addListener( mouseEnter, selector, cb ));
+	bj.extend('userDown', ( selector, cb ) => addListener( mouseDown, selector, cb ));
+	bj.extend('userLeave', ( selector, cb ) => addListener( mouseLeave, selector, cb ));
+	
+	// window resize, no need for selectors
+	bj.extend('listenForResize', ( cb ) => resize.add( cb ));
+
+})( bluejay );
+/**
 * Helper functions
 */
-(function (uiApp) {
+(function( bj ) {
 
 	'use strict';
 	
@@ -391,17 +391,54 @@ const bluejay = (function () {
 	* @param {DOM Element} el - to attach
 	* @param {DOMElement} base - base Element for search (optional)
 	*/
-	const appendTo = (selector, el, base) => {
-		let dom = (base || document).querySelector(selector);
-		dom.appendChild(el);
+	const appendTo = ( selector, el, base ) => {
+		let dom = ( base || document ).querySelector( selector );
+		dom.appendChild( el );
 	};
 	
 	/**
 	* Remove a DOM Element 	
 	* @param {DOM Element} el
 	*/
-	const removeDOM = (el) => {
-		el.parentNode.removeChild(el);
+	const remove = ( el ) => {
+		el.parentNode.removeChild( el );
+	};
+	
+	/**
+	* wrap an element (https://plainjs.com/)
+	* @param {Element} elementToWrap
+	* @param {String} wrapClassName (optional)
+	* @returns {Element} new wrapper 
+	*/
+	const wrap = ( el, wrapClassName = '' ) => {
+		const wrap = document.createElement('div');
+		/*
+		match it's CSS width
+		*/
+		const compStyles = window.getComputedStyle( el );
+		wrap.style.width = compStyles.getPropertyValue('width'); // match wrapped el
+		wrap.style.position = "relative";
+		wrap.style.display = "inline-block"; // don't affect layout
+		
+		el.style.width = "100%"; // fill wrapper: "unwrap" reverses this
+		
+		el.parentNode.insertBefore( wrap, el );
+		wrap.appendChild( el ); // now move input into wrap
+		
+		return wrap;
+	};
+	
+	/**
+	* unwrap an element (https://plainjs.com/)
+	* @param {Element} unwrapElement
+	*/
+	const unwrap = ( el ) => {
+		const wrap = el.parentNode;
+		const parent = wrap.parentNode;
+		// clean up and reset the DOM
+		el.style.width = ""; // see "wrap" above
+		parent.insertBefore( el, wrap );
+		remove( wrap ); 
 	};
 	
 	/**
@@ -441,8 +478,8 @@ const bluejay = (function () {
 	* @returns {HTMLElement} or False
 	*/
 	const getParent = (el, selector) => {
-		while(!el.matches('body')){
-			if(el.matches(selector)){
+		while( !el.matches('body')){
+			if( el.matches( selector )){
 				return el; // found it!
 			} else {
 				el = el.parentNode; // keep looking...
@@ -457,7 +494,7 @@ const bluejay = (function () {
 	* @returns {Promise} resolve(responseText) or reject(errorMsg)
 	*/
 	const xhr = (url) => {
-		uiApp.log('[XHR] - '+url);
+		bj.log('[XHR] - '+url);
 		// wrap XHR in Promise
 		return new Promise((resolve, reject) => {
 			let xReq = new XMLHttpRequest();
@@ -467,12 +504,12 @@ const bluejay = (function () {
 				if(xReq.readyState !== 4) return; // only run if request is fully complete 
 				
 				if(xReq.status >= 200 && xReq.status < 300){
-					uiApp.log('[XHR] - Success');
+					bj.log('[XHR] - Success');
 					resolve(xReq.responseText);
 					// success
 				} else {
 					// failure
-					uiApp.log('[XHR] - Failed');
+					bj.log('[XHR] - Failed');
 					reject(this.status + " " + this.statusText);
 				}			
 			};
@@ -492,9 +529,7 @@ const bluejay = (function () {
 		// displayed but hidden...
 		el.style.visibility = 'hidden';
 		el.style.display = ''; // this assumes that a display is set on CSS (or by default on the DOM)
-		
-		console.log( 'el', el );
-		
+			
 		// get props...
 		let props = {	
 			w: el.offsetWidth,
@@ -509,7 +544,9 @@ const bluejay = (function () {
 	};
 
 	/* 
-	Output messgaes onto UI
+	* Output messgaes onto UI
+	* useful for touch device testing
+	* @param {String} Message
 	*/  
 	const idgMsgReporter = (msg) => {
 		
@@ -528,21 +565,24 @@ const bluejay = (function () {
 		li.appendChild( document.createTextNode(count +' - '+ msg) );
 		ul.appendChild(li);
 	};
-
-
-	// Extend App
-	uiApp.extend('nodeArray', NodeListToArray);
-	uiApp.extend('appendTo', appendTo);
-	uiApp.extend('getParent', getParent);
-	uiApp.extend('removeElement', removeDOM);
-	uiApp.extend('show', show);
-	uiApp.extend('reshow', reshow);
-	uiApp.extend('hide', hide);
-	uiApp.extend('xhr', xhr);
-	uiApp.extend('getHiddenElemSize', getHiddenElemSize);
-	uiApp.extend('idgReporter', idgMsgReporter);
 	
-})(bluejay);
+	/*
+	Extend App
+	*/
+	bj.extend('nodeArray', NodeListToArray );
+	bj.extend('appendTo', appendTo );
+	bj.extend('getParent', getParent );
+	bj.extend('wrap', wrap );
+	bj.extend('unwrap', unwrap );
+	bj.extend('remove', remove );
+	bj.extend('show', show );
+	bj.extend('reshow', reshow );
+	bj.extend('hide', hide );
+	bj.extend('xhr', xhr );
+	bj.extend('getHiddenElemSize', getHiddenElemSize );
+	bj.extend('idgReporter', idgMsgReporter );
+	
+})( bluejay );
 /**
 * Modules in bluejay.
 * Manage namespacing for modules in blueajay
@@ -639,8 +679,8 @@ const bluejay = (function () {
 	* @param {String} setting request
 	* @returns value || null
 	*/ 
-	const settings = (request) => {
-		switch(request){
+	const settings = ( request ) => {
+		switch( request ){
 			case "cssHeaderHeight": return 60; // mobile portrait, this doubles up! 
 			case "cssExtended": return 1440;
 			case "cssHotlistFixed": return 1890;
@@ -3506,7 +3546,7 @@ const oePlotly = (function ( bj ) {
 		div.style.left = ( center - 40 ) + 'px';
 		bj.appendTo('body', div);
 		
-		setTimeout(() => bj.removeElement( div ) , 2500 ); // CSS fade out takes 2 secs.
+		setTimeout(() => bj.remove( div ) , 2500 ); // CSS fade out takes 2 secs.
 	};
 	
 
@@ -3545,7 +3585,7 @@ const oePlotly = (function ( bj ) {
 			success( elem );
 			
 			// clean up DOM
-			bj.removeElement( input );
+			bj.remove( input );
 		}		
 	};
 	

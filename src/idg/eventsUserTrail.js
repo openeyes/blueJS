@@ -48,7 +48,7 @@
 	};
 	
 	const hide = () => {
-		uiApp.removeElement(div);
+		uiApp.remove(div);
 	};
 	
 

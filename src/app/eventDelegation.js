@@ -26,7 +26,7 @@
 	const addListener = ( map, selector, cb ) => {
 		
 		if( map.has(selector)){
-			throw new TypeError('DOM Events: selector already added : ' + selector); 
+			throw new TypeError('Event Delegation: selector already added : ' + selector); 
 		} 
 		
 		map.set( selector, cb );
@@ -48,7 +48,7 @@
 			However, as this stops ALL: mousedown, mouseenter, mouseleave (& touchstart) events.
 			Only do this on IDG for now, maybe in the future, it can be added into production...
 			*/
-			event.stopPropagation();
+			// event.stopPropagation(); 
 		}
 		
 		// who?

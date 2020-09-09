@@ -39,7 +39,7 @@
 		close:function(){
 			this.open = false;
 			this.btn.classList.remove('selected');
-			uiApp.removeElement(this.nav);	
+			uiApp.remove(this.nav);	
 		}
 	});
 	

@@ -173,7 +173,7 @@
 			btn.cancel.removeEventListener("mousedown",removeAttachment);
 		}
 		// clear DOM
-		uiApp.removeElement(div);
+		uiApp.remove(div);
 		open = false;
 	};
 	

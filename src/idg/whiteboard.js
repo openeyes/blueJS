@@ -74,7 +74,7 @@
 	uiApp.userDown('.overflow-icon-btn', overflowPopup );
 	uiApp.userDown('.wb-data-overflow-popup', ( ev ) => {
 		let wrap = uiApp.getParent( ev.target, '.oe-popup-wrap' );
-		uiApp.removeElement( wrap );
+		uiApp.remove( wrap );
 	});
 
 	/*

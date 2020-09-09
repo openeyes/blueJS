@@ -34,7 +34,7 @@
 				if(closeBtn){
 					closeBtn.addEventListener("mousedown", (ev) => {
 						ev.stopPropagation();
-						uiApp.removeElement(div);
+						uiApp.remove(div);
 					}, {once:true} );
 				}
 			})

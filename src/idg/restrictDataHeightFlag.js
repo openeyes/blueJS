@@ -43,7 +43,7 @@
 		// note! Either animation OR user scrolling will fire this!
 		this.hasScrolled = true; 
 		this.flag.className += " fade-out"; 
-		setTimeout(() => uiApp.removeElement(this.flag), 400); 	// CSS fade-out animation lasts 0.2s
+		setTimeout(() => uiApp.remove(this.flag), 400); 	// CSS fade-out animation lasts 0.2s
 	};
 
 	/**

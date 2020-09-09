@@ -61,10 +61,11 @@
 			(alternative to icon click)
 			*/
 			const keyPress = ( ev ) => {
-				ev.stopPropagation();
 				if( ev.key === "Enter" ){
-					this.elem.textarea.removeEventListener("keydown", keyPress, false );
+					ev.preventDefault();
+					ev.stopPropagation();
 					this.update();
+					this.elem.textarea.removeEventListener("keydown", keyPress, false );
 				}
 			};
 			// must match the removeEventListener.
@@ -134,7 +135,7 @@
 	const PatientComment = ( icon, td, comment = "" ) => {
 		// Mustache template
 		const template = [
-			'<textarea placeholder="Comments" rows="1" class="cols-full" style="display:none"></textarea>',
+			'<textarea placeholder="Comments" rows="1" class="cols-full js-allow-qtags" style="display:none"></textarea>',
 			'<div class="user-comment" style="display:none">{{comment}}</div>',
 		].join('');
 		
