@@ -7966,16 +7966,13 @@ Updated to Vanilla JS for IDG
 	Model
 	*/
 	const model = {
-		qtags: [ 'Apple', 'Avocado', 'Banana', 'Cucumber', 'Coconut', 'Datix', 'Donut', 'Elephant', 'Frisbee', 'Note', 'Research', 'Teaching', 'Referred', 'Results', 'Results_pending' ].map( t => t.toLowerCase()), // for string matching remove case.
+		// for string matching remove case.
+		qtags: [ 'Datix', 'Note', 'Research', 'Teaching', 'Referred', 'Results', 'Results_pending' ].map( t => t.toLowerCase()), 
 		
-		// input can be either an <input> or <textarea>
-		// but must be 'tagged' for use with: "use-qtags"
-		inputSelector: "js-allow-qtags",
 	};
 	
 	/**
-	View
-	Quick Tag 'swarm'
+	View - Quick Tag 'swarm'
 	*/
 	const quickTags = (() => {
 		// Mustache
@@ -7983,7 +7980,6 @@ Updated to Vanilla JS for IDG
 		
 		let ready = false;
 		let tag = "";
-		
 		const elem = {
 			input: null,
 			tags: null,
@@ -7991,9 +7987,11 @@ Updated to Vanilla JS for IDG
 		};
 		
 		/**
-		* Remove qTags
+		* Complete reset 
 		*/
-		const remove = () => {
+		const reset = () => {
+			if( !ready ) return; 
+			
 			bj.remove( elem.tags );
 			bj.remove( elem.flag );
 			bj.unwrap( elem.input );
@@ -8011,6 +8009,17 @@ Updated to Vanilla JS for IDG
 		const showTags = () => {
 			elem.tags.style.display = "block";
 			elem.flag.style.display = "none";
+			
+			// re-show with all tags (hidden)
+			qtags( model.qtags );
+		};
+		
+		/**
+		* Hide tag swam, show flag
+		*/
+		const hideTags = () => {
+			elem.tags.style.display = "none";
+			elem.flag.style.display = "block";
 		};
 		
 		/**
@@ -8062,10 +8071,9 @@ Updated to Vanilla JS for IDG
 		* @param {Element} input - input or textarea to tag;
 		*/
 		const init = ( input ) => {
-			if( ready ) return; 
 			
+			if( ready ) return; 
 			ready = true;	
-			elem.input = input;
 			/*
 			Using the "wrap" we can now position the div
 			relativelto the wrapper. The reason behind this
@@ -8079,38 +8087,46 @@ Updated to Vanilla JS for IDG
 			input.focus();
 			
 			// add qtags div (hidden for now)
-			elem.tags = document.createElement('div');
-			elem.tags.className = "oe-qtags";
-			elem.tags.style.display = "none"; 
+			let tags = document.createElement('div');
+			tags.className = "oe-qtags";
+			tags.style.display = "none"; 
 			
-			qtags( model.qtags );  // ready, with all tags
+			// UI flag to user
+			let flag = document.createElement('div');
+			flag.className = "oe-qtags-flag";
+			flag.textContent = "#";
 			
 			// check input isn't too close to top of the page
 			// note: tag swarm updates as user types and textarea expands down
 			if( input.getBoundingClientRect().top < 150 ){
-				elem.tags.style.top = '100%';
+				tags.style.top = '100%';
+				flag.style.top = '100%';
 			} else {
-				elem.tags.style.bottom = '100%'; 
+				tags.style.bottom = '100%'; 
+				flag.style.bottom = '100%';
 			}
 			
-			// UI flag to user
-			elem.flag = document.createElement('div');
-			elem.flag.className = "oe-qtags-flag";
-			elem.flag.textContent = "#";
-			
 			// update DOM
-			wrap.appendChild( elem.flag );
-			wrap.appendChild( elem.tags ); 
+			wrap.appendChild( flag );
+			wrap.appendChild( tags ); 
 			
+			// store Elements
+			elem.input = input;
+			elem.tags = tags;
+			elem.flag = flag;
+			
+			// setup with all tags (hidden)
+			qtags( model.qtags );
 		};
 		
 		// reveal
 		return { 
 			init,
 			showTags,
+			hideTags,
 			userTyping, 
 			selectedTag,
-			remove, 
+			reset, 
 		};
 			
 	})();
@@ -8133,13 +8149,26 @@ Updated to Vanilla JS for IDG
 		if( ev.isComposing || ev.keyCode === 229 ) return;
 		
 		/*
-		SPACEBAR || ENTER || TAB
+		ENTER || TAB 
+		Using Enter and Tab to quickly enter the selected tab
+		However, these keys have other GUI behaviours
+		Also: Enter is used in patient comments to saves the hotlist comments
 		*/
-		if( ev.key == ' ' || ev.key == 'Enter' || ev.key == 'Tab' ){
+		if( ev.key == 'Enter' || ev.key == 'Tab' ){
 			ev.preventDefault();
 			ev.stopPropagation();
-			inputController.insertTag( quickTags.selectedTag());
+			inputController.insertTag( quickTags.selectedTag() );		
 		} 
+		
+		/*
+		SPACEBAR 
+		cancel the current quick tagging
+		this allows users to type: '#3 injections'
+		*/
+		if( ev.key == ' ' ){
+			inputController.stopTagging();
+		}
+		
 	};
 	
 	
@@ -8152,15 +8181,33 @@ Updated to Vanilla JS for IDG
 		let input = null;
 		let insertIndex = 0;
 		let inputText = "";
+		let holdingFocus = false;
+		
+		/**
+		* full reset of controller and quicktags
+		*/
+		const reset = () => {
+			// cancel Events first!
+			document.removeEventListener('input', watchInput, { capture:true });
+			document.removeEventListener('focusout', focusOut, { capture: true });
+			
+			// now reset everything...
+			input = null;
+			tagging = false;
+			insertIndex = 0;
+			quickTags.reset();
+		};
 		
 		/**
 		* Ready to quick tag
 		* and: Callback on the qTag close btn
 		*/
-		const cancelTagging = () => {
+		const stopTagging = () => {
 			tagging = false;
 			insertIndex = 0;
-			quickTags.remove();
+			quickTags.hideTags();
+			
+			bj.log('[qTags] - Keys: Enter, Tab and Spacebar - normal');
 			document.removeEventListener("keydown", handleKeyDown, true );
 		};
 		
@@ -8174,16 +8221,9 @@ Updated to Vanilla JS for IDG
 			insertIndex = tagIndex;
 			inputText = input.value;
 			quickTags.showTags();
+			
+			bj.log('[qTags] - Keys: Enter, Tab & Spacebar - suspended (keydown)');
 			document.addEventListener("keydown", handleKeyDown, true ); // Important. Must intercept all other key events first
-		};
-		
-		/**
-		* refocus on input.
-		* qTags creates a wrapper to use for positioning 
-		* and use may click the flag both cause the input to lose focus.
-		*/
-		const refocusInput = () => {
-			setTimeout(() => input.focus(), 20);
 		};
 		
 		/**
@@ -8199,18 +8239,53 @@ Updated to Vanilla JS for IDG
 				// insert in the middle
 				input.value = inputText.substring( 0, insertIndex ) + str + inputText.substring( insertIndex + 1 );
 			}
-			
-			cancelTagging();
-			refocusInput();
+			stopTagging();
 		};   
 		
 		/**
-		* Callback: User clicks # UI flag button
+		* refocus input after a delay
+		* user clicking on qtags flag or tag causes input blur
+		* need to hold focus and cancel focusout event
+		*/
+		const delayInputFocus = () => {
+			holdingFocus = true;
+			setTimeout(() => {
+				input.focus();
+				holdingFocus = false;
+			}, 20 );
+			
+		};
+		
+		/**
+		* Callback: User clicks '#' UI flag button
+		* setup input and startTagging
+		* note: this trigger "focusout" Event
 		*/ 
-		const userClicksFlag = ( ev ) => {
+		const userClicksFlag = () => {
 			input.value = input.value + ' #';
 			startTagging( input.value.length );
-			refocusInput();
+			delayInputFocus();
+		};
+		
+		/**
+		* Callback: User clicks on a tag
+		* insert Tag into input
+		* note: this trigger "focusout" Event
+		*/ 
+		const userClicksTag = ( tagStr ) => {	
+			inputController.insertTag( tagStr );
+			delayInputFocus();
+		};
+		
+		/**
+		* Focus out.
+		* Needed due to the comments in the hotlist
+		* Users can toggle the icon to edit and save the comments
+		* Need to capture the lose of focus to reset.
+		*/
+		const focusOut = () => {
+			if(	holdingFocus ) return;
+			reset();
 		};
 		
 		/**	
@@ -8219,62 +8294,75 @@ Updated to Vanilla JS for IDG
 		* note: user could TAB to get to this input
 		* @param {Event} ev - input (textarea, input or select)
 		*/
-		const watch = ( ev ) => {
-			//  has the user switched inputs?
-			if( ev.target !== input && tagging ){
-				input = null;
-				cancelTagging();
-			}
-			
-			// check this input is allowed to use tags...
-			if( !ev.target.classList.contains( model.inputSelector) ) return; // not allowed.
-		
-			/*
-			Accepted input!
-			Either user is tagging or we are watching for "#" key to activate qTags
-			*/
-			input = ev.target;
-			// highlight to the used that this input has tagging available
-			quickTags.init( input ); 
-			
+		const watchInput = ( ev ) => {
 			if( tagging ){
+				/*
+				Tagging active - watching user typing
+				*/
+				quickTags.userTyping( input.value.substring( insertIndex )); 
 				
-				quickTags.userTyping( input.value.substring( insertIndex )); // watching user typing
-			
 			} else if( ev.data === "#" ){
-				
-				startTagging( ev.target.selectionStart ); // trigger 'tagging'
+				/*
+				key '#' triggers the tagging 
+				store the cursor position
+				*/
+				startTagging( ev.target.selectionStart ); 
 			}
+		};
+		
+		/**
+		* Init: Callback on 'focusin' event
+		* @param {Element} target - any input
+		*/
+		const init = ( target ) => {
+			/*
+			When qTags are inititate, input loses focus and then 
+			re-gains it, beware this loop.
+			*/
+			if( target.isSameNode( input )) return;
+			
+			// Reset, only if we already have an active input setup			
+			if( input !== null ) reset();
+			
+			// is new target allow to use tags?
+			if( target.classList.contains("js-allow-qtags") ){
+				input = target;
+				// add UI flag to input
+				quickTags.init( input ); 
+				document.addEventListener('input', watchInput, { capture:true });
+				document.addEventListener('focusout', focusOut, { capture: true });	
+			}		
 		};
 		
 		// reveal
 		return { 
-			watch, 
-			cancelTagging, 
+			init,
+			stopTagging, 
 			insertTag, 
 			userClicksFlag,
+			userClicksTag,
+			reset,
+			focusOut,
 		};
 		
 	})();
-	
+
 	/**
 	Events
 	*/
 	
-	// custom event delegation for input
-	document.addEventListener('input', inputController.watch, { capture:true });
+	// custom event delegation
+	document.addEventListener('focusin', ( ev ) => inputController.init( ev.target ), { capture: true });
 	
-	// Common Event Delegation
-	bj.userDown('.oe-qtags', inputController.cancelTagging );
+	// common event delegation
+	bj.userDown('.oe-qtags', inputController.stopTagging );
 	bj.userDown('.oe-qtags-flag', inputController.userClicksFlag );
 	
-	// clicking on .qtag in .oe-qtags wrapper only:
+	// .qtag in .oe-qtags can be click to insert the tag:
 	bj.userDown('.oe-qtags .qtag', ( ev ) => {
 		const tagStr = ev.target.textContent;
-		inputController.insertTag( tagStr.substring(1));
+		inputController.userClicksTag( tagStr.substring(1));
 	});
-	
-	
 	
 })( bluejay ); 
 (function (uiApp) {
