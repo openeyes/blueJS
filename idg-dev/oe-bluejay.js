@@ -386,15 +386,11 @@ const bluejay = (function () {
 	};
 	
 	/**
-	* Provide a consistent approach to appending DOM Elements,
+	* Find an element
 	* @param {String} selector  	
-	* @param {DOM Element} el - to attach
 	* @param {DOMElement} base - base Element for search (optional)
 	*/
-	const appendTo = ( selector, el, base ) => {
-		let dom = ( base || document ).querySelector( selector );
-		dom.appendChild( el );
-	};
+	const find = ( selector, base ) => ( base || document ).querySelector( selector );
 	
 	/**
 	* Remove a DOM Element 	
@@ -570,7 +566,7 @@ const bluejay = (function () {
 	Extend App
 	*/
 	bj.extend('nodeArray', NodeListToArray );
-	bj.extend('appendTo', appendTo );
+	bj.extend('find', find );
 	bj.extend('getParent', getParent );
 	bj.extend('wrap', wrap );
 	bj.extend('unwrap', unwrap );
@@ -3544,7 +3540,8 @@ const oePlotly = (function ( bj ) {
 		div.style.width = '80px'; // overide the newblue CSS
 		div.style.top = ( top - tipHeight )+ 'px';
 		div.style.left = ( center - 40 ) + 'px';
-		bj.appendTo('body', div);
+		
+		document.body.appendChild( div );
 		
 		setTimeout(() => bj.remove( div ) , 2500 ); // CSS fade out takes 2 secs.
 	};
@@ -4831,7 +4828,7 @@ const oePlotly = (function ( bj ) {
 				}, {once:true} );
 				
 				// reflow DOM
-				uiApp.appendTo('body',div);
+				document.body.appendChild( div );
 			})
 			.catch( e => console.log('failed to copy',e));  // maybe output this to UI at somepoint, but for now... 
 	};
@@ -5059,7 +5056,8 @@ const oePlotly = (function ( bj ) {
 			
 			let notes = document.createElement('div');
 			notes.className = "attachment-annotation";
-			uiApp.appendTo('.oe-popup-attachment',notes,div);
+			let base = uiApp.find('.oe-popup-attachment', div);
+			base.appendChild( notes );
 		
 			// load in PHP using XHR (returns a Promise)	
 			uiApp.xhr(json.idgPHP)
@@ -5096,7 +5094,8 @@ const oePlotly = (function ( bj ) {
 			stack.className = "attachment-stack";
 			stack.innerHTML = 'Choose report: <select class="pro-theme">' + options + '</select>';
 			
-			uiApp.appendTo('.oe-popup-attachment',stack,div);
+			let base = uiApp.find('.oe-popup-attachment', div );
+			base.appendChild( stack );
 		}
 	
 		// setup close icon btn
@@ -5107,7 +5106,7 @@ const oePlotly = (function ( bj ) {
 		controls.appendChild(btnFragment);
 		
 		// reflow DOM
-		uiApp.appendTo('body',div);
+		document.body.appendChild( div );
 	}; 
 	
 	/**
@@ -5147,37 +5146,46 @@ const oePlotly = (function ( bj ) {
 	
 		
 })(bluejay); 
-(function (uiApp) {
+(function( bj ){
 
 	'use strict';	
 	
-	uiApp.addModule('collapseExpand');
+	bj.addModule('collapseExpand');
 	
 	/*
-	(Collapse) Data & Group DOMs: 
+	Collapse and Expanding data is a common UI pattern
+	Initially I approached this with "data", I then used 'group'
+	Both are supported:
+	
 	.collapse-data
-	- .collapse-data-header-icon (expand/collapse)
-	- .collapse-data-content
+	|- .collapse-data-header-icon (expand/collapse)
+	|- .collapse-data-content
 	
 	.collapse-group
-	- .header-icon (expand/collapse)
-	- .collapse-group-content
+	|- .header-icon (expand/collapse)
+	|- .collapse-group-content
+	
+	Hotlist also required this but needed it's own styling:
+	.collapse-hotlist
+	|- .header-icon (expand/collapse)
+	|- .collapse-group-content
+	
 	*/
-	const states = [];
+	const collection = new bj.Collection();
 
 	/*
 	Methods	
 	*/
 	const _change = () => ({
 		change: function(){
-			if(this.open)	this.hide();
+			if( this.open )	this.hide();
 			else			this.show();
 		}
 	});
 	
 	const _show = () => ({
 		show: function(){
-			uiApp.show(this.content, "block");
+			bj.show( this.content, "block" );
 			this.btn.classList.replace('expand','collapse');
 			this.open = true;
 		}
@@ -5185,7 +5193,7 @@ const oePlotly = (function ( bj ) {
 	
 	const _hide = () => ({
 		hide: function(){
-			uiApp.hide(this.content);
+			bj.hide( this.content );
 			this.btn.classList.replace('collapse','expand');
 			this.open = false;
 		}
@@ -5196,12 +5204,7 @@ const oePlotly = (function ( bj ) {
 	* @param {Object} me - initialise
 	* @returns new Object
 	*/
-	const Expander = (me) => {
-		return Object.assign(	me, 
-								_change(),
-								_show(),
-								_hide() );
-	};
+	const Expander = (me) => Object.assign( me, _change(), _show(), _hide());
 
 	/**
 	* Callback for 'Click' (header btn)
@@ -5209,40 +5212,43 @@ const oePlotly = (function ( bj ) {
 	*/
 	const userClick = (ev, type) => {
 		let btn = ev.target;
-		let stateRef = uiApp.getDataAttr(btn);
-		if(stateRef){
-			// DOM already setup, change it's current state
-			states[parseFloat(stateRef)].change();
+		let key = collection.getKey( btn );
+		let expander;
+		
+		if( key ){
+			// already setup
+			expander = collection.get( key );
 		} else {
-			// ...not set up yet, record state ref in DOM
-			uiApp.setDataAttr(btn, states.length); 
 			/*
 			Data/Group are generally collapsed by default
-			but can be set in the DOM to be expanded, check 
-			this by the class used on the btn
+			but can be set in the DOM to be expanded, check btn class
 			*/
 			let me = {
 				btn: btn,
-				content: btn.parentNode.querySelector('.collapse-' + type + '-content'),
-				open: btn.classList.contains('collapse')
+				content: bj.find('.collapse-' + type + '-content', btn.parentNode ),
+				open: btn.classList.contains('collapse') // inital state
 			};
 			
 			// create new Expander
-			let expander = Expander(me);
-			expander.change(); 	
-			
-			// store state							
-			states.push(expander); 			
+			expander = Expander( me );
+	
+			// update collection 	
+			collection.add( expander, btn );	
 		}
+		
+		// either way it's a click...
+		expander.change(); 
+	
 	};
 
 	/*
 	Events
 	*/
-	uiApp.userDown( ".collapse-data-header-icon", ev => userClick(ev, "data"));
-	uiApp.userDown( ".collapse-group > .header-icon", ev => userClick(ev, "group"));
+	bj.userDown( ".collapse-data-header-icon", ev => userClick( ev, "data"));
+	bj.userDown( ".collapse-group > .header-icon", ev => userClick( ev, "group"));
+	bj.userDown( ".collapse-hotlist > .header-icon", ev => userClick( ev, "hotlist"));
 
-})(bluejay); 
+})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';	
@@ -5474,7 +5480,7 @@ const oePlotly = (function ( bj ) {
 	Initalise from DOM
 	check to see if PHP static comments are added
 	*/
-	let hotlistPatients = bj.nodeArray( document.querySelectorAll( '.oe-hotlist-panel .patients-open tr, .oe-hotlist-panel .patients-closed tr' ));
+	let hotlistPatients = bj.nodeArray( document.querySelectorAll( '.oe-hotlist-panel .activity-list tr' ));
 	
 	hotlistPatients.forEach( (tr) => {
 		let json = JSON.parse( tr.dataset.comment );
@@ -5533,7 +5539,7 @@ const oePlotly = (function ( bj ) {
 	const buildDOM = () => {
 		let div = document.createElement('div');
 		div.className = "oe-eyedraw-app spinner-loader";
-		uiApp.appendTo('body', div);
+		document.body.appendChild( div );
 		return div;
 	};
 	
@@ -5598,8 +5604,10 @@ const oePlotly = (function ( bj ) {
 					this.nav.className = this.wrapClass;
 					this.nav.innerHTML = html;
 					// reflow DOM
-					this.btn.classList.add('selected');		
-					uiApp.appendTo('body',this.nav);		
+					this.btn.classList.add('selected');	
+					
+					document.body.appendChild( this.nav );
+							
 				})
 				.catch(e => console.log('PHP failed to load', e));  // maybe output this to UI at somepoint, but for now...
 		}
@@ -5658,7 +5666,7 @@ const oePlotly = (function ( bj ) {
 				'</ul>',
 				'</div>'].join('');	
 				
-			uiApp.appendTo('body',this.nav);
+			document.body.appendChild( this.nav );
 		}
 	});
 	
@@ -5945,7 +5953,7 @@ const oePlotly = (function ( bj ) {
 		content.className = "oe-popup oe-events-user-trail";
 		
 		div.appendChild(content);
-		uiApp.appendTo('body',div);
+		document.body.appendChild( div );
 			
 		// slow loading??
 		let spinnerID = setTimeout( () => content.innerHTML = '<i class="spinner"></i>', 400);
@@ -6862,7 +6870,7 @@ Updated to Vanilla JS for IDG
 					}, {once:true} );
 					
 					// reflow DOM
-					uiApp.appendTo('body',div);
+					document.body.appendChild( div );
 				})
 				.catch(e => console.log('OverlayPopup failed to load: Err msg -',e));  // maybe output this to UI at somepoint, but for now... 
 		};
@@ -6914,7 +6922,7 @@ Updated to Vanilla JS for IDG
 				div.className = "oe-popup-wrap";
 				div.innerHTML = html;
 				// reflow DOM
-				uiApp.appendTo('body',div);
+				document.body.appendChild( div );
 				
 				// need this in case PHP errors and doesn't build the close btn DOM
 				let closeBtn = div.querySelector('.close-icon-btn');
@@ -6961,7 +6969,7 @@ Updated to Vanilla JS for IDG
 						'</div></div>',
 						'<div class="step-status"></div>',].join('');
 	// add to DOM					
-	uiApp.appendTo('body',div);
+	document.body.appendChild( div );
 	
 	/**
 	Set up references to the required DOM elements
@@ -7378,7 +7386,7 @@ Updated to Vanilla JS for IDG
 			'</div></div>',
 			'<div class="quick-overview-content"></div>',].join('');
 			
-		uiApp.appendTo('body',div);
+		document.body.appendChild( div );
 		
 		closeBtn = div.querySelector('.close-icon-btn');
 		
@@ -7967,7 +7975,7 @@ Updated to Vanilla JS for IDG
 	*/
 	const model = {
 		// for string matching remove case.
-		qtags: [ 'Datix', 'Note', 'Research', 'Teaching', 'Referred', 'Results', 'Results_pending' ].map( t => t.toLowerCase()), 
+		qtags: [ 'Adverse_Event', 'Serious_Adverse_Event', 'Note', 'My_research', 'my_teaching', 'Research', 'Teaching', 'Referred', 'Results', 'Results_pending' ].map( t => t.toLowerCase()), 
 		
 	};
 	
@@ -8187,7 +8195,7 @@ Updated to Vanilla JS for IDG
 		* full reset of controller and quicktags
 		*/
 		const reset = () => {
-			// cancel Events first!
+			// cancel events first
 			document.removeEventListener('input', watchInput, { capture:true });
 			document.removeEventListener('focusout', focusOut, { capture: true });
 			
@@ -8220,6 +8228,7 @@ Updated to Vanilla JS for IDG
 			tagging = true;
 			insertIndex = tagIndex;
 			inputText = input.value;
+			// this will show all default tags
 			quickTags.showTags();
 			
 			bj.log('[qTags] - Keys: Enter, Tab & Spacebar - suspended (keydown)');
@@ -8243,7 +8252,7 @@ Updated to Vanilla JS for IDG
 		};   
 		
 		/**
-		* refocus input after a delay
+		* refocus input after a small delay
 		* user clicking on qtags flag or tag causes input blur
 		* need to hold focus and cancel focusout event
 		*/
@@ -8321,7 +8330,7 @@ Updated to Vanilla JS for IDG
 			*/
 			if( target.isSameNode( input )) return;
 			
-			// Reset, only if we already have an active input setup			
+			// Reset only if we already have an active input setup			
 			if( input !== null ) reset();
 			
 			// is new target allow to use tags?
@@ -8768,7 +8777,7 @@ Updated to Vanilla JS for IDG
 			'<div class="audit-trail">Michael Morgan</div>',
 			'<div class="quick-view-content"></div>'].join('');
 		
-		uiApp.appendTo('body',div);
+		document.body.appendChild( div );
 		
 		return Object.assign(	{	div: div,
 									titleDate: div.querySelector('.title-date'),
@@ -9014,7 +9023,7 @@ Updated to Vanilla JS for IDG
 		* intialise and append to DOM
 		*/
 		reset();
-		bj.appendTo('body', div);
+		document.body.appendChild( div );
 		
 		// public	
 		return { div, reset, show };

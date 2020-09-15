@@ -27,7 +27,7 @@
 						'</div></div>',
 						'<div class="step-status"></div>',].join('');
 	// add to DOM					
-	uiApp.appendTo('body',div);
+	document.body.appendChild( div );
 	
 	/**
 	Set up references to the required DOM elements

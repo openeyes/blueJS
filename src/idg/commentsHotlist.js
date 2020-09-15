@@ -171,7 +171,7 @@
 	Initalise from DOM
 	check to see if PHP static comments are added
 	*/
-	let hotlistPatients = bj.nodeArray( document.querySelectorAll( '.oe-hotlist-panel .patients-open tr, .oe-hotlist-panel .patients-closed tr' ));
+	let hotlistPatients = bj.nodeArray( document.querySelectorAll( '.oe-hotlist-panel .activity-list tr' ));
 	
 	hotlistPatients.forEach( (tr) => {
 		let json = JSON.parse( tr.dataset.comment );

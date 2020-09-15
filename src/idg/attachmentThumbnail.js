@@ -111,7 +111,8 @@
 			
 			let notes = document.createElement('div');
 			notes.className = "attachment-annotation";
-			uiApp.appendTo('.oe-popup-attachment',notes,div);
+			let base = uiApp.find('.oe-popup-attachment', div);
+			base.appendChild( notes );
 		
 			// load in PHP using XHR (returns a Promise)	
 			uiApp.xhr(json.idgPHP)
@@ -148,7 +149,8 @@
 			stack.className = "attachment-stack";
 			stack.innerHTML = 'Choose report: <select class="pro-theme">' + options + '</select>';
 			
-			uiApp.appendTo('.oe-popup-attachment',stack,div);
+			let base = uiApp.find('.oe-popup-attachment', div );
+			base.appendChild( stack );
 		}
 	
 		// setup close icon btn
@@ -159,7 +161,7 @@
 		controls.appendChild(btnFragment);
 		
 		// reflow DOM
-		uiApp.appendTo('body',div);
+		document.body.appendChild( div );
 	}; 
 	
 	/**

@@ -33,7 +33,7 @@
 		content.className = "oe-popup oe-events-user-trail";
 		
 		div.appendChild(content);
-		uiApp.appendTo('body',div);
+		document.body.appendChild( div );
 			
 		// slow loading??
 		let spinnerID = setTimeout( () => content.innerHTML = '<i class="spinner"></i>', 400);

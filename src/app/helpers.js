@@ -15,15 +15,11 @@
 	};
 	
 	/**
-	* Provide a consistent approach to appending DOM Elements,
+	* Find an element
 	* @param {String} selector  	
-	* @param {DOM Element} el - to attach
 	* @param {DOMElement} base - base Element for search (optional)
 	*/
-	const appendTo = ( selector, el, base ) => {
-		let dom = ( base || document ).querySelector( selector );
-		dom.appendChild( el );
-	};
+	const find = ( selector, base ) => ( base || document ).querySelector( selector );
 	
 	/**
 	* Remove a DOM Element 	
@@ -199,7 +195,7 @@
 	Extend App
 	*/
 	bj.extend('nodeArray', NodeListToArray );
-	bj.extend('appendTo', appendTo );
+	bj.extend('find', find );
 	bj.extend('getParent', getParent );
 	bj.extend('wrap', wrap );
 	bj.extend('unwrap', unwrap );

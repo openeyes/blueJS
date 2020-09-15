@@ -10,7 +10,7 @@
 	*/
 	const model = {
 		// for string matching remove case.
-		qtags: [ 'Datix', 'Note', 'Research', 'Teaching', 'Referred', 'Results', 'Results_pending' ].map( t => t.toLowerCase()), 
+		qtags: [ 'Adverse_Event', 'Serious_Adverse_Event', 'Note', 'My_research', 'my_teaching', 'Research', 'Teaching', 'Referred', 'Results', 'Results_pending' ].map( t => t.toLowerCase()), 
 		
 	};
 	
@@ -230,7 +230,7 @@
 		* full reset of controller and quicktags
 		*/
 		const reset = () => {
-			// cancel Events first!
+			// cancel events first
 			document.removeEventListener('input', watchInput, { capture:true });
 			document.removeEventListener('focusout', focusOut, { capture: true });
 			
@@ -263,6 +263,7 @@
 			tagging = true;
 			insertIndex = tagIndex;
 			inputText = input.value;
+			// this will show all default tags
 			quickTags.showTags();
 			
 			bj.log('[qTags] - Keys: Enter, Tab & Spacebar - suspended (keydown)');
@@ -286,7 +287,7 @@
 		};   
 		
 		/**
-		* refocus input after a delay
+		* refocus input after a small delay
 		* user clicking on qtags flag or tag causes input blur
 		* need to hold focus and cancel focusout event
 		*/
@@ -364,7 +365,7 @@
 			*/
 			if( target.isSameNode( input )) return;
 			
-			// Reset, only if we already have an active input setup			
+			// Reset only if we already have an active input setup			
 			if( input !== null ) reset();
 			
 			// is new target allow to use tags?

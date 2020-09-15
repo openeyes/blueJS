@@ -27,7 +27,7 @@
 				div.className = "oe-popup-wrap";
 				div.innerHTML = html;
 				// reflow DOM
-				uiApp.appendTo('body',div);
+				document.body.appendChild( div );
 				
 				// need this in case PHP errors and doesn't build the close btn DOM
 				let closeBtn = div.querySelector('.close-icon-btn');

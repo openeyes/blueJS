@@ -30,7 +30,7 @@
 			'</div></div>',
 			'<div class="quick-overview-content"></div>',].join('');
 			
-		uiApp.appendTo('body',div);
+		document.body.appendChild( div );
 		
 		closeBtn = div.querySelector('.close-icon-btn');
 		

@@ -100,7 +100,7 @@
 			'<div class="audit-trail">Michael Morgan</div>',
 			'<div class="quick-view-content"></div>'].join('');
 		
-		uiApp.appendTo('body',div);
+		document.body.appendChild( div );
 		
 		return Object.assign(	{	div: div,
 									titleDate: div.querySelector('.title-date'),

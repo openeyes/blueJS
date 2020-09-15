@@ -1,34 +1,43 @@
-(function (uiApp) {
+(function( bj ){
 
 	'use strict';	
 	
-	uiApp.addModule('collapseExpand');
+	bj.addModule('collapseExpand');
 	
 	/*
-	(Collapse) Data & Group DOMs: 
+	Collapse and Expanding data is a common UI pattern
+	Initially I approached this with "data", I then used 'group'
+	Both are supported:
+	
 	.collapse-data
-	- .collapse-data-header-icon (expand/collapse)
-	- .collapse-data-content
+	|- .collapse-data-header-icon (expand/collapse)
+	|- .collapse-data-content
 	
 	.collapse-group
-	- .header-icon (expand/collapse)
-	- .collapse-group-content
+	|- .header-icon (expand/collapse)
+	|- .collapse-group-content
+	
+	Hotlist also required this but needed it's own styling:
+	.collapse-hotlist
+	|- .header-icon (expand/collapse)
+	|- .collapse-group-content
+	
 	*/
-	const states = [];
+	const collection = new bj.Collection();
 
 	/*
 	Methods	
 	*/
 	const _change = () => ({
 		change: function(){
-			if(this.open)	this.hide();
+			if( this.open )	this.hide();
 			else			this.show();
 		}
 	});
 	
 	const _show = () => ({
 		show: function(){
-			uiApp.show(this.content, "block");
+			bj.show( this.content, "block" );
 			this.btn.classList.replace('expand','collapse');
 			this.open = true;
 		}
@@ -36,7 +45,7 @@
 	
 	const _hide = () => ({
 		hide: function(){
-			uiApp.hide(this.content);
+			bj.hide( this.content );
 			this.btn.classList.replace('collapse','expand');
 			this.open = false;
 		}
@@ -47,12 +56,7 @@
 	* @param {Object} me - initialise
 	* @returns new Object
 	*/
-	const Expander = (me) => {
-		return Object.assign(	me, 
-								_change(),
-								_show(),
-								_hide() );
-	};
+	const Expander = (me) => Object.assign( me, _change(), _show(), _hide());
 
 	/**
 	* Callback for 'Click' (header btn)
@@ -60,37 +64,40 @@
 	*/
 	const userClick = (ev, type) => {
 		let btn = ev.target;
-		let stateRef = uiApp.getDataAttr(btn);
-		if(stateRef){
-			// DOM already setup, change it's current state
-			states[parseFloat(stateRef)].change();
+		let key = collection.getKey( btn );
+		let expander;
+		
+		if( key ){
+			// already setup
+			expander = collection.get( key );
 		} else {
-			// ...not set up yet, record state ref in DOM
-			uiApp.setDataAttr(btn, states.length); 
 			/*
 			Data/Group are generally collapsed by default
-			but can be set in the DOM to be expanded, check 
-			this by the class used on the btn
+			but can be set in the DOM to be expanded, check btn class
 			*/
 			let me = {
 				btn: btn,
-				content: btn.parentNode.querySelector('.collapse-' + type + '-content'),
-				open: btn.classList.contains('collapse')
+				content: bj.find('.collapse-' + type + '-content', btn.parentNode ),
+				open: btn.classList.contains('collapse') // inital state
 			};
 			
 			// create new Expander
-			let expander = Expander(me);
-			expander.change(); 	
-			
-			// store state							
-			states.push(expander); 			
+			expander = Expander( me );
+	
+			// update collection 	
+			collection.add( expander, btn );	
 		}
+		
+		// either way it's a click...
+		expander.change(); 
+	
 	};
 
 	/*
 	Events
 	*/
-	uiApp.userDown( ".collapse-data-header-icon", ev => userClick(ev, "data"));
-	uiApp.userDown( ".collapse-group > .header-icon", ev => userClick(ev, "group"));
+	bj.userDown( ".collapse-data-header-icon", ev => userClick( ev, "data"));
+	bj.userDown( ".collapse-group > .header-icon", ev => userClick( ev, "group"));
+	bj.userDown( ".collapse-hotlist > .header-icon", ev => userClick( ev, "hotlist"));
 
-})(bluejay); 
+})( bluejay ); 

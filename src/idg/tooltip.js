@@ -159,7 +159,7 @@
 		* intialise and append to DOM
 		*/
 		reset();
-		bj.appendTo('body', div);
+		document.body.appendChild( div );
 		
 		// public	
 		return { div, reset, show };

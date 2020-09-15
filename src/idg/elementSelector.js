@@ -24,8 +24,10 @@
 					this.nav.className = this.wrapClass;
 					this.nav.innerHTML = html;
 					// reflow DOM
-					this.btn.classList.add('selected');		
-					uiApp.appendTo('body',this.nav);		
+					this.btn.classList.add('selected');	
+					
+					document.body.appendChild( this.nav );
+							
 				})
 				.catch(e => console.log('PHP failed to load', e));  // maybe output this to UI at somepoint, but for now...
 		}
@@ -84,7 +86,7 @@
 				'</ul>',
 				'</div>'].join('');	
 				
-			uiApp.appendTo('body',this.nav);
+			document.body.appendChild( this.nav );
 		}
 	});
 	

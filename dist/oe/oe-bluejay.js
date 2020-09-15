@@ -386,15 +386,11 @@ const bluejay = (function () {
 	};
 	
 	/**
-	* Provide a consistent approach to appending DOM Elements,
+	* Find an element
 	* @param {String} selector  	
-	* @param {DOM Element} el - to attach
 	* @param {DOMElement} base - base Element for search (optional)
 	*/
-	const appendTo = ( selector, el, base ) => {
-		let dom = ( base || document ).querySelector( selector );
-		dom.appendChild( el );
-	};
+	const find = ( selector, base ) => ( base || document ).querySelector( selector );
 	
 	/**
 	* Remove a DOM Element 	
@@ -570,7 +566,7 @@ const bluejay = (function () {
 	Extend App
 	*/
 	bj.extend('nodeArray', NodeListToArray );
-	bj.extend('appendTo', appendTo );
+	bj.extend('find', find );
 	bj.extend('getParent', getParent );
 	bj.extend('wrap', wrap );
 	bj.extend('unwrap', unwrap );
@@ -3544,7 +3540,8 @@ const oePlotly = (function ( bj ) {
 		div.style.width = '80px'; // overide the newblue CSS
 		div.style.top = ( top - tipHeight )+ 'px';
 		div.style.left = ( center - 40 ) + 'px';
-		bj.appendTo('body', div);
+		
+		document.body.appendChild( div );
 		
 		setTimeout(() => bj.remove( div ) , 2500 ); // CSS fade out takes 2 secs.
 	};

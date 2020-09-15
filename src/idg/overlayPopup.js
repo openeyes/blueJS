@@ -41,7 +41,7 @@
 					}, {once:true} );
 					
 					// reflow DOM
-					uiApp.appendTo('body',div);
+					document.body.appendChild( div );
 				})
 				.catch(e => console.log('OverlayPopup failed to load: Err msg -',e));  // maybe output this to UI at somepoint, but for now... 
 		};

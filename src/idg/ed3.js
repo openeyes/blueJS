@@ -15,7 +15,7 @@
 	const buildDOM = () => {
 		let div = document.createElement('div');
 		div.className = "oe-eyedraw-app spinner-loader";
-		uiApp.appendTo('body', div);
+		document.body.appendChild( div );
 		return div;
 	};
 	
