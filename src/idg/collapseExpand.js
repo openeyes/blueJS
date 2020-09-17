@@ -73,16 +73,14 @@
 		} else {
 			/*
 			Data/Group are generally collapsed by default
-			but can be set in the DOM to be expanded, check btn class
+			but might be setup in the DOM to be expanded, check btn class to see
 			*/
-			let me = {
+			// create new Expander
+			expander = Expander({
 				btn: btn,
 				content: bj.find('.collapse-' + type + '-content', btn.parentNode ),
 				open: btn.classList.contains('collapse') // inital state
-			};
-			
-			// create new Expander
-			expander = Expander( me );
+			});
 	
 			// update collection 	
 			collection.add( expander, btn );	

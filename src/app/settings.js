@@ -1,7 +1,7 @@
 /**
 * Settings (useful globals)
 */
-(function (bj) {
+(function( bj ){
 
 	'use strict';
 	
@@ -22,6 +22,27 @@
 				return null;
 		}
 	};
+	
+	/**
+	* Global window width & height. 
+	* As these force reflow, only update onResize
+	* then make available to the app.
+	*/
+	let w = window.innerWidth;
+	let h = window.innerHeight;
+	
+	const windowSize = () => {
+		w = window.innerWidth;
+		h = window.innerHeight;
+	};
+	
+	// make available to blueJS modules
+	const getWinH = () => h;
+	const getWinW = () => w;
+	
+	// update
+	bj.listenForResize( windowSize );
+
 	
 	/**
 	* Standardise data-attributes names
@@ -58,8 +79,11 @@
 
 	// Extend App
 	bj.extend('settings', settings);
+	bj.extend('getWinH', getWinH );
+	bj.extend('getWinW', getWinW );
 	bj.extend('getDataAttributeName', domDataAttribute);
 	bj.extend('setDataAttr', setDataAttr);
 	bj.extend('getDataAttr', getDataAttr);
 
-})(bluejay);
+
+})( bluejay );

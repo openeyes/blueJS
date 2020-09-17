@@ -10,7 +10,7 @@
 	*/
 	const model = {
 		// for string matching remove case.
-		qtags: [ 'Adverse_Event', 'Serious_Adverse_Event', 'Note', 'My_research', 'my_teaching', 'Research', 'Teaching', 'Referred', 'Results', 'Results_pending' ].map( t => t.toLowerCase()), 
+		qtags: [ 'Adverse_Event', 'Serious_Adverse_Event', 'Note', 'My_research', 'my_teaching', 'Research', 'Teaching', 'Referred', 'Results', 'My_Results_pending' ].map( t => t.toLowerCase()), 
 		
 	};
 	
@@ -139,9 +139,12 @@
 			flag.className = "oe-qtags-flag";
 			flag.textContent = "#";
 			
-			// check input isn't too close to top of the page
-			// note: tag swarm updates as user types and textarea expands down
-			if( input.getBoundingClientRect().top < 150 ){
+			/*
+			check input position
+			note: tag swarm updates as user types and textarea expands down
+			170px allows for a few lines of comments and 3 rows of tags BELOW.
+			*/
+			if( input.getBoundingClientRect().top < ( bj.getWinH() - 170 )){
 				tags.style.top = '100%';
 				flag.style.top = '100%';
 			} else {

@@ -665,7 +665,7 @@ const bluejay = (function () {
 /**
 * Settings (useful globals)
 */
-(function (bj) {
+(function( bj ){
 
 	'use strict';
 	
@@ -686,6 +686,27 @@ const bluejay = (function () {
 				return null;
 		}
 	};
+	
+	/**
+	* Global window width & height. 
+	* As these force reflow, only update onResize
+	* then make available to the app.
+	*/
+	let w = window.innerWidth;
+	let h = window.innerHeight;
+	
+	const windowSize = () => {
+		w = window.innerWidth;
+		h = window.innerHeight;
+	};
+	
+	// make available to blueJS modules
+	const getWinH = () => h;
+	const getWinW = () => w;
+	
+	// update
+	bj.listenForResize( windowSize );
+
 	
 	/**
 	* Standardise data-attributes names
@@ -722,11 +743,14 @@ const bluejay = (function () {
 
 	// Extend App
 	bj.extend('settings', settings);
+	bj.extend('getWinH', getWinH );
+	bj.extend('getWinW', getWinW );
 	bj.extend('getDataAttributeName', domDataAttribute);
 	bj.extend('setDataAttr', setDataAttr);
 	bj.extend('getDataAttr', getDataAttr);
 
-})(bluejay);
+
+})( bluejay );
 /**
 * Using "oePloyly" as namespace
 * @namespace
@@ -4518,6 +4542,55 @@ const oePlotly = (function ( bj ) {
 	});
 			
 })(bluejay); 
+(function( bj ) {
+
+	'use strict';
+	
+	if( document.querySelector('.home-messages') === null ) return;
+	
+	const btn = {
+		messages: document.getElementById('idg-js-sidebar-viewmode-1'),
+		tags: document.getElementById('idg-js-sidebar-viewmode-2'),
+	};
+	
+	const sidebar = {
+		messages: document.querySelector('.sidebar-messages'),
+		tags: document.querySelector('.sidebar-tags'),
+	};
+	
+	const content = {
+		messages: document.querySelector('.messages-all'),
+		tags: document.querySelector('.tags-all'),
+	};
+	
+	const showMessages = () => {
+		if(btn.messages.classList.contains('selected')) return;
+		btn.messages.classList.add('selected');
+		btn.tags.classList.remove('selected');
+		
+		bj.show( sidebar.messages );
+		bj.hide( sidebar.tags );
+		bj.show( content.messages );
+		bj.hide( content.tags );
+		
+	};
+	
+	const showTags = () => {
+		if(btn.tags.classList.contains('selected')) return;
+		btn.messages.classList.remove('selected');
+		btn.tags.classList.add('selected');
+		
+		bj.hide( sidebar.messages );
+		bj.show( sidebar.tags );
+		bj.hide( content.messages );
+		bj.show( content.tags );
+	};
+	
+	
+	bj.userDown('#idg-js-sidebar-viewmode-1', showMessages );
+	bj.userDown('#idg-js-sidebar-viewmode-2', showTags ); 
+			
+})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';
@@ -5221,16 +5294,14 @@ const oePlotly = (function ( bj ) {
 		} else {
 			/*
 			Data/Group are generally collapsed by default
-			but can be set in the DOM to be expanded, check btn class
+			but might be setup in the DOM to be expanded, check btn class to see
 			*/
-			let me = {
+			// create new Expander
+			expander = Expander({
 				btn: btn,
 				content: bj.find('.collapse-' + type + '-content', btn.parentNode ),
 				open: btn.classList.contains('collapse') // inital state
-			};
-			
-			// create new Expander
-			expander = Expander( me );
+			});
 	
 			// update collection 	
 			collection.add( expander, btn );	
@@ -7975,7 +8046,7 @@ Updated to Vanilla JS for IDG
 	*/
 	const model = {
 		// for string matching remove case.
-		qtags: [ 'Adverse_Event', 'Serious_Adverse_Event', 'Note', 'My_research', 'my_teaching', 'Research', 'Teaching', 'Referred', 'Results', 'Results_pending' ].map( t => t.toLowerCase()), 
+		qtags: [ 'Adverse_Event', 'Serious_Adverse_Event', 'Note', 'My_research', 'my_teaching', 'Research', 'Teaching', 'Referred', 'Results', 'My_Results_pending' ].map( t => t.toLowerCase()), 
 		
 	};
 	
@@ -8104,9 +8175,12 @@ Updated to Vanilla JS for IDG
 			flag.className = "oe-qtags-flag";
 			flag.textContent = "#";
 			
-			// check input isn't too close to top of the page
-			// note: tag swarm updates as user types and textarea expands down
-			if( input.getBoundingClientRect().top < 150 ){
+			/*
+			check input position
+			note: tag swarm updates as user types and textarea expands down
+			170px allows for a few lines of comments and 3 rows of tags BELOW.
+			*/
+			if( input.getBoundingClientRect().top < ( bj.getWinH() - 170 )){
 				tags.style.top = '100%';
 				flag.style.top = '100%';
 			} else {
