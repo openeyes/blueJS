@@ -14,6 +14,30 @@
 		
 	};
 	
+	
+	/**
+	* Find and style qTags in a String
+	* @param {String} str - str to check for qTags
+	* @returns {String}
+	*/
+	const wrapQtags = ( str ) => {
+		let words = str.split(' ');
+		words.forEach(( word, index ) => {
+			if( word.startsWith('#')){
+				// official qTag?
+				if( model.qtags.indexOf( word.substring( 1 )) >= 0 ){
+					words[index] = `<span class="qtag">${word}</span>`;
+				}
+			}
+		});
+		return words.join(' ');
+	};
+	
+	// make this available to other modules
+	// e.g. commentsHotlist
+	bj.extend('wrapQtags', wrapQtags );
+	
+	
 	/**
 	View - Quick Tag 'swarm'
 	*/

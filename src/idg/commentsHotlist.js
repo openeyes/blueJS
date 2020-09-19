@@ -28,9 +28,11 @@
 		show(){
 			this.editMode = false;
 			this.icon('edit');
-			
-			// set the comment text
-			this.elem.userComment.textContent = this.comment;
+			/*
+			Show the comment text back to User
+			Style any correct qTags
+			*/
+			this.elem.userComment.innerHTML = bj.wrapQtags( this.comment );
 			
 			bj.hide( this.elem.textarea );
 			bj.show( this.elem.userComment, 'block' );
@@ -114,12 +116,12 @@
 		*/
 		update(){
 			let text = this.elem.textarea.value.trim();
-			if( text.length < 2 ){
-				this.comment = "";
-				this.reset();
-			} else {
+			if( text.length ){
 				this.comment = text;
 				this.show();
+			} else {
+				this.comment = "";
+				this.reset();
 			}
 		}
 	});
@@ -144,7 +146,7 @@
 		*/
 		let div = document.createElement('div');
 		div.className = 'patient-comments';
-		div.innerHTML = Mustache.render( template, { comment: comment });
+		div.innerHTML = Mustache.render( template, { comment:  comment });
 		td.appendChild( div );
 		
 		// get the new Elements
@@ -167,24 +169,6 @@
 		);
 	};
 	
-	/**
-	Initalise from DOM
-	check to see if PHP static comments are added
-	*/
-	let hotlistPatients = bj.nodeArray( document.querySelectorAll( '.oe-hotlist-panel .activity-list tr' ));
-	
-	hotlistPatients.forEach( (tr) => {
-		let json = JSON.parse( tr.dataset.comment );
-		if( json.comment ){
-			let icon = tr.querySelector('.oe-i.comments');
-			let td = tr.querySelector('.js-patient-comment');
-			let patientComment = PatientComment( icon, td, json.comment );
-			patientComment.show();
-			
-			// init and record Key
-			collection.add( patientComment, icon );
-		}
-	});
 	
 	/**
 	* Callback for Event (header btn)
@@ -210,5 +194,30 @@
 	};
 
 	bj.userDown('.oe-hotlist-panel .js-comment-icon', userClick);
-
+	
+	
+	/**
+	* Check to see if PHP static comments are added 
+	* if so initalise them, but need to wait to make 
+	* available the qtags wrapper
+	*/
+	document.addEventListener('DOMContentLoaded', () => {
+		
+		let hotlistPatients = bj.nodeArray( document.querySelectorAll( '.oe-hotlist-panel .activity-list tr' ));
+	
+		hotlistPatients.forEach( (tr) => {
+			let json = JSON.parse( tr.dataset.comment );
+			if( json.comment ){
+				let icon = tr.querySelector('.oe-i.comments');
+				let td = tr.querySelector('.js-patient-comment');
+				let patientComment = PatientComment( icon, td, json.comment );
+				patientComment.show();
+				
+				// init and record Key
+				collection.add( patientComment, icon );
+			}
+		});
+		
+	}, { once: true });
+	
 })( bluejay ); 

@@ -5408,9 +5408,11 @@ const oePlotly = (function ( bj ) {
 		show(){
 			this.editMode = false;
 			this.icon('edit');
-			
-			// set the comment text
-			this.elem.userComment.textContent = this.comment;
+			/*
+			Show the comment text back to User
+			Style any correct qTags
+			*/
+			this.elem.userComment.innerHTML = bj.wrapQtags( this.comment );
 			
 			bj.hide( this.elem.textarea );
 			bj.show( this.elem.userComment, 'block' );
@@ -5494,12 +5496,12 @@ const oePlotly = (function ( bj ) {
 		*/
 		update(){
 			let text = this.elem.textarea.value.trim();
-			if( text.length < 2 ){
-				this.comment = "";
-				this.reset();
-			} else {
+			if( text.length ){
 				this.comment = text;
 				this.show();
+			} else {
+				this.comment = "";
+				this.reset();
 			}
 		}
 	});
@@ -5524,7 +5526,7 @@ const oePlotly = (function ( bj ) {
 		*/
 		let div = document.createElement('div');
 		div.className = 'patient-comments';
-		div.innerHTML = Mustache.render( template, { comment: comment });
+		div.innerHTML = Mustache.render( template, { comment:  comment });
 		td.appendChild( div );
 		
 		// get the new Elements
@@ -5547,24 +5549,6 @@ const oePlotly = (function ( bj ) {
 		);
 	};
 	
-	/**
-	Initalise from DOM
-	check to see if PHP static comments are added
-	*/
-	let hotlistPatients = bj.nodeArray( document.querySelectorAll( '.oe-hotlist-panel .activity-list tr' ));
-	
-	hotlistPatients.forEach( (tr) => {
-		let json = JSON.parse( tr.dataset.comment );
-		if( json.comment ){
-			let icon = tr.querySelector('.oe-i.comments');
-			let td = tr.querySelector('.js-patient-comment');
-			let patientComment = PatientComment( icon, td, json.comment );
-			patientComment.show();
-			
-			// init and record Key
-			collection.add( patientComment, icon );
-		}
-	});
 	
 	/**
 	* Callback for Event (header btn)
@@ -5590,7 +5574,32 @@ const oePlotly = (function ( bj ) {
 	};
 
 	bj.userDown('.oe-hotlist-panel .js-comment-icon', userClick);
-
+	
+	
+	/**
+	* Check to see if PHP static comments are added 
+	* if so initalise them, but need to wait to make 
+	* available the qtags wrapper
+	*/
+	document.addEventListener('DOMContentLoaded', () => {
+		
+		let hotlistPatients = bj.nodeArray( document.querySelectorAll( '.oe-hotlist-panel .activity-list tr' ));
+	
+		hotlistPatients.forEach( (tr) => {
+			let json = JSON.parse( tr.dataset.comment );
+			if( json.comment ){
+				let icon = tr.querySelector('.oe-i.comments');
+				let td = tr.querySelector('.js-patient-comment');
+				let patientComment = PatientComment( icon, td, json.comment );
+				patientComment.show();
+				
+				// init and record Key
+				collection.add( patientComment, icon );
+			}
+		});
+		
+	}, { once: true });
+	
 })( bluejay ); 
 
 (function (uiApp) {
@@ -8049,6 +8058,30 @@ Updated to Vanilla JS for IDG
 		qtags: [ 'Adverse_Event', 'Serious_Adverse_Event', 'Note', 'My_research', 'my_teaching', 'Research', 'Teaching', 'Referred', 'Results', 'My_Results_pending' ].map( t => t.toLowerCase()), 
 		
 	};
+	
+	
+	/**
+	* Find and style qTags in a String
+	* @param {String} str - str to check for qTags
+	* @returns {String}
+	*/
+	const wrapQtags = ( str ) => {
+		let words = str.split(' ');
+		words.forEach(( word, index ) => {
+			if( word.startsWith('#')){
+				// official qTag?
+				if( model.qtags.indexOf( word.substring( 1 )) >= 0 ){
+					words[index] = `<span class="qtag">${word}</span>`;
+				}
+			}
+		});
+		return words.join(' ');
+	};
+	
+	// make this available to other modules
+	// e.g. commentsHotlist
+	bj.extend('wrapQtags', wrapQtags );
+	
 	
 	/**
 	View - Quick Tag 'swarm'
