@@ -5412,7 +5412,9 @@ const oePlotly = (function ( bj ) {
 			Show the comment text back to User
 			Style any correct qTags
 			*/
-			this.elem.userComment.innerHTML = bj.wrapQtags( this.comment );
+			let qTags = bj.wrapQtags( this.comment );
+			this.comment = qTags.text;
+			this.elem.userComment.innerHTML = qTags.DOMString;
 			
 			bj.hide( this.elem.textarea );
 			bj.show( this.elem.userComment, 'block' );
@@ -8063,19 +8065,43 @@ Updated to Vanilla JS for IDG
 	/**
 	* Find and style qTags in a String
 	* @param {String} str - str to check for qTags
-	* @returns {String}
+	* @returns {Object} - raw text and HTML DOMString
 	*/
 	const wrapQtags = ( str ) => {
 		let words = str.split(' ');
+		let qtags = [];
+		
+		// check for any tags
 		words.forEach(( word, index ) => {
 			if( word.startsWith('#')){
 				// official qTag?
 				if( model.qtags.indexOf( word.substring( 1 )) >= 0 ){
-					words[index] = `<span class="qtag">${word}</span>`;
+					// pop out tag and group at front.
+					words.splice( index, 1 );
+					qtags.push( word );
 				}
 			}
 		});
-		return words.join(' ');
+		
+		// return raw and DOMString.
+		let commentsWithOutTags = words.join(' ');
+		
+		// did we find any tags?
+		if( qtags.length ){
+			let tagsStr = qtags.join(' ');
+			let DOMTags = qtags.map( tag => `<span class="qtag">${tag}</span>` );
+			
+			return {
+				text: tagsStr + ' ' + commentsWithOutTags,
+				DOMString: DOMTags.join(' ') + '<span class="dot-list-divider"></span>' +  commentsWithOutTags,
+			};
+		} 
+		
+		// no tags found?
+		return {
+			text: str,
+			DOMString: str,
+		};
 	};
 	
 	// make this available to other modules

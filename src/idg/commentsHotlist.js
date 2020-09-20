@@ -32,7 +32,9 @@
 			Show the comment text back to User
 			Style any correct qTags
 			*/
-			this.elem.userComment.innerHTML = bj.wrapQtags( this.comment );
+			let qTags = bj.wrapQtags( this.comment );
+			this.comment = qTags.text;
+			this.elem.userComment.innerHTML = qTags.DOMString;
 			
 			bj.hide( this.elem.textarea );
 			bj.show( this.elem.userComment, 'block' );
