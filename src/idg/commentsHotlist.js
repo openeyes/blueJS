@@ -29,12 +29,17 @@
 			this.editMode = false;
 			this.icon('edit');
 			/*
-			Show the comment text back to User
-			Style any correct qTags
+			Show the comment text back to User. 
+			Need to style offical qtags. 
+			bj.wrapQtags() returns {
+				text: {Basic string, tags are re-organsied}
+				DOMString: {DOMstring, qtags are organised and styled}
+			}
 			*/
-			let qTags = bj.wrapQtags( this.comment );
-			this.comment = qTags.text;
-			this.elem.userComment.innerHTML = qTags.DOMString;
+			let wrapQtags = bj.wrapQtags( this.comment );
+			this.elem.userComment.innerHTML = wrapQtags.DOMString;
+			
+			this.comment = wrapQtags.text;
 			
 			bj.hide( this.elem.textarea );
 			bj.show( this.elem.userComment, 'block' );

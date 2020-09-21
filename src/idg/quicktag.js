@@ -22,31 +22,29 @@
 	*/
 	const wrapQtags = ( str ) => {
 		let words = str.split(' ');
+		let comments = [];
 		let qtags = [];
-		
-		// check for any tags
+
 		words.forEach(( word, index ) => {
 			if( word.startsWith('#')){
-				// official qTag?
 				if( model.qtags.indexOf( word.substring( 1 )) >= 0 ){
-					// pop out tag and group at front.
-					words.splice( index, 1 );
-					qtags.push( word );
+					qtags.push( word ); // Offical tag! 
+				} else {
+					comments.push( word ); // unoffical tag e.g. '#3'
 				}
+			} else {
+				comments.push( word );
 			}
 		});
 		
-		// return raw and DOMString.
-		let commentsWithOutTags = words.join(' ');
+		qtags.sort();
 		
 		// did we find any tags?
 		if( qtags.length ){
-			let tagsStr = qtags.join(' ');
-			let DOMTags = qtags.map( tag => `<span class="qtag">${tag}</span>` );
-			
+			let styledTags = qtags.map( tag => `<span class="qtag">${tag}</span>` );	
 			return {
-				text: tagsStr + ' ' + commentsWithOutTags,
-				DOMString: DOMTags.join(' ') + '<span class="dot-list-divider"></span>' +  commentsWithOutTags,
+				text: qtags.join(' ') + ' ' + comments.join(' '),
+				DOMString: styledTags.join(' ') + '<span class="dot-list-divider"></span>' +  comments.join(' '),
 			};
 		} 
 		
