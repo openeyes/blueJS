@@ -1,6 +1,7 @@
 /**
-* Using "oePloyly" as namespace
+* Using "oePlotly" as namespace
 * @namespace
+* Note: this approach completely replaces the old "oePlotly" layout helper
 */
 const oePlotly = (function ( bj ) {
 
