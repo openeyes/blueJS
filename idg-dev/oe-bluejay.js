@@ -752,8 +752,9 @@ const bluejay = (function () {
 
 })( bluejay );
 /**
-* Using "oePloyly" as namespace
+* Using "oePlotly" as namespace
 * @namespace
+* Note: this approach completely replaces the old "oePlotly" layout helper
 */
 const oePlotly = (function ( bj ) {
 
@@ -853,6 +854,13 @@ const oePlotly = (function ( bj ) {
 	};
 	
 	/**
+	* Temporary support added for IDG Glaucoma Visual Fields Demo which is still
+	* using oePlotly directly (until I have time to rebuild it!) 
+	*/ 
+	const getColorFor = ( color, dark ) => getColor( color, dark );
+	
+	
+	/**
 	* Can not just set layout to dark theme bases on oeTheme setting
 	* layout may be used in "pro" area (such as patient popup)
 	* @returns {Boolean}
@@ -866,7 +874,8 @@ const oePlotly = (function ( bj ) {
 		isDarkTheme,
 		getBlue,
 		getColorSeries, 
-		getColor
+		getColor, 
+		getColorFor
 	};
 
 })( bluejay );
@@ -5593,16 +5602,19 @@ const oePlotly = (function ( bj ) {
 		let hotlistPatients = bj.nodeArray( document.querySelectorAll( '.oe-hotlist-panel .activity-list tr' ));
 	
 		hotlistPatients.forEach( (tr) => {
-			let json = JSON.parse( tr.dataset.comment );
-			if( json.comment ){
-				let icon = tr.querySelector('.oe-i.comments');
-				let td = tr.querySelector('.js-patient-comment');
-				let patientComment = PatientComment( icon, td, json.comment );
-				patientComment.show();
-				
-				// init and record Key
-				collection.add( patientComment, icon );
+			if ( tr.hasAttribute("data-comment") ){
+				let json = JSON.parse( tr.dataset.comment );
+				if( json.comment ){
+					let icon = tr.querySelector('.oe-i.comments');
+					let td = tr.querySelector('.js-patient-comment');
+					let patientComment = PatientComment( icon, td, json.comment );
+					patientComment.show();
+					
+					// init and record Key
+					collection.add( patientComment, icon );
+				}	
 			}
+			
 		});
 		
 	}, { once: true });

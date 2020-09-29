@@ -213,16 +213,19 @@
 		let hotlistPatients = bj.nodeArray( document.querySelectorAll( '.oe-hotlist-panel .activity-list tr' ));
 	
 		hotlistPatients.forEach( (tr) => {
-			let json = JSON.parse( tr.dataset.comment );
-			if( json.comment ){
-				let icon = tr.querySelector('.oe-i.comments');
-				let td = tr.querySelector('.js-patient-comment');
-				let patientComment = PatientComment( icon, td, json.comment );
-				patientComment.show();
-				
-				// init and record Key
-				collection.add( patientComment, icon );
+			if ( tr.hasAttribute("data-comment") ){
+				let json = JSON.parse( tr.dataset.comment );
+				if( json.comment ){
+					let icon = tr.querySelector('.oe-i.comments');
+					let td = tr.querySelector('.js-patient-comment');
+					let patientComment = PatientComment( icon, td, json.comment );
+					patientComment.show();
+					
+					// init and record Key
+					collection.add( patientComment, icon );
+				}	
 			}
+			
 		});
 		
 	}, { once: true });
