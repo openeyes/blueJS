@@ -657,7 +657,6 @@ const bluejay = (function () {
 			return this.list.size;
 		}, 
 		notify(){
-			console.log( this );
 			let iterator = this.list.values();
 			for ( let item of iterator ){
 				item();

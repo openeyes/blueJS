@@ -657,7 +657,6 @@ const bluejay = (function () {
 			return this.list.size;
 		}, 
 		notify(){
-			console.log( this );
 			let iterator = this.list.values();
 			for ( let item of iterator ){
 				item();
@@ -6129,6 +6128,7 @@ const oePlotly = (function ( bj ) {
 	uiApp.userDown(	'#js-search-in-event',	userClick );
 
 })(bluejay); 
+
 (function( bj ) {
 	'use strict';	
 	
@@ -6138,37 +6138,30 @@ const oePlotly = (function ( bj ) {
 	values in milliseconds 
 	remember: server timestamps PHP work in seconds
 	*/
-	const now = Date.now();
+	const now = Date.now(); // should we be using a Server timestamp?
 	const today = new Date( now );
 
 	/** 
-	* Model - extended with views
+	* Model - extended with MV views
 	*/	
 	const model = Object.assign({ 
-		pickDate:null,
-		inputDate:null, 
+		pickDate:null, 	// currently picked date
+		inputDate:null, // if a valid date already exists in <input>
 	
 		get date(){
 			return this.pickDate;
 		}, 
-		
 		set date( val ){
 			this.pickDate = val;
 			this.views.notify();	
 		}, 
-		
 		get userDate(){
-			if( this.inputDate === null ){
-				return false;
-			} else {
-				return this.inputDate;
-			}
+			if( this.inputDate == null ) return false;
+			return this.inputDate;
 		},
-		
 		set userDate( val ){
 			this.inputDate = val;
 		},
-		
 		changeMonth( n ){
 			this.pickDate.setMonth( n );
 			this.views.notify();
@@ -6178,17 +6171,14 @@ const oePlotly = (function ( bj ) {
 			this.pickDate.setFullYear( n );	
 			this.views.notify();	
 		}
-		
 	}, bj.ModelViews());
 
 	
 	/**
-	* Date grid
-	* @returns API
+	* Date grid - calendar of dates in weekly grid
 	*/
 	const dateGrid = (() => {
 		let div;
-		
 		/**
 		* Reset (ready for next date)
 		*/
@@ -6222,8 +6212,8 @@ const oePlotly = (function ( bj ) {
 		};
 		
 		/**
-		* Observers the model. 
-		* Build the date grid based on the current date
+		* Observer the model. 
+		* Build the date grid based on the current picked Date
 		*/
 		const dates = () => {
 			const 
@@ -6236,23 +6226,23 @@ const oePlotly = (function ( bj ) {
 				current = [],
 				next = [];
 				
-			// Sundays start the week (0), re-adjust to a Monday start
+			// in JS sundays start the week (0), re-adjust to a Monday start
 			let startDay = mthStartDay ? mthStartDay : 7;	
 				 
-			// Previous month dates to fill first week to the start day of current one
+			// Previous month dates to fill first week line to the start day of current month
 			for( let i = startDay-1, j = prevEndDate; i > 0; i--, j-- ) prev.push( j );
 			
 			// Current Month dates
 			for( let i = 1; i <= mthLastDate; i++ ) current.push( i );
 			
-			// Next Month dates fills remaining spaces, grid is 7 x 6 (42)
+			// Next Month dates fill remaining spaces - date grid is 7 x 6 (42)
 			const fillDays = 42 - (prev.length + current.length);
 			for( let i = 1; i <= fillDays; i++ ) next.push( i );
 			
-			if(( prev.length + current.length + next.length ) != 42 ) bj.log('[FastDatePicker] = DateGrid length error');
-			
-			prev.reverse(); // order previous correctly
+			// order previous dates correctly
+			prev.reverse(); 
 				
+			// build DOM
 			const datesPrev = Mustache.render( '{{#prev}}<div class="prev">{{.}}</div>{{/prev}}', { prev });
 			const datesCurrent = Mustache.render( '{{#current}}<div id="js-fast-date-{{.}}">{{.}}</div>{{/current}}', { current });
 			const datesNext = Mustache.render( '{{#next}}<div class="next">{{.}}</div>{{/next}}', { next });
@@ -6262,7 +6252,7 @@ const oePlotly = (function ( bj ) {
 			// flag today 
 			flagDate( today, 'today' );
 			
-			// valid user date
+			// if there is valid user date...
 			if( model.userDate != false ) flagDate( model.userDate, 'selected' );
 		};
 		
@@ -6275,8 +6265,7 @@ const oePlotly = (function ( bj ) {
 	})();
 	
 	/**
-	* Month
-	* @returns API
+	* Months
 	*/
 	const month = (() => {
 		const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -6346,6 +6335,10 @@ const oePlotly = (function ( bj ) {
 			nodes = null;
 		};
 
+		/**
+		* Build DOM
+		* @param {Element} wrap - main <div>
+		*/
 		const build = ( wrap ) => {
 			const template = [
 				'<div class="century">{{#century}}<div>{{.}}</div>{{/century}}</div>',
@@ -6358,6 +6351,7 @@ const oePlotly = (function ( bj ) {
 			div = bj.div("year");
 			div.innerHTML = Mustache.render( template, { century: ['19', '20'], ten });
 			
+			// store reference to nodelists (should be OK, use Array.from otherwise)
 			nodes = {
 				c: div.querySelector('.century').childNodes, 
 				d: div.querySelector('.decade').childNodes,
@@ -6367,18 +6361,27 @@ const oePlotly = (function ( bj ) {
 			wrap.appendChild( div );
 		};
 		
+		/**
+		* Years need to used in centuries, decades and single years
+		* @retures {Object} year units
+		*/
 		const getYearUnits = () => {
-			const full = Array.from( model.date.getFullYear().toString());
+			const fullYear =  model.date.getFullYear();
 			return {
-				c: parseFloat( full[0] + full[1] ),
-				d: parseFloat( full[2] ),
-				y: parseFloat( full[3] )
+				c: Math.floor( fullYear / 100 ),
+				d: parseFloat( fullYear.toString().charAt(2) ),
+				y: parseFloat( fullYear.toString().charAt(3) )
 			};
 		};
 		
+		/**
+		* Update DOM to show selected Year
+		*/
 		const update = () => {
 			const yr = getYearUnits();
-			yr.c = yr.c == 20 ? 1 : 0; // convert '19' and '20' century
+			
+			// convert '19' and '20' century to UI nodelist places
+			yr.c = yr.c == 20 ? 1 : 0; 
 
 			nodes.c.forEach((n) => n.classList.remove('selected'));
 			nodes.d.forEach((n) => n.classList.remove('selected'));
@@ -6393,30 +6396,67 @@ const oePlotly = (function ( bj ) {
 		// add to observers
 		model.views.add( update );
 		
-		return { build, getYearUnits, reset };
+		return { reset, build, getYearUnits };
 		
 	})();
 	
 	
 	/**
-	* initate picker, build DOM and position
-	* @param {Element} input (<input>)
+	* Picker (controller)
 	*/
 	const picker = (() => {
-		let input = null;
-		let div = null;
+		let input, div;
+		/*
+		Using 'blur' event to remove picker popup. But if user 
+		clicks on a picker date this needs to be ignored
+		*/
 		let ignoreBlurEvent = false;
 		
-		const initCalendar = () => {
-			let validUserInputDate = false;
-			let timeStamp;	
+		/**
+		* Remove and reset
+		* Either called directly when user selects a Date or by 'blur'
+		* Or by 'blur' event
+		*/
+		const remove = () => {
+			/*
+			If part of an Event chain from Month 
+			or Year change then ignore this	'blur' request
+			*/
+			if( ignoreBlurEvent ){
+				ignoreBlurEvent = false;
+				input.focus(); // instantly return focus so that we can use 'blur'
+				return;
+			}
 			
+			// help JS with GC
+			dateGrid.reset();
+			month.reset();
+			year.reset();
+			
+			// clean up and reset 
+			document.removeEventListener('blur', picker.remove, { capture: true });
+			bj.remove( div );
+			div = null;
+			input = null;
+		};
+		
+		/**
+		* initCalender when DOM is built.
+		* check <input> for a valid or use 'today'
+		*/
+		const initCalendar = () => {
+			let timeStamp;
+			let validUserInputDate = false;
+			
+			// <input> - test for valid date format: '1 Jan 1970' pattern
 			if( input.value ){
-				// check for valid date format: '1 Jan 1970' pattern
 				if( /^\d{1,2} [a-z]{3} \d{4}/i.test( input.value )){
 					timeStamp = Date.parse( input.value ); 
 					if( !isNaN( timeStamp )){
-						// OK, but is a reasonable date?
+						/*
+						Seems valid, but is it reasonable?
+						it could be '1 Jan 2328', check within year range
+						*/
 						const userDate = new Date( timeStamp );
 						const userFullYear = userDate.getFullYear();
 						if( userFullYear > 1900 && userFullYear < 2099 ){
@@ -6426,23 +6466,27 @@ const oePlotly = (function ( bj ) {
 				}
 			}
 			
-			// set up Model 
+			// set up Model with Date 
 			if( validUserInputDate ){
 				model.userDate = validUserInputDate;
-				model.date = new Date( timeStamp ); // note: this will trigger Views, set last!
+				model.date = new Date( timeStamp ); // note: this will trigger Views notifications, must be set last!
 			} else {
 				model.date = new Date( now );
 			}
 		};
 		
-		
+		/**
+		* Show Fast Date picker - callback from 'focus' event
+		* @param {Element} el - event.target (input.date)
+		*/
 		const show = ( el ) => {
 			/*
-			Refocusing on input, after ignoring a blue event
-			will trigger the input event. 	
+			Note: refocusing on the input, after ignoring a blur event
+			will trigger the input event again, ignore this	
 			*/
-			if( el.isSameNode( input )) return; // ignore this.
+			if( el.isSameNode( input )) return;
 
+			// OK new <input>
 			input = el;
 	
 			/*
@@ -6457,15 +6501,11 @@ const oePlotly = (function ( bj ) {
 			div.style.left = rect.left + 'px';
 			div.style.top = rect.bottom + 'px';
 			
-			// check default positioning is available
-			if( (rect.bottom + h) > bj.getWinH() ){
-				div.style.top = (rect.top - h) + 'px';
-			}
-			if( (rect.left + w) > bj.getWinW() ){
-				div.style.left = (rect.right - w ) + 'px';
-			} 
+			// check default positioning is available, if not shift position
+			if( (rect.bottom + h) > bj.getWinH())	div.style.top = (rect.top - h) + 'px';
+			if( (rect.left + w) > bj.getWinW())		div.style.left = (rect.right - w ) + 'px';
 			
-			// build DOM elements 
+			// build popup elements 
 			dateGrid.build( div );	
 			month.build( div );
 			year.build( div );
@@ -6473,14 +6513,23 @@ const oePlotly = (function ( bj ) {
 			// show picker
 			document.body.appendChild( div );  
 			
-			// initCalendar
+			// initCalendar (set the Model)
 			initCalendar();
 							
 			// use blur to remove picker
 			document.addEventListener('blur', picker.remove, { capture: true });
 		};
 		
+		/**
+		* Callback for Events on Month and Year
+		* @param {Element} target - event.target
+		* @param {String} unit - unit type
+		*/
 		const changeDate = ( target, unit ) => {
+			/*
+			This event will trigger 'blur' must ignore it
+			in this Event chain, otherwise it will close picker
+			*/
 			ignoreBlurEvent = true;
 			
 			const btnNum = parseFloat( target.textContent );
@@ -6511,12 +6560,17 @@ const oePlotly = (function ( bj ) {
 		};
 		
 		/**
-		* Make oeDate
+		* oeDate
 		* @param {Date} date
 		* @returns {String} "dd Mth YYYY"
 		*/
 		const oeDate = date => date.getDate() + ' ' + month.getMonthName( date.getMonth()) + ' ' + date.getFullYear();
 		
+		/**
+		* Callback for Events on Dates
+		* instantly sets the input date value
+		* @param {Element} target - event.target
+		*/
 		const selectDate = ( target ) => {
 			const date = parseFloat( target.textContent );
 			let m = model.date.getMonth(); 
@@ -6527,30 +6581,15 @@ const oePlotly = (function ( bj ) {
 			if( target.classList.contains('next')){
 				model.changeMonth( m + 1 ); // JS handles Year change
 			}
-			// insert date into input
+			
+			/* 
+			Update Model with the selected Date 
+			and insert date into input
+			*/
 			model.date.setDate( date );
 			input.value = oeDate( model.date );
-			remove();
 			
-		};
-		
-		const remove = () => {
-			
-			if( ignoreBlurEvent ){
-				ignoreBlurEvent = false;
-				input.focus();
-				return;
-			}
-			
-			dateGrid.reset();
-			month.reset();
-			year.reset();
-			
-			// clean up and reset 
-			document.removeEventListener('blur', picker.remove, { capture: true });
-			bj.remove( div );
-			div = null;
-			input = null;
+			remove(); // done! 
 		};
 		
 		// public
@@ -6560,14 +6599,13 @@ const oePlotly = (function ( bj ) {
 	
 	/*
 	Events
-	custom event delegation	
 	*/
+	
 	document.addEventListener('focus', ( ev ) => {
 		if( ev.target.matches('input.date')){
 			picker.show( ev.target );
 		}
 	}, { capture: true });
-	
 
 	bj.userDown('.fast-date-picker .month > div', ev => picker.changeDate( ev.target, 'month' ));
 	bj.userDown('.fast-date-picker .century > div', ev => picker.changeDate( ev.target, 'century' ));
@@ -6575,8 +6613,6 @@ const oePlotly = (function ( bj ) {
 	bj.userDown('.fast-date-picker .single li', ev => picker.changeDate( ev.target, 'year' ));
 	bj.userDown('.fast-date-picker .date-grid > div', ev => picker.selectDate( ev.target ));
 
-	
-		
 })( bluejay ); 
 
 (function( bj ) {
