@@ -281,7 +281,7 @@
 		const reset = () => {
 			// cancel events first
 			document.removeEventListener('input', watchInput, { capture:true });
-			document.removeEventListener('focusout', focusOut, { capture: true });
+			document.removeEventListener('blur', focusOut, { capture: true });
 			
 			// now reset everything...
 			input = null;
@@ -423,7 +423,7 @@
 				// add UI flag to input
 				quickTags.init( input ); 
 				document.addEventListener('input', watchInput, { capture:true });
-				document.addEventListener('focusout', focusOut, { capture: true });	
+				document.addEventListener('blur', focusOut, { capture: true });	
 			}		
 		};
 		
@@ -445,7 +445,7 @@
 	*/
 	
 	// custom event delegation
-	document.addEventListener('focusin', ( ev ) => inputController.init( ev.target ), { capture: true });
+	document.addEventListener('focus', ( ev ) => inputController.init( ev.target ), { capture: true });
 	
 	// common event delegation
 	bj.userDown('.oe-qtags', inputController.stopTagging );

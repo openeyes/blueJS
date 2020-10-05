@@ -30,6 +30,17 @@
 	};
 	
 	/**
+	* <div> with className, this is so common made it easier
+	* @param {String} className
+	* @returns {Element} <div>
+	*/
+	const div = ( className ) => {
+		const div = document.createElement('div');
+		div.className = className;
+		return div;
+	};
+	
+	/**
 	* wrap an element (https://plainjs.com/)
 	* @param {Element} elementToWrap
 	* @param {String} wrapClassName (optional)
@@ -199,6 +210,7 @@
 	bj.extend('getParent', getParent );
 	bj.extend('wrap', wrap );
 	bj.extend('unwrap', unwrap );
+	bj.extend('div', div);
 	bj.extend('remove', remove );
 	bj.extend('show', show );
 	bj.extend('reshow', reshow );

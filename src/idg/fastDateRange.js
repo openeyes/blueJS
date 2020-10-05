@@ -14,7 +14,7 @@
 	
 	/* 
 	values in milliseconds 
-	rememnber: server timestamps PHP work in seconds
+	remember: server timestamps PHP work in seconds
 	*/
 	const now = Date.now();
 	const today = new Date( now );
@@ -56,6 +56,25 @@
 		let weekStart = monday + ( day * offset);
 		setDateRange( new Date( weekStart ), new Date( weekStart + ( day * 4 )));
 	};
+	
+	/**
+	* Month
+	* @param {Number} monthOffset
+	*/
+	const monthRange = ( offset ) => {
+		let y = today.getFullYear(); 
+		let m = today.getMonth() + offset;
+		// watch out for year changes
+		if( m > 11 ){
+			m = 0;
+			y = y + 1;
+		}
+		if( m < 0){
+			m = 11; 
+			y = y - 1;
+		}
+		setDateRange( new Date(y, m, 1), new Date(y, m + 1, 0 ));
+	};
 
 	/**
 	* Handle user event
@@ -81,6 +100,13 @@
 			break; 
 			case 'next-week': weekRange( 7 );		
 			break; 
+			
+			case 'last-month': monthRange( -1 );
+			break; 
+			case 'this-month': monthRange( 0 );
+			break; 
+			case 'next-month': monthRange( +1 );
+			break;
 
 			default: bj.log('[fastDateRange] unknown range request: ' +  range );
 		}
