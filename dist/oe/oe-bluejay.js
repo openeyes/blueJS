@@ -644,7 +644,7 @@ const bluejay = (function () {
 	/**
 	* Create an ObserverList for Models (Models)
 	*/	
-	const ObserverList = {
+	const ObserverList = () => ({
 		list: new Set(), // observer only needs (should) be added once
 		add( item ){
 			this.list.add( item );
@@ -657,18 +657,19 @@ const bluejay = (function () {
 			return this.list.size;
 		}, 
 		notify(){
+			console.log( this );
 			let iterator = this.list.values();
 			for ( let item of iterator ){
 				item();
 			}
 		}
-	};
+	});
 	 
 	/**
 	* Basic Model with Observer Pattern for Views
 	*/
 	const Model = () => ({
-		views: Object.create( ObserverList )
+		views: Object.create( ObserverList() )
 	});
 		
 	bj.extend( 'ModelViews', Model );	

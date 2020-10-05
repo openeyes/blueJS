@@ -262,7 +262,7 @@
 		// add to observers
 		model.views.add( update );
 		
-		return { build, getYearUnits };
+		return { build, getYearUnits, reset };
 		
 	})();
 	
@@ -413,7 +413,7 @@
 			
 			dateGrid.reset();
 			month.reset();
-			//year.reset();
+			year.reset();
 			
 			// clean up and reset 
 			document.removeEventListener('blur', picker.remove, { capture: true });
