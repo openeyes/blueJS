@@ -305,6 +305,7 @@
 			
 			// clean up and reset 
 			document.removeEventListener('blur', picker.remove, { capture: true });
+			window.removeEventListener('scroll', picker.remove, { capture:true, once:true });
 			bj.remove( div );
 			div = null;
 			input = null;
@@ -388,6 +389,7 @@
 							
 			// use blur to remove picker
 			document.addEventListener('blur', picker.remove, { capture: true });
+			window.addEventListener('scroll', picker.remove, { capture:true, once:true });
 		};
 		
 		/**
