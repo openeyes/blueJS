@@ -4435,6 +4435,34 @@ const oePlotly = (function ( bj ) {
 	
 	
 })( bluejay ); 
+(function( bj ){
+
+	'use strict';
+	
+	if( document.querySelector('.js-event-date-change') === null ) return;
+	
+	const changeEventDate = ( ev ) => {
+		let icon = ev.target;
+		let input = ev.target.parentNode.querySelector('input');
+		let text = ev.target.parentNode.querySelector('.js-event-date');
+		
+		if( icon.classList.contains('rewind')){
+			icon.classList.remove('rewind');
+			icon.classList.add('save');
+			bj.hide( text );
+			bj.show( input );
+		} else {
+			icon.classList.add('rewind');
+			icon.classList.remove('save');
+			text.textContent = input.value;
+			bj.show( text );
+			bj.hide( input );
+		}
+	};
+	
+	bj.userDown('.js-event-date-change > .oe-i', changeEventDate ); 	
+			
+})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';
@@ -5341,11 +5369,11 @@ const oePlotly = (function ( bj ) {
 	bj.userDown( ".collapse-hotlist > .header-icon", ev => userClick( ev, "hotlist"));
 
 })( bluejay ); 
-(function (uiApp) {
+(function( bj ) {
 
 	'use strict';	
 	
-	uiApp.addModule('comments');	
+	bj.addModule('comments');	
 
 	/**
 	Comments icon is clicked on to reveal 
@@ -5362,43 +5390,43 @@ const oePlotly = (function ( bj ) {
 		const btn = ev.target;
 		const json = JSON.parse(btn.dataset.idgdemo);
 		
-		uiApp.hide(btn);
+		bj.hide( btn );
 		
 		if(json.bilateral){
 			// Find 2 comment inputs (I assume suffix of "-left" & '-right')
 			const commentsR = document.querySelector('#' + json.id + '-right');
 			const commentsL = document.querySelector('#' + json.id + '-left');
 			
-			uiApp.show(commentsR, 'block');
-			uiApp.show(commentsL, 'block');
+			bj.show( commentsR, 'block');
+			bj.show( commentsL, 'block');
 			
 			commentsR.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
-				uiApp.show(btn, 'block');
-				uiApp.hide(commentsR);
-				uiApp.hide(commentsL);
-			},{once:true});
+				bj.show( btn );
+				bj.hide( commentsR );
+				bj.hide( commentsL );
+			}, { once:true });
 			
 			commentsL.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
-				uiApp.show(btn, 'block');
-				uiApp.hide(commentsR);
-				uiApp.hide(commentsL);
-			},{once:true});
+				bj.show( btn );
+				bj.hide( commentsR );
+				bj.hide( commentsL );
+			}, { once:true });
 				
 		} else {
 			// single comment input
 			const comments = document.querySelector('#' + json.id);
-			uiApp.show(comments, 'block');
+			bj.show( comments, 'block' );
 			comments.querySelector('textarea').focus();
 			comments.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
-				uiApp.show(btn, 'block');
-				uiApp.hide(comments);
-			},{once:true});	
+				bj.show( btn );
+				bj.hide( comments );
+			},{ once:true });	
 		}
 	};
 	
-	uiApp.userDown('.js-add-comments', userClick );
+	bj.userDown('.js-add-comments', userClick );
 	
-})(bluejay); 
+})( bluejay ); 
 (function( bj ) {
 	'use strict';	
 	
@@ -9420,7 +9448,6 @@ Updated to Vanilla JS for IDG
 	Build sidebar element list in EDIT mode
 	Run through Elements grab there titles and then display them	
 	*/	
-	
 	// get the <UL> wrapper
 	let ul = document.querySelector('.sidebar-eventlist .oe-element-list');
 	if(ul === null) return;
@@ -9432,7 +9459,7 @@ Updated to Vanilla JS for IDG
 	
 	// avoid reflow until necessary
 	let fragment = document.createDocumentFragment();
-	
+
 	elemTitles.forEach( (function(title){
 		let li = document.createElement('li');
 		li.innerHTML = '<a href="#">'+title.textContent+'</a>';
@@ -9441,7 +9468,6 @@ Updated to Vanilla JS for IDG
 	
 	// add the DOM list
 	ul.appendChild(fragment);
-
 	
 
 })(bluejay); 

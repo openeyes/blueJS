@@ -1,8 +1,8 @@
-(function (uiApp) {
+(function( bj ) {
 
 	'use strict';	
 	
-	uiApp.addModule('comments');	
+	bj.addModule('comments');	
 
 	/**
 	Comments icon is clicked on to reveal 
@@ -19,40 +19,40 @@
 		const btn = ev.target;
 		const json = JSON.parse(btn.dataset.idgdemo);
 		
-		uiApp.hide(btn);
+		bj.hide( btn );
 		
 		if(json.bilateral){
 			// Find 2 comment inputs (I assume suffix of "-left" & '-right')
 			const commentsR = document.querySelector('#' + json.id + '-right');
 			const commentsL = document.querySelector('#' + json.id + '-left');
 			
-			uiApp.show(commentsR, 'block');
-			uiApp.show(commentsL, 'block');
+			bj.show( commentsR, 'block');
+			bj.show( commentsL, 'block');
 			
 			commentsR.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
-				uiApp.show(btn, 'block');
-				uiApp.hide(commentsR);
-				uiApp.hide(commentsL);
-			},{once:true});
+				bj.show( btn );
+				bj.hide( commentsR );
+				bj.hide( commentsL );
+			}, { once:true });
 			
 			commentsL.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
-				uiApp.show(btn, 'block');
-				uiApp.hide(commentsR);
-				uiApp.hide(commentsL);
-			},{once:true});
+				bj.show( btn );
+				bj.hide( commentsR );
+				bj.hide( commentsL );
+			}, { once:true });
 				
 		} else {
 			// single comment input
 			const comments = document.querySelector('#' + json.id);
-			uiApp.show(comments, 'block');
+			bj.show( comments, 'block' );
 			comments.querySelector('textarea').focus();
 			comments.querySelector('.js-remove-add-comments').addEventListener('mousedown', () => {
-				uiApp.show(btn, 'block');
-				uiApp.hide(comments);
-			},{once:true});	
+				bj.show( btn );
+				bj.hide( comments );
+			},{ once:true });	
 		}
 	};
 	
-	uiApp.userDown('.js-add-comments', userClick );
+	bj.userDown('.js-add-comments', userClick );
 	
-})(bluejay); 
+})( bluejay ); 
