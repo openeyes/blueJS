@@ -4451,6 +4451,7 @@ const oePlotly = (function ( bj ) {
 			icon.classList.add('save');
 			bj.hide( text );
 			bj.show( input );
+			setTimeout(() => input.focus(), 20);
 		} else {
 			icon.classList.add('rewind');
 			icon.classList.remove('save');
@@ -6523,21 +6524,23 @@ const oePlotly = (function ( bj ) {
 			Default position is below, left (follows Pick me up)
 			*/
 			const h = 240;
-			const w = 460;
+			const w = 430;
 			const rect = input.getBoundingClientRect();
 			
 			div = bj.div("fast-date-picker");
-			div.style.left = rect.left + 'px';
+			div.style.left = (rect.right - w ) + 'px';
 			div.style.top = rect.bottom + 'px';
 			
 			// check default positioning is available, if not shift position
+			if( rect.left < w ) div.style.left = rect.left + 'px';
 			if( (rect.bottom + h) > bj.getWinH())	div.style.top = (rect.top - h) + 'px';
-			if( (rect.left + w) > bj.getWinW())		div.style.left = (rect.right - w ) + 'px';
+			
 			
 			// build popup elements 
-			dateGrid.build( div );	
-			month.build( div );
 			year.build( div );
+			month.build( div );
+			dateGrid.build( div );	
+			
 			
 			// show picker
 			document.body.appendChild( div );  

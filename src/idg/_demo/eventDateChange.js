@@ -14,6 +14,7 @@
 			icon.classList.add('save');
 			bj.hide( text );
 			bj.show( input );
+			setTimeout(() => input.focus(), 20);
 		} else {
 			icon.classList.add('rewind');
 			icon.classList.remove('save');
