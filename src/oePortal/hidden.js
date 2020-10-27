@@ -1,4 +1,4 @@
-(function (uiApp) {
+(function( bj ){
 
 	'use strict';
 	
@@ -9,16 +9,16 @@
 	after JS loads it switches it over
 	*/ 
 	
-	const hidden = uiApp.nodeArray(document.querySelectorAll('.hidden'));
+	const hidden = bj.nodeArray(document.querySelectorAll('.hidden'));
 	if(hidden.length){
 		hidden.forEach( (elem) => {
-			uiApp.hide(elem);
+			bj.hide(elem);
 			elem.classList.remove('hidden');
 		});
 	}
 	
 	// Table rows use a different technique
-	const trCollapse = uiApp.nodeArray(document.querySelectorAll('.tr-collapse'));
+	const trCollapse = bj.nodeArray(document.querySelectorAll('.tr-collapse'));
 	if(trCollapse.length){
 		trCollapse.forEach( (elem) => {
 			elem.style.visibility = 'collapse';
@@ -28,4 +28,4 @@
 	
 
 	
-})(bluejay);
+})( bluejay );

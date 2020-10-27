@@ -8,11 +8,13 @@
 	* Resize textarea 
 	* @param {HTMLElement} <textarea>
 	*/ 
-	const resize = (textArea) => {
+	const resize = ( textArea ) => {
 		let h = textArea.scrollHeight;
-		if(h < 20) return;
-		textArea.style.height = 'auto';
-		textArea.style.height = h + 'px';
+		// check for line jumps
+		if( (h - textArea.clientHeight) > 15 ){
+			textArea.style.height = 'auto';
+			textArea.style.height = h + 5 + 'px';
+		}		
 	};
 	
 	/**
