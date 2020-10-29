@@ -74,6 +74,8 @@
 		const group = `idg-radio-g-${groupName}`;
 		document.addEventListener('change', ( ev ) => {
 			const elem = ev.target; 
+			if( elem.name !== group ) return;
+			
 			other.style.display = 'none';
 			if( elem.name === group && elem.value == otherVal ){
 				other.style.display = 'block';
