@@ -454,7 +454,7 @@ const bluejay = (function () {
 	* @param {DOM Element} el
 	* @param {String} displayType - "block","flex",'table-row',etc
 	*/
-	const show = (el, displayType = '') => {
+	const show = ( el, displayType = '') => {
 		if(el === null) return;
 		el.style.display = displayType;
 	};
@@ -464,7 +464,7 @@ const bluejay = (function () {
 	* re-show a DOM Element - this assumes CSS has set display: "block" || "flex" || "inline-block" (or whatever)
 	* @param {DOM Element} el
 	*/
-	const reshow = (el) => {
+	const reshow = ( el ) => {
 		if(el === null) return;
 		el.style.display = ""; // in which case remove the style display and let the CSS handle it again (thanks Mike)
 	};
@@ -473,7 +473,7 @@ const bluejay = (function () {
 	* Hide a DOM Element ()	
 	* @param {DOM Element} el
 	*/
-	const hide = (el) => {
+	const hide = ( el ) => {
 		if(el === null) return;
 		el.style.display = "none";
 	};
@@ -484,7 +484,7 @@ const bluejay = (function () {
 	* @parent {String} string to match
 	* @returns {HTMLElement} or False
 	*/
-	const getParent = (el, selector) => {
+	const getParent = ( el, selector ) => {
 		while( !el.matches('body')){
 			if( el.matches( selector )){
 				return el; // found it!
@@ -500,10 +500,10 @@ const bluejay = (function () {
 	* @param {string} url
 	* @returns {Promise} resolve(responseText) or reject(errorMsg)
 	*/
-	const xhr = (url) => {
-		bj.log('[XHR] - '+url);
+	const xhr = ( url ) => {
+		bj.log('[XHR] - ' + url );
 		// wrap XHR in Promise
-		return new Promise((resolve, reject) => {
+		return new Promise(( resolve, reject ) => {
 			let xReq = new XMLHttpRequest();
 			xReq.open("GET", url);
 			xReq.onreadystatechange = function(){
@@ -524,6 +524,30 @@ const bluejay = (function () {
 			xReq.send();
 		});
 	};
+	
+	/**
+	* Load JS on request. 
+	* @param {String} url - external JS file
+	* @param {Boolean} crossorigin - used to load CDN JS (... ReactJS for demos)
+	* @returns {Promise} resolve(responseText) or reject(errorMsg)
+	*/
+	const loadJS = ( url, crossorigin=false ) => {
+		bj.log('[loading JS] - ' + url );
+		return new Promise(( resolve, reject ) => {
+			const script = document.createElement('script');
+		    script.src = url;
+			script.setAttribute('async', ''); // may as well add this! 
+			if( crossorigin ){
+				script.setAttribute('crossorigin', '');
+			}
+			/*
+			Not bothering with catching errors here at the moment.
+			*/
+			script.onload = () => resolve(); 
+			document.head.appendChild( script) ;
+		});  
+	};
+
 
 	/**
 	* Get dimensions of hidden DOM element
@@ -587,6 +611,7 @@ const bluejay = (function () {
 	bj.extend('reshow', reshow );
 	bj.extend('hide', hide );
 	bj.extend('xhr', xhr );
+	bj.extend('loadJS', loadJS );
 	bj.extend('getHiddenElemSize', getHiddenElemSize );
 	bj.extend('idgReporter', idgMsgReporter );
 	
@@ -4952,6 +4977,194 @@ const oePlotly = (function ( bj ) {
 	
 			
 })(bluejay); 
+(function( bj ){
+
+	'use strict';	
+	
+	/**
+	* React Component 
+	*/
+	const buildComponent = () => {
+				
+		const rEl = React.createElement;
+		
+		/**
+		* SVG circles that graphically show waiting time
+		* Duration is also shown in minutes	
+		*/
+		class WaitDuration extends React.Component {
+			
+			constructor( props ){
+				super( props ); // always call the base constructor with props 
+			}
+			
+			/*
+			Circles to represent time waiting
+			*/
+			svgCircles( r ){
+				const circles = ['green','yellow','orange','red'].map(( color, i ) => {
+					const cx = (i * (r * 2)) - r;
+					return rEl('circle', { 
+						key: color, // React JS requires a 'key', IF list is re-order then this will be a problem 
+						className: `c${i}`, 
+						cx,
+						cy:r, 
+						r 
+					});
+				});
+				
+				return circles;
+			}
+			
+			/*
+			Render
+			*/
+			render(){
+				const r = 6;
+				const d = r * 2;
+				const w = d * 4;
+				const waitMins = this.props.mins;
+				
+				return (
+					rEl('div', { className: 'wait-duration'},
+						rEl('svg', { className: 'duration-graphic', viewBox:`0 0 ${w} ${d}`, height: d, width: w }, 
+							this.svgCircles( r )
+						),
+						rEl('div', { className: 'mins'},
+							rEl('span', null, waitMins),
+							rEl('small', null, 'mins'))
+					)
+				);
+			}
+		}
+		
+		/*
+		Make component available to SPA	
+		*/
+		bj.namespace('react').WaitDuration = WaitDuration;			
+	};
+	
+	/*
+	When React is available build the Component
+	*/
+	document.addEventListener('reactJSloaded', buildComponent, { once: true });
+	  
+
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	bj.addModule('clinicManager');
+	
+	/*
+	Check page... 
+	*/
+	if( document.getElementById('js-clinic-manager') === null ) return;
+	
+	/*
+	Name space for React Components	
+	*/
+	const react = bj.namespace('react');
+	
+	
+	/**
+	* Initalise Clinic Manager SPA
+	* Broadcast to all listeners that React is now available
+	*/
+	const init = () => {
+		// reactJS is available
+		bj.customEvent('reactJSloaded');
+		
+		// shortcut
+		const rEl = React.createElement;
+		
+		// buidl the manager component
+		class ClinicManager extends React.Component {
+			render(){
+				/*
+				Static table elements. All happens in the tbody	
+				*/
+				const cols = [1,1,1,4,4].map(( c, i ) => rEl('col', { className: `cols-${c}`, key: `c${i}` }));
+				const headers = ['time','hospital','gender','name', 'wait'].map(( th, i ) => rEl('th', { key: th }, th ));	
+				const patientTRs = this.props.patientsJSON.map(( patient => rEl( react.Patient, patient )));
+				
+				
+				return (
+					 rEl('table', { className: 'oe-clinic-list' }, 
+					 	rEl('colgroup', null, cols ),
+					 	rEl('thead', null, 
+					 		rEl('tr', null, headers )),
+					 	rEl('tbody', null, patientTRs )
+					 )
+				);
+			}
+		}
+			
+
+		const patientsJSON = [
+		  { key:'uid1', time: '09:00', num: '1234567', gender: 'Male', name: 'LUTHER KING, Martin', wait:12 },
+		  { key:'uid2', time: '09:15', num: '1234567', gender: 'Femail', name: 'NIGHTINGALE, Florence', wait: 23 }
+		];
+	
+			
+		ReactDOM.render(
+		  rEl( ClinicManager, { patientsJSON } ),
+		  document.getElementById('js-clinic-manager')
+		);
+	};
+	
+	/*
+	Load React JS, then initalise
+	*/
+    Promise.all([
+	     bj.loadJS('https://unpkg.com/react@17/umd/react.development.js', true),
+	     bj.loadJS('https://unpkg.com/react-dom@17/umd/react-dom.development.js', true),
+    ]).then( () => init() );
+	  
+
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	/**
+	* React Component 
+	*/
+	const buildComponent = () => {
+				
+		const rEl = React.createElement;
+		const react = bj.namespace('react');
+		
+		class Patient extends React.Component {
+			render(){
+				return (
+					rEl('tr', null,
+						rEl('td', null, this.props.time),
+						rEl('td', null, this.props.num),
+						rEl('td', null, this.props.gender),
+						rEl('td', null, this.props.name),
+						rEl('td', null,
+							rEl( react.WaitDuration, { mins: this.props.wait }))
+						
+					)
+				);
+			}
+		}
+		
+		/*
+		Make component available to SPA	
+		*/
+		react.Patient = Patient;			
+	};
+	
+	/*
+	When React is available build the Component
+	*/
+	document.addEventListener('reactJSloaded', buildComponent, { once: true });
+	  
+
+})( bluejay ); 
 (function( bj ){
 
 	'use strict';	
@@ -9617,11 +9830,13 @@ Updated to Vanilla JS for IDG
 	* Resize textarea 
 	* @param {HTMLElement} <textarea>
 	*/ 
-	const resize = (textArea) => {
+	const resize = ( textArea ) => {
 		let h = textArea.scrollHeight;
-		if(h < 20) return;
-		textArea.style.height = 'auto';
-		textArea.style.height = h + 'px';
+		// check for line jumps
+		if( (h - textArea.clientHeight) > 15 ){
+			textArea.style.height = 'auto';
+			textArea.style.height = h + 5 + 'px';
+		}		
 	};
 	
 	/**
@@ -10607,7 +10822,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	'use strict';
 	
 	// no need for any more extensions
-	Object.preventExtensions(bj);
+	Object.preventExtensions( bj );
 	
 	// ready
 	bj.ready();

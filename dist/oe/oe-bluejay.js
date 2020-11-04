@@ -454,7 +454,7 @@ const bluejay = (function () {
 	* @param {DOM Element} el
 	* @param {String} displayType - "block","flex",'table-row',etc
 	*/
-	const show = (el, displayType = '') => {
+	const show = ( el, displayType = '') => {
 		if(el === null) return;
 		el.style.display = displayType;
 	};
@@ -464,7 +464,7 @@ const bluejay = (function () {
 	* re-show a DOM Element - this assumes CSS has set display: "block" || "flex" || "inline-block" (or whatever)
 	* @param {DOM Element} el
 	*/
-	const reshow = (el) => {
+	const reshow = ( el ) => {
 		if(el === null) return;
 		el.style.display = ""; // in which case remove the style display and let the CSS handle it again (thanks Mike)
 	};
@@ -473,7 +473,7 @@ const bluejay = (function () {
 	* Hide a DOM Element ()	
 	* @param {DOM Element} el
 	*/
-	const hide = (el) => {
+	const hide = ( el ) => {
 		if(el === null) return;
 		el.style.display = "none";
 	};
@@ -484,7 +484,7 @@ const bluejay = (function () {
 	* @parent {String} string to match
 	* @returns {HTMLElement} or False
 	*/
-	const getParent = (el, selector) => {
+	const getParent = ( el, selector ) => {
 		while( !el.matches('body')){
 			if( el.matches( selector )){
 				return el; // found it!
@@ -500,10 +500,10 @@ const bluejay = (function () {
 	* @param {string} url
 	* @returns {Promise} resolve(responseText) or reject(errorMsg)
 	*/
-	const xhr = (url) => {
-		bj.log('[XHR] - '+url);
+	const xhr = ( url ) => {
+		bj.log('[XHR] - ' + url );
 		// wrap XHR in Promise
-		return new Promise((resolve, reject) => {
+		return new Promise(( resolve, reject ) => {
 			let xReq = new XMLHttpRequest();
 			xReq.open("GET", url);
 			xReq.onreadystatechange = function(){
@@ -524,6 +524,30 @@ const bluejay = (function () {
 			xReq.send();
 		});
 	};
+	
+	/**
+	* Load JS on request. 
+	* @param {String} url - external JS file
+	* @param {Boolean} crossorigin - used to load CDN JS (... ReactJS for demos)
+	* @returns {Promise} resolve(responseText) or reject(errorMsg)
+	*/
+	const loadJS = ( url, crossorigin=false ) => {
+		bj.log('[loading JS] - ' + url );
+		return new Promise(( resolve, reject ) => {
+			const script = document.createElement('script');
+		    script.src = url;
+			script.setAttribute('async', ''); // may as well add this! 
+			if( crossorigin ){
+				script.setAttribute('crossorigin', '');
+			}
+			/*
+			Not bothering with catching errors here at the moment.
+			*/
+			script.onload = () => resolve(); 
+			document.head.appendChild( script) ;
+		});  
+	};
+
 
 	/**
 	* Get dimensions of hidden DOM element
@@ -587,6 +611,7 @@ const bluejay = (function () {
 	bj.extend('reshow', reshow );
 	bj.extend('hide', hide );
 	bj.extend('xhr', xhr );
+	bj.extend('loadJS', loadJS );
 	bj.extend('getHiddenElemSize', getHiddenElemSize );
 	bj.extend('idgReporter', idgMsgReporter );
 	
@@ -3885,7 +3910,7 @@ const oePlotly = (function ( bj ) {
 	'use strict';
 	
 	// no need for any more extensions
-	Object.preventExtensions(bj);
+	Object.preventExtensions( bj );
 	
 	// ready
 	bj.ready();

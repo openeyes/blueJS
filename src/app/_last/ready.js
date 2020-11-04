@@ -6,7 +6,7 @@
 	'use strict';
 	
 	// no need for any more extensions
-	Object.preventExtensions(bj);
+	Object.preventExtensions( bj );
 	
 	// ready
 	bj.ready();
