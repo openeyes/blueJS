@@ -573,7 +573,16 @@ const bluejay = (function () {
 		
 		return props;
 	};
-
+	
+	/** 
+	* clock24 - show Date as time (24hr)
+	* @param {Date} - Date
+	* @returns {String} - e.g. '09:03'
+	*/
+	const clock24 = ( date ) => {
+		return date.getHours().toString().padStart(2,'0')  + ':' + date.getMinutes().toString().padStart(2,'0');
+	};
+	
 	/* 
 	* Output messgaes onto UI
 	* useful for touch device testing
@@ -614,6 +623,7 @@ const bluejay = (function () {
 	bj.extend('loadJS', loadJS );
 	bj.extend('getHiddenElemSize', getHiddenElemSize );
 	bj.extend('idgReporter', idgMsgReporter );
+	bj.extend('clock24', clock24 );
 	
 })( bluejay );
 /**
@@ -4988,22 +4998,274 @@ const oePlotly = (function ( bj ) {
 				
 		const rEl = React.createElement;
 		
+		class PathStep extends React.Component {
+			render(){
+				return (
+					rEl('span', 
+						{ className: 'oe-pathstep-btn' },
+						rEl('span', { className: 'step' }, this.props.info[0]), 
+						rEl('span', { className: 'time' }, bj.clock24( new Date( this.props.info[1] )))
+					)
+				);
+			}
+		}
+		
+		// make component available	
+		bj.namespace('react').PathStep = PathStep;			
+	};
+	
+	/*
+	When React is available build the Component
+	*/
+	document.addEventListener('reactJSloaded', buildComponent, { once: true });
+	  
+
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	/**
+	* React Component 
+	*/
+	const buildComponent = () => {
+				
+		const rEl = React.createElement;
+		const react = bj.namespace('react');
+		
+		class Pathway extends React.Component {
+			render(){
+				// pathsteps? These will be an Object...
+				let pathSteps = Object.values( this.props.pathway );	
+				if( pathSteps.length ){
+					pathSteps = pathSteps.map(( step, i ) => {
+						return rEl( react.PathStep, { key: step[0] + i, info: step });
+					});
+				}
+				
+				return (
+					rEl('div', { className: 'pathway'}, pathSteps )
+				);
+			}
+		}
+		
+		// make component available	
+		react.Pathway = Pathway;			
+	};
+	
+	/*
+	When React is available build the Component
+	*/
+	document.addEventListener('reactJSloaded', buildComponent, { once: true });
+	  
+
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	/**
+	* React Component 
+	*/
+	const buildComponent = () => {
+				
+		const rEl = React.createElement;
+		const react = bj.namespace('react');
+		
+		class Patient extends React.Component {
+			render(){
+				const patient = this.props;
+				
+				// Meta pattern
+				const meta = {
+					name: patient.name,
+					age: patient.age,
+					gender: patient.gender,
+					nhs: patient.nhs,	
+				};
+				
+				// Waiting time is set from Arrival, if there is one 
+				let waitMins = 0;
+				
+				console.log( patient.pathway );
+				
+				if( patient.pathway[0] ){
+					waitMins =  Math.floor(( Date.now() - patient.pathway[0][1] ) / 60000 );
+				}
+			
+				
+				return (
+					rEl('tr', { "data-timestamp" : patient.booked },
+						rEl('td', null, bj.clock24( new Date( patient.booked ))),
+						rEl('td', null, patient.num ),
+						rEl('td', null, patient.type ),
+						rEl('td', null, 
+							rEl( react.PatientQuickView, meta )
+						),
+						rEl('td', null, 
+							rEl( react.PatientMeta, meta )
+						),
+						rEl('td', null,
+							rEl( react.Pathway, {
+								state: patient.state, 
+								pathway: patient.pathway
+							})
+						), 
+						rEl('td', null, "assign"),
+						rEl('td', null,
+							rEl( react.WaitDuration, { 
+								state: patient.state,
+								mins: waitMins 			 	// this counts from Arrival...
+							})
+						)
+					)
+				);
+			}
+		}
+		
+		// make component available	
+		react.Patient = Patient;			
+	};
+	
+	/*
+	When React is available build the Component
+	*/
+	document.addEventListener('reactJSloaded', buildComponent, { once: true });
+	  
+
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	/**
+	* React Component 
+	*/
+	const buildComponent = () => {
+				
+		const rEl = React.createElement;
+		
+		class PatientMeta extends React.Component {
+			render(){
+				return (
+					rEl('div', { className: 'oe-patient-meta' }, 
+						rEl('div', { className: 'patient-name' }, 
+							rEl('a', { href: '/v3-SEM/patient-overview' }, 
+								rEl('span', { className: 'patient-surname'}, this.props.name[0] ),
+								rEl("span", { className: "patient-firstname"}, ', ' + this.props.name[1] )
+							)
+						), 
+						rEl("div", { className: "patient-details" }, 
+							rEl("div", { className: "nhs-number", dangerouslySetInnerHTML: { __html : '<span>NHS</span>' + this.props.nhs }}),
+							rEl("div", { className: "patient-gender", dangerouslySetInnerHTML: { __html : '<em>Gen</em>' + this.props.gender }}),
+							rEl("div", { className: "patient-age", dangerouslySetInnerHTML: { __html : '<em>Age</em>' + this.props.age }})
+						)
+					)
+				);
+			}
+		}
+		
+		// make component available	
+		bj.namespace('react').PatientMeta = PatientMeta;			
+	};
+	
+	/*
+	When React is available build the Component
+	*/
+	document.addEventListener('reactJSloaded', buildComponent, { once: true });
+	  
+
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	/**
+	* React Component 
+	*/
+	const buildComponent = () => {
+				
+		const rEl = React.createElement;
+		
+		/*
+		<i class="oe-i eye-circle medium pad js-patient-quick-overview" data-patient="{"surname":"DARWIN","first":"Charles (Mr)","id":false,"nhs":"991 156 4705","gender":"male","age":"102y"}" data-mode="side" data-php="patient/quick/overview.php"></i>
+		*/
+		
+		class PatientQuickView extends React.Component {
+			render(){
+				 
+				const patient = {
+					surname: this.props.name[0],
+					first: this.props.name[1],
+					id: false, 
+					nhs: this.props.nhs, 
+					gender: this.props.gender, 
+					age: this.props.age,
+				};
+				
+				return rEl('i', {
+					className: 'oe-i eye-circle medium pad js-patient-quick-overview',
+					"data-patient": JSON.stringify( patient ),
+					"data-mode": 'side',
+					"data-php": "patient/quick/overview.php",
+				}, null);
+			}
+		}
+		
+		// make component available	
+		bj.namespace('react').PatientQuickView = PatientQuickView;			
+	};
+	
+	/*
+	When React is available build the Component
+	*/
+	document.addEventListener('reactJSloaded', buildComponent, { once: true });
+	  
+
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	/**
+	* React Component 
+	*/
+	const buildComponent = () => {
+				
+		const rEl = React.createElement;
+		
 		/**
 		* SVG circles that graphically show waiting time
 		* Duration is also shown in minutes	
 		*/
 		class WaitDuration extends React.Component {
-			
 			constructor( props ){
-				super( props ); // always call the base constructor with props 
+				super( props );
+				this.state = {
+					mins: this.props.mins,
+				};
+				
+				// prototypal inheritence, set scope: 
+				this.countMins = this.countMins.bind( this );
+				
+				// give a rough min count to show the UX...
+				setInterval( this.countMins, 60000 );
 			}
-			
+		
+		
+			countMins(){
+				const increaseMins = this.state.mins + 1;
+				this.setState({
+					mins: increaseMins
+				});
+			}
+		
 			/*
 			Circles to represent time waiting
 			*/
 			svgCircles( r ){
 				const circles = ['green','yellow','orange','red'].map(( color, i ) => {
-					const cx = (i * (r * 2)) - r;
+					const cx = ((i + 1) * (r * 2)) - r;
 					return rEl('circle', { 
 						key: color, // React JS requires a 'key', IF list is re-order then this will be a problem 
 						className: `c${i}`, 
@@ -5023,24 +5285,39 @@ const oePlotly = (function ( bj ) {
 				const r = 6;
 				const d = r * 2;
 				const w = d * 4;
-				const waitMins = this.props.mins;
+				const mins = this.state.mins;
+				
+				// graphic state depends on wait
+				let count = '';
+				let minsLabel = '';
+				let cssColor = '';
+				
+				if( mins > 0 ){
+					count = mins; 
+					minsLabel = mins > 1 ? 'mins' : 'min'; 
+					cssColor = 'green';
+					
+					if( mins > 15 ) cssColor = 'yellow';
+					if( mins > 30 ) cssColor = 'orange';
+					if( mins > 60 ) cssColor = 'red';
+					
+				}
 				
 				return (
 					rEl('div', { className: 'wait-duration'},
-						rEl('svg', { className: 'duration-graphic', viewBox:`0 0 ${w} ${d}`, height: d, width: w }, 
+						rEl('svg', { className: 'duration-graphic ' + cssColor , viewBox:`0 0 ${w} ${d}`, height: d, width: w }, 
 							this.svgCircles( r )
 						),
 						rEl('div', { className: 'mins'},
-							rEl('span', null, waitMins),
-							rEl('small', null, 'mins'))
+							rEl('span', null, count ),
+							rEl('small', null, minsLabel )
+						)
 					)
 				);
 			}
 		}
 		
-		/*
-		Make component available to SPA	
-		*/
+		// make component available	
 		bj.namespace('react').WaitDuration = WaitDuration;			
 	};
 	
@@ -5058,7 +5335,7 @@ const oePlotly = (function ( bj ) {
 	bj.addModule('clinicManager');
 	
 	/*
-	Check page... 
+	Check we are on the right page... 
 	*/
 	if( document.getElementById('js-clinic-manager') === null ) return;
 	
@@ -5066,7 +5343,6 @@ const oePlotly = (function ( bj ) {
 	Name space for React Components	
 	*/
 	const react = bj.namespace('react');
-	
 	
 	/**
 	* Initalise Clinic Manager SPA
@@ -5079,34 +5355,47 @@ const oePlotly = (function ( bj ) {
 		// shortcut
 		const rEl = React.createElement;
 		
+		/*
+		To make the UX prototype easy to change the JSON is provided by PHP
+		*/
+		const patientsJSON = JSON.parse( phpClinicDemoJSON );
+		
+		/*
+		For the purposes of the demo all times are set in RELATIVE minutes
+		Update all these JSON times to full timestamps
+		*/
+		const now = Date.now();
+	
+		patientsJSON.forEach( row => {
+			const booked = row.booked;
+			const pathwayArr = row.pathway;
+			
+			// make sure appointments always scheduled on 5 minutes
+			const appointment = new Date( now + ( booked * 60000 )); 
+			const offsetFive = appointment.getMinutes() % 5; 
+			appointment.setMinutes( appointment.getMinutes() - offsetFive );
+			row.booked = appointment.getTime();
+			
+			pathwayArr.forEach( step => {
+				step[1] = now + ( step[1] * 60000 ) ;
+			});
+		});
+		
 		// buidl the manager component
 		class ClinicManager extends React.Component {
 			render(){
-				/*
-				Static table elements. All happens in the tbody	
-				*/
-				const cols = [1,1,1,4,4].map(( c, i ) => rEl('col', { className: `cols-${c}`, key: `c${i}` }));
-				const headers = ['time','hospital','gender','name', 'wait'].map(( th, i ) => rEl('th', { key: th }, th ));	
-				const patientTRs = this.props.patientsJSON.map(( patient => rEl( react.Patient, patient )));
-				
+				const colHeaders = ['Appt.','Hospital No.','Type','','Name','Pathway','Assign','Duration'].map( th => rEl('th', { key: th }, th ));	
+				const tableRows = this.props.patientsJSON.map( patient => rEl( react.Patient, patient ));
 				
 				return (
 					 rEl('table', { className: 'oe-clinic-list' }, 
-					 	rEl('colgroup', null, cols ),
 					 	rEl('thead', null, 
-					 		rEl('tr', null, headers )),
-					 	rEl('tbody', null, patientTRs )
+					 		rEl('tr', null, colHeaders )),
+					 	rEl('tbody', null, tableRows )
 					 )
 				);
 			}
 		}
-			
-
-		const patientsJSON = [
-		  { key:'uid1', time: '09:00', num: '1234567', gender: 'Male', name: 'LUTHER KING, Martin', wait:12 },
-		  { key:'uid2', time: '09:15', num: '1234567', gender: 'Femail', name: 'NIGHTINGALE, Florence', wait: 23 }
-		];
-	
 			
 		ReactDOM.render(
 		  rEl( ClinicManager, { patientsJSON } ),
@@ -5121,47 +5410,6 @@ const oePlotly = (function ( bj ) {
 	     bj.loadJS('https://unpkg.com/react@17/umd/react.development.js', true),
 	     bj.loadJS('https://unpkg.com/react-dom@17/umd/react-dom.development.js', true),
     ]).then( () => init() );
-	  
-
-})( bluejay ); 
-(function( bj ){
-
-	'use strict';	
-	
-	/**
-	* React Component 
-	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-		const react = bj.namespace('react');
-		
-		class Patient extends React.Component {
-			render(){
-				return (
-					rEl('tr', null,
-						rEl('td', null, this.props.time),
-						rEl('td', null, this.props.num),
-						rEl('td', null, this.props.gender),
-						rEl('td', null, this.props.name),
-						rEl('td', null,
-							rEl( react.WaitDuration, { mins: this.props.wait }))
-						
-					)
-				);
-			}
-		}
-		
-		/*
-		Make component available to SPA	
-		*/
-		react.Patient = Patient;			
-	};
-	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
 	  
 
 })( bluejay ); 

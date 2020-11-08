@@ -5,7 +5,7 @@
 	bj.addModule('clinicManager');
 	
 	/*
-	Check page... 
+	Check we are on the right page... 
 	*/
 	if( document.getElementById('js-clinic-manager') === null ) return;
 	
@@ -13,7 +13,6 @@
 	Name space for React Components	
 	*/
 	const react = bj.namespace('react');
-	
 	
 	/**
 	* Initalise Clinic Manager SPA
@@ -26,34 +25,47 @@
 		// shortcut
 		const rEl = React.createElement;
 		
+		/*
+		To make the UX prototype easy to change the JSON is provided by PHP
+		*/
+		const patientsJSON = JSON.parse( phpClinicDemoJSON );
+		
+		/*
+		For the purposes of the demo all times are set in RELATIVE minutes
+		Update all these JSON times to full timestamps
+		*/
+		const now = Date.now();
+	
+		patientsJSON.forEach( row => {
+			const booked = row.booked;
+			const pathwayArr = row.pathway;
+			
+			// make sure appointments always scheduled on 5 minutes
+			const appointment = new Date( now + ( booked * 60000 )); 
+			const offsetFive = appointment.getMinutes() % 5; 
+			appointment.setMinutes( appointment.getMinutes() - offsetFive );
+			row.booked = appointment.getTime();
+			
+			pathwayArr.forEach( step => {
+				step[1] = now + ( step[1] * 60000 ) ;
+			});
+		});
+		
 		// buidl the manager component
 		class ClinicManager extends React.Component {
 			render(){
-				/*
-				Static table elements. All happens in the tbody	
-				*/
-				const cols = [1,1,1,4,4].map(( c, i ) => rEl('col', { className: `cols-${c}`, key: `c${i}` }));
-				const headers = ['time','hospital','gender','name', 'wait'].map(( th, i ) => rEl('th', { key: th }, th ));	
-				const patientTRs = this.props.patientsJSON.map(( patient => rEl( react.Patient, patient )));
-				
+				const colHeaders = ['Appt.','Hospital No.','Type','','Name','Pathway','Assign','Duration'].map( th => rEl('th', { key: th }, th ));	
+				const tableRows = this.props.patientsJSON.map( patient => rEl( react.Patient, patient ));
 				
 				return (
 					 rEl('table', { className: 'oe-clinic-list' }, 
-					 	rEl('colgroup', null, cols ),
 					 	rEl('thead', null, 
-					 		rEl('tr', null, headers )),
-					 	rEl('tbody', null, patientTRs )
+					 		rEl('tr', null, colHeaders )),
+					 	rEl('tbody', null, tableRows )
 					 )
 				);
 			}
 		}
-			
-
-		const patientsJSON = [
-		  { key:'uid1', time: '09:00', num: '1234567', gender: 'Male', name: 'LUTHER KING, Martin', wait:12 },
-		  { key:'uid2', time: '09:15', num: '1234567', gender: 'Femail', name: 'NIGHTINGALE, Florence', wait: 23 }
-		];
-	
 			
 		ReactDOM.render(
 		  rEl( ClinicManager, { patientsJSON } ),

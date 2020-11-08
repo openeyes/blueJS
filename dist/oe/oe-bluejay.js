@@ -573,7 +573,16 @@ const bluejay = (function () {
 		
 		return props;
 	};
-
+	
+	/** 
+	* clock24 - show Date as time (24hr)
+	* @param {Date} - Date
+	* @returns {String} - e.g. '09:03'
+	*/
+	const clock24 = ( date ) => {
+		return date.getHours().toString().padStart(2,'0')  + ':' + date.getMinutes().toString().padStart(2,'0');
+	};
+	
 	/* 
 	* Output messgaes onto UI
 	* useful for touch device testing
@@ -614,6 +623,7 @@ const bluejay = (function () {
 	bj.extend('loadJS', loadJS );
 	bj.extend('getHiddenElemSize', getHiddenElemSize );
 	bj.extend('idgReporter', idgMsgReporter );
+	bj.extend('clock24', clock24 );
 	
 })( bluejay );
 /**
