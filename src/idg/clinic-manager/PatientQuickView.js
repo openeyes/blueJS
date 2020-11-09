@@ -9,9 +9,6 @@
 				
 		const rEl = React.createElement;
 		
-		/*
-		<i class="oe-i eye-circle medium pad js-patient-quick-overview" data-patient="{"surname":"DARWIN","first":"Charles (Mr)","id":false,"nhs":"991 156 4705","gender":"male","age":"102y"}" data-mode="side" data-php="patient/quick/overview.php"></i>
-		*/
 		
 		class PatientQuickView extends React.Component {
 			render(){

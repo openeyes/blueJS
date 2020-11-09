@@ -19,6 +19,8 @@
 	* Broadcast to all listeners that React is now available
 	*/
 	const init = () => {
+		bj.log('[Clinic Manager] - intialising');
+		
 		// reactJS is available
 		bj.customEvent('reactJSloaded');
 		
@@ -51,17 +53,20 @@
 			});
 		});
 		
-		// buidl the manager component
+		// React Clinic Manager
 		class ClinicManager extends React.Component {
 			render(){
-				const colHeaders = ['Appt.','Hospital No.','Type','','Name','Pathway','Assign','Duration'].map( th => rEl('th', { key: th }, th ));	
+				const colHeaders = ['Appt.','Hospital No.','Speciality','','Name','Pathway','Assign','Mins'].map( th => rEl('th', { key: th }, th ));	
 				const tableRows = this.props.patientsJSON.map( patient => rEl( react.Patient, patient ));
 				
 				return (
-					 rEl('table', { className: 'oe-clinic-list' }, 
-					 	rEl('thead', null, 
-					 		rEl('tr', null, colHeaders )),
-					 	rEl('tbody', null, tableRows )
+					 rEl('div', { className: 'app' }, 
+					 	rEl('table', { className: 'oe-clinic-list' }, 
+						 	rEl('thead', null, 
+						 		rEl('tr', null, colHeaders )),
+						 	rEl('tbody', null, tableRows )
+						 ), 
+						 rEl('div', { className: 'oe-pathstep-popup'}, 'hello')
 					 )
 				);
 			}
@@ -75,11 +80,14 @@
 	
 	/*
 	Load React JS, then initalise
+	Make sure you load the React package before loading ReactDOM.
+	react.production.min.js || react.development.js
 	*/
-    Promise.all([
-	     bj.loadJS('https://unpkg.com/react@17/umd/react.development.js', true),
-	     bj.loadJS('https://unpkg.com/react-dom@17/umd/react-dom.development.js', true),
-    ]).then( () => init() );
+    bj.loadJS('https://unpkg.com/react@17/umd/react.development.js', true)
+    	.then( () => {
+	    	 bj.loadJS('https://unpkg.com/react-dom@17/umd/react-dom.development.js', true)
+	    	 	.then( () => init() ); 
+    	});
 	  
 
 })( bluejay ); 

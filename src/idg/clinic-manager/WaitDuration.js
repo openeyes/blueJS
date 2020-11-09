@@ -9,22 +9,29 @@
 				
 		const rEl = React.createElement;
 		
-		/**
-		* SVG circles that graphically show waiting time
-		* Duration is also shown in minutes	
-		*/
 		class WaitDuration extends React.Component {
+			
+			/**
+			* WaitDuration SVG wait time graphic circles
+			* @props {Number} mins - waiting in minutes from arrival
+			* @props {String} status - 'complete', 'active' and 'todo'
+			*/
+			
 			constructor( props ){
 				super( props );
+				
 				this.state = {
 					mins: this.props.mins,
 				};
 				
-				// prototypal inheritence, set scope: 
+				// prototypal inheritence, set 'this' scope: 
 				this.countMins = this.countMins.bind( this );
 				
 				// give a rough min count to show the UX...
-				setInterval( this.countMins, 60000 );
+				if( this.props.mins && this.props.status == 'active'  ){			
+					this.state.countID = setInterval( this.countMins, 60000 ); // count every minute! 
+				}
+				
 			}
 		
 		
@@ -72,10 +79,15 @@
 					minsLabel = mins > 1 ? 'mins' : 'min'; 
 					cssColor = 'green';
 					
-					if( mins > 15 ) cssColor = 'yellow';
-					if( mins > 30 ) cssColor = 'orange';
-					if( mins > 60 ) cssColor = 'red';
-					
+					if( mins > 14 ) cssColor = 'yellow';
+					if( mins > 29 ) cssColor = 'orange';
+					if( mins > 59 ) cssColor = 'red';
+				}
+				
+				// if state is complete hide the duration graphic
+				if( this.props.status == 'complete'){
+					clearInterval( this.state.countID );
+					cssColor = 'hidden';
 				}
 				
 				return (

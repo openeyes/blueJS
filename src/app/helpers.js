@@ -161,18 +161,23 @@
 	* @returns {Promise} resolve(responseText) or reject(errorMsg)
 	*/
 	const loadJS = ( url, crossorigin=false ) => {
-		bj.log('[loading JS] - ' + url );
+		bj.log('[JS script] - ' + url );
 		return new Promise(( resolve, reject ) => {
 			const script = document.createElement('script');
 		    script.src = url;
-			script.setAttribute('async', ''); // may as well add this! 
 			if( crossorigin ){
 				script.setAttribute('crossorigin', '');
 			}
 			/*
 			Not bothering with catching errors here at the moment.
 			*/
-			script.onload = () => resolve(); 
+			script.onload = () => {
+				setTimeout(() => {
+					bj.log('[JS loaded] - ' + url);
+					resolve();
+				}, 100 ); // delay to allow time to run the JS
+			}; 
+			script.onerror = () => bj.log('[JS ERROR ] - ' + url );
 			document.head.appendChild( script) ;
 		});  
 	};

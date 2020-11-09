@@ -532,18 +532,23 @@ const bluejay = (function () {
 	* @returns {Promise} resolve(responseText) or reject(errorMsg)
 	*/
 	const loadJS = ( url, crossorigin=false ) => {
-		bj.log('[loading JS] - ' + url );
+		bj.log('[JS script] - ' + url );
 		return new Promise(( resolve, reject ) => {
 			const script = document.createElement('script');
 		    script.src = url;
-			script.setAttribute('async', ''); // may as well add this! 
 			if( crossorigin ){
 				script.setAttribute('crossorigin', '');
 			}
 			/*
 			Not bothering with catching errors here at the moment.
 			*/
-			script.onload = () => resolve(); 
+			script.onload = () => {
+				setTimeout(() => {
+					bj.log('[JS loaded] - ' + url);
+					resolve();
+				}, 100 ); // delay to allow time to run the JS
+			}; 
+			script.onerror = () => bj.log('[JS ERROR ] - ' + url );
 			document.head.appendChild( script) ;
 		});  
 	};
@@ -4997,18 +5002,38 @@ const oePlotly = (function ( bj ) {
 	const buildComponent = () => {
 				
 		const rEl = React.createElement;
-		
-		class PathStep extends React.Component {
-			render(){
-				return (
-					rEl('span', 
-						{ className: 'oe-pathstep-btn' },
-						rEl('span', { className: 'step' }, this.props.info[0]), 
-						rEl('span', { className: 'time' }, bj.clock24( new Date( this.props.info[1] )))
-					)
-				);
-			}
-		}
+	
+		/**
+		* PathStep - stateless React JS Elements 
+		* @param {String} key - PathSteps are created in loop and require a key
+		* @parma {Object} step - see Patient.js
+		* @param {Function} onClick - Callback from parent
+		*/
+		const PathStep = ({ key, step, onClick }) => {
+			
+			const state = step.state;
+			
+			const css = ['oe-pathstep-btn'];
+			if( state === 'done') css.push('green');
+			if( state === 'active') css.push('orange');
+			css.push( step.type );
+			
+			// use 'invisible' to maintain layout:
+			const cssTime = state == 'next' ? 'time invisible' : 'time';
+			
+			return (
+				rEl('span',
+					{ 
+						key,
+						className: css.join(' '), 
+						onClick: () => onClick(),
+					},
+					rEl('span', { className: 'step' }, step.shortcode ), 
+					rEl('span', { className: cssTime }, bj.clock24( new Date( step.timestamp )) )
+				)
+			);
+			
+		};
 		
 		// make component available	
 		bj.namespace('react').PathStep = PathStep;			
@@ -5033,46 +5058,80 @@ const oePlotly = (function ( bj ) {
 		const rEl = React.createElement;
 		const react = bj.namespace('react');
 		
-		class Pathway extends React.Component {
-			render(){
-				// pathsteps? These will be an Object...
-				let pathSteps = Object.values( this.props.pathway );	
-				if( pathSteps.length ){
-					pathSteps = pathSteps.map(( step, i ) => {
-						return rEl( react.PathStep, { key: step[0] + i, info: step });
-					});
+		class Patient extends React.Component {
+			
+			constructor( props ){
+				super( props );
+				
+				this.state = {
+					status: this.props.status,
+					waitMins: 0
+				};
+				
+				// prototypal inheritence, set 'this' scope 
+				this.handleStepClick = this.handleStepClick.bind( this );
+				this.pathwaySteps = this.pathwaySteps.bind( this );
+				this.setWaitMins = this.setWaitMins.bind( this );
+			}
+			
+			/**
+			* Wait minutes for WaitDuration
+			* @param {Number} timestamp 
+			*/
+			setWaitMins( timestamp ){
+				this.state.waitMins = Math.floor(( Date.now() - timestamp ) / 60000 );
+			}
+			
+			handleStepClick( e ){
+				console.log('handleStepClick');
+				console.log( e );
+				console.log( this );
+			}
+			
+			
+			/**
+			* Build pathway steps
+			* @param {Array} pathArr - multi-dimensional array 
+			* @returns {rEl}
+			*/
+			pathwaySteps( pathArr ){
+				
+				let pathSteps = null; 
+			
+				// make pathway array more human 
+				const pathway = pathArr.map( arr => {
+					const obj = {
+						shortcode: arr[0],
+						timestamp: arr[1],
+						state: arr[2],
+						type: arr[3],
+					};
+					
+					// Wait Time minutes is based on pathway time
+					if( obj.shortcode === "Arr") this.setWaitMins( obj.timestamp );
+					if( obj.shortcode === "Fin") this.setWaitMins( obj.timestamp );
+					
+					return obj;
+					
+				});
+				
+				// if there are steps then build the step pathway
+				if( pathway.length ){
+					pathSteps = pathway.map(( step, i ) => {
+						return react.PathStep({ 
+							key: i, 
+							step: step, 
+							onClick: () => this.handleStepClick()
+						});
+					});		
 				}
 				
-				return (
-					rEl('div', { className: 'pathway'}, pathSteps )
-				);
+				return rEl('div', { className: `pathway ${this.state.status}`}, pathSteps );
 			}
-		}
-		
-		// make component available	
-		react.Pathway = Pathway;			
-	};
-	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
-
-})( bluejay ); 
-(function( bj ){
-
-	'use strict';	
-	
-	/**
-	* React Component 
-	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-		const react = bj.namespace('react');
-		
-		class Patient extends React.Component {
+			
+			/**
+			* Render 
+			*/
 			render(){
 				const patient = this.props;
 				
@@ -5083,22 +5142,15 @@ const oePlotly = (function ( bj ) {
 					gender: patient.gender,
 					nhs: patient.nhs,	
 				};
-				
-				// Waiting time is set from Arrival, if there is one 
-				let waitMins = 0;
-				
-				console.log( patient.pathway );
-				
-				if( patient.pathway[0] ){
-					waitMins =  Math.floor(( Date.now() - patient.pathway[0][1] ) / 60000 );
-				}
 			
-				
 				return (
 					rEl('tr', { "data-timestamp" : patient.booked },
 						rEl('td', null, bj.clock24( new Date( patient.booked ))),
 						rEl('td', null, patient.num ),
-						rEl('td', null, patient.type ),
+						rEl('td', null, 
+							rEl('div', { className: 'speciality' }, patient.type[0] ), 
+							rEl('small', { className: 'type' }, patient.type[1] ) 
+						),
 						rEl('td', null, 
 							rEl( react.PatientQuickView, meta )
 						),
@@ -5106,16 +5158,13 @@ const oePlotly = (function ( bj ) {
 							rEl( react.PatientMeta, meta )
 						),
 						rEl('td', null,
-							rEl( react.Pathway, {
-								state: patient.state, 
-								pathway: patient.pathway
-							})
+							this.pathwaySteps( patient.pathway )
 						), 
 						rEl('td', null, "assign"),
 						rEl('td', null,
 							rEl( react.WaitDuration, { 
-								state: patient.state,
-								mins: waitMins 			 	// this counts from Arrival...
+								status: this.state.status,
+								mins: this.state.waitMins 	
 							})
 						)
 					)
@@ -5187,9 +5236,6 @@ const oePlotly = (function ( bj ) {
 				
 		const rEl = React.createElement;
 		
-		/*
-		<i class="oe-i eye-circle medium pad js-patient-quick-overview" data-patient="{"surname":"DARWIN","first":"Charles (Mr)","id":false,"nhs":"991 156 4705","gender":"male","age":"102y"}" data-mode="side" data-php="patient/quick/overview.php"></i>
-		*/
 		
 		class PatientQuickView extends React.Component {
 			render(){
@@ -5234,22 +5280,29 @@ const oePlotly = (function ( bj ) {
 				
 		const rEl = React.createElement;
 		
-		/**
-		* SVG circles that graphically show waiting time
-		* Duration is also shown in minutes	
-		*/
 		class WaitDuration extends React.Component {
+			
+			/**
+			* WaitDuration SVG wait time graphic circles
+			* @props {Number} mins - waiting in minutes from arrival
+			* @props {String} status - 'complete', 'active' and 'todo'
+			*/
+			
 			constructor( props ){
 				super( props );
+				
 				this.state = {
 					mins: this.props.mins,
 				};
 				
-				// prototypal inheritence, set scope: 
+				// prototypal inheritence, set 'this' scope: 
 				this.countMins = this.countMins.bind( this );
 				
 				// give a rough min count to show the UX...
-				setInterval( this.countMins, 60000 );
+				if( this.props.mins && this.props.status == 'active'  ){			
+					this.state.countID = setInterval( this.countMins, 60000 ); // count every minute! 
+				}
+				
 			}
 		
 		
@@ -5297,10 +5350,15 @@ const oePlotly = (function ( bj ) {
 					minsLabel = mins > 1 ? 'mins' : 'min'; 
 					cssColor = 'green';
 					
-					if( mins > 15 ) cssColor = 'yellow';
-					if( mins > 30 ) cssColor = 'orange';
-					if( mins > 60 ) cssColor = 'red';
-					
+					if( mins > 14 ) cssColor = 'yellow';
+					if( mins > 29 ) cssColor = 'orange';
+					if( mins > 59 ) cssColor = 'red';
+				}
+				
+				// if state is complete hide the duration graphic
+				if( this.props.status == 'complete'){
+					clearInterval( this.state.countID );
+					cssColor = 'hidden';
 				}
 				
 				return (
@@ -5349,6 +5407,8 @@ const oePlotly = (function ( bj ) {
 	* Broadcast to all listeners that React is now available
 	*/
 	const init = () => {
+		bj.log('[Clinic Manager] - intialising');
+		
 		// reactJS is available
 		bj.customEvent('reactJSloaded');
 		
@@ -5381,17 +5441,20 @@ const oePlotly = (function ( bj ) {
 			});
 		});
 		
-		// buidl the manager component
+		// React Clinic Manager
 		class ClinicManager extends React.Component {
 			render(){
-				const colHeaders = ['Appt.','Hospital No.','Type','','Name','Pathway','Assign','Duration'].map( th => rEl('th', { key: th }, th ));	
+				const colHeaders = ['Appt.','Hospital No.','Speciality','','Name','Pathway','Assign','Mins'].map( th => rEl('th', { key: th }, th ));	
 				const tableRows = this.props.patientsJSON.map( patient => rEl( react.Patient, patient ));
 				
 				return (
-					 rEl('table', { className: 'oe-clinic-list' }, 
-					 	rEl('thead', null, 
-					 		rEl('tr', null, colHeaders )),
-					 	rEl('tbody', null, tableRows )
+					 rEl('div', { className: 'app' }, 
+					 	rEl('table', { className: 'oe-clinic-list' }, 
+						 	rEl('thead', null, 
+						 		rEl('tr', null, colHeaders )),
+						 	rEl('tbody', null, tableRows )
+						 ), 
+						 rEl('div', { className: 'oe-pathstep-popup'}, 'hello')
 					 )
 				);
 			}
@@ -5405,11 +5468,14 @@ const oePlotly = (function ( bj ) {
 	
 	/*
 	Load React JS, then initalise
+	Make sure you load the React package before loading ReactDOM.
+	react.production.min.js || react.development.js
 	*/
-    Promise.all([
-	     bj.loadJS('https://unpkg.com/react@17/umd/react.development.js', true),
-	     bj.loadJS('https://unpkg.com/react-dom@17/umd/react-dom.development.js', true),
-    ]).then( () => init() );
+    bj.loadJS('https://unpkg.com/react@17/umd/react.development.js', true)
+    	.then( () => {
+	    	 bj.loadJS('https://unpkg.com/react-dom@17/umd/react-dom.development.js', true)
+	    	 	.then( () => init() ); 
+    	});
 	  
 
 })( bluejay ); 
