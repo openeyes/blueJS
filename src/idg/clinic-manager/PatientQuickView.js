@@ -9,13 +9,11 @@
 				
 		const rEl = React.createElement;
 		
-		
-		class PatientQuickView extends React.Component {
-			render(){
-				 
+		class PatientQuickView extends React.PureComponent {
+			render(){ 
 				const patient = {
-					surname: this.props.name[0],
-					first: this.props.name[1],
+					surname: this.props.lastname,
+					first: this.props.firstname,
 					id: false, 
 					nhs: this.props.nhs, 
 					gender: this.props.gender, 
@@ -27,7 +25,7 @@
 					"data-patient": JSON.stringify( patient ),
 					"data-mode": 'side',
 					"data-php": "patient/quick/overview.php",
-				}, null);
+				}, null );
 			}
 		}
 		

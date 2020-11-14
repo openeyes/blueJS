@@ -10,112 +10,129 @@
 		const rEl = React.createElement;
 		const react = bj.namespace('react');
 		
-		class Patient extends React.Component {
-			
+		class Patient extends React.PureComponent {	
+			/**
+			* Patient - DOM is <tr>
+			* @param {*} props 
+			* props	-|- changeCount - Number (this is incremented to trigger a render)
+			*		 |- patient (patient data, inc pathway)
+			*		 |- onShowStepPopup (handler in Clinic) 
+			*/
 			constructor( props ){
 				super( props );
+		
+				const patient = props.patient;
 				
 				this.state = {
-					status: this.props.status,
-					waitMins: 0
+					onShowStepPopup: props.onShowStepPopup,
+					waitMins: 0,
+					patientMeta: {
+						firstname: patient.firstname,
+						lastname: patient.lastname,
+						age: patient.age,
+						gender: patient.gender,
+						nhs: patient.nhs,	
+					}
 				};
 				
-				// prototypal inheritence, set 'this' scope 
+				/* 
+				If there is a pathway, calculate the waitMins
+				either from Arrive or Finish time (if pathway is completed)
+				*/
+				const calcMins = ( minEnd, minStart ) => Math.floor(( minEnd - minStart ) / 60000 );
+				
+				if( patient.pathway.length ){
+					
+					let arrTimeStamp; // store to calculate if Finished
+					
+					patient.pathway.forEach( step => {
+						
+						// Arrived.
+						if( step.shortcode == "Arr" ){
+							this.state.waitMins = calcMins( Date.now(), step.timestamp );
+							arrTimeStamp = step.timestamp;
+						}
+						
+						// Finished
+						if(step.shortcode === "Fin" ){
+							this.state.waitMins = calcMins( step.timestamp, arrTimeStamp );
+						}
+						
+					});
+				}
+				
+				/*
+				prototypal inheritence, correctly bind 'this' scope 
+				*/
 				this.handleStepClick = this.handleStepClick.bind( this );
 				this.pathwaySteps = this.pathwaySteps.bind( this );
-				this.setWaitMins = this.setWaitMins.bind( this );
 			}
+			
+
+			/**
+			* User clicks on a PathStep
+			* Step doesn't need to do anything, any change needs to happen
+			* to the Clinic state, it will be updated/removed through a render
+			* @param {Object} step - step info
+			* @param {Object} rect - node boundingClientRect, to position the popup
+			*/
+			handleStepClick( step, rect ){
+				step.patientArrRef = this.props.patient.arrRef;
+				step.rect = rect;
+				this.state.onShowStepPopup( step ); // callback from Clinic
+			}	
 			
 			/**
-			* Wait minutes for WaitDuration
-			* @param {Number} timestamp 
+			* Build pathway steps 
+			* @returns {React Element}
 			*/
-			setWaitMins( timestamp ){
-				this.state.waitMins = Math.floor(( Date.now() - timestamp ) / 60000 );
-			}
-			
-			handleStepClick( e ){
-				console.log('handleStepClick');
-				console.log( e );
-				console.log( this );
-			}
-			
-			
-			/**
-			* Build pathway steps
-			* @param {Array} pathArr - multi-dimensional array 
-			* @returns {rEl}
-			*/
-			pathwaySteps( pathArr ){
-				
+			pathwaySteps(){
+				const pathway = this.props.patient.pathway;
 				let pathSteps = null; 
-			
-				// make pathway array more human 
-				const pathway = pathArr.map( arr => {
-					const obj = {
-						shortcode: arr[0],
-						timestamp: arr[1],
-						state: arr[2],
-						type: arr[3],
-					};
-					
-					// Wait Time minutes is based on pathway time
-					if( obj.shortcode === "Arr") this.setWaitMins( obj.timestamp );
-					if( obj.shortcode === "Fin") this.setWaitMins( obj.timestamp );
-					
-					return obj;
-					
-				});
 				
-				// if there are steps then build the step pathway
+				// Build a PathStep pathway?
 				if( pathway.length ){
-					pathSteps = pathway.map(( step, i ) => {
+					pathSteps = pathway.map( step  => {
 						return react.PathStep({ 
-							key: i, 
+							key: step.key, 
 							step: step, 
-							onClick: () => this.handleStepClick()
+							onClick: this.handleStepClick
 						});
 					});		
 				}
 				
-				return rEl('div', { className: `pathway ${this.state.status}`}, pathSteps );
+				// if patient pathway is 'complete' CSS will restyle the steps
+				return rEl('div', { className: `pathway ${this.props.patient.status}`}, pathSteps );
 			}
 			
 			/**
 			* Render 
 			*/
 			render(){
-				const patient = this.props;
+				const patient = this.props.patient;
+				console.log('Render - Patient', patient.key );
 				
-				// Meta pattern
-				const meta = {
-					name: patient.name,
-					age: patient.age,
-					gender: patient.gender,
-					nhs: patient.nhs,	
-				};
-			
 				return (
 					rEl('tr', { "data-timestamp" : patient.booked },
 						rEl('td', null, bj.clock24( new Date( patient.booked ))),
 						rEl('td', null, patient.num ),
 						rEl('td', null, 
-							rEl('div', { className: 'speciality' }, patient.type[0] ), 
-							rEl('small', { className: 'type' }, patient.type[1] ) 
+							rEl('div', { className: 'speciality' }, patient.speciality ), 
+							rEl('small', { className: 'type' }, patient.specialityState ) 
 						),
 						rEl('td', null, 
-							rEl( react.PatientQuickView, meta )
+							rEl( react.PatientQuickView, this.state.patientMeta )
 						),
 						rEl('td', null, 
-							rEl( react.PatientMeta, meta )
+							rEl( react.PatientMeta, this.state.patientMeta )
 						),
 						rEl('td', null,
-							this.pathwaySteps( patient.pathway )
+							this.pathwaySteps()
 						), 
 						rEl('td', null, "assign"),
 						rEl('td', null,
 							rEl( react.WaitDuration, { 
-								status: this.state.status,
+								status: patient.status,
 								mins: this.state.waitMins 	
 							})
 						)

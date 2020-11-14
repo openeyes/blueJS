@@ -10,35 +10,35 @@
 		const rEl = React.createElement;
 	
 		/**
-		* PathStep - stateless React JS Elements 
+		* PathStep - stateless React Element (no need for Component Class)
 		* @param {String} key - PathSteps are created in loop and require a key
 		* @parma {Object} step - see Patient.js
 		* @param {Function} onClick - Callback from parent
 		*/
 		const PathStep = ({ key, step, onClick }) => {
-			
-			const state = step.state;
-			
+				
 			const css = ['oe-pathstep-btn'];
-			if( state === 'done') css.push('green');
-			if( state === 'active') css.push('orange');
+			
+			if( step.status === 'done') css.push('green');
+			if( step.status === 'active') css.push('orange');
+			
 			css.push( step.type );
 			
 			// use 'invisible' to maintain layout:
-			const cssTime = state == 'next' ? 'time invisible' : 'time';
+			const cssTime = step.status == 'next' ? 'time invisible' : 'time';
 			
 			return (
 				rEl('span',
 					{ 
-						key,
+						key: step.key,
 						className: css.join(' '), 
-						onClick: () => onClick(),
+						onClick: ( ev ) => onClick( step, ev.target.getBoundingClientRect())
 					},
 					rEl('span', { className: 'step' }, step.shortcode ), 
-					rEl('span', { className: cssTime }, bj.clock24( new Date( step.timestamp )) )
+					rEl('span', { className: cssTime }, bj.clock24( new Date( step.timestamp )))
 				)
 			);
-			
+					
 		};
 		
 		// make component available	

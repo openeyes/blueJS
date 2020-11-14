@@ -9,14 +9,18 @@
 				
 		const rEl = React.createElement;
 		
-		class PatientMeta extends React.Component {
+		class PatientMeta extends React.PureComponent {
 			render(){
 				return (
 					rEl('div', { className: 'oe-patient-meta' }, 
 						rEl('div', { className: 'patient-name' }, 
 							rEl('a', { href: '/v3-SEM/patient-overview' }, 
-								rEl('span', { className: 'patient-surname'}, this.props.name[0] ),
-								rEl("span", { className: "patient-firstname"}, ', ' + this.props.name[1] )
+								rEl('span', { className: 'patient-surname'}, 
+									this.props.firstname 
+								),
+								rEl("span", { className: "patient-firstname"},
+								 	', ' + this.props.lastname 
+								)
 							)
 						), 
 						rEl("div", { className: "patient-details" }, 

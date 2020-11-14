@@ -62,7 +62,9 @@
 
 	/*
 	Overflow popup?
+	--- MOVED, into a seperate script in newblue! 
 	*/
+/*
 	const overflowPopup = ( ev ) => {
 		const json = JSON.parse( ev.target.dataset.overflow );
 		let div = document.createElement('div');
@@ -76,6 +78,7 @@
 		let wrap = uiApp.getParent( ev.target, '.oe-popup-wrap' );
 		uiApp.remove( wrap );
 	});
+*/
 
 	/*
 	Biometry Report?

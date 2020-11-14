@@ -22,9 +22,9 @@
 						'<table class="data-table"><tbody>',
 						'</tbody></table>',
 						'</div></div>',
-						'<div class="step-actions"><div class="flex-layout">',
-						'<button class="red hint">Remove PSD</button><button class="green hint">Administer</button>',
-						'</div></div>',
+						'<div class="step-actions">',
+						'<button class="green hint">Administer</button><button class="red hint">Remove PSD</button>',
+						'</div>',
 						'<div class="step-status"></div>',].join('');
 	// add to DOM					
 	document.body.appendChild( div );
@@ -182,7 +182,7 @@
 		let tableRow = full ? 'table-row' : 'none';
 		popup.title.style.display = block;
 		popup.closeBtn.style.display = block;
-		popup.actions.style.display = block;
+		popup.actions.style.display = ""; // default back to CSS
 		popup.detailRows.forEach( tr => tr.style.display = tableRow);
 	};
 	

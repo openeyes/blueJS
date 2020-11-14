@@ -5002,37 +5002,183 @@ const oePlotly = (function ( bj ) {
 	const buildComponent = () => {
 				
 		const rEl = React.createElement;
+		const react = bj.namespace('react');
+		
+		class Clinic extends React.Component {
+			
+			constructor( props ){
+				super( props );
+			
+				// React JS is optimised for shallow comparisons
+				// keep state flat:
+				this.state = {
+					tableHead: ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', 'Pathway', 'Assign', 'Mins'],
+					patients: this.props.patientsJSON,
+					activeStepKey: null,
+					popupStep: null,
+				};
+				
+				this.pathStepPopup = this.pathStepPopup.bind( this );
+				this.handleShowStepPopup = this.handleShowStepPopup.bind( this );
+				this.handleClosePopup = this.handleClosePopup.bind( this );
+				this.handleChangeStepStatus = this.handleChangeStepStatus.bind( this );
+			}
+			
+			
+			/**
+			* handle PathStepStep actions
+			* @param {Number} patientRef - Array Ref
+			* @param {Number} stepRef - Array Ref
+			* @param {String} newStatus - "remove" or "active"
+			*/
+			handleChangeStepStatus( patientRef, stepRef, newStatus ){
+				this.handleClosePopup();
+				
+				this.setState( state => {
+					const patient = state.patients[ patientRef ];
+					const pathway = patient.pathway;
+					
+					if( newStatus === "done" ){
+						pathway[stepRef].status = "done";
+						pathway[stepRef].timestamp = Date.now(); // when done update to finish time
+					}
+					
+					if( newStatus === "active" ){
+						pathway[stepRef].status = "active";
+					}
+					
+					if( newStatus === "remove"){
+						pathway.splice( stepRef, 1 );
+					}
+					
+					/* 
+					Every time a specific patient is updated increment the 
+					the patient.changeCount. Then use as a change flag in 
+					the Patient (PureComponent does a shallow comparison on props)
+					*/
+					patient.changeCount++;
+					
+					return state;
+				});
+
+			}
+			
+			handleClosePopup(){
+				this.setState({
+					activeStepKey: null,
+					popupStep: null
+				});
+			}
+			
+			handleShowStepPopup( step ){
+				if( step.key == this.state.activeStepKey ){
+					// user is clicking on the same step
+					this.handleClosePopup();
+				} else {
+					this.setState({
+						activeStepKey: step.key,
+						popupStep: step
+					});
+				}
+			}
+			
+			pathStepPopup(){
+				// if it's null, popup is hidden
+				if( this.state.popupStep === null ) return null;
+				
+				return rEl( react.PathStepPopup, {
+					 step: this.state.popupStep,
+					 onClosePopup: this.handleClosePopup,
+					 onChangeStepStatus: this.handleChangeStepStatus,
+				});
+				
+			}
+			
+			
+			tablePatientRows(){
+				
+				const tableRows = this.state.patients.map(( patient, i ) => {
+					return rEl( react.Patient, {
+						key: patient.key,
+						patient: patient,
+						onShowStepPopup: this.handleShowStepPopup,
+						/*
+						use patient changeCount to trigger a render 
+						if needed, in the PureComponent.	
+						*/	
+						changeCount: patient.changeCount, 
+					});
+				});
+				
+				return rEl('tbody', null, tableRows );
+			}
+			
+			
+			render(){
+				return (
+					 rEl('div', { className: 'app' }, 
+					 	rEl('table', { className: 'oe-clinic-list' },
+					 		rEl( react.TableHead, { th: this.state.tableHead }),
+						 	this.tablePatientRows()
+						 ), 
+						 this.pathStepPopup()
+					)
+				);
+			}
+		}
+		
+		// make component available
+		react.Clinic = Clinic;			
+	};
+	
+	/*
+	When React is available build the Component
+	*/
+	document.addEventListener('reactJSloaded', buildComponent, { once: true });
+	  
+
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	/**
+	* React Component 
+	*/
+	const buildComponent = () => {
+				
+		const rEl = React.createElement;
 	
 		/**
-		* PathStep - stateless React JS Elements 
+		* PathStep - stateless React Element (no need for Component Class)
 		* @param {String} key - PathSteps are created in loop and require a key
 		* @parma {Object} step - see Patient.js
 		* @param {Function} onClick - Callback from parent
 		*/
 		const PathStep = ({ key, step, onClick }) => {
-			
-			const state = step.state;
-			
+				
 			const css = ['oe-pathstep-btn'];
-			if( state === 'done') css.push('green');
-			if( state === 'active') css.push('orange');
+			
+			if( step.status === 'done') css.push('green');
+			if( step.status === 'active') css.push('orange');
+			
 			css.push( step.type );
 			
 			// use 'invisible' to maintain layout:
-			const cssTime = state == 'next' ? 'time invisible' : 'time';
+			const cssTime = step.status == 'next' ? 'time invisible' : 'time';
 			
 			return (
 				rEl('span',
 					{ 
-						key,
+						key: step.key,
 						className: css.join(' '), 
-						onClick: () => onClick(),
+						onClick: ( ev ) => onClick( step, ev.target.getBoundingClientRect())
 					},
 					rEl('span', { className: 'step' }, step.shortcode ), 
-					rEl('span', { className: cssTime }, bj.clock24( new Date( step.timestamp )) )
+					rEl('span', { className: cssTime }, bj.clock24( new Date( step.timestamp )))
 				)
 			);
-			
+					
 		};
 		
 		// make component available	
@@ -5057,113 +5203,276 @@ const oePlotly = (function ( bj ) {
 				
 		const rEl = React.createElement;
 		const react = bj.namespace('react');
-		
-		class Patient extends React.Component {
+
+		class PathStepPopup extends React.Component {
 			
 			constructor( props ){
 				super( props );
 				
-				this.state = {
-					status: this.props.status,
-					waitMins: 0
+				// no need for state (at least, as I currently understand React JS ;)
+				
+				this.setTitle = this.setTitle.bind( this );
+				this.content = this.content.bind( this );
+				this.stepActions = this.stepActions.bind( this );
+				this.stepStatus = this.stepStatus.bind( this );
+			}
+			
+			/**
+			* Title, convert shortcode into full title
+			* @params {*} this.props.step
+			* @returns {ReactElement}
+			*/
+			setTitle( step ){
+				const title = react.fullShortCode( step.shortcode );
+				const time = ( step.status == 'next' ) ? "Next" : bj.clock24( new Date( step.timestamp ));
+				return rEl('h3', null, `${time} - ${title}` ); 
+			}
+			
+			/**
+			* Demo some content example for popup
+			*/
+			content(){
+				return (
+					rEl('div', { 
+							className: 'popup-overflow' 
+						}, 
+						rEl('div', { 
+							className: 'data-group', 
+							dangerouslySetInnerHTML: { 
+								__html : '<table class="data-table"><tbody><tr><td><span class="oe-eye-lat-icons"><i class="oe-i laterality R small"></i><i class="oe-i laterality L small"></i></span></td><td>No step data being shown for this demo...</td><td>UX Demo</td></tr></tbody></table>'
+							}, 	
+						})
+					)
+				);
+			}
+			
+			
+			/**
+			* <button> actions for the popup, 
+			* available actions depend on step status
+			* @params {*} this.props.step
+			* @returns {ReactElement}
+			*/
+			stepActions( step ){
+				
+				if( step.status != 'active' && step.status != 'next') return null; 
+				
+				const btn = ( css, btnTxt, newStatus ) => {
+					return rEl( 'button', { 
+						className: css,
+						onClick: () => this.props.onChangeStepStatus( step.patientArrRef, step.arrRef, newStatus )
+					}, btnTxt );
 				};
 				
-				// prototypal inheritence, set 'this' scope 
+				if( step.status == 'active' ){
+					return (
+						rEl('div', { className: 'step-actions' }, 
+							btn('green hint', 'Complete', 'done' ),
+							btn('red hint', 'Remove', 'remove' )
+						)	
+					);
+				}
+				
+				if( step.status == 'next' ){
+					return (
+						rEl('div', { className: 'step-actions' }, 
+							btn('blue hint', 'Make active', 'active' ),
+							btn('red hint', 'Remove', 'remove' )
+						)	
+					);
+				}					
+			}
+			
+			/**
+			* show the steps status with CSS 
+			* @params {*} this.props.step
+			* @returns {ReactElement}
+			*/
+			stepStatus( step ){
+				let css = 'step-status'; 
+				if( step.status == 'done' ) css += ' green';
+				if( step.status == 'active' ) css += ' orange';
+				return rEl('div', { className: css }, step.status );
+			}
+			
+			/**
+			* Render
+			*/
+			render(){ 
+				console.log('Render: PathStepPopup');
+				// Build and position the popup	
+				const step = this.props.step; 
+				
+				return (
+					rEl('div', {
+							className: 'oe-pathstep-popup a-t-l',
+							style: {
+								top: step.rect.bottom,
+								left: step.rect.left,
+							}
+						},
+						rEl('div', { 
+							className: 'close-icon-btn', 
+							onClick: this.props.onClosePopup,
+							dangerouslySetInnerHTML: { __html : '<i class="oe-i remove-circle medium"></i>'}
+						}),
+						
+						this.setTitle( step ), 
+						this.content( step ), 
+						this.stepActions( step ),
+						this.stepStatus( step )
+					)
+				);
+					
+			}
+		}
+		
+		// make component available	
+		react.PathStepPopup = PathStepPopup;			
+	};
+	
+	/*
+	When React is available build the Component
+	*/
+	document.addEventListener('reactJSloaded', buildComponent, { once: true });
+	  
+
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	/**
+	* React Component 
+	*/
+	const buildComponent = () => {
+				
+		const rEl = React.createElement;
+		const react = bj.namespace('react');
+		
+		class Patient extends React.PureComponent {	
+			/**
+			* Patient - DOM is <tr>
+			* @param {*} props 
+			* props	-|- changeCount - Number (this is incremented to trigger a render)
+			*		 |- patient (patient data, inc pathway)
+			*		 |- onShowStepPopup (handler in Clinic) 
+			*/
+			constructor( props ){
+				super( props );
+		
+				const patient = props.patient;
+				
+				this.state = {
+					onShowStepPopup: props.onShowStepPopup,
+					waitMins: 0,
+					patientMeta: {
+						firstname: patient.firstname,
+						lastname: patient.lastname,
+						age: patient.age,
+						gender: patient.gender,
+						nhs: patient.nhs,	
+					}
+				};
+				
+				/* 
+				If there is a pathway, calculate the waitMins
+				either from Arrive or Finish time (if pathway is completed)
+				*/
+				const calcMins = ( minEnd, minStart ) => Math.floor(( minEnd - minStart ) / 60000 );
+				
+				if( patient.pathway.length ){
+					
+					let arrTimeStamp; // store to calculate if Finished
+					
+					patient.pathway.forEach( step => {
+						
+						// Arrived.
+						if( step.shortcode == "Arr" ){
+							this.state.waitMins = calcMins( Date.now(), step.timestamp );
+							arrTimeStamp = step.timestamp;
+						}
+						
+						// Finished
+						if(step.shortcode === "Fin" ){
+							this.state.waitMins = calcMins( step.timestamp, arrTimeStamp );
+						}
+						
+					});
+				}
+				
+				/*
+				prototypal inheritence, correctly bind 'this' scope 
+				*/
 				this.handleStepClick = this.handleStepClick.bind( this );
 				this.pathwaySteps = this.pathwaySteps.bind( this );
-				this.setWaitMins = this.setWaitMins.bind( this );
 			}
+			
+
+			/**
+			* User clicks on a PathStep
+			* Step doesn't need to do anything, any change needs to happen
+			* to the Clinic state, it will be updated/removed through a render
+			* @param {Object} step - step info
+			* @param {Object} rect - node boundingClientRect, to position the popup
+			*/
+			handleStepClick( step, rect ){
+				step.patientArrRef = this.props.patient.arrRef;
+				step.rect = rect;
+				this.state.onShowStepPopup( step ); // callback from Clinic
+			}	
 			
 			/**
-			* Wait minutes for WaitDuration
-			* @param {Number} timestamp 
+			* Build pathway steps 
+			* @returns {React Element}
 			*/
-			setWaitMins( timestamp ){
-				this.state.waitMins = Math.floor(( Date.now() - timestamp ) / 60000 );
-			}
-			
-			handleStepClick( e ){
-				console.log('handleStepClick');
-				console.log( e );
-				console.log( this );
-			}
-			
-			
-			/**
-			* Build pathway steps
-			* @param {Array} pathArr - multi-dimensional array 
-			* @returns {rEl}
-			*/
-			pathwaySteps( pathArr ){
-				
+			pathwaySteps(){
+				const pathway = this.props.patient.pathway;
 				let pathSteps = null; 
-			
-				// make pathway array more human 
-				const pathway = pathArr.map( arr => {
-					const obj = {
-						shortcode: arr[0],
-						timestamp: arr[1],
-						state: arr[2],
-						type: arr[3],
-					};
-					
-					// Wait Time minutes is based on pathway time
-					if( obj.shortcode === "Arr") this.setWaitMins( obj.timestamp );
-					if( obj.shortcode === "Fin") this.setWaitMins( obj.timestamp );
-					
-					return obj;
-					
-				});
 				
-				// if there are steps then build the step pathway
+				// Build a PathStep pathway?
 				if( pathway.length ){
-					pathSteps = pathway.map(( step, i ) => {
+					pathSteps = pathway.map( step  => {
 						return react.PathStep({ 
-							key: i, 
+							key: step.key, 
 							step: step, 
-							onClick: () => this.handleStepClick()
+							onClick: this.handleStepClick
 						});
 					});		
 				}
 				
-				return rEl('div', { className: `pathway ${this.state.status}`}, pathSteps );
+				// if patient pathway is 'complete' CSS will restyle the steps
+				return rEl('div', { className: `pathway ${this.props.patient.status}`}, pathSteps );
 			}
 			
 			/**
 			* Render 
 			*/
 			render(){
-				const patient = this.props;
+				const patient = this.props.patient;
+				console.log('Render - Patient', patient.key );
 				
-				// Meta pattern
-				const meta = {
-					name: patient.name,
-					age: patient.age,
-					gender: patient.gender,
-					nhs: patient.nhs,	
-				};
-			
 				return (
 					rEl('tr', { "data-timestamp" : patient.booked },
 						rEl('td', null, bj.clock24( new Date( patient.booked ))),
 						rEl('td', null, patient.num ),
 						rEl('td', null, 
-							rEl('div', { className: 'speciality' }, patient.type[0] ), 
-							rEl('small', { className: 'type' }, patient.type[1] ) 
+							rEl('div', { className: 'speciality' }, patient.speciality ), 
+							rEl('small', { className: 'type' }, patient.specialityState ) 
 						),
 						rEl('td', null, 
-							rEl( react.PatientQuickView, meta )
+							rEl( react.PatientQuickView, this.state.patientMeta )
 						),
 						rEl('td', null, 
-							rEl( react.PatientMeta, meta )
+							rEl( react.PatientMeta, this.state.patientMeta )
 						),
 						rEl('td', null,
-							this.pathwaySteps( patient.pathway )
+							this.pathwaySteps()
 						), 
 						rEl('td', null, "assign"),
 						rEl('td', null,
 							rEl( react.WaitDuration, { 
-								status: this.state.status,
+								status: patient.status,
 								mins: this.state.waitMins 	
 							})
 						)
@@ -5194,14 +5503,18 @@ const oePlotly = (function ( bj ) {
 				
 		const rEl = React.createElement;
 		
-		class PatientMeta extends React.Component {
+		class PatientMeta extends React.PureComponent {
 			render(){
 				return (
 					rEl('div', { className: 'oe-patient-meta' }, 
 						rEl('div', { className: 'patient-name' }, 
 							rEl('a', { href: '/v3-SEM/patient-overview' }, 
-								rEl('span', { className: 'patient-surname'}, this.props.name[0] ),
-								rEl("span", { className: "patient-firstname"}, ', ' + this.props.name[1] )
+								rEl('span', { className: 'patient-surname'}, 
+									this.props.firstname 
+								),
+								rEl("span", { className: "patient-firstname"},
+								 	', ' + this.props.lastname 
+								)
 							)
 						), 
 						rEl("div", { className: "patient-details" }, 
@@ -5236,13 +5549,11 @@ const oePlotly = (function ( bj ) {
 				
 		const rEl = React.createElement;
 		
-		
-		class PatientQuickView extends React.Component {
-			render(){
-				 
+		class PatientQuickView extends React.PureComponent {
+			render(){ 
 				const patient = {
-					surname: this.props.name[0],
-					first: this.props.name[1],
+					surname: this.props.lastname,
+					first: this.props.firstname,
 					id: false, 
 					nhs: this.props.nhs, 
 					gender: this.props.gender, 
@@ -5254,12 +5565,59 @@ const oePlotly = (function ( bj ) {
 					"data-patient": JSON.stringify( patient ),
 					"data-mode": 'side',
 					"data-php": "patient/quick/overview.php",
-				}, null);
+				}, null );
 			}
 		}
 		
 		// make component available	
 		bj.namespace('react').PatientQuickView = PatientQuickView;			
+	};
+	
+	/*
+	When React is available build the Component
+	*/
+	document.addEventListener('reactJSloaded', buildComponent, { once: true });
+	  
+
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	/**
+	* React Component 
+	*/
+	const buildComponent = () => {
+				
+		const rEl = React.createElement;
+		const react = bj.namespace('react');
+
+		/*
+		TableHeaders don't change - use React.PureComponent:
+		"...instead of writing shouldComponentUpdate() by hand, inherit from React.PureComponent. Equivalent 
+		to implementing shouldComponentUpdate() with a shallow comparison of current and previous props and state."
+		*/
+		class TableHead extends React.PureComponent {
+			
+			/*
+			Or, could use a regular Component and just set this to false
+			shouldComponentUpdate(nextProps, nextState) {
+			  return false;
+			}
+			*/
+			
+			render(){
+				const headers = this.props.th.map( th => rEl('th', { key: react.getKey() }, th ));
+				return (
+					rEl('thead', null, 
+				 		rEl('tr', null, headers)
+				 	)
+				);
+			}
+		}
+		
+		// make component available	
+		react.TableHead = TableHead;			
 	};
 	
 	/*
@@ -5287,29 +5645,27 @@ const oePlotly = (function ( bj ) {
 			* @props {Number} mins - waiting in minutes from arrival
 			* @props {String} status - 'complete', 'active' and 'todo'
 			*/
-			
 			constructor( props ){
 				super( props );
 				
 				this.state = {
-					mins: this.props.mins,
+					mins: props.mins,
+					countID: null
 				};
 				
 				// prototypal inheritence, set 'this' scope: 
 				this.countMins = this.countMins.bind( this );
 				
 				// give a rough min count to show the UX...
-				if( this.props.mins && this.props.status == 'active'  ){			
+				if( props.mins && props.status == 'active'  ){			
 					this.state.countID = setInterval( this.countMins, 60000 ); // count every minute! 
 				}
-				
 			}
 		
-		
 			countMins(){
-				const increaseMins = this.state.mins + 1;
-				this.setState({
-					mins: increaseMins
+				this.setState( state => {
+					state.mins++;
+					return state;
 				});
 			}
 		
@@ -5393,82 +5749,155 @@ const oePlotly = (function ( bj ) {
 	bj.addModule('clinicManager');
 	
 	/*
-	Check we are on the right page... 
+	Check we are on IDG Clinic Manager page... 
 	*/
 	if( document.getElementById('js-clinic-manager') === null ) return;
 	
+	/**
+	React JS. Notes to self.
+	Try to avoid deeply nested state objects. React JS is NOT oriented to work well with nested states 
+	(and other solutions are hack) so.. e.g. 
+	
+	this.state = {
+	    someProperty: {
+	        flag: true
+	    }
+	}
+	
+	should be...
+	
+	this.state = {
+	    somePropertyFlag: true
+	}
+	
+	Unless you need features available only in a class, React encourages you to use function components instead.
+	
+	PureComponent: If your React component’s render() function renders the same result given the 
+	same props and state, you can use React.PureComponent for a performance boost in some cases. 
+	PureComponent is exactly the same as Component except that it handles the shouldComponentUpdate method for you.
+	Use PureComponent instead of Component so long as you follow two simple rules: 
+	1) Mutations are bad in general, but the problems are compounded when using PureComponent. 
+	2) If you’re creating new functions, objects, or arrays in the render method you’re (probably) doing it wrong.
+	
+	Don’t bind values in functions in render
+	Don’t derive data in the render method
+	
+	Useful articles:
+	https://reactjs.org/blog/2015/12/18/react-components-elements-and-instances.html
+	https://codeburst.io/when-to-use-component-or-purecomponent-a60cfad01a81
+	*/
+	
+	
 	/*
-	Name space for React Components	
+	Name space for React Components.
+	Loading ReactJS dynamic.	
 	*/
 	const react = bj.namespace('react');
 	
+	/*
+	Helpers
+	React needs unique keys for all Elements in a list (anything in a loop)
+	It suggests Strings...
+	*/
+	function *UniqueKey(){
+		let id = 0;
+		while( true ){
+			++id;
+			yield `uid${id}`;
+		}
+	}
+	
+	const keyIterator = UniqueKey();
+	
+	react.getKey = () => keyIterator.next().value; 
+	
+	react.fullShortCode = ( shortcode ) => {
+		let full = shortcode; // "Nurse" doesn't need expanding on
+		switch( shortcode ){
+			case 'Arr': full = "Arrived"; break;
+			case 'Fin': full = "Finish"; break;
+			
+			case "MM" : full = "Mr Michael Morgan"; break;
+			case "AB" : full = "Dr Amit Baum"; break;
+			case "AG" : full = "Dr Angela Glasby"; break;
+			case "RB" : full = "Dr Robin Baum"; break;
+			case "CW" : full = "Dr Coral Woodhouse"; break; 
+			
+			case "DNA" : full = "Did Not Attend"; break;
+			case "VA" : full = "Visual Acuity"; break;
+			
+		}
+		return full; 
+	}; 
+	
+
 	/**
 	* Initalise Clinic Manager SPA
-	* Broadcast to all listeners that React is now available
+	* Broadcast to all listeners that React is now available to use for building elements
 	*/
 	const init = () => {
 		bj.log('[Clinic Manager] - intialising');
 		
-		// reactJS is available
+		/*
+		reactJS is now available
+		OK to build React components/elements, let 'em know...
+		*/
 		bj.customEvent('reactJSloaded');
 		
-		// shortcut
-		const rEl = React.createElement;
-		
 		/*
-		To make the UX prototype easy to change the JSON is provided by PHP
+		To make the IDG UX prototype easier to change initial state JSON is provided by PHP.
+		For the purposes of the demo all times are set in RELATIVE minutes. 
+		Update all JSON times to full timestamps
 		*/
 		const patientsJSON = JSON.parse( phpClinicDemoJSON );
-		
-		/*
-		For the purposes of the demo all times are set in RELATIVE minutes
-		Update all these JSON times to full timestamps
-		*/
-		const now = Date.now();
-	
-		patientsJSON.forEach( row => {
-			const booked = row.booked;
-			const pathwayArr = row.pathway;
+		patientsJSON.forEach(( patientRow, i ) => {
+			/*
+			Add extra Patient React info here
+			*/
+			patientRow.arrRef = i; 
+			patientRow.changeCount = 0; // increment this for every update
 			
-			// make sure appointments always scheduled on 5 minutes
-			const appointment = new Date( now + ( booked * 60000 )); 
+			/*
+			As times are relative to 'now', make sure appointments 
+			always appeared scheduled on whole 5 minutes 
+			*/
+			const appointment = new Date( Date.now() + ( patientRow.booked * 60000 )); 
 			const offsetFive = appointment.getMinutes() % 5; 
 			appointment.setMinutes( appointment.getMinutes() - offsetFive );
-			row.booked = appointment.getTime();
+			patientRow.booked = appointment.getTime();
 			
-			pathwayArr.forEach( step => {
-				step[1] = now + ( step[1] * 60000 ) ;
+			/*
+			Step Pathway is multi-dimensional array.
+			Convert each step into an Object and add other useful info here. 
+			*/		
+			patientRow.pathway.forEach(( step, i, thisArr ) => {
+				const obj = {
+					arrRef:i, // will need this to update state 
+					key: react.getKey(), // this provides a unique React key
+					shortcode: step[0],
+					timestamp: Date.now() + ( step[1] * 60000 ),
+					status: step[2],
+					type: step[3],
+				};
+								
+				// update the nested step array to an Object
+				thisArr[i] = obj;
 			});
 		});
 		
-		// React Clinic Manager
-		class ClinicManager extends React.Component {
-			render(){
-				const colHeaders = ['Appt.','Hospital No.','Speciality','','Name','Pathway','Assign','Mins'].map( th => rEl('th', { key: th }, th ));	
-				const tableRows = this.props.patientsJSON.map( patient => rEl( react.Patient, patient ));
-				
-				return (
-					 rEl('div', { className: 'app' }, 
-					 	rEl('table', { className: 'oe-clinic-list' }, 
-						 	rEl('thead', null, 
-						 		rEl('tr', null, colHeaders )),
-						 	rEl('tbody', null, tableRows )
-						 ), 
-						 rEl('div', { className: 'oe-pathstep-popup'}, 'hello')
-					 )
-				);
-			}
-		}
-			
+		/* 
+		OK, ready.
+		ReactJS App for Clinic Manager
+		*/
 		ReactDOM.render(
-		  rEl( ClinicManager, { patientsJSON } ),
+		  React.createElement( react.Clinic, { patientsJSON }),
 		  document.getElementById('js-clinic-manager')
 		);
 	};
 	
 	/*
 	Load React JS, then initalise
-	Make sure you load the React package before loading ReactDOM.
+	Make sure to load the React package before loading ReactDOM.
 	react.production.min.js || react.development.js
 	*/
     bj.loadJS('https://unpkg.com/react@17/umd/react.development.js', true)
@@ -8234,9 +8663,9 @@ Updated to Vanilla JS for IDG
 						'<table class="data-table"><tbody>',
 						'</tbody></table>',
 						'</div></div>',
-						'<div class="step-actions"><div class="flex-layout">',
-						'<button class="red hint">Remove PSD</button><button class="green hint">Administer</button>',
-						'</div></div>',
+						'<div class="step-actions">',
+						'<button class="green hint">Administer</button><button class="red hint">Remove PSD</button>',
+						'</div>',
 						'<div class="step-status"></div>',].join('');
 	// add to DOM					
 	document.body.appendChild( div );
@@ -8394,7 +8823,7 @@ Updated to Vanilla JS for IDG
 		let tableRow = full ? 'table-row' : 'none';
 		popup.title.style.display = block;
 		popup.closeBtn.style.display = block;
-		popup.actions.style.display = block;
+		popup.actions.style.display = ""; // default back to CSS
 		popup.detailRows.forEach( tr => tr.style.display = tableRow);
 	};
 	
@@ -10681,7 +11110,9 @@ Updated to Vanilla JS for IDG
 
 	/*
 	Overflow popup?
+	--- MOVED, into a seperate script in newblue! 
 	*/
+/*
 	const overflowPopup = ( ev ) => {
 		const json = JSON.parse( ev.target.dataset.overflow );
 		let div = document.createElement('div');
@@ -10695,6 +11126,7 @@ Updated to Vanilla JS for IDG
 		let wrap = uiApp.getParent( ev.target, '.oe-popup-wrap' );
 		uiApp.remove( wrap );
 	});
+*/
 
 	/*
 	Biometry Report?

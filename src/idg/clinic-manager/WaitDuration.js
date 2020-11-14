@@ -16,29 +16,27 @@
 			* @props {Number} mins - waiting in minutes from arrival
 			* @props {String} status - 'complete', 'active' and 'todo'
 			*/
-			
 			constructor( props ){
 				super( props );
 				
 				this.state = {
-					mins: this.props.mins,
+					mins: props.mins,
+					countID: null
 				};
 				
 				// prototypal inheritence, set 'this' scope: 
 				this.countMins = this.countMins.bind( this );
 				
 				// give a rough min count to show the UX...
-				if( this.props.mins && this.props.status == 'active'  ){			
+				if( props.mins && props.status == 'active'  ){			
 					this.state.countID = setInterval( this.countMins, 60000 ); // count every minute! 
 				}
-				
 			}
 		
-		
 			countMins(){
-				const increaseMins = this.state.mins + 1;
-				this.setState({
-					mins: increaseMins
+				this.setState( state => {
+					state.mins++;
+					return state;
 				});
 			}
 		
