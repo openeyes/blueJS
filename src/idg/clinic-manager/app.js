@@ -86,6 +86,29 @@
 		return full; 
 	}; 
 	
+	
+	react.deepCopy = ( obj ) => {
+		// object clone	
+		const cloneObj = () => {
+			const clone = {};
+			for ( let key in obj ) {
+				if ( obj.hasOwnProperty( key )) {
+					clone[key] = react.deepCopy( obj[key] );
+				}
+			}
+			return clone;
+		};
+		
+		// array clone
+		const cloneArr = () => obj.map( item => react.deepCopy(item));
+		
+		// check type
+		const type = Object.prototype.toString.call(obj).slice(8, -1).toLowerCase();
+		if( type === "object" ) return cloneObj();
+		if( type === "array") return cloneArr();
+		return obj; // primitive value
+	};
+	
 
 	/**
 	* Initalise Clinic Manager SPA
@@ -111,7 +134,6 @@
 			Add extra Patient React info here
 			*/
 			patientRow.arrRef = i; 
-			patientRow.changeCount = 0; // increment this for every update
 			
 			/*
 			As times are relative to 'now', make sure appointments 

@@ -14,11 +14,10 @@
 			
 			constructor( props ){
 				super( props );
-			
-				// React JS is optimised for shallow comparisons
-				// keep state flat:
+		
+				// React JS is optimised for shallow comparisons, avoid nesting
 				this.state = {
-					tableHead: ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', 'Pathway', 'Assign', 'Mins'],
+					tableHead: ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', 'Pathway', 'Assigned', 'Mins'],
 					patients: this.props.patientsJSON,
 					activeStepKey: null,
 					popupStep: null,
@@ -41,29 +40,35 @@
 				this.handleClosePopup();
 				
 				this.setState( state => {
-					const patient = state.patients[ patientRef ];
-					const pathway = patient.pathway;
+					/* 
+					Deep copy patients to avoid mutating this.state 
+					*/
+					const patientsCopy = react.deepCopy( state.patients );
 					
-					if( newStatus === "done" ){
-						pathway[stepRef].status = "done";
-						pathway[stepRef].timestamp = Date.now(); // when done update to finish time
+					// find this patient
+					const thisPatient = patientsCopy[ patientRef ];
+					const thisPathway = thisPatient.pathway;
+					
+					// update Pathway for this patient
+					if( newStatus == "done" ){
+						thisPathway[stepRef].status = "done";
+						thisPathway[stepRef].timestamp = Date.now(); 
 					}
 					
-					if( newStatus === "active" ){
-						pathway[stepRef].status = "active";
+					if( newStatus == "active" ){
+						thisPathway[stepRef].status = "active";
+						thisPathway[stepRef].timestamp = Date.now(); 
 					}
 					
-					if( newStatus === "remove"){
-						pathway.splice( stepRef, 1 );
+					if( newStatus == "remove"){
+						thisPathway.splice( stepRef, 1 );
 					}
 					
 					/* 
-					Every time a specific patient is updated increment the 
-					the patient.changeCount. Then use as a change flag in 
-					the Patient (PureComponent does a shallow comparison on props)
+					Only update SPECIFIC patient that has change. 
+					Patient is a PureComponent so will only render if props change.
 					*/
-					patient.changeCount++;
-					
+					state.patients[ patientRef ] = thisPatient;
 					return state;
 				});
 

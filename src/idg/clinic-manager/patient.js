@@ -66,6 +66,7 @@
 				*/
 				this.handleStepClick = this.handleStepClick.bind( this );
 				this.pathwaySteps = this.pathwaySteps.bind( this );
+				this.assigned = this.assigned.bind( this );
 			}
 			
 
@@ -106,6 +107,27 @@
 			}
 			
 			/**
+			* Show who's assigned to patient
+			*/
+			assigned(){
+				const whoShortCode = this.props.patient.assigned;
+				
+				if( whoShortCode ){
+					return rEl('td', null, react.fullShortCode( whoShortCode ));
+				} else {
+					return (
+						rEl('td', null, 
+							rEl('small', { className: 'fade' }, 
+								'Not assigned'
+							)
+						)
+					);
+				}
+				
+			}
+			
+			
+			/**
 			* Render 
 			*/
 			render(){
@@ -129,7 +151,9 @@
 						rEl('td', null,
 							this.pathwaySteps()
 						), 
-						rEl('td', null, "assign"),
+						
+						this.assigned(),
+						
 						rEl('td', null,
 							rEl( react.WaitDuration, { 
 								status: patient.status,
