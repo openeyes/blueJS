@@ -21,9 +21,21 @@
 					patients: this.props.patientsJSON,
 					activeStepKey: null,
 					popupStep: null,
+					filterBtns: [
+						{ btn: 'Show all', isStep: false, key: react.getKey()},
+						{ btn: 'MM', isStep: true, key: react.getKey()},
+						{ btn: 'AB', isStep: true, key: react.getKey()},
+						{ btn: 'AG', isStep: true, key: react.getKey()},
+						{ btn: 'RB', isStep: true, key: react.getKey()},
+						{ btn: 'CW', isStep: true, key: react.getKey()},
+						{ btn: 'Unassigned', isStep: false, key: react.getKey()}
+					]
+					
 				};
 				
 				this.pathStepPopup = this.pathStepPopup.bind( this );
+				this.tablePatientRows = this.tablePatientRows.bind( this );
+				
 				this.handleShowStepPopup = this.handleShowStepPopup.bind( this );
 				this.handleClosePopup = this.handleClosePopup.bind( this );
 				this.handleChangeStepStatus = this.handleChangeStepStatus.bind( this );
@@ -124,7 +136,6 @@
 				return rEl('tbody', null, tableRows );
 			}
 			
-			
 			render(){
 				return (
 					 rEl('div', { className: 'app' }, 
@@ -132,7 +143,8 @@
 					 		rEl( react.TableHead, { th: this.state.tableHead }),
 						 	this.tablePatientRows()
 						 ), 
-						 this.pathStepPopup()
+						 this.pathStepPopup(), 
+						 rEl( react.Filters, { btns: this.state.filterBtns })
 					)
 				);
 			}

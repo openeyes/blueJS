@@ -5015,9 +5015,21 @@ const oePlotly = (function ( bj ) {
 					patients: this.props.patientsJSON,
 					activeStepKey: null,
 					popupStep: null,
+					filterBtns: [
+						{ btn: 'Show all', isStep: false, key: react.getKey()},
+						{ btn: 'MM', isStep: true, key: react.getKey()},
+						{ btn: 'AB', isStep: true, key: react.getKey()},
+						{ btn: 'AG', isStep: true, key: react.getKey()},
+						{ btn: 'RB', isStep: true, key: react.getKey()},
+						{ btn: 'CW', isStep: true, key: react.getKey()},
+						{ btn: 'Unassigned', isStep: false, key: react.getKey()}
+					]
+					
 				};
 				
 				this.pathStepPopup = this.pathStepPopup.bind( this );
+				this.tablePatientRows = this.tablePatientRows.bind( this );
+				
 				this.handleShowStepPopup = this.handleShowStepPopup.bind( this );
 				this.handleClosePopup = this.handleClosePopup.bind( this );
 				this.handleChangeStepStatus = this.handleChangeStepStatus.bind( this );
@@ -5118,7 +5130,6 @@ const oePlotly = (function ( bj ) {
 				return rEl('tbody', null, tableRows );
 			}
 			
-			
 			render(){
 				return (
 					 rEl('div', { className: 'app' }, 
@@ -5126,7 +5137,8 @@ const oePlotly = (function ( bj ) {
 					 		rEl( react.TableHead, { th: this.state.tableHead }),
 						 	this.tablePatientRows()
 						 ), 
-						 this.pathStepPopup()
+						 this.pathStepPopup(), 
+						 rEl( react.Filters, { btns: this.state.filterBtns })
 					)
 				);
 			}
@@ -5134,6 +5146,113 @@ const oePlotly = (function ( bj ) {
 		
 		// make component available
 		react.Clinic = Clinic;			
+	};
+	
+	/*
+	When React is available build the Component
+	*/
+	document.addEventListener('reactJSloaded', buildComponent, { once: true });
+	  
+
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	/**
+	* React Component 
+	*/
+	const buildComponent = () => {
+				
+		const rEl = React.createElement;
+		const react = bj.namespace('react');
+
+		class FilterBtn extends React.PureComponent {
+		
+			constructor( props ){
+				super( props );
+				
+				this.btnName = this.btnName.bind( this );
+			}
+			
+			btnName(){
+				// if filter btn is for a step, show full name
+				const btnName = this.props.btn; 
+				const isStep = this.props.isStep;
+				
+				let fullName = isStep ? rEl('div', { className: 'fullname' }, react.fullShortCode( btnName )) : null; 
+							
+				return (
+					rEl('div', { className: 'filter' },
+						rEl('div', null, btnName ), 
+						fullName
+					)
+				);
+			}
+		
+			/**
+			* Render
+			*/
+			render(){ 
+				return (
+					rEl('li', { className: 'filter-btn'}, 
+						this.btnName()
+					)
+				);	
+			}
+		}
+		
+		// make component available	
+		react.FilterBtn = FilterBtn;			
+	};
+	
+	/*
+	When React is available build the Component
+	*/
+	document.addEventListener('reactJSloaded', buildComponent, { once: true });
+	  
+
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	/**
+	* React Component 
+	*/
+	const buildComponent = () => {
+				
+		const rEl = React.createElement;
+		const react = bj.namespace('react');
+
+		class Filters extends React.Component {
+			
+			constructor( props ){
+				super( props );
+				
+				this.dom = document.getElementById('js-clinic-filter');
+				
+				this.filterBtns = this.filterBtns.bind( this );
+			}
+		
+			filterBtns(){
+				return this.props.btns.map( btn =>  rEl( react.FilterBtn, btn ));
+			}
+		
+			/**
+			* Render, Use a portal to render the children into a specific DOM element
+			* note: It's STILL in the React DOM tree!
+			*/
+			render(){ 
+				return ReactDOM.createPortal(
+					this.filterBtns(),
+					this.dom
+				);	
+			}
+		}
+		
+		// make component available	
+		react.Filters = Filters;			
 	};
 	
 	/*
@@ -5387,22 +5506,17 @@ const oePlotly = (function ( bj ) {
 				const calcMins = ( minEnd, minStart ) => Math.floor(( minEnd - minStart ) / 60000 );
 				
 				if( patient.pathway.length ){
-					
 					let arrTimeStamp; // store to calculate if Finished
-					
 					patient.pathway.forEach( step => {
-						
 						// Arrived.
 						if( step.shortcode == "Arr" ){
 							this.state.waitMins = calcMins( Date.now(), step.timestamp );
 							arrTimeStamp = step.timestamp;
 						}
-						
 						// Finished
 						if(step.shortcode === "Fin" ){
 							this.state.waitMins = calcMins( step.timestamp, arrTimeStamp );
 						}
-						
 					});
 				}
 				
@@ -5453,10 +5567,10 @@ const oePlotly = (function ( bj ) {
 			
 			/**
 			* Show who's assigned to patient
+			* @returns {React Element}
 			*/
 			assigned(){
 				const whoShortCode = this.props.patient.assigned;
-				
 				if( whoShortCode ){
 					return rEl('td', null, react.fullShortCode( whoShortCode ));
 				} else {
@@ -5468,9 +5582,7 @@ const oePlotly = (function ( bj ) {
 						)
 					);
 				}
-				
 			}
-			
 			
 			/**
 			* Render 

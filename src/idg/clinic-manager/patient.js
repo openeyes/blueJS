@@ -42,22 +42,17 @@
 				const calcMins = ( minEnd, minStart ) => Math.floor(( minEnd - minStart ) / 60000 );
 				
 				if( patient.pathway.length ){
-					
 					let arrTimeStamp; // store to calculate if Finished
-					
 					patient.pathway.forEach( step => {
-						
 						// Arrived.
 						if( step.shortcode == "Arr" ){
 							this.state.waitMins = calcMins( Date.now(), step.timestamp );
 							arrTimeStamp = step.timestamp;
 						}
-						
 						// Finished
 						if(step.shortcode === "Fin" ){
 							this.state.waitMins = calcMins( step.timestamp, arrTimeStamp );
 						}
-						
 					});
 				}
 				
@@ -108,10 +103,10 @@
 			
 			/**
 			* Show who's assigned to patient
+			* @returns {React Element}
 			*/
 			assigned(){
 				const whoShortCode = this.props.patient.assigned;
-				
 				if( whoShortCode ){
 					return rEl('td', null, react.fullShortCode( whoShortCode ));
 				} else {
@@ -123,9 +118,7 @@
 						)
 					);
 				}
-				
 			}
-			
 			
 			/**
 			* Render 
