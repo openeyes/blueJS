@@ -14,14 +14,22 @@
 			
 			constructor( props ){
 				super( props );
-				
+			
 				this.dom = document.getElementById('js-clinic-filter');
+				
+				this.state = {
+					handleFilterChange: this.props.onFilterChange
+				};
 				
 				this.filterBtns = this.filterBtns.bind( this );
 			}
 		
 			filterBtns(){
-				return this.props.btns.map( btn =>  rEl( react.FilterBtn, btn ));
+				const btns = this.props.btns.map( btn => {
+					btn.onClick = this.state.handleFilterChange;
+					return rEl( react.FilterBtn, btn );
+				});
+				return btns;
 			}
 		
 			/**

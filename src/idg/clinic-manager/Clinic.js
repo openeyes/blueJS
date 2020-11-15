@@ -9,11 +9,14 @@
 				
 		const rEl = React.createElement;
 		const react = bj.namespace('react');
-		
+
 		class Clinic extends React.Component {
 			
 			constructor( props ){
 				super( props );
+		
+				// helper to build a btnObj in state
+				const btnObj = ( btn, filter, isStep, selected ) => ({ btn, filter, isStep, selected, key: react.getKey() });
 		
 				// React JS is optimised for shallow comparisons, avoid nesting
 				this.state = {
@@ -21,14 +24,15 @@
 					patients: this.props.patientsJSON,
 					activeStepKey: null,
 					popupStep: null,
+					filter: 'all',
 					filterBtns: [
-						{ btn: 'Show all', isStep: false, key: react.getKey()},
-						{ btn: 'MM', isStep: true, key: react.getKey()},
-						{ btn: 'AB', isStep: true, key: react.getKey()},
-						{ btn: 'AG', isStep: true, key: react.getKey()},
-						{ btn: 'RB', isStep: true, key: react.getKey()},
-						{ btn: 'CW', isStep: true, key: react.getKey()},
-						{ btn: 'Unassigned', isStep: false, key: react.getKey()}
+						btnObj('Show all','all', false, true ),
+						btnObj('MM', 'MM', true, false ),
+						btnObj('AB', 'AB', true, false ),
+						btnObj('AG', 'AG', true, false ),
+						btnObj('RB', 'RB', true, false ),
+						btnObj('CW', 'CW', true, false ),
+						btnObj('Unassigned', 'unassigned', false, false ),
 					]
 					
 				};
@@ -36,9 +40,24 @@
 				this.pathStepPopup = this.pathStepPopup.bind( this );
 				this.tablePatientRows = this.tablePatientRows.bind( this );
 				
+				this.handleFilterChange = this.handleFilterChange.bind( this );
 				this.handleShowStepPopup = this.handleShowStepPopup.bind( this );
 				this.handleClosePopup = this.handleClosePopup.bind( this );
 				this.handleChangeStepStatus = this.handleChangeStepStatus.bind( this );
+			}
+			
+			
+			handleFilterChange( newFilter ){
+				const filterBtnsCopy = react.deepCopy( this.state.filterBtns );
+				
+				filterBtnsCopy.forEach( btn => {
+					btn.selected = ( btn.filter === newFilter );
+				});
+				
+				this.setState({
+					filter: newFilter,
+					filterBtns: filterBtnsCopy
+				});
 			}
 			
 			
@@ -124,6 +143,7 @@
 					return rEl( react.Patient, {
 						key: patient.key,
 						patient: patient,
+						filter: this.state.filter,
 						onShowStepPopup: this.handleShowStepPopup,
 						/*
 						use patient changeCount to trigger a render 
@@ -141,10 +161,13 @@
 					 rEl('div', { className: 'app' }, 
 					 	rEl('table', { className: 'oe-clinic-list' },
 					 		rEl( react.TableHead, { th: this.state.tableHead }),
-						 	this.tablePatientRows()
-						 ), 
-						 this.pathStepPopup(), 
-						 rEl( react.Filters, { btns: this.state.filterBtns })
+							this.tablePatientRows()
+						), 
+						this.pathStepPopup(), 
+						rEl( react.Filters, { 
+							onFilterChange: this.handleFilterChange,
+							btns: this.state.filterBtns 
+						})
 					)
 				);
 			}

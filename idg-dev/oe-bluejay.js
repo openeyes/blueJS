@@ -5003,11 +5003,14 @@ const oePlotly = (function ( bj ) {
 				
 		const rEl = React.createElement;
 		const react = bj.namespace('react');
-		
+
 		class Clinic extends React.Component {
 			
 			constructor( props ){
 				super( props );
+		
+				// helper to build a btnObj in state
+				const btnObj = ( btn, filter, isStep, selected ) => ({ btn, filter, isStep, selected, key: react.getKey() });
 		
 				// React JS is optimised for shallow comparisons, avoid nesting
 				this.state = {
@@ -5015,14 +5018,15 @@ const oePlotly = (function ( bj ) {
 					patients: this.props.patientsJSON,
 					activeStepKey: null,
 					popupStep: null,
+					filter: 'all',
 					filterBtns: [
-						{ btn: 'Show all', isStep: false, key: react.getKey()},
-						{ btn: 'MM', isStep: true, key: react.getKey()},
-						{ btn: 'AB', isStep: true, key: react.getKey()},
-						{ btn: 'AG', isStep: true, key: react.getKey()},
-						{ btn: 'RB', isStep: true, key: react.getKey()},
-						{ btn: 'CW', isStep: true, key: react.getKey()},
-						{ btn: 'Unassigned', isStep: false, key: react.getKey()}
+						btnObj('Show all','all', false, true ),
+						btnObj('MM', 'MM', true, false ),
+						btnObj('AB', 'AB', true, false ),
+						btnObj('AG', 'AG', true, false ),
+						btnObj('RB', 'RB', true, false ),
+						btnObj('CW', 'CW', true, false ),
+						btnObj('Unassigned', 'unassigned', false, false ),
 					]
 					
 				};
@@ -5030,9 +5034,24 @@ const oePlotly = (function ( bj ) {
 				this.pathStepPopup = this.pathStepPopup.bind( this );
 				this.tablePatientRows = this.tablePatientRows.bind( this );
 				
+				this.handleFilterChange = this.handleFilterChange.bind( this );
 				this.handleShowStepPopup = this.handleShowStepPopup.bind( this );
 				this.handleClosePopup = this.handleClosePopup.bind( this );
 				this.handleChangeStepStatus = this.handleChangeStepStatus.bind( this );
+			}
+			
+			
+			handleFilterChange( newFilter ){
+				const filterBtnsCopy = react.deepCopy( this.state.filterBtns );
+				
+				filterBtnsCopy.forEach( btn => {
+					btn.selected = ( btn.filter === newFilter );
+				});
+				
+				this.setState({
+					filter: newFilter,
+					filterBtns: filterBtnsCopy
+				});
 			}
 			
 			
@@ -5118,6 +5137,7 @@ const oePlotly = (function ( bj ) {
 					return rEl( react.Patient, {
 						key: patient.key,
 						patient: patient,
+						filter: this.state.filter,
 						onShowStepPopup: this.handleShowStepPopup,
 						/*
 						use patient changeCount to trigger a render 
@@ -5135,10 +5155,13 @@ const oePlotly = (function ( bj ) {
 					 rEl('div', { className: 'app' }, 
 					 	rEl('table', { className: 'oe-clinic-list' },
 					 		rEl( react.TableHead, { th: this.state.tableHead }),
-						 	this.tablePatientRows()
-						 ), 
-						 this.pathStepPopup(), 
-						 rEl( react.Filters, { btns: this.state.filterBtns })
+							this.tablePatientRows()
+						), 
+						this.pathStepPopup(), 
+						rEl( react.Filters, { 
+							onFilterChange: this.handleFilterChange,
+							btns: this.state.filterBtns 
+						})
 					)
 				);
 			}
@@ -5194,8 +5217,9 @@ const oePlotly = (function ( bj ) {
 			* Render
 			*/
 			render(){ 
+				const css = this.props.selected ? 'filter-btn selected' : 'filter-btn';
 				return (
-					rEl('li', { className: 'filter-btn'}, 
+					rEl('li', { className: css, onClick: () => this.props.onClick( this.props.filter ) }, 
 						this.btnName()
 					)
 				);	
@@ -5229,14 +5253,22 @@ const oePlotly = (function ( bj ) {
 			
 			constructor( props ){
 				super( props );
-				
+			
 				this.dom = document.getElementById('js-clinic-filter');
+				
+				this.state = {
+					handleFilterChange: this.props.onFilterChange
+				};
 				
 				this.filterBtns = this.filterBtns.bind( this );
 			}
 		
 			filterBtns(){
-				return this.props.btns.map( btn =>  rEl( react.FilterBtn, btn ));
+				const btns = this.props.btns.map( btn => {
+					btn.onClick = this.state.handleFilterChange;
+					return rEl( react.FilterBtn, btn );
+				});
+				return btns;
 			}
 		
 			/**
@@ -5489,7 +5521,8 @@ const oePlotly = (function ( bj ) {
 				
 				this.state = {
 					onShowStepPopup: props.onShowStepPopup,
-					waitMins: 0,
+					arriveTime: 0,
+					pathwayTotalMins: 0,
 					patientMeta: {
 						firstname: patient.firstname,
 						lastname: patient.lastname,
@@ -5500,22 +5533,17 @@ const oePlotly = (function ( bj ) {
 				};
 				
 				/* 
-				If there is a pathway, calculate the waitMins
-				either from Arrive or Finish time (if pathway is completed)
+				If there is a pathway, waitDuration needs to know the 
+				patient wait time. This is calculate from time of Arrival. 
+				If pathway is complete then work out pathwayTotalMins
 				*/
-				const calcMins = ( minEnd, minStart ) => Math.floor(( minEnd - minStart ) / 60000 );
-				
 				if( patient.pathway.length ){
-					let arrTimeStamp; // store to calculate if Finished
 					patient.pathway.forEach( step => {
-						// Arrived.
 						if( step.shortcode == "Arr" ){
-							this.state.waitMins = calcMins( Date.now(), step.timestamp );
-							arrTimeStamp = step.timestamp;
+							this.state.arriveTime = step.timestamp;
 						}
-						// Finished
-						if(step.shortcode === "Fin" ){
-							this.state.waitMins = calcMins( step.timestamp, arrTimeStamp );
+						if( step.shortcode === "Fin" ){
+							this.state.pathwayTotalMins = Math.floor(( step.timestamp - this.state.arriveTime ) / 60000 );
 						}
 					});
 				}
@@ -5570,9 +5598,9 @@ const oePlotly = (function ( bj ) {
 			* @returns {React Element}
 			*/
 			assigned(){
-				const whoShortCode = this.props.patient.assigned;
-				if( whoShortCode ){
-					return rEl('td', null, react.fullShortCode( whoShortCode ));
+				const assigned = this.props.patient.assigned;
+				if( assigned ){
+					return rEl('td', null, react.fullShortCode( assigned ));
 				} else {
 					return (
 						rEl('td', null, 
@@ -5589,7 +5617,23 @@ const oePlotly = (function ( bj ) {
 			*/
 			render(){
 				const patient = this.props.patient;
+				const filter = this.props.filter;
+				
 				console.log('Render - Patient', patient.key );
+				
+				/*
+				Table Rows can be filtered by their assignment. 
+				Check the Clinic filter state
+				*/
+				if( filter !== "all" ){
+					// if assignment is false that means "unassigned";
+					const assignment = this.props.patient.assigned || 'unassigned';
+					
+					if( assignment !== filter ){
+						return null; // remove <tr>	
+					}
+				}
+				
 				
 				return (
 					rEl('tr', { "data-timestamp" : patient.booked },
@@ -5614,7 +5658,8 @@ const oePlotly = (function ( bj ) {
 						rEl('td', null,
 							rEl( react.WaitDuration, { 
 								status: patient.status,
-								mins: this.state.waitMins 	
+								arriveTime: this.state.arriveTime,
+								pathwayTotalMins: this.state.pathwayTotalMins
 							})
 						)
 					)
@@ -5778,102 +5823,142 @@ const oePlotly = (function ( bj ) {
 	const buildComponent = () => {
 				
 		const rEl = React.createElement;
+		const react = bj.namespace('react');
 		
 		class WaitDuration extends React.Component {
 			
 			/**
 			* WaitDuration SVG wait time graphic circles
-			* @props {Number} mins - waiting in minutes from arrival
-			* @props {String} status - 'complete', 'active' and 'todo'
 			*/
 			constructor( props ){
 				super( props );
 				
 				this.state = {
-					mins: props.mins,
-					countID: null
+					arrive: props.arriveTime,
+					waitMins: 0
 				};
-				
-				// prototypal inheritence, set 'this' scope: 
-				this.countMins = this.countMins.bind( this );
-				
-				// give a rough min count to show the UX...
-				if( props.mins && props.status == 'active'  ){			
-					this.state.countID = setInterval( this.countMins, 60000 ); // count every minute! 
+			
+				this.updateWaitMins = this.updateWaitMins.bind( this );
+				this.state.waitMins = this.updateWaitMins();
+			}
+			
+			/**
+			* DOM lifecycle 
+			* component output has been rendered to the DOM
+			* recommended to set up a timer here
+			*/
+			componentDidMount(){
+				if( this.props.status == 'active' ){
+					// update Render with correct waitMins
+					this.state.waitMins = this.updateWaitMins();
+					// then check every 15 secs.
+					this.interval = setInterval(() => {
+						this.setState({ waitMins: this.updateWaitMins() });
+					}, 15000 );
 				}
 			}
-		
-			countMins(){
-				this.setState( state => {
-					state.mins++;
-					return state;
-				});
-			}
-		
-			/*
-			Circles to represent time waiting
+			
+			/**
+			* DOM lifecycle 
+			* clean up the setInterval
 			*/
-			svgCircles( r ){
-				const circles = ['green','yellow','orange','red'].map(( color, i ) => {
-					const cx = ((i + 1) * (r * 2)) - r;
-					return rEl('circle', { 
-						key: color, // React JS requires a 'key', IF list is re-order then this will be a problem 
-						className: `c${i}`, 
-						cx,
-						cy:r, 
-						r 
-					});
-				});
-				
-				return circles;
+			componentWillUnmount() {
+				clearInterval( this.interval );
+			}
+			
+			
+			/**
+			* Calculate wait minutes. Can only do this whilst mounted.
+			* @returns {Number} minutes
+			*/
+			updateWaitMins(){
+				return Math.floor(( Date.now() - this.state.arrive ) / 60000 );
 			}
 			
 			/*
-			Render
+			
+			/**
+			* SVG Circles to represent time waiting
+			* @param {String} color (based on wait mins)
+			* @returns {React Element}
 			*/
-			render(){
+			svgCircles( color = "" ){
 				const r = 6;
 				const d = r * 2;
 				const w = d * 4;
-				const mins = this.state.mins;
 				
-				// graphic state depends on wait
-				let count = '';
-				let minsLabel = '';
-				let cssColor = '';
-				
-				if( mins > 0 ){
-					count = mins; 
-					minsLabel = mins > 1 ? 'mins' : 'min'; 
-					cssColor = 'green';
-					
-					if( mins > 14 ) cssColor = 'yellow';
-					if( mins > 29 ) cssColor = 'orange';
-					if( mins > 59 ) cssColor = 'red';
-				}
-				
-				// if state is complete hide the duration graphic
-				if( this.props.status == 'complete'){
-					clearInterval( this.state.countID );
-					cssColor = 'hidden';
-				}
+				const circles = [ 'green', 'yellow', 'orange', 'red' ].map(( color, i ) => {
+					const cx = ((i + 1) * (r * 2)) - r;
+					return rEl('circle', { key: react.getKey(), className: `c${i}`, cx, cy:r, r });
+				});
 				
 				return (
-					rEl('div', { className: 'wait-duration'},
-						rEl('svg', { className: 'duration-graphic ' + cssColor , viewBox:`0 0 ${w} ${d}`, height: d, width: w }, 
-							this.svgCircles( r )
-						),
-						rEl('div', { className: 'mins'},
-							rEl('span', null, count ),
-							rEl('small', null, minsLabel )
+					rEl('svg', 
+						{ 
+							className: `duration-graphic ${color}`, 
+							viewBox:`0 0 ${w} ${d}`, 
+							height: d, 
+							width: w 
+						}, 
+						circles
+					)
+				);
+			}
+			
+			/**
+			* Show the wait minutes
+			* @param {Number} mins
+			* @returns {React Element}
+			*/
+			waitTime( mins ){
+				return (
+					rEl('div', { className: 'mins'},
+						rEl('span', null, mins ),
+						rEl('small', null, mins > 1 ? 'mins' : 'min' )
+					)	
+				);
+			}
+			
+			/**
+			* Render depends on status
+			* Patient status could be: "complete", "active", "todo"
+			*/
+			render(){
+				
+				if( this.props.status == 'complete' ){
+					return (
+						rEl('div', { className: 'wait-duration'},
+							this.waitTime( this.props.pathwayTotalMins )
 						)
+					);
+				}
+				
+				if( this.props.status == "todo" ){
+					return (
+						rEl('div', { className: 'wait-duration'},
+							this.svgCircles()
+						)
+					);
+				}
+				
+				// it's "active" and we need to count the wait mins
+				const mins = this.state.waitMins; 	
+				let cssColor = 'green';				
+				if( mins > 14 ) cssColor = 'yellow';
+				if( mins > 29 ) cssColor = 'orange';
+				if( mins > 59 ) cssColor = 'red';
+			
+				return (
+					rEl('div', { className: 'wait-duration'},
+						this.svgCircles( cssColor ),
+						this.waitTime( mins )
 					)
 				);
 			}
 		}
 		
 		// make component available	
-		bj.namespace('react').WaitDuration = WaitDuration;			
+		react.WaitDuration = WaitDuration;			
 	};
 	
 	/*

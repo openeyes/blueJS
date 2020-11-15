@@ -37,8 +37,9 @@
 			* Render
 			*/
 			render(){ 
+				const css = this.props.selected ? 'filter-btn selected' : 'filter-btn';
 				return (
-					rEl('li', { className: 'filter-btn'}, 
+					rEl('li', { className: css, onClick: () => this.props.onClick( this.props.filter ) }, 
 						this.btnName()
 					)
 				);	

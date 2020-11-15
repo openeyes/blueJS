@@ -8,102 +8,142 @@
 	const buildComponent = () => {
 				
 		const rEl = React.createElement;
+		const react = bj.namespace('react');
 		
 		class WaitDuration extends React.Component {
 			
 			/**
 			* WaitDuration SVG wait time graphic circles
-			* @props {Number} mins - waiting in minutes from arrival
-			* @props {String} status - 'complete', 'active' and 'todo'
 			*/
 			constructor( props ){
 				super( props );
 				
 				this.state = {
-					mins: props.mins,
-					countID: null
+					arrive: props.arriveTime,
+					waitMins: 0
 				};
-				
-				// prototypal inheritence, set 'this' scope: 
-				this.countMins = this.countMins.bind( this );
-				
-				// give a rough min count to show the UX...
-				if( props.mins && props.status == 'active'  ){			
-					this.state.countID = setInterval( this.countMins, 60000 ); // count every minute! 
+			
+				this.updateWaitMins = this.updateWaitMins.bind( this );
+				this.state.waitMins = this.updateWaitMins();
+			}
+			
+			/**
+			* DOM lifecycle 
+			* component output has been rendered to the DOM
+			* recommended to set up a timer here
+			*/
+			componentDidMount(){
+				if( this.props.status == 'active' ){
+					// update Render with correct waitMins
+					this.state.waitMins = this.updateWaitMins();
+					// then check every 15 secs.
+					this.interval = setInterval(() => {
+						this.setState({ waitMins: this.updateWaitMins() });
+					}, 15000 );
 				}
 			}
-		
-			countMins(){
-				this.setState( state => {
-					state.mins++;
-					return state;
-				});
-			}
-		
-			/*
-			Circles to represent time waiting
+			
+			/**
+			* DOM lifecycle 
+			* clean up the setInterval
 			*/
-			svgCircles( r ){
-				const circles = ['green','yellow','orange','red'].map(( color, i ) => {
-					const cx = ((i + 1) * (r * 2)) - r;
-					return rEl('circle', { 
-						key: color, // React JS requires a 'key', IF list is re-order then this will be a problem 
-						className: `c${i}`, 
-						cx,
-						cy:r, 
-						r 
-					});
-				});
-				
-				return circles;
+			componentWillUnmount() {
+				clearInterval( this.interval );
+			}
+			
+			
+			/**
+			* Calculate wait minutes. Can only do this whilst mounted.
+			* @returns {Number} minutes
+			*/
+			updateWaitMins(){
+				return Math.floor(( Date.now() - this.state.arrive ) / 60000 );
 			}
 			
 			/*
-			Render
+			
+			/**
+			* SVG Circles to represent time waiting
+			* @param {String} color (based on wait mins)
+			* @returns {React Element}
 			*/
-			render(){
+			svgCircles( color = "" ){
 				const r = 6;
 				const d = r * 2;
 				const w = d * 4;
-				const mins = this.state.mins;
 				
-				// graphic state depends on wait
-				let count = '';
-				let minsLabel = '';
-				let cssColor = '';
-				
-				if( mins > 0 ){
-					count = mins; 
-					minsLabel = mins > 1 ? 'mins' : 'min'; 
-					cssColor = 'green';
-					
-					if( mins > 14 ) cssColor = 'yellow';
-					if( mins > 29 ) cssColor = 'orange';
-					if( mins > 59 ) cssColor = 'red';
-				}
-				
-				// if state is complete hide the duration graphic
-				if( this.props.status == 'complete'){
-					clearInterval( this.state.countID );
-					cssColor = 'hidden';
-				}
+				const circles = [ 'green', 'yellow', 'orange', 'red' ].map(( color, i ) => {
+					const cx = ((i + 1) * (r * 2)) - r;
+					return rEl('circle', { key: react.getKey(), className: `c${i}`, cx, cy:r, r });
+				});
 				
 				return (
-					rEl('div', { className: 'wait-duration'},
-						rEl('svg', { className: 'duration-graphic ' + cssColor , viewBox:`0 0 ${w} ${d}`, height: d, width: w }, 
-							this.svgCircles( r )
-						),
-						rEl('div', { className: 'mins'},
-							rEl('span', null, count ),
-							rEl('small', null, minsLabel )
+					rEl('svg', 
+						{ 
+							className: `duration-graphic ${color}`, 
+							viewBox:`0 0 ${w} ${d}`, 
+							height: d, 
+							width: w 
+						}, 
+						circles
+					)
+				);
+			}
+			
+			/**
+			* Show the wait minutes
+			* @param {Number} mins
+			* @returns {React Element}
+			*/
+			waitTime( mins ){
+				return (
+					rEl('div', { className: 'mins'},
+						rEl('span', null, mins ),
+						rEl('small', null, mins > 1 ? 'mins' : 'min' )
+					)	
+				);
+			}
+			
+			/**
+			* Render depends on status
+			* Patient status could be: "complete", "active", "todo"
+			*/
+			render(){
+				
+				if( this.props.status == 'complete' ){
+					return (
+						rEl('div', { className: 'wait-duration'},
+							this.waitTime( this.props.pathwayTotalMins )
 						)
+					);
+				}
+				
+				if( this.props.status == "todo" ){
+					return (
+						rEl('div', { className: 'wait-duration'},
+							this.svgCircles()
+						)
+					);
+				}
+				
+				// it's "active" and we need to count the wait mins
+				const mins = this.state.waitMins; 	
+				let cssColor = 'green';				
+				if( mins > 14 ) cssColor = 'yellow';
+				if( mins > 29 ) cssColor = 'orange';
+				if( mins > 59 ) cssColor = 'red';
+			
+				return (
+					rEl('div', { className: 'wait-duration'},
+						this.svgCircles( cssColor ),
+						this.waitTime( mins )
 					)
 				);
 			}
 		}
 		
 		// make component available	
-		bj.namespace('react').WaitDuration = WaitDuration;			
+		react.WaitDuration = WaitDuration;			
 	};
 	
 	/*

@@ -25,7 +25,8 @@
 				
 				this.state = {
 					onShowStepPopup: props.onShowStepPopup,
-					waitMins: 0,
+					arriveTime: 0,
+					pathwayTotalMins: 0,
 					patientMeta: {
 						firstname: patient.firstname,
 						lastname: patient.lastname,
@@ -36,22 +37,17 @@
 				};
 				
 				/* 
-				If there is a pathway, calculate the waitMins
-				either from Arrive or Finish time (if pathway is completed)
+				If there is a pathway, waitDuration needs to know the 
+				patient wait time. This is calculate from time of Arrival. 
+				If pathway is complete then work out pathwayTotalMins
 				*/
-				const calcMins = ( minEnd, minStart ) => Math.floor(( minEnd - minStart ) / 60000 );
-				
 				if( patient.pathway.length ){
-					let arrTimeStamp; // store to calculate if Finished
 					patient.pathway.forEach( step => {
-						// Arrived.
 						if( step.shortcode == "Arr" ){
-							this.state.waitMins = calcMins( Date.now(), step.timestamp );
-							arrTimeStamp = step.timestamp;
+							this.state.arriveTime = step.timestamp;
 						}
-						// Finished
-						if(step.shortcode === "Fin" ){
-							this.state.waitMins = calcMins( step.timestamp, arrTimeStamp );
+						if( step.shortcode === "Fin" ){
+							this.state.pathwayTotalMins = Math.floor(( step.timestamp - this.state.arriveTime ) / 60000 );
 						}
 					});
 				}
@@ -106,9 +102,9 @@
 			* @returns {React Element}
 			*/
 			assigned(){
-				const whoShortCode = this.props.patient.assigned;
-				if( whoShortCode ){
-					return rEl('td', null, react.fullShortCode( whoShortCode ));
+				const assigned = this.props.patient.assigned;
+				if( assigned ){
+					return rEl('td', null, react.fullShortCode( assigned ));
 				} else {
 					return (
 						rEl('td', null, 
@@ -125,7 +121,23 @@
 			*/
 			render(){
 				const patient = this.props.patient;
+				const filter = this.props.filter;
+				
 				console.log('Render - Patient', patient.key );
+				
+				/*
+				Table Rows can be filtered by their assignment. 
+				Check the Clinic filter state
+				*/
+				if( filter !== "all" ){
+					// if assignment is false that means "unassigned";
+					const assignment = this.props.patient.assigned || 'unassigned';
+					
+					if( assignment !== filter ){
+						return null; // remove <tr>	
+					}
+				}
+				
 				
 				return (
 					rEl('tr', { "data-timestamp" : patient.booked },
@@ -150,7 +162,8 @@
 						rEl('td', null,
 							rEl( react.WaitDuration, { 
 								status: patient.status,
-								mins: this.state.waitMins 	
+								arriveTime: this.state.arriveTime,
+								pathwayTotalMins: this.state.pathwayTotalMins
 							})
 						)
 					)
