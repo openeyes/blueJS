@@ -74,6 +74,7 @@
 				this.state.onShowStepPopup( step ); // callback from Clinic
 			}	
 			
+			
 			/**
 			* Build pathway steps 
 			* @returns {React Element}

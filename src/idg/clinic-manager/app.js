@@ -100,7 +100,7 @@
 		};
 		
 		// array clone
-		const cloneArr = () => obj.map( item => react.deepCopy(item));
+		const cloneArr = () => obj.map( item => react.deepCopy( item ));
 		
 		// check type
 		const type = Object.prototype.toString.call(obj).slice(8, -1).toLowerCase();

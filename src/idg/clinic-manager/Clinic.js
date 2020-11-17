@@ -3,7 +3,7 @@
 	'use strict';	
 	
 	/**
-	* React Component 
+	* React Parent Component 
 	*/
 	const buildComponent = () => {
 				
@@ -37,6 +37,7 @@
 					
 				};
 				
+				this.adderPopup = this.adderPopup.bind( this );
 				this.pathStepPopup = this.pathStepPopup.bind( this );
 				this.tablePatientRows = this.tablePatientRows.bind( this );
 				
@@ -156,6 +157,28 @@
 				return rEl('tbody', null, tableRows );
 			}
 			
+			
+			adderPopup(){
+				// generate a list all patient arrived and todo. 
+				// 09:00 - LASTNAME
+				const patientList = [];
+				
+				this.state.patients.forEach( patient => {
+					if( patient.status !== 'complete' ){
+						patientList.push({
+							booked: patient.booked,
+							lastname: patient.lastname,
+							arrRef: patient.arrRef
+						});
+					}
+				});
+				
+				const showAdder = true;
+				if( showAdder ){
+					return rEl( react.AdderPopup, { list: patientList });
+				}
+			}
+			
 			render(){
 				return (
 					 rEl('div', { className: 'app' }, 
@@ -163,7 +186,10 @@
 					 		rEl( react.TableHead, { th: this.state.tableHead }),
 							this.tablePatientRows()
 						), 
+						
 						this.pathStepPopup(), 
+						this.adderPopup(),
+						
 						rEl( react.Filters, { 
 							onFilterChange: this.handleFilterChange,
 							btns: this.state.filterBtns 

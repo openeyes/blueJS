@@ -14,8 +14,11 @@
 			
 			constructor( props ){
 				super( props );
-			
+				
+				// Following React Docs example, store DOM Element here
+				// then use a Portal to render the children into the DOM.
 				this.dom = document.getElementById('js-clinic-filter');
+				
 				
 				this.state = {
 					handleFilterChange: this.props.onFilterChange
@@ -24,11 +27,22 @@
 				this.filterBtns = this.filterBtns.bind( this );
 			}
 		
+			/**
+			* Create <li> elements as buttons.
+			* @returns {Array} of React Elements
+			*/
 			filterBtns(){
 				const btns = this.props.btns.map( btn => {
 					btn.onClick = this.state.handleFilterChange;
 					return rEl( react.FilterBtn, btn );
 				});
+				
+				btns.push(
+					rEl('li', { className: 'update-btn', key: react.getKey() },
+						rEl('button', { className: 'adder' }, null )
+					)
+				);
+				
 				return btns;
 			}
 		

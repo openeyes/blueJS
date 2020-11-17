@@ -1942,6 +1942,270 @@ const oePlotly = (function ( bj ) {
 
 	'use strict';
 	
+	const oesTemplateType = "Patient Popup"; // used in ID for div
+	
+	// oe CSS theme - fixed, because in Patient Popup
+	const darkTheme = true; 
+	
+	/**
+	* Plotly parameters
+	* Map top level parameters for each plot (R & L)
+	*/
+	const myPlotly = new Map();	
+	
+
+	/**
+	* Build data trace format for Glaucoma
+	* @param {JSON} eyeJSON data
+	* @param {String} eyeSide - 'leftEye' or 'rightEye' or 'BEO'
+	* @param {Array} colorsArr  
+	* @returns {Array} for Plol.ly data
+	*/
+	const buildDataTraces = ( eyeJSON, eyeSide, colorsArr  ) => {
+		
+		// a helper to loop through the color array
+		const getColour = (() => {
+			let i = 0;
+			return () => {
+				let c = i++;
+				if( i >= colorsArr.length ) i = 0; 
+				return colorsArr[ c ];
+			};
+		})();
+		
+		
+		/**
+		* store data traces with own keys
+		* traces can then be accessed by their JSON name
+		*/
+		myPlotly.get( eyeSide ).set('data', new Map());
+		
+		const VA_offScale = {
+			x: eyeJSON.VA.offScale.x,
+			y: eyeJSON.VA.offScale.y,
+			name: eyeJSON.VA.offScale.name,		
+			hovertemplate: '%{y}<br>%{x}',
+			type: 'scatter',
+			mode: 'lines+markers',
+			line: oePlotly.dataLine({
+				color: getColour()
+			}),
+		};
+		
+		myPlotly.get( eyeSide ).get('data').set( eyeJSON.VA.offScale.name, VA_offScale);
+		
+		const CRT = {
+			x: eyeJSON.CRT.x,
+			y: eyeJSON.CRT.y,
+			name: eyeJSON.CRT.name,	
+			yaxis: 'y2',	
+			hovertemplate: 'CRT: %{y}<br>%{x}',
+			type: 'scatter',
+			mode: 'lines+markers',
+			line: oePlotly.dataLine({
+				color: getColour(),
+				dashed: true,
+			}),
+		};
+		
+		myPlotly.get( eyeSide ).get('data').set( eyeJSON.CRT.name, CRT);
+		
+		
+		const VA = {
+			x: eyeJSON.VA.units.x,
+			y: eyeJSON.VA.units.y,
+			name: eyeJSON.VA.units.name,
+			yaxis: 'y3',		
+			hovertemplate: '%{y}<br>%{x}',
+			type: 'scatter',
+			mode: 'lines+markers',
+			line: oePlotly.dataLine({
+				color: getColour()
+			}),
+		};
+				
+		myPlotly.get( eyeSide ).get('data').set( 'VA', VA );
+
+	};
+	
+	/**
+	* React to user request to change VA scale 
+	* (note: used as a callback by selectableUnits)
+	* @param {String} which eye side?
+	*/
+	const plotlyReacts = () => {
+		/*
+		Single plot can have RE, LE or BEO
+		Update all available traces and build data trace array
+		*/
+		let eyeKeys = ['rightEye', 'leftEye' ];
+		let data = [];
+		
+		eyeKeys.forEach(( key ) => {
+			if( myPlotly.has( key )){
+				
+				let eyePlot = myPlotly.get( key ).get('data'); 
+				// build the Data array
+				data = data.concat( Array.from( eyePlot.values()) );
+			}
+		}); 
+		
+		// build new (or rebuild)
+		Plotly.react(
+			myPlotly.get('div'), 
+			data, 
+			myPlotly.get('layout'), 
+			{ displayModeBar: false, responsive: true }
+		);
+	};
+	
+	/**
+	* build layout and initialise Plotly 
+	* @param {Object} axes
+	*/
+	const plotlyInitCombined = ( axes ) => {
+
+		const layout = oePlotly.getLayout({
+			darkTheme, // dark?
+			legend: {
+				yanchor:'top',
+				y:1,
+			},
+			//plotTitle: 'Right, Left and BEO',
+			xaxis: axes.x,
+			yaxes: axes.y,
+			subplot: 2,	 // offScale, VA 
+		});
+		
+		/*
+		For the popup I couldn't get plotly to resize to available width
+		without adding a specific width!	
+		*/
+		const div = oePlotly.buildDiv(`${oesTemplateType}`, '415px', '415px', '1020px'); // 1020px best guess based on 1280px layout
+		document.getElementById('patient-popup-oeplolty').appendChild( div );
+		
+		/**
+		Comnbined data plots, therefore only 1 <div> and only 1 'layout'
+		*/
+		myPlotly.set('div', div);
+		myPlotly.set('layout', layout);
+		
+		// build
+		plotlyReacts();
+		
+		// set up click through
+		oePlotly.addClickEvent( div, '?' );
+		oePlotly.addHoverEvent( div, '?' );
+		
+		// bluejay custom event (user changes layout)
+		document.addEventListener('oesLayoutChange', () => {
+			Plotly.relayout( div, layout );
+		});	
+	}; 
+	
+	
+	/**
+	* init - called from the PHP page that needs it
+	* @param {JSON} json - PHP supplies the data for charts
+	*/
+	const init = ( json = null ) => {
+		
+		if(json === null){
+			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			return false;
+		} else {
+			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+		}
+		
+		// for all subplot rows
+		const domainRow = [
+			[0, 0.15],
+			[0.2, 1],
+		];
+		
+		/**
+		* Data 
+		* Combined Plot. Colours have to get set on the data!
+		*/
+		if( json.rightEye ){
+			myPlotly.set('rightEye', new Map());
+			buildDataTraces( json.rightEye, 'rightEye',
+				oePlotly.getColorSeries('rightEyeSeries', darkTheme)
+			);
+		}
+		
+		if( json.leftEye ){
+			myPlotly.set('leftEye', new Map());
+			buildDataTraces( json.leftEye, 'leftEye', 
+				oePlotly.getColorSeries('leftEyeSeries', darkTheme)
+			);
+		}
+		
+
+		/**
+		* Axes templates 
+		*/
+		
+		// x1
+		const x1 = oePlotly.getAxis({
+			type:'x',
+			numTicks: 10,
+			useDates: true,
+			spikes: true,
+			noMirrorLines: true,
+		}, darkTheme );
+		
+		// y0 - offscale 
+		const y0 = oePlotly.getAxis({
+			type:'y',
+			domain: domainRow[0], 
+			useCategories: {
+				showAll: true, 
+				categoryarray: json.yaxis.offScale.reverse()
+			},
+			spikes: true,
+		}, darkTheme );
+		
+		// y1 - CRT
+		const y1 = oePlotly.getAxis({
+			type:'y',
+			domain: domainRow[1],
+			title: 'CRT', 
+			range: [200, 650], // hard coded range
+			spikes: true,
+		}, darkTheme );
+		
+		// y2 - VA
+		const y2 = oePlotly.getAxis({
+			type:'y',
+			domain: domainRow[1], 
+			title: 'VA',
+			rightSide: 'y2',
+			useCategories: {
+				showAll: true, 
+				categoryarray: json.yaxis.unitRanges.snellenMetre.range.reverse()
+			},
+			spikes: true,
+		}, darkTheme );
+		
+		
+		plotlyInitCombined({
+			x: x1, 
+			y: [ y0, y1, y2 ],
+		});	
+		 
+	};
+	
+	/**
+	* Extend API ... PHP will call with json when DOM is loaded
+	*/
+	bj.extend('plotPatientPopup', init);	
+		
+})( bluejay ); 
+(function ( bj ) {
+
+	'use strict';
+	
 	const oesTemplateType = "Bar Chart";
 	
 	// oe CSS theme!
@@ -2496,6 +2760,399 @@ const oePlotly = (function ( bj ) {
 	* Extend API ... PHP will call with json when DOM is loaded
 	*/
 	bj.extend('plotCombinedMedRet', init);	
+		
+})( bluejay ); 
+(function ( bj ) {
+
+	'use strict';
+	
+	const oesTemplateType = "Combined Medical Retina"; // used in ID for div
+	
+	// oe CSS theme!
+	const darkTheme = oePlotly.isDarkTheme();
+	
+	/**
+	* Plotly parameters
+	* Map top level parameters for each plot (R & L)
+	*/
+	const myPlotly = new Map();	
+	
+	
+	/**
+	* Build data trace format for Glaucoma
+	* @param {JSON} eyeJSON data
+	* @param {String} eyeSide - 'leftEye' or 'rightEye' or 'BEO'
+	* @param {Array} colorsArr  
+	* @returns {Array} for Plol.ly data
+	*/
+	const buildDataTraces = ( eyeJSON, eyeSide, colorsArr  ) => {
+		
+		// a helper to loop through the color array
+		const getColour = (() => {
+			let i = 0;
+			return () => {
+				let c = i++;
+				if( i >= colorsArr.length ) i = 0; 
+				return colorsArr[ c ];
+			};
+		})();
+		
+		
+		/**
+		* store data traces with own keys
+		* traces can then be accessed by their JSON name
+		*/
+		myPlotly.get( eyeSide ).set('data', new Map());
+		
+		const VA = {
+			x: eyeJSON.VA.x,
+			y: eyeJSON.VA.y,
+			name: 'VA',		
+			hovertemplate: 'Mean ± SD<br>VA: %{y}<br>(N: %{x})',
+			type: 'scatter',
+			mode: 'lines+markers',
+			yaxis:'y2',
+			line: oePlotly.dataLine({
+				color: getColour()
+			}),
+			error_y: {
+			  type: 'data',
+			  array: eyeJSON.VA.error_y,
+			  visible: true,
+			  thickness: 0.5,
+			}
+		};
+		
+		myPlotly.get( eyeSide ).get('data').set( 'VA', VA );
+		
+		const CRT = {
+			x: eyeJSON.CRT.x,
+			y: eyeJSON.CRT.y,
+			name: 'CRT',		
+			hovertemplate: 'Mean ± SD<br>CRT: %{y}<br>(N: %{x})',
+			type: 'scatter',
+			line: oePlotly.dataLine({
+				color: getColour(),
+				dashed: true,
+			}),
+			error_y: {
+			  type: 'data',
+			  array: eyeJSON.CRT.error_y,
+			  visible: true,
+			  thickness: 0.5,
+			}
+		};
+		
+		
+		myPlotly.get( eyeSide ).get('data').set( eyeJSON.CRT.name, CRT);
+
+	};
+	
+	/**
+	* React to user request to change VA scale 
+	* (note: used as a callback by selectableUnits)
+	* @param {String} which eye side?
+	*/
+	const plotlyReacts = () => {
+		/*
+		Single plot can have RE, LE or BEO
+		Update all available traces and build data trace array
+		*/
+		let eyeKeys = ['rightEye', 'leftEye', 'BEO'];
+		let data = [];
+		
+		eyeKeys.forEach(( key ) => {
+			if( myPlotly.has( key )){
+				
+				let eyePlot = myPlotly.get( key ).get('data'); 
+				
+				// update VA data
+				eyePlot.set('VA', userSelecterUnits.selectedTrace( key ));
+				
+				// build the Data array
+				data = data.concat( Array.from( eyePlot.values()) );
+			}
+		}); 
+		
+		// make sure variable yAxis is updated
+		myPlotly.get('layout').yaxis3 = Object.assign({}, userSelecterUnits.selectedAxis());
+		
+		// build new (or rebuild)
+		Plotly.react(
+			myPlotly.get('div'), 
+			data, 
+			myPlotly.get('layout'), 
+			{ displayModeBar: false, responsive: true }
+		);
+	};
+	
+	/**
+	* build layout and initialise Plotly 
+	* @param {Object} setup
+	*/
+	const plotlyInit = ( setup ) => {
+		
+		const layout = oePlotly.getLayout({
+			darkTheme, // dark? 
+			legend: true,
+			xaxis: setup.xaxis,
+			yaxes: setup.yaxes,
+			rangeSlider: true,
+		});
+		
+		// build the combined data for Left and Right into a single data array
+		let data = [];
+		
+		['rightEye', 'leftEye'].forEach(( key ) => {
+			
+			if( myPlotly.has( key )){
+				let eyePlot = myPlotly.get( key ).get('data'); 
+				// build the Data array
+				data = data.concat( Array.from( eyePlot.values()) );
+			}
+		});
+		
+		// build new (or rebuild)
+		Plotly.react(
+			setup.div, 
+			data, 
+			layout, 
+			{ displayModeBar: false, responsive: true }
+		);	
+	}; 
+	
+	
+	/**
+	* init - called from the PHP page that needs it
+	* @param {JSON} json - PHP supplies the data for charts
+	*/
+	const init = ( json = null ) => {
+		
+		if(json === null){
+			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			return false;
+		} else {
+			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+		}
+		
+		// for all subplot rows
+		const domainRow = [
+			[0, 0.15],
+			[0.2, 1],
+		];
+
+
+		/**
+		* Data 
+		* Combined Plot. Colours have to get set on the data!
+		*/
+		if( json.rightEye ){
+			myPlotly.set('rightEye', new Map());
+			buildDataTraces( json.rightEye, 'rightEye',
+				oePlotly.getColorSeries('rightEyeSeries', darkTheme)
+			);
+		}
+		
+		if( json.leftEye ){
+			myPlotly.set('leftEye', new Map());
+			buildDataTraces( json.leftEye, 'leftEye', 
+				oePlotly.getColorSeries('leftEyeSeries', darkTheme)
+			);
+		}
+
+		/**
+		* Axes templates 
+		*/
+		
+		// x1
+		const x1 = oePlotly.getAxis({
+			type:'x',
+			numTicks: 10,
+			spikes: true,
+			noMirrorLines: true,
+		}, darkTheme );
+
+		
+		// y1 - CRT
+		const y1 = oePlotly.getAxis({
+			type:'y',
+			title: 'CRT', 
+			range: json.yaxis.CRT, // hard coded range
+			spikes: true,
+		}, darkTheme );
+		
+		// y2 - VA (logMar or whatever is passed in)
+		const y2 = oePlotly.getAxis({
+			type:'y',
+			title: 'VA', 
+			range: json.yaxis.VA, // hard coded range
+			rightSide: 'y1',
+			spikes: true,
+		}, darkTheme );
+		
+		
+		/**
+		* Layout & Build - Eyes
+		*/	
+		
+		plotlyInit({
+			div: document.querySelector( json.dom ),
+			xaxis: x1, 
+			yaxes: [ y1, y2 ],
+		});
+		 
+	};
+	
+	/**
+	* Extend API ... PHP will call with json when DOM is loaded
+	*/
+	bj.extend('plotCombinedOutcomesWithErrors', init);	
+		
+})( bluejay ); 
+(function ( bj ) {
+
+	'use strict';
+	
+	const oesTemplateType = "Outcomes with Error bars";
+	
+	// oe CSS theme!
+	const darkTheme = oePlotly.isDarkTheme();
+
+	/**
+	* Build data trace format for Glaucoma
+	* @param {JSON} json data
+	* @returns {Array} for Plol.ly data
+	*/
+	const dataTraces = ( json ) => {
+		
+		const VA = {
+			x: json.VA.x,
+			y: json.VA.y,
+			name: 'VA',		
+			hovertemplate: 'Mean ± SD<br>VA: %{y}<br>(N: %{x})',
+			type: 'scatter',
+			yaxis:'y1',
+			error_y: {
+			  type: 'data',
+			  array: json.VA.error_y,
+			  visible: true,
+			  thickness: 0.5,
+			}
+		};
+		
+		const IOP = {
+			x: json.IOP.x,
+			y: json.IOP.y,
+			name: 'IOP',		
+			hovertemplate: 'Mean ± SD<br>IOP: %{y}<br>(N: %{x})',
+			type: 'scatter',
+			yaxis:'y2',
+			error_y: {
+			  type: 'data',
+			  array: json.IOP.error_y,
+			  visible: true,
+			  thickness: 0.5,
+			}
+		};
+	
+		/*
+		Data trace array
+		*/
+		return [ VA, IOP ];			
+	};
+
+	
+	/**
+	* build layout and initialise Plotly 
+	* @param {Object} setup
+	*/
+	const plotlyInit = ( setup ) => {
+		
+		const layout = oePlotly.getLayout({
+			darkTheme, // dark? 
+			colors: 'varied',
+			legend: true,
+			xaxis: setup.xaxis,
+			yaxes: setup.yaxes,
+			rangeSlider: true,
+		});
+		
+		// build new (or rebuild)
+		Plotly.react(
+			setup.div, 
+			setup.data, 
+			layout, 
+			{ displayModeBar: false, responsive: true }
+		);	
+	}; 
+	
+	
+	/**
+	* init - called from the PHP page that needs it
+	* @param {JSON} json - PHP supplies the data for charts
+	*/
+	const init = ( json = null ) => {
+		
+		if(json === null){
+			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			return false;
+		} else {
+			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+		}
+
+		/**
+		* Data 
+		*/
+	
+		const data = dataTraces( json );
+		
+		/**
+		* Axes templates 
+		*/
+		
+		// x1
+		const x1 = oePlotly.getAxis({
+			type:'x',
+			title: 'Weeks',
+			numTicks: 20,
+			range: [-20, 220],
+		}, darkTheme );
+		
+		
+		// y1
+		const y1 = oePlotly.getAxis({
+			type:'y', 
+			title: 'VA (change) from baseline (LogMAR)',
+			range: [70, 110],
+			numTicks: 20,
+		}, darkTheme );
+		
+		// y2
+		const y2 = oePlotly.getAxis({
+			type:'y', 
+			title: 'IOP (mm Hg))',
+			rightSide: 'y1',
+			numTicks: 20,
+		}, darkTheme );
+		
+		/**
+		* Layout & Build - Eyes
+		*/	
+		
+		plotlyInit({
+			div: document.querySelector( json.dom ),
+			data,
+			xaxis: x1, 
+			yaxes: [ y1, y2],
+		});
+		
+	};
+	
+	/**
+	* Extend API ... PHP will call with json when DOM is loaded
+	*/
+	bj.extend('plotOutcomesWithErrors', init);	
+	
 		
 })( bluejay ); 
 (function ( bj ) {
@@ -3173,416 +3830,6 @@ const oePlotly = (function ( bj ) {
 	* Extend API ... PHP will call with json when DOM is loaded
 	*/
 	bj.extend('plotSummaryMedicalRetina', init);	
-		
-})( bluejay ); 
-(function ( bj ) {
-
-	'use strict';
-	
-	const oesTemplateType = "Patient Popup"; // used in ID for div
-	
-	// oe CSS theme - fixed, because in Patient Popup
-	const darkTheme = true; 
-	
-	/**
-	* Plotly parameters
-	* Map top level parameters for each plot (R & L)
-	*/
-	const myPlotly = new Map();	
-	
-
-	/**
-	* Build data trace format for Glaucoma
-	* @param {JSON} eyeJSON data
-	* @param {String} eyeSide - 'leftEye' or 'rightEye' or 'BEO'
-	* @param {Array} colorsArr  
-	* @returns {Array} for Plol.ly data
-	*/
-	const buildDataTraces = ( eyeJSON, eyeSide, colorsArr  ) => {
-		
-		// a helper to loop through the color array
-		const getColour = (() => {
-			let i = 0;
-			return () => {
-				let c = i++;
-				if( i >= colorsArr.length ) i = 0; 
-				return colorsArr[ c ];
-			};
-		})();
-		
-		
-		/**
-		* store data traces with own keys
-		* traces can then be accessed by their JSON name
-		*/
-		myPlotly.get( eyeSide ).set('data', new Map());
-		
-		const VA_offScale = {
-			x: eyeJSON.VA.offScale.x,
-			y: eyeJSON.VA.offScale.y,
-			name: eyeJSON.VA.offScale.name,		
-			hovertemplate: '%{y}<br>%{x}',
-			type: 'scatter',
-			mode: 'lines+markers',
-			line: oePlotly.dataLine({
-				color: getColour()
-			}),
-		};
-		
-		myPlotly.get( eyeSide ).get('data').set( eyeJSON.VA.offScale.name, VA_offScale);
-		
-		const CRT = {
-			x: eyeJSON.CRT.x,
-			y: eyeJSON.CRT.y,
-			name: eyeJSON.CRT.name,	
-			yaxis: 'y2',	
-			hovertemplate: 'CRT: %{y}<br>%{x}',
-			type: 'scatter',
-			mode: 'lines+markers',
-			line: oePlotly.dataLine({
-				color: getColour(),
-				dashed: true,
-			}),
-		};
-		
-		myPlotly.get( eyeSide ).get('data').set( eyeJSON.CRT.name, CRT);
-		
-		
-		const VA = {
-			x: eyeJSON.VA.units.x,
-			y: eyeJSON.VA.units.y,
-			name: eyeJSON.VA.units.name,
-			yaxis: 'y3',		
-			hovertemplate: '%{y}<br>%{x}',
-			type: 'scatter',
-			mode: 'lines+markers',
-			line: oePlotly.dataLine({
-				color: getColour()
-			}),
-		};
-				
-		myPlotly.get( eyeSide ).get('data').set( 'VA', VA );
-
-	};
-	
-	/**
-	* React to user request to change VA scale 
-	* (note: used as a callback by selectableUnits)
-	* @param {String} which eye side?
-	*/
-	const plotlyReacts = () => {
-		/*
-		Single plot can have RE, LE or BEO
-		Update all available traces and build data trace array
-		*/
-		let eyeKeys = ['rightEye', 'leftEye' ];
-		let data = [];
-		
-		eyeKeys.forEach(( key ) => {
-			if( myPlotly.has( key )){
-				
-				let eyePlot = myPlotly.get( key ).get('data'); 
-				// build the Data array
-				data = data.concat( Array.from( eyePlot.values()) );
-			}
-		}); 
-		
-		// build new (or rebuild)
-		Plotly.react(
-			myPlotly.get('div'), 
-			data, 
-			myPlotly.get('layout'), 
-			{ displayModeBar: false, responsive: true }
-		);
-	};
-	
-	/**
-	* build layout and initialise Plotly 
-	* @param {Object} axes
-	*/
-	const plotlyInitCombined = ( axes ) => {
-
-		const layout = oePlotly.getLayout({
-			darkTheme, // dark?
-			legend: {
-				yanchor:'top',
-				y:1,
-			},
-			//plotTitle: 'Right, Left and BEO',
-			xaxis: axes.x,
-			yaxes: axes.y,
-			subplot: 2,	 // offScale, VA 
-		});
-		
-		/*
-		For the popup I couldn't get plotly to resize to available width
-		without adding a specific width!	
-		*/
-		const div = oePlotly.buildDiv(`${oesTemplateType}`, '415px', '415px', '1020px'); // 1020px best guess based on 1280px layout
-		document.getElementById('patient-popup-oeplolty').appendChild( div );
-		
-		/**
-		Comnbined data plots, therefore only 1 <div> and only 1 'layout'
-		*/
-		myPlotly.set('div', div);
-		myPlotly.set('layout', layout);
-		
-		// build
-		plotlyReacts();
-		
-		// set up click through
-		oePlotly.addClickEvent( div, '?' );
-		oePlotly.addHoverEvent( div, '?' );
-		
-		// bluejay custom event (user changes layout)
-		document.addEventListener('oesLayoutChange', () => {
-			Plotly.relayout( div, layout );
-		});	
-	}; 
-	
-	
-	/**
-	* init - called from the PHP page that needs it
-	* @param {JSON} json - PHP supplies the data for charts
-	*/
-	const init = ( json = null ) => {
-		
-		if(json === null){
-			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
-			return false;
-		} else {
-			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
-		}
-		
-		// for all subplot rows
-		const domainRow = [
-			[0, 0.15],
-			[0.2, 1],
-		];
-		
-		/**
-		* Data 
-		* Combined Plot. Colours have to get set on the data!
-		*/
-		if( json.rightEye ){
-			myPlotly.set('rightEye', new Map());
-			buildDataTraces( json.rightEye, 'rightEye',
-				oePlotly.getColorSeries('rightEyeSeries', darkTheme)
-			);
-		}
-		
-		if( json.leftEye ){
-			myPlotly.set('leftEye', new Map());
-			buildDataTraces( json.leftEye, 'leftEye', 
-				oePlotly.getColorSeries('leftEyeSeries', darkTheme)
-			);
-		}
-		
-
-		/**
-		* Axes templates 
-		*/
-		
-		// x1
-		const x1 = oePlotly.getAxis({
-			type:'x',
-			numTicks: 10,
-			useDates: true,
-			spikes: true,
-			noMirrorLines: true,
-		}, darkTheme );
-		
-		// y0 - offscale 
-		const y0 = oePlotly.getAxis({
-			type:'y',
-			domain: domainRow[0], 
-			useCategories: {
-				showAll: true, 
-				categoryarray: json.yaxis.offScale.reverse()
-			},
-			spikes: true,
-		}, darkTheme );
-		
-		// y1 - CRT
-		const y1 = oePlotly.getAxis({
-			type:'y',
-			domain: domainRow[1],
-			title: 'CRT', 
-			range: [200, 650], // hard coded range
-			spikes: true,
-		}, darkTheme );
-		
-		// y2 - VA
-		const y2 = oePlotly.getAxis({
-			type:'y',
-			domain: domainRow[1], 
-			title: 'VA',
-			rightSide: 'y2',
-			useCategories: {
-				showAll: true, 
-				categoryarray: json.yaxis.unitRanges.snellenMetre.range.reverse()
-			},
-			spikes: true,
-		}, darkTheme );
-		
-		
-		plotlyInitCombined({
-			x: x1, 
-			y: [ y0, y1, y2 ],
-		});	
-		 
-	};
-	
-	/**
-	* Extend API ... PHP will call with json when DOM is loaded
-	*/
-	bj.extend('plotPatientPopup', init);	
-		
-})( bluejay ); 
-(function ( bj ) {
-
-	'use strict';
-	
-	const oesTemplateType = "Outcomes with Error bars";
-	
-	// oe CSS theme!
-	const darkTheme = oePlotly.isDarkTheme();
-
-	/**
-	* Build data trace format for Glaucoma
-	* @param {JSON} json data
-	* @returns {Array} for Plol.ly data
-	*/
-	const dataTraces = ( json ) => {
-		
-		const VA = {
-			x: json.VA.x,
-			y: json.VA.y,
-			name: 'VA',		
-			hovertemplate: 'Mean ± SD<br>VA: %{y}<br>(N: %{x})',
-			type: 'scatter',
-			yaxis:'y1',
-			error_y: {
-			  type: 'data',
-			  array: json.VA.error_y,
-			  visible: true,
-			  thickness: 0.5,
-			}
-		};
-		
-		const IOP = {
-			x: json.IOP.x,
-			y: json.IOP.y,
-			name: 'IOP',		
-			hovertemplate: 'Mean ± SD<br>IOP: %{y}<br>(N: %{x})',
-			type: 'scatter',
-			yaxis:'y2',
-			error_y: {
-			  type: 'data',
-			  array: json.IOP.error_y,
-			  visible: true,
-			  thickness: 0.5,
-			}
-		};
-	
-		/*
-		Data trace array
-		*/
-		return [ VA, IOP ];			
-	};
-
-	
-	/**
-	* build layout and initialise Plotly 
-	* @param {Object} setup
-	*/
-	const plotlyInit = ( setup ) => {
-		
-		const layout = oePlotly.getLayout({
-			darkTheme, // dark? 
-			colors: 'varied',
-			legend: true,
-			xaxis: setup.xaxis,
-			yaxes: setup.yaxes,
-			rangeSlider: true,
-		});
-		
-		// build new (or rebuild)
-		Plotly.react(
-			setup.div, 
-			setup.data, 
-			layout, 
-			{ displayModeBar: false, responsive: true }
-		);	
-	}; 
-	
-	
-	/**
-	* init - called from the PHP page that needs it
-	* @param {JSON} json - PHP supplies the data for charts
-	*/
-	const init = ( json = null ) => {
-		
-		if(json === null){
-			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
-			return false;
-		} else {
-			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
-		}
-
-		/**
-		* Data 
-		*/
-	
-		const data = dataTraces( json );
-		
-		/**
-		* Axes templates 
-		*/
-		
-		// x1
-		const x1 = oePlotly.getAxis({
-			type:'x',
-			title: 'Weeks',
-			numTicks: 20,
-			range: [-20, 220],
-		}, darkTheme );
-		
-		
-		// y1
-		const y1 = oePlotly.getAxis({
-			type:'y', 
-			title: 'VA (change) from baseline (LogMAR)',
-			range: [70, 110],
-			numTicks: 20,
-		}, darkTheme );
-		
-		// y2
-		const y2 = oePlotly.getAxis({
-			type:'y', 
-			title: 'IOP (mm Hg))',
-			rightSide: 'y1',
-			numTicks: 20,
-		}, darkTheme );
-		
-		/**
-		* Layout & Build - Eyes
-		*/	
-		
-		plotlyInit({
-			div: document.querySelector( json.dom ),
-			data,
-			xaxis: x1, 
-			yaxes: [ y1, y2],
-		});
-		
-	};
-	
-	/**
-	* Extend API ... PHP will call with json when DOM is loaded
-	*/
-	bj.extend('plotOutcomesWithErrors', init);	
-	
 		
 })( bluejay ); 
 (function( bj ) {
@@ -4997,7 +5244,7 @@ const oePlotly = (function ( bj ) {
 	'use strict';	
 	
 	/**
-	* React Component 
+	* React Parent Component 
 	*/
 	const buildComponent = () => {
 				
@@ -5031,6 +5278,7 @@ const oePlotly = (function ( bj ) {
 					
 				};
 				
+				this.adderPopup = this.adderPopup.bind( this );
 				this.pathStepPopup = this.pathStepPopup.bind( this );
 				this.tablePatientRows = this.tablePatientRows.bind( this );
 				
@@ -5150,6 +5398,28 @@ const oePlotly = (function ( bj ) {
 				return rEl('tbody', null, tableRows );
 			}
 			
+			
+			adderPopup(){
+				// generate a list all patient arrived and todo. 
+				// 09:00 - LASTNAME
+				const patientList = [];
+				
+				this.state.patients.forEach( patient => {
+					if( patient.status !== 'complete' ){
+						patientList.push({
+							booked: patient.booked,
+							lastname: patient.lastname,
+							arrRef: patient.arrRef
+						});
+					}
+				});
+				
+				const showAdder = true;
+				if( showAdder ){
+					return rEl( react.AdderPopup, { list: patientList });
+				}
+			}
+			
 			render(){
 				return (
 					 rEl('div', { className: 'app' }, 
@@ -5157,7 +5427,10 @@ const oePlotly = (function ( bj ) {
 					 		rEl( react.TableHead, { th: this.state.tableHead }),
 							this.tablePatientRows()
 						), 
+						
 						this.pathStepPopup(), 
+						this.adderPopup(),
+						
 						rEl( react.Filters, { 
 							onFilterChange: this.handleFilterChange,
 							btns: this.state.filterBtns 
@@ -5253,8 +5526,11 @@ const oePlotly = (function ( bj ) {
 			
 			constructor( props ){
 				super( props );
-			
+				
+				// Following React Docs example, store DOM Element here
+				// then use a Portal to render the children into the DOM.
 				this.dom = document.getElementById('js-clinic-filter');
+				
 				
 				this.state = {
 					handleFilterChange: this.props.onFilterChange
@@ -5263,11 +5539,22 @@ const oePlotly = (function ( bj ) {
 				this.filterBtns = this.filterBtns.bind( this );
 			}
 		
+			/**
+			* Create <li> elements as buttons.
+			* @returns {Array} of React Elements
+			*/
 			filterBtns(){
 				const btns = this.props.btns.map( btn => {
 					btn.onClick = this.state.handleFilterChange;
 					return rEl( react.FilterBtn, btn );
 				});
+				
+				btns.push(
+					rEl('li', { className: 'update-btn', key: react.getKey() },
+						rEl('button', { className: 'adder' }, null )
+					)
+				);
+				
 				return btns;
 			}
 		
@@ -5570,6 +5857,7 @@ const oePlotly = (function ( bj ) {
 				this.state.onShowStepPopup( step ); // callback from Clinic
 			}	
 			
+			
 			/**
 			* Build pathway steps 
 			* @returns {React Element}
@@ -5757,6 +6045,90 @@ const oePlotly = (function ( bj ) {
 		
 		// make component available	
 		bj.namespace('react').PatientQuickView = PatientQuickView;			
+	};
+	
+	/*
+	When React is available build the Component
+	*/
+	document.addEventListener('reactJSloaded', buildComponent, { once: true });
+	  
+
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	/**
+	* React Component 
+	*/
+	const buildComponent = () => {
+				
+		const rEl = React.createElement;
+		const react = bj.namespace('react');
+
+		class AdderPopup extends React.Component {
+			
+			constructor( props ){
+				super( props );	
+				
+				this.state = {
+					list: this.props.list,
+				};
+				
+				this.listPatients = this.listPatients.bind( this );			
+			}
+			
+			
+			listPatients(){
+				console.log( this.state.list );
+				// build a btn list of patient
+				const patientList = this.state.list.map( patient => {
+					const name = bj.clock24( new Date( patient.booked )) + ' - '+ patient.lastname
+					return rEl('li', { key: react.getKey() }, name );
+				});
+			
+				return (
+					rEl('div', { className: 'patients' }, 
+						rEl('h3', null, 'Arrived'),
+						rEl('ul', { className: 'btn-list' }, patientList )
+					)
+				);	
+			}
+			
+			listAssign(){
+				const assign = [ 'Unassigned', 'MM', 'AB', 'AG', 'RB', 'CW' ];	
+				const assignList = assign.map( who => {
+					return rEl('li', { key: react.getKey() }, react.fullShortCode( who ));
+				});
+				
+				return (
+					rEl('ul', { className: 'btn-list' }, assignList )	
+				);
+				
+			}
+			
+			listProcesses(){
+				
+				const people = [ 'Nurse', 'MM', 'AB', 'AG', 'RB', 'CW' ];
+				const steps = [ 'Arr', 'Fin', 'DNA', 'Dilate', 'VA' ];
+			}
+			
+			/**
+			* Render
+			*/
+			render(){ 
+				return rEl('div', { className: 'oe-clinic-adder'},
+					// create 2 overflow columns: 
+					this.listPatients(),
+					rEl('div', { className: 'update-actions' }, 
+						this.listAssign()
+					)
+				);		
+			}
+		}
+		
+		// make component available	
+		react.AdderPopup = AdderPopup;			
 	};
 	
 	/*
@@ -6070,7 +6442,7 @@ const oePlotly = (function ( bj ) {
 		};
 		
 		// array clone
-		const cloneArr = () => obj.map( item => react.deepCopy(item));
+		const cloneArr = () => obj.map( item => react.deepCopy( item ));
 		
 		// check type
 		const type = Object.prototype.toString.call(obj).slice(8, -1).toLowerCase();
@@ -6153,6 +6525,62 @@ const oePlotly = (function ( bj ) {
 	    	 bj.loadJS('https://unpkg.com/react-dom@17/umd/react-dom.development.js', true)
 	    	 	.then( () => init() ); 
     	});
+	  
+
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	/**
+	* Clinic clock is so simple keeping it Vanilla
+	* however, need to keep it out of the DOM that React is controlling.
+	*/
+	const addClinicClock = () => {
+		const div = bj.div('oe-clinic-clock');
+		div.textContent = "";
+		div.style.top = "100%";
+		document.body.appendChild( div );
+		
+
+		const updateClock = () => {
+			const tableRows = bj.nodeArray( document.querySelectorAll('table.oe-clinic-list tbody tr'));
+			
+			// there should always be a table, but in case not...
+			if( ! tableRows.length ){
+				div.style.top = "100%";
+				return;
+			}
+			
+			// table TRs have a timestamp on them
+			const now = Date.now();
+			
+			// move offscreen if all TRs are in the past. 
+			let top = "100%"; 
+			
+			// check all the Rows
+			tableRows.every( tr  => {
+				if( tr.dataset.timestamp > now ){
+					top = ( tr.getBoundingClientRect().top - 4 ) + 'px';
+					return false; // stop loooking
+				} else {
+					return true; // keep looking
+				}
+			});
+			
+			// update clock time and position
+			div.style.top = top;
+			div.textContent = bj.clock24( new Date( now ));
+		}
+		
+		// check and update every second.
+		setInterval( updateClock, 1000 );
+	};
+	
+	/*
+	When React is available build the Component
+	*/
+	document.addEventListener('reactJSloaded', addClinicClock, { once: true });
 	  
 
 })( bluejay ); 
