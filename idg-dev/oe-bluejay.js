@@ -5265,6 +5265,7 @@ const oePlotly = (function ( bj ) {
 					patients: this.props.patientsJSON,
 					activeStepKey: null,
 					popupStep: null,
+					showAdderPopup: false,
 					filter: 'all',
 					filterBtns: [
 						btnObj('Show all','all', false, true ),
@@ -5282,11 +5283,58 @@ const oePlotly = (function ( bj ) {
 				this.pathStepPopup = this.pathStepPopup.bind( this );
 				this.tablePatientRows = this.tablePatientRows.bind( this );
 				
+				this.handleAdderPopupBtn = this.handleAdderPopupBtn.bind( this );
+				this.handleAdderRequest = this.handleAdderRequest.bind( this );
 				this.handleFilterChange = this.handleFilterChange.bind( this );
 				this.handleShowStepPopup = this.handleShowStepPopup.bind( this );
 				this.handleClosePopup = this.handleClosePopup.bind( this );
 				this.handleChangeStepStatus = this.handleChangeStepStatus.bind( this );
 			}
+			
+			
+			handleAdderPopupBtn(){
+				this.setState( state => ({ showAdderPopup: !state.showAdderPopup }));
+			}
+			
+			handleAdderRequest( request ){
+				console.log('Clinic request: ', request );
+				
+				this.setState( state => {
+					/* 
+					Deep copy patients to avoid mutating this.state 
+					*/
+					const patientsCopy = react.deepCopy( state.patients );
+					
+					request.updateList.forEach( arrRef => {
+						console.log( patientsCopy[ arrRef ] );
+						if( request.type === 'assign'){
+							patientsCopy[ arrRef ].assigned = request.shortCode;
+						} 
+						
+						if( request.type === 'step' ){
+							const pathway = patientsCopy[ arrRef ].pathway;
+							
+							const newStep = {
+								arrRef: pathway.length, // will need this to update state 
+								key: react.getKey(), // this provides a unique React key
+								shortcode: request.shortcode,
+								timestamp: Date.now(),
+								status: 'next',
+								type: 'process',
+							}
+							
+							pathway.push( newStep );
+						}
+						
+						
+					});
+					
+					state.patients = patientsCopy;
+					return state;
+
+				});
+			}
+			
 			
 			
 			handleFilterChange( newFilter ){
@@ -5323,13 +5371,8 @@ const oePlotly = (function ( bj ) {
 					const thisPathway = thisPatient.pathway;
 					
 					// update Pathway for this patient
-					if( newStatus == "done" ){
-						thisPathway[stepRef].status = "done";
-						thisPathway[stepRef].timestamp = Date.now(); 
-					}
-					
-					if( newStatus == "active" ){
-						thisPathway[stepRef].status = "active";
+					if( newStatus == "done" || newStatus == "active" ){
+						thisPathway[stepRef].status = newStatus;
 						thisPathway[stepRef].timestamp = Date.now(); 
 					}
 					
@@ -5409,14 +5452,14 @@ const oePlotly = (function ( bj ) {
 						patientList.push({
 							booked: patient.booked,
 							lastname: patient.lastname,
-							arrRef: patient.arrRef
+							arrRef: patient.arrRef,
+							status: patient.status,
 						});
 					}
 				});
-				
-				const showAdder = true;
-				if( showAdder ){
-					return rEl( react.AdderPopup, { list: patientList });
+			
+				if( this.state.showAdderPopup ){
+					return rEl( react.AdderPopup, { list: patientList, onAdderRequest: this.handleAdderRequest });
 				}
 			}
 			
@@ -5432,6 +5475,8 @@ const oePlotly = (function ( bj ) {
 						this.adderPopup(),
 						
 						rEl( react.Filters, { 
+							onAdderBtn: this.handleAdderPopupBtn,
+							adderOpen: this.state.showAdderPopup,
 							onFilterChange: this.handleFilterChange,
 							btns: this.state.filterBtns 
 						})
@@ -5531,11 +5576,6 @@ const oePlotly = (function ( bj ) {
 				// then use a Portal to render the children into the DOM.
 				this.dom = document.getElementById('js-clinic-filter');
 				
-				
-				this.state = {
-					handleFilterChange: this.props.onFilterChange
-				};
-				
 				this.filterBtns = this.filterBtns.bind( this );
 			}
 		
@@ -5545,13 +5585,17 @@ const oePlotly = (function ( bj ) {
 			*/
 			filterBtns(){
 				const btns = this.props.btns.map( btn => {
-					btn.onClick = this.state.handleFilterChange;
+					btn.onClick = this.props.onFilterChange;
 					return rEl( react.FilterBtn, btn );
 				});
 				
+				// add the update-patients button here.
 				btns.push(
-					rEl('li', { className: 'update-btn', key: react.getKey() },
-						rEl('button', { className: 'adder' }, null )
+					rEl('li', { className: 'update-clinic-btn', key: react.getKey()},
+						rEl('button', { 
+							className: this.props.adderOpen ? 'adder close' : 'adder open', 
+							onClick: this.props.onAdderBtn 
+						}, null )
 					)
 				);
 				
@@ -6059,7 +6103,7 @@ const oePlotly = (function ( bj ) {
 	'use strict';	
 	
 	/**
-	* React Component 
+	* React Component - but a bit hacked to quickly get the demo working.
 	*/
 	const buildComponent = () => {
 				
@@ -6073,55 +6117,170 @@ const oePlotly = (function ( bj ) {
 				
 				this.state = {
 					list: this.props.list,
+					onAdderRequest: this.props.onAdderRequest,
 				};
 				
-				this.listPatients = this.listPatients.bind( this );			
+				this.listPatients = this.listPatients.bind( this );	
+				this.handleUpdates = this.handleUpdates.bind( this );		
 			}
 			
+			shouldComponentUpdate(){
+				/**
+				React hack, docs advise against this, but to save time
+				I'm using raw JS in this component, working with the DOM
+				directly(!) but updating the state in the React App.
+				Once mounted this stops any re-Rendering.
+				*/
+				return false;
+			}
 			
-			listPatients(){
-				console.log( this.state.list );
-				// build a btn list of patient
-				const patientList = this.state.list.map( patient => {
-					const name = bj.clock24( new Date( patient.booked )) + ' - '+ patient.lastname
-					return rEl('li', { key: react.getKey() }, name );
+			/** 
+			* Every click on an assignment or a step is pushed to Clinic
+			* @param {Event} ev - using raw JS here to handle this
+			*/
+			handleUpdates( ev ){
+				const el = ev.target;
+				
+				// JSON is added to the DOM by React to side step building a component
+				const type = el.dataset.type;
+				const shortcode = el.dataset.shortcode;
+
+				/*
+				React JS hack.
+				Really I should be running all this through a bunch of React Elements
+				and these should be monitoring their clicked state in the Virtual DOM
+				However, if I use a a bit of vanilla to check the DOM (not the virtual DOM) it 
+				saves a bunch of messing about in React JS (yeah, i know) but this is only a demo! 
+				*/
+				const checkPatients = bj.nodeArray( document.querySelectorAll('.oe-clinic-adder .patients input'));
+				const updateList = new Set();
+				checkPatients.forEach( patient => {
+					if( patient.checked ){
+						updateList.add( parseInt( patient.dataset.ref, 10));
+					}
 				});
+				
+				// pass up to Clinic to update state
+				this.state.onAdderRequest({ updateList, type, shortcode });
+			}
 			
+			/**
+			* list Patients in Clinic or coming later
+			* @returns {ReactElement}
+			*/
+			listPatients(){
+				// 2 groups
+				const arrived = [];
+				const later = [];
+				
+				// split the list into arrived and later groups
+				this.state.list.forEach( patient => {
+					const li = rEl('li', { key: react.getKey() }, 
+						rEl('label', { className: 'highlight' }, 
+							rEl('input', { type: 'checkbox', 'data-ref': patient.arrRef }), 
+							rEl('span', null,
+								bj.clock24( new Date( patient.booked )) + ' - '+ patient.lastname
+							)
+						)
+					);
+					
+					if( patient.status === 'active' ){
+						arrived.push( li );
+					} else {
+						later.push( li );
+					}
+				});
+				
+				// common <ul> DOM for both lists
+				const ul = ( title, listItems ) => {
+					return rEl('div', { className: 'row' }, 
+						rEl('h4', null, title),
+						rEl('ul', { className: 'row-list' }, listItems )
+					);
+				};
+		
 				return (
 					rEl('div', { className: 'patients' }, 
-						rEl('h3', null, 'Arrived'),
-						rEl('ul', { className: 'btn-list' }, patientList )
-					)
+						rEl('h3', null, 'Select Patients'),
+						ul( 'Arrived', arrived), 
+						ul( 'Later', later)
+					)	
 				);	
 			}
 			
+			
+			/**
+			* list assignments
+			* @returns {ReactElement}
+			*/	
 			listAssign(){
-				const assign = [ 'Unassigned', 'MM', 'AB', 'AG', 'RB', 'CW' ];	
-				const assignList = assign.map( who => {
-					return rEl('li', { key: react.getKey() }, react.fullShortCode( who ));
+				const listItems = [ 'Not', 'MM', 'AB', 'AG', 'RB', 'CW' ].map( who => {
+					const fullName = who == 'Not' ? 'Not assigned' : react.fullShortCode( who ); 
+					const code = who == 'Not' ? 'Not' : who; 
+					return rEl('li', { 
+						key: react.getKey(), 
+						onClick: this.handleUpdates, 
+						'data-shortcode': code, 
+						'data-type': 'assign' 
+					}, fullName );
 				});
 				
 				return (
-					rEl('ul', { className: 'btn-list' }, assignList )	
+					rEl('div', { className: 'row' },  
+						rEl('h4', null, 'Assign to'),
+						rEl('ul', { className: 'btn-list' }, listItems )
+					)	
 				);
-				
 			}
 			
-			listProcesses(){
+			/**
+			* list steps that can be added
+			* @returns {ReactElement}
+			*/	
+			listSteps(){
+				const pathStep = ( step, type ) => {
+					return rEl('span', { 
+							className: `oe-pathstep-btn ${type}`, 
+							key: react.getKey(), 
+							'data-shortcode': step, 
+							'data-type': 'step', 
+							 onClick: this.handleUpdates 
+						}, 
+						rEl( 'span', { className: 'step' }, step ),
+						rEl( 'span', { className: 'time invisible' }, '00:00' )		
+					)
+				};
 				
-				const people = [ 'Nurse', 'MM', 'AB', 'AG', 'RB', 'CW' ];
-				const steps = [ 'Arr', 'Fin', 'DNA', 'Dilate', 'VA' ];
+				const people = [ 'Nurse', 'MM', 'AB', 'AG', 'RB', 'CW' ].sort();
+				const process = [ 'VA', 'ORTH', 'Dilate', 'Ref' ].sort();	
+				
+				const peopleSteps = people.map( step => pathStep( step, 'person'));
+				const processSteps = process.map( step => pathStep( step, 'process'));
+				
+				return (
+					rEl('div', { className: 'row' },  
+						rEl('h4', null, 'Add to pathway'),
+						rEl('div', { className: 'steps' }, peopleSteps ),
+						rEl('div', { className: 'steps' }, processSteps )
+					)	
+				);
 			}
+			
 			
 			/**
 			* Render
 			*/
 			render(){ 
+				console.log('Render, PopupAdder', this.state.list );
 				return rEl('div', { className: 'oe-clinic-adder'},
-					// create 2 overflow columns: 
+					// create 2 columns
 					this.listPatients(),
+					
+					
 					rEl('div', { className: 'update-actions' }, 
-						this.listAssign()
+						rEl('h3', null, 'Update'),
+						this.listAssign(), 
+						this.listSteps()
 					)
 				);		
 			}
@@ -6409,6 +6568,8 @@ const oePlotly = (function ( bj ) {
 	
 	react.getKey = () => keyIterator.next().value; 
 	
+	//react.getConsultants 
+	
 	react.fullShortCode = ( shortcode ) => {
 		let full = shortcode; // "Nurse" doesn't need expanding on
 		switch( shortcode ){
@@ -6552,17 +6713,17 @@ const oePlotly = (function ( bj ) {
 				return;
 			}
 			
-			// table TRs have a timestamp on them
+			// table TRs have a timestamp on them, this is provided by ReactJS
 			const now = Date.now();
 			
-			// move offscreen if all TRs are in the past. 
+			// move offscreen if all TRs are in the "past". 
 			let top = "100%"; 
 			
-			// check all the Rows
+			// find the next row booked time
 			tableRows.every( tr  => {
 				if( tr.dataset.timestamp > now ){
 					top = ( tr.getBoundingClientRect().top - 4 ) + 'px';
-					return false; // stop loooking
+					return false; // found it.
 				} else {
 					return true; // keep looking
 				}
@@ -6571,7 +6732,7 @@ const oePlotly = (function ( bj ) {
 			// update clock time and position
 			div.style.top = top;
 			div.textContent = bj.clock24( new Date( now ));
-		}
+		};
 		
 		// check and update every second.
 		setInterval( updateClock, 1000 );

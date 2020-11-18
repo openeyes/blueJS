@@ -24,6 +24,7 @@
 					patients: this.props.patientsJSON,
 					activeStepKey: null,
 					popupStep: null,
+					showAdderPopup: false,
 					filter: 'all',
 					filterBtns: [
 						btnObj('Show all','all', false, true ),
@@ -41,11 +42,58 @@
 				this.pathStepPopup = this.pathStepPopup.bind( this );
 				this.tablePatientRows = this.tablePatientRows.bind( this );
 				
+				this.handleAdderPopupBtn = this.handleAdderPopupBtn.bind( this );
+				this.handleAdderRequest = this.handleAdderRequest.bind( this );
 				this.handleFilterChange = this.handleFilterChange.bind( this );
 				this.handleShowStepPopup = this.handleShowStepPopup.bind( this );
 				this.handleClosePopup = this.handleClosePopup.bind( this );
 				this.handleChangeStepStatus = this.handleChangeStepStatus.bind( this );
 			}
+			
+			
+			handleAdderPopupBtn(){
+				this.setState( state => ({ showAdderPopup: !state.showAdderPopup }));
+			}
+			
+			handleAdderRequest( request ){
+				console.log('Clinic request: ', request );
+				
+				this.setState( state => {
+					/* 
+					Deep copy patients to avoid mutating this.state 
+					*/
+					const patientsCopy = react.deepCopy( state.patients );
+					
+					request.updateList.forEach( arrRef => {
+						console.log( patientsCopy[ arrRef ] );
+						if( request.type === 'assign'){
+							patientsCopy[ arrRef ].assigned = request.shortCode;
+						} 
+						
+						if( request.type === 'step' ){
+							const pathway = patientsCopy[ arrRef ].pathway;
+							
+							const newStep = {
+								arrRef: pathway.length, // will need this to update state 
+								key: react.getKey(), // this provides a unique React key
+								shortcode: request.shortcode,
+								timestamp: Date.now(),
+								status: 'next',
+								type: 'process',
+							}
+							
+							pathway.push( newStep );
+						}
+						
+						
+					});
+					
+					state.patients = patientsCopy;
+					return state;
+
+				});
+			}
+			
 			
 			
 			handleFilterChange( newFilter ){
@@ -82,13 +130,8 @@
 					const thisPathway = thisPatient.pathway;
 					
 					// update Pathway for this patient
-					if( newStatus == "done" ){
-						thisPathway[stepRef].status = "done";
-						thisPathway[stepRef].timestamp = Date.now(); 
-					}
-					
-					if( newStatus == "active" ){
-						thisPathway[stepRef].status = "active";
+					if( newStatus == "done" || newStatus == "active" ){
+						thisPathway[stepRef].status = newStatus;
 						thisPathway[stepRef].timestamp = Date.now(); 
 					}
 					
@@ -168,14 +211,14 @@
 						patientList.push({
 							booked: patient.booked,
 							lastname: patient.lastname,
-							arrRef: patient.arrRef
+							arrRef: patient.arrRef,
+							status: patient.status,
 						});
 					}
 				});
-				
-				const showAdder = true;
-				if( showAdder ){
-					return rEl( react.AdderPopup, { list: patientList });
+			
+				if( this.state.showAdderPopup ){
+					return rEl( react.AdderPopup, { list: patientList, onAdderRequest: this.handleAdderRequest });
 				}
 			}
 			
@@ -191,6 +234,8 @@
 						this.adderPopup(),
 						
 						rEl( react.Filters, { 
+							onAdderBtn: this.handleAdderPopupBtn,
+							adderOpen: this.state.showAdderPopup,
 							onFilterChange: this.handleFilterChange,
 							btns: this.state.filterBtns 
 						})

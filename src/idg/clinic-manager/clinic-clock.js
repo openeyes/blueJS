@@ -22,17 +22,17 @@
 				return;
 			}
 			
-			// table TRs have a timestamp on them
+			// table TRs have a timestamp on them, this is provided by ReactJS
 			const now = Date.now();
 			
-			// move offscreen if all TRs are in the past. 
+			// move offscreen if all TRs are in the "past". 
 			let top = "100%"; 
 			
-			// check all the Rows
+			// find the next row booked time
 			tableRows.every( tr  => {
 				if( tr.dataset.timestamp > now ){
 					top = ( tr.getBoundingClientRect().top - 4 ) + 'px';
-					return false; // stop loooking
+					return false; // found it.
 				} else {
 					return true; // keep looking
 				}
@@ -41,7 +41,7 @@
 			// update clock time and position
 			div.style.top = top;
 			div.textContent = bj.clock24( new Date( now ));
-		}
+		};
 		
 		// check and update every second.
 		setInterval( updateClock, 1000 );

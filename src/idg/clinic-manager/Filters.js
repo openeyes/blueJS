@@ -19,11 +19,6 @@
 				// then use a Portal to render the children into the DOM.
 				this.dom = document.getElementById('js-clinic-filter');
 				
-				
-				this.state = {
-					handleFilterChange: this.props.onFilterChange
-				};
-				
 				this.filterBtns = this.filterBtns.bind( this );
 			}
 		
@@ -33,13 +28,17 @@
 			*/
 			filterBtns(){
 				const btns = this.props.btns.map( btn => {
-					btn.onClick = this.state.handleFilterChange;
+					btn.onClick = this.props.onFilterChange;
 					return rEl( react.FilterBtn, btn );
 				});
 				
+				// add the update-patients button here.
 				btns.push(
-					rEl('li', { className: 'update-btn', key: react.getKey() },
-						rEl('button', { className: 'adder' }, null )
+					rEl('li', { className: 'update-clinic-btn', key: react.getKey()},
+						rEl('button', { 
+							className: this.props.adderOpen ? 'adder close' : 'adder open', 
+							onClick: this.props.onAdderBtn 
+						}, null )
 					)
 				);
 				

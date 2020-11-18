@@ -67,6 +67,8 @@
 	
 	react.getKey = () => keyIterator.next().value; 
 	
+	//react.getConsultants 
+	
 	react.fullShortCode = ( shortcode ) => {
 		let full = shortcode; // "Nurse" doesn't need expanding on
 		switch( shortcode ){
