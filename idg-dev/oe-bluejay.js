@@ -5256,200 +5256,297 @@ const oePlotly = (function ( bj ) {
 			constructor( props ){
 				super( props );
 		
-				// helper to build a btnObj in state
-				const btnObj = ( btn, filter, isStep, selected ) => ({ btn, filter, isStep, selected, key: react.getKey() });
-		
-				// React JS is optimised for shallow comparisons, avoid nesting
+				/* 
+				React JS is optimised for shallow comparisons
+				where possible avoid deep nesting. Unable to avoid 
+				this for patients but state undates are targeted to 
+				specific patient.
+				*/
 				this.state = {
-					tableHead: ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', 'Pathway', 'Assigned', 'Mins'],
+					tableHead: ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', 'Pathway', 'Assigned', 'Mins', ''],
 					patients: this.props.patientsJSON,
-					activeStepKey: null,
-					popupStep: null,
-					showAdderPopup: false,
-					filter: 'all',
-					filterBtns: [
-						btnObj('Show all','all', false, true ),
-						btnObj('MM', 'MM', true, false ),
-						btnObj('AB', 'AB', true, false ),
-						btnObj('AG', 'AG', true, false ),
-						btnObj('RB', 'RB', true, false ),
-						btnObj('CW', 'CW', true, false ),
-						btnObj('Unassigned', 'unassigned', false, false ),
-					]
-					
+					popupStepKey: null, 	// use this to close popup if already open
+					popupStep: null, 		// step info passed to PathStep popup (not doing much with this at the moment)
+					showAdder: false,
+					filter: 'showAll', 		// filter state of Clinic
 				};
 				
+				/*
+				handlers and helpers
+				*/
+				
+				// generic handler patterns
+				this.buildPathStep = this.buildPathStep.bind( this );
+				this.updatePatientState = this.updatePatientState.bind( this );
+				
+				// direct actions on patient
+				this.handlePatientArrived = this.handlePatientArrived.bind( this );
+				this.handlePatientDNA = this.handlePatientDNA.bind( this );
+				this.handlePathwayCompleted = this.handlePathwayCompleted.bind( this );
+				this.handleChangeStepStatus = this.handleChangeStepStatus.bind( this );
+				
+				// Pathstep popup
+				this.handleShowStepPopup = this.handleShowStepPopup.bind( this );
+				this.handleCloseStepPopup = this.handleCloseStepPopup.bind( this );
+				
+				// Patients 'adder' (in Filters row)
+				this.handleAdderBtn = this.handleAdderBtn.bind( this );
+				this.handleAdderRequest = this.handleAdderRequest.bind( this );
+				
+				// Assignment filters
+				this.handleFilterChange = this.handleFilterChange.bind( this );
+				
+				/*
+				builders
+				*/
+				this.tablePatientRows = this.tablePatientRows.bind( this );
+				this.filters = this.filters.bind( this );
 				this.adderPopup = this.adderPopup.bind( this );
 				this.pathStepPopup = this.pathStepPopup.bind( this );
-				this.tablePatientRows = this.tablePatientRows.bind( this );
-				
-				this.handleAdderPopupBtn = this.handleAdderPopupBtn.bind( this );
-				this.handleAdderRequest = this.handleAdderRequest.bind( this );
-				this.handleFilterChange = this.handleFilterChange.bind( this );
-				this.handleShowStepPopup = this.handleShowStepPopup.bind( this );
-				this.handleClosePopup = this.handleClosePopup.bind( this );
-				this.handleChangeStepStatus = this.handleChangeStepStatus.bind( this );
 			}
-			
-			
-			handleAdderPopupBtn(){
-				this.setState( state => ({ showAdderPopup: !state.showAdderPopup }));
-			}
-			
-			handleAdderRequest( request ){
-				console.log('Clinic request: ', request );
-				
-				this.setState( state => {
-					/* 
-					Deep copy patients to avoid mutating this.state 
-					*/
-					const patientsCopy = react.deepCopy( state.patients );
-					
-					request.updateList.forEach( arrRef => {
-						console.log( patientsCopy[ arrRef ] );
-						if( request.type === 'assign'){
-							patientsCopy[ arrRef ].assigned = request.shortCode;
-						} 
-						
-						if( request.type === 'step' ){
-							const pathway = patientsCopy[ arrRef ].pathway;
-							
-							const newStep = {
-								arrRef: pathway.length, // will need this to update state 
-								key: react.getKey(), // this provides a unique React key
-								shortcode: request.shortcode,
-								timestamp: Date.now(),
-								status: 'next',
-								type: 'process',
-							}
-							
-							pathway.push( newStep );
-						}
-						
-						
-					});
-					
-					state.patients = patientsCopy;
-					return state;
-
-				});
-			}
-			
-			
-			
-			handleFilterChange( newFilter ){
-				const filterBtnsCopy = react.deepCopy( this.state.filterBtns );
-				
-				filterBtnsCopy.forEach( btn => {
-					btn.selected = ( btn.filter === newFilter );
-				});
-				
-				this.setState({
-					filter: newFilter,
-					filterBtns: filterBtnsCopy
-				});
-			}
-			
 			
 			/**
-			* handle PathStepStep actions
+			* Helper: PathStep Object pattern
+			* @returns {Object}
+			*/
+			buildPathStep( arrRef, shortcode, status, type ){
+				return {
+					arrRef, 				// store array position to update state later
+					key: react.getKey(), 	// this provides a unique React key
+					shortcode,
+					timestamp: Date.now(), 
+					status,
+					type,
+				};
+			}
+			
+			/**
+			* Helper: Update Patient state. 
+			* Deep clones state to maintain immutable states
+			* @param {Number} patientRef - array position
+			* @param {*} update - update is either simple or complex, either a string or an Object
+			*/
+
+			updatePatientState( patientRef, update ){
+				const action = typeof update === "string" ? update : update.action;
+				const patientsCopy = react.deepCopy( this.state.patients ); 
+				const thisPatient = patientsCopy[ patientRef ];
+				const thisPathway = thisPatient.pathway;
+				
+				if( action == 'assign' ){
+					thisPatient.assigned = update.assign;
+				}
+				
+				if( action == 'arrived'){
+					thisPatient.status = 'active';
+					thisPathway.push( this.buildPathStep( 0, 'Arr', 'done', 'arrive' )); 
+				}
+				
+				if( action == 'DNA'){
+					thisPatient.status = 'complete';
+					thisPathway.push( this.buildPathStep( 0, 'DNA', 'done', 'DNA' )); 
+				}
+				
+				if( action == 'addStep' ){
+					thisPathway.push( this.buildPathStep( thisPathway.length, update.stepCode, 'next', update.stepType ));
+				}
+				
+				if( action == 'removeStep'){
+					thisPathway.splice( update.stepRef, 1 );
+				}
+				
+				if( action == 'changeStepStatus' ){
+					thisPathway[ update.stepRef ].status = update.newStatus;
+					thisPathway[ update.stepRef ].timestamp = Date.now(); 
+				}
+				
+				if( action == 'finished' ){
+					thisPatient.status = 'complete';
+					thisPathway.push( this.buildPathStep( thisPathway.length, 'Fin', 'done', 'finish' ));
+				}
+				
+				// target specific patient in state and update to avoid mutating state directly
+				this.setState( state => {
+					state.patients[ patientRef ] = thisPatient;
+					return state; 
+				});	
+			}
+			
+			/**
+			* Direct patient action: <button> "Arrived"
+			* @param {Number} patientRef
+			*/
+			handlePatientArrived( patientRef ){
+				this.updatePatientState( patientRef, 'arrived');
+			}
+			
+			/**
+			* Direct patient action: <button> "DNA"
+			* @param {Number} patientRef
+			*/
+			handlePatientDNA( patientRef ){
+				this.updatePatientState( patientRef, 'DNA');
+			}
+			
+			/**
+			* Direct patient action: <i> green tick icon
+			* @param {Number} patientRef
+			*/
+			handlePathwayCompleted( patientRef ){
+				this.updatePatientState( patientRef, 'finished');
+			}
+			
+			/**
+			* User clicks on PathStep and in the popup updates PathStep status
 			* @param {Number} patientRef - Array Ref
 			* @param {Number} stepRef - Array Ref
-			* @param {String} newStatus - "remove" or "active"
+			* @param {String} newStatus - "done", "remove" or "active"
 			*/
 			handleChangeStepStatus( patientRef, stepRef, newStatus ){
-				this.handleClosePopup();
+				// close the step popup
+				this.handleCloseStepPopup();
 				
-				this.setState( state => {
-					/* 
-					Deep copy patients to avoid mutating this.state 
-					*/
-					const patientsCopy = react.deepCopy( state.patients );
-					
-					// find this patient
-					const thisPatient = patientsCopy[ patientRef ];
-					const thisPathway = thisPatient.pathway;
-					
-					// update Pathway for this patient
-					if( newStatus == "done" || newStatus == "active" ){
-						thisPathway[stepRef].status = newStatus;
-						thisPathway[stepRef].timestamp = Date.now(); 
-					}
-					
-					if( newStatus == "remove"){
-						thisPathway.splice( stepRef, 1 );
-					}
-					
-					/* 
-					Only update SPECIFIC patient that has change. 
-					Patient is a PureComponent so will only render if props change.
-					*/
-					state.patients[ patientRef ] = thisPatient;
-					return state;
-				});
-
+				if( newStatus == "done" || newStatus == "active" ){
+					this.updatePatientState( patientRef, {
+						action: 'changeStepStatus',
+						stepRef,
+						newStatus
+					});
+				}
+				
+				if( newStatus == "remove"){
+					this.updatePatientState( patientRef, {
+						action: 'removeStep',
+						stepRef,
+					});
+				}
 			}
 			
-			handleClosePopup(){
-				this.setState({
-					activeStepKey: null,
-					popupStep: null
-				});
-			}
-			
+			/** 
+			* PathStep Popup - callback from Patient.
+			* @params {Object} step - PathStep info
+			*/
 			handleShowStepPopup( step ){
-				if( step.key == this.state.activeStepKey ){
+				if( step.key == this.state.popupStepKey ){
 					// user is clicking on the same step
-					this.handleClosePopup();
+					this.handleCloseStepPopup();
 				} else {
 					this.setState({
-						activeStepKey: step.key,
+						popupStepKey: step.key,
 						popupStep: step
 					});
 				}
 			}
 			
+			/** 
+			* PathStep Popup - close icon button in popup (or clicked on step to close it).
+			*/
+			handleCloseStepPopup(){
+				this.setState({
+					popupStepKey: null,
+					popupStep: null
+				});
+			}
+			
+			/**
+			* Click on 'Adder' button in Filters. Toggles state (show/hide)
+			*/
+			handleAdderBtn(){
+				// simple shallow update.
+				this.setState( state => ({ showAdder: !state.showAdder }));
+			}
+			
+			/**
+			* Adder can assign and add steps to selected patients
+			* every time user clicks on either an assignment or a step the
+			* select patients get updated
+			* @params {Object} add
+			*/
+			handleAdderRequest( add ){
+				const type = add.type;
+				const shortcode = add.shortcode;
+				const stepType = add.stepType; // process or person?
+				
+				// adder provides a list of patient ref numbers
+				add.selectedPatients.forEach( arrRef => {
+					
+					if( type === 'assign'){
+						this.updatePatientState( arrRef, {
+							action: 'assign',
+							assign: shortcode == 'nobody' ? false : shortcode
+						});
+					} 
+					
+					if( type === 'step' ){
+						this.updatePatientState( arrRef, {
+							action: 'addStep',
+							stepCode: shortcode, 
+							stepType,
+						});
+					}
+				});
+			}
+			
+			/**
+			* Filter button clicked. Update Clinic patients shown
+			* @params {String} newFilter
+			*/
+			handleFilterChange( newFilter ){
+				this.setState({ filter: newFilter });
+			}
+			
+			/*
+			builders	
+			*/
+
+			/**
+			* PathStep popup
+			* @returns React Element
+			*/
 			pathStepPopup(){
-				// if it's null, popup is hidden
+				// null? popup is hidden
 				if( this.state.popupStep === null ) return null;
 				
 				return rEl( react.PathStepPopup, {
 					 step: this.state.popupStep,
-					 onClosePopup: this.handleClosePopup,
+					 onClosePopup: this.handleCloseStepPopup,
 					 onChangeStepStatus: this.handleChangeStepStatus,
 				});
 				
 			}
 			
-			
+			/**
+			* Add all the patients to the main <table>
+			* Before adding the React Element add all the handles 
+			* to keep the props shallow.
+			* @returns React Element
+			*/
 			tablePatientRows(){
-				
 				const tableRows = this.state.patients.map(( patient, i ) => {
-					return rEl( react.Patient, {
-						key: patient.key,
-						patient: patient,
-						filter: this.state.filter,
-						onShowStepPopup: this.handleShowStepPopup,
-						/*
-						use patient changeCount to trigger a render 
-						if needed, in the PureComponent.	
-						*/	
-						changeCount: patient.changeCount, 
-					});
+					// keep the passed props shallow.
+					patient.onPathStepClick = this.handleShowStepPopup;
+					patient.onPathwayCompleted = this.handlePathwayCompleted;
+					patient.onArrived = this.handlePatientArrived;
+					patient.onDNA = this.handlePatientDNA;
+					patient.clinicFilterState = this.state.filter;
+					
+					return rEl( react.Patient, patient );
 				});
 				
 				return rEl('tbody', null, tableRows );
 			}
 			
-			
+			/**
+			* Adder popup. Doesn't show 'completed' patients
+			* @returns React Element || null
+			*/
 			adderPopup(){
-				// generate a list all patient arrived and todo. 
-				// 09:00 - LASTNAME
-				const patientList = [];
+				if( this.state.showAdder == false ) return null; // not needed
 				
+				const todo = []; // generate a list of patients NOT completed
 				this.state.patients.forEach( patient => {
 					if( patient.status !== 'complete' ){
-						patientList.push({
+						todo.push({
 							booked: patient.booked,
 							lastname: patient.lastname,
 							arrRef: patient.arrRef,
@@ -5458,11 +5555,30 @@ const oePlotly = (function ( bj ) {
 					}
 				});
 			
-				if( this.state.showAdderPopup ){
-					return rEl( react.AdderPopup, { list: patientList, onAdderRequest: this.handleAdderRequest });
-				}
+				return rEl( react.AdderPopup, { 
+					list: todo, 
+					onAdderRequest: this.handleAdderRequest 
+				});
 			}
 			
+			/**
+			* Filter Buttons
+			* Note: They are outside the parent DOM BUT children of React Virtual DOM
+			* @returns React Element
+			*/
+			filters(){
+				return rEl( react.Filters, { 
+					allAssigned: this.state.patients.map( patient => patient.assigned ),
+					clinicFilter: this.state.filter,
+					showAdder: this.state.showAdder,
+					onAdderBtn: this.handleAdderBtn,
+					onFilterChange: this.handleFilterChange, 
+				});
+			}
+			
+			/**
+			* Render
+			*/
 			render(){
 				return (
 					 rEl('div', { className: 'app' }, 
@@ -5470,16 +5586,9 @@ const oePlotly = (function ( bj ) {
 					 		rEl( react.TableHead, { th: this.state.tableHead }),
 							this.tablePatientRows()
 						), 
-						
 						this.pathStepPopup(), 
 						this.adderPopup(),
-						
-						rEl( react.Filters, { 
-							onAdderBtn: this.handleAdderPopupBtn,
-							adderOpen: this.state.showAdderPopup,
-							onFilterChange: this.handleFilterChange,
-							btns: this.state.filterBtns 
-						})
+						this.filters()
 					)
 				);
 			}
@@ -5512,21 +5621,19 @@ const oePlotly = (function ( bj ) {
 		
 			constructor( props ){
 				super( props );
-				
 				this.btnName = this.btnName.bind( this );
 			}
 			
 			btnName(){
 				// if filter btn is for a step, show full name
-				const btnName = this.props.btn; 
-				const isStep = this.props.isStep;
-				
-				let fullName = isStep ? rEl('div', { className: 'fullname' }, react.fullShortCode( btnName )) : null; 
-							
+				const fullName = this.props.isStep ? rEl('div', { className: 'fullname' }, react.fullShortCode( this.props.btn )) : null; 
+				const count = this.props.count ? rEl('div', { className: 'count' }, this.props.count ) : null; 
+			
 				return (
 					rEl('div', { className: 'filter' },
-						rEl('div', null, btnName ), 
-						fullName
+						rEl('div', { className: 'name' }, this.props.btn  ), 
+						fullName, 
+						count
 					)
 				);
 			}
@@ -5560,7 +5667,7 @@ const oePlotly = (function ( bj ) {
 	'use strict';	
 	
 	/**
-	* React Component 
+	* React Component - using Portal to render outside the DOM tree.
 	*/
 	const buildComponent = () => {
 				
@@ -5575,25 +5682,73 @@ const oePlotly = (function ( bj ) {
 				// Following React Docs example, store DOM Element here
 				// then use a Portal to render the children into the DOM.
 				this.dom = document.getElementById('js-clinic-filter');
+
+				// helper to build btnObj in state
+				const btnObj = ( btn, filter, isStep ) => ({ btn, filter, isStep, key: react.getKey() });
 				
+				this.state = {
+					filterBtns: [
+						btnObj('Show all','showAll', false ),
+						btnObj( ),
+						btnObj('MM', 'MM', true ),
+						btnObj('AB', 'AB', true ),
+						btnObj('AG', 'AG', true ),
+						btnObj('RB', 'RB', true ),
+						btnObj('CW', 'CW', true ),
+						btnObj( ),
+					]
+				};
+				
+				// Methods
+				this.btn = this.btn.bind( this );
 				this.filterBtns = this.filterBtns.bind( this );
 			}
+		
+			/**
+			* Build Filter Btn
+			* @returns {React Element}
+			*/
+			btn( btnText, filterCode, isStep, count ){
+				return rEl( react.FilterBtn, {
+					btn: btnText,
+					filter: filterCode, 
+					isStep,
+					count, 
+					key: react.getKey(),
+					onClick: this.props.onFilterChange,
+					selected: ( this.props.clinicFilter == filterCode )
+				});
+			}
+			
 		
 			/**
 			* Create <li> elements as buttons.
 			* @returns {Array} of React Elements
 			*/
 			filterBtns(){
-				const btns = this.props.btns.map( btn => {
-					btn.onClick = this.props.onFilterChange;
-					return rEl( react.FilterBtn, btn );
-				});
+				// work out the counts per filter.
+				const countFilters = filter => {
+					return this.props.allAssigned.reduce( (acc, curr ) => {
+						if( curr === filter ) return acc + 1;
+						return acc;
+					}, 0);
+				}
+			
 				
+				let btns = [];
+				
+				btns.push( this.btn('Show all','showAll', false, 0 ));
+				btns.push( this.btn('Hide completed','hideComplete', false, 0 ));
+	
+				btns = btns.concat( react.assignList.map( personCode => this.btn( personCode, personCode, true, countFilters( personCode ))));
+				
+				btns.push( this.btn('Unassigned', 'nobody', false, countFilters( false )));
+								
 				// add the update-patients button here.
 				btns.push(
 					rEl('li', { className: 'update-clinic-btn', key: react.getKey()},
 						rEl('button', { 
-							className: this.props.adderOpen ? 'adder close' : 'adder open', 
+							className: this.props.showAdder ? 'adder close' : 'adder open', 
 							onClick: this.props.onAdderBtn 
 						}, null )
 					)
@@ -5637,7 +5792,7 @@ const oePlotly = (function ( bj ) {
 		const rEl = React.createElement;
 	
 		/**
-		* PathStep - stateless React Element (no need for Component Class)
+		* PathStep - Functional Component (no need for Component Class)
 		* @param {String} key - PathSteps are created in loop and require a key
 		* @parma {Object} step - see Patient.js
 		* @param {Function} onClick - Callback from parent
@@ -5767,7 +5922,9 @@ const oePlotly = (function ( bj ) {
 							btn('red hint', 'Remove', 'remove' )
 						)	
 					);
-				}					
+				}
+				
+									
 			}
 			
 			/**
@@ -5837,57 +5994,34 @@ const oePlotly = (function ( bj ) {
 		const rEl = React.createElement;
 		const react = bj.namespace('react');
 		
-		class Patient extends React.PureComponent {	
+		class Patient extends React.Component {	
 			/**
 			* Patient - DOM is <tr>
 			* @param {*} props 
-			* props	-|- changeCount - Number (this is incremented to trigger a render)
-			*		 |- patient (patient data, inc pathway)
-			*		 |- onShowStepPopup (handler in Clinic) 
 			*/
 			constructor( props ){
 				super( props );
-		
-				const patient = props.patient;
-				
+			
 				this.state = {
-					onShowStepPopup: props.onShowStepPopup,
-					arriveTime: 0,
-					pathwayTotalMins: 0,
 					patientMeta: {
-						firstname: patient.firstname,
-						lastname: patient.lastname,
-						age: patient.age,
-						gender: patient.gender,
-						nhs: patient.nhs,	
+						firstname: props.firstname,
+						lastname: props.lastname,
+						age: props.age,
+						gender: props.gender,
+						nhs: props.nhs,	
 					}
 				};
-				
-				/* 
-				If there is a pathway, waitDuration needs to know the 
-				patient wait time. This is calculate from time of Arrival. 
-				If pathway is complete then work out pathwayTotalMins
-				*/
-				if( patient.pathway.length ){
-					patient.pathway.forEach( step => {
-						if( step.shortcode == "Arr" ){
-							this.state.arriveTime = step.timestamp;
-						}
-						if( step.shortcode === "Fin" ){
-							this.state.pathwayTotalMins = Math.floor(( step.timestamp - this.state.arriveTime ) / 60000 );
-						}
-					});
-				}
-				
+
 				/*
 				prototypal inheritence, correctly bind 'this' scope 
 				*/
 				this.handleStepClick = this.handleStepClick.bind( this );
 				this.pathwaySteps = this.pathwaySteps.bind( this );
 				this.assigned = this.assigned.bind( this );
+				this.complete = this.complete.bind( this );
+				this.waitMins = this.waitMins.bind( this );
 			}
 			
-
 			/**
 			* User clicks on a PathStep
 			* Step doesn't need to do anything, any change needs to happen
@@ -5896,18 +6030,17 @@ const oePlotly = (function ( bj ) {
 			* @param {Object} rect - node boundingClientRect, to position the popup
 			*/
 			handleStepClick( step, rect ){
-				step.patientArrRef = this.props.patient.arrRef;
+				step.patientArrRef = this.props.arrRef;
 				step.rect = rect;
-				this.state.onShowStepPopup( step ); // callback from Clinic
+				this.props.onPathStepClick( step ); // callback from Clinic
 			}	
-			
 			
 			/**
 			* Build pathway steps 
 			* @returns {React Element}
 			*/
 			pathwaySteps(){
-				const pathway = this.props.patient.pathway;
+				const pathway = this.props.pathway;
 				let pathSteps = null; 
 				
 				// Build a PathStep pathway?
@@ -5922,7 +6055,7 @@ const oePlotly = (function ( bj ) {
 				}
 				
 				// if patient pathway is 'complete' CSS will restyle the steps
-				return rEl('div', { className: `pathway ${this.props.patient.status}`}, pathSteps );
+				return rEl('div', { className: `pathway ${this.props.status}`}, pathSteps );
 			}
 			
 			/**
@@ -5930,50 +6063,94 @@ const oePlotly = (function ( bj ) {
 			* @returns {React Element}
 			*/
 			assigned(){
-				const assigned = this.props.patient.assigned;
-				if( assigned ){
-					return rEl('td', null, react.fullShortCode( assigned ));
+				const assigned = this.props.assigned;
+				if( assigned  ){
+					return rEl('div', null, react.fullShortCode( assigned ));
 				} else {
+					return rEl('small', { className: 'fade' }, "Not assigned" );
+				}
+			}
+			
+			waitMins(){
+				
+				if( this.props.status === 'todo' ){
 					return (
-						rEl('td', null, 
-							rEl('small', { className: 'fade' }, 
-								'Not assigned'
-							)
+						rEl('div', { className: 'flex' }, 
+							rEl('button', { 
+								className: 'cols-7',  
+								onClick: () => this.props.onArrived( this.props.arrRef )
+							}, 'Arrived'), 
+							rEl('button', { 
+								className: 'cols-4', 
+								onClick: () => this.props.onDNA( this.props.arrRef ) 
+							}, 'DNA')
 						)
 					);
 				}
+				
+				let arriveTime = 0;
+				let totalMins = 0;
+				
+				this.props.pathway.forEach( step => {
+					if( step.shortcode == "Arr" ){
+						arriveTime = step.timestamp;
+					}
+					if( step.shortcode === "Fin" ){
+						totalMins = Math.floor(( step.timestamp - arriveTime ) / 60000 );
+					}
+				});
+				
+				return (
+					rEl( react.WaitDuration, { 
+						status: this.props.status,
+						arriveTime: arriveTime, // timestamps
+						pathwayTotalMins: totalMins // minutes!
+					})
+				);
+			}
+			
+			complete(){
+
+				let td = null;
+				
+				if( this.props.status === 'complete' ){
+					td = rEl('i', { className: 'oe-i tick small-icon pad disabled' }, null );
+				}
+				
+				if( this.props.status === 'active' ){
+					td = rEl('i', { 
+						className: 'oe-i save medium-icon pad js-has-tooltip', 
+						'data-tt-type': "basic", 
+						'data-tooltip-content': 'Patient pathway finished', 
+						onClick: () => this.props.onPathwayCompleted( this.props.arrRef ),
+					}, null );
+				}
+				
+				return td;
 			}
 			
 			/**
 			* Render 
 			*/
 			render(){
-				const patient = this.props.patient;
-				const filter = this.props.filter;
-				
-				console.log('Render - Patient', patient.key );
-				
 				/*
-				Table Rows can be filtered by their assignment. 
-				Check the Clinic filter state
+				Table Rows can be filtered by assignment. 
+				Check the Clinic filter state agains this props
 				*/
-				if( filter !== "all" ){
-					// if assignment is false that means "unassigned";
-					const assignment = this.props.patient.assigned || 'unassigned';
-					
-					if( assignment !== filter ){
-						return null; // remove <tr>	
-					}
+				if( this.props.clinicFilterState !== "showAll" ){
+					/*
+					If this patient assignment doesn't match the filter remove from DOM
+					*/
+					if( this.props.assigned !== this.props.clinicFilterState ) return null;
 				}
 				
-				
 				return (
-					rEl('tr', { "data-timestamp" : patient.booked },
-						rEl('td', null, bj.clock24( new Date( patient.booked ))),
-						rEl('td', null, patient.num ),
+					rEl('tr', { "data-timestamp" : this.props.booked, className: this.props.status == 'complete' ? 'fade' : 'todo' },
+						rEl('td', null, bj.clock24( new Date( this.props.booked ))),
+						rEl('td', null, this.props.num ),
 						rEl('td', null, 
-							rEl('div', { className: 'speciality' }, patient.speciality ), 
-							rEl('small', { className: 'type' }, patient.specialityState ) 
+							rEl('div', { className: 'speciality' }, this.props.speciality ), 
+							rEl('small', { className: 'type' }, this.props.specialityState ) 
 						),
 						rEl('td', null, 
 							rEl( react.PatientQuickView, this.state.patientMeta )
@@ -5984,15 +6161,14 @@ const oePlotly = (function ( bj ) {
 						rEl('td', null,
 							this.pathwaySteps()
 						), 
-						
-						this.assigned(),
-						
+						rEl('td', null, 
+							this.assigned()
+						),
 						rEl('td', null,
-							rEl( react.WaitDuration, { 
-								status: patient.status,
-								arriveTime: this.state.arriveTime,
-								pathwayTotalMins: this.state.pathwayTotalMins
-							})
+							this.waitMins()
+						),
+						rEl('td', null, 
+							this.complete()
 						)
 					)
 				);
@@ -6028,10 +6204,10 @@ const oePlotly = (function ( bj ) {
 						rEl('div', { className: 'patient-name' }, 
 							rEl('a', { href: '/v3-SEM/patient-overview' }, 
 								rEl('span', { className: 'patient-surname'}, 
-									this.props.firstname 
+									this.props.lastname 
 								),
 								rEl("span", { className: "patient-firstname"},
-								 	', ' + this.props.lastname 
+								 	', ' + this.props.firstname 
 								)
 							)
 						), 
@@ -6129,7 +6305,7 @@ const oePlotly = (function ( bj ) {
 				React hack, docs advise against this, but to save time
 				I'm using raw JS in this component, working with the DOM
 				directly(!) but updating the state in the React App.
-				Once mounted this stops any re-Rendering.
+				Once mounted (in real DOM!) this stops any re-Rendering.
 				*/
 				return false;
 			}
@@ -6142,8 +6318,9 @@ const oePlotly = (function ( bj ) {
 				const el = ev.target;
 				
 				// JSON is added to the DOM by React to side step building a component
-				const type = el.dataset.type;
+				const type = el.dataset.add;
 				const shortcode = el.dataset.shortcode;
+				const stepType = el.dataset.step;
 
 				/*
 				React JS hack.
@@ -6153,15 +6330,15 @@ const oePlotly = (function ( bj ) {
 				saves a bunch of messing about in React JS (yeah, i know) but this is only a demo! 
 				*/
 				const checkPatients = bj.nodeArray( document.querySelectorAll('.oe-clinic-adder .patients input'));
-				const updateList = new Set();
+				const selectedPatients = new Set();
 				checkPatients.forEach( patient => {
 					if( patient.checked ){
-						updateList.add( parseInt( patient.dataset.ref, 10));
+						selectedPatients.add( parseInt( patient.dataset.ref, 10));
 					}
 				});
 				
 				// pass up to Clinic to update state
-				this.state.onAdderRequest({ updateList, type, shortcode });
+				this.state.onAdderRequest({ selectedPatients, type, shortcode, stepType });
 			}
 			
 			/**
@@ -6214,21 +6391,22 @@ const oePlotly = (function ( bj ) {
 			* @returns {ReactElement}
 			*/	
 			listAssign(){
-				const listItems = [ 'Not', 'MM', 'AB', 'AG', 'RB', 'CW' ].map( who => {
-					const fullName = who == 'Not' ? 'Not assigned' : react.fullShortCode( who ); 
-					const code = who == 'Not' ? 'Not' : who; 
+				
+				const assignOptions = ['nobody'].concat( react.assignList );
+				
+				const assignBtns = assignOptions.map( assign => {
 					return rEl('li', { 
 						key: react.getKey(), 
 						onClick: this.handleUpdates, 
-						'data-shortcode': code, 
-						'data-type': 'assign' 
-					}, fullName );
+						'data-shortcode': assign, 
+						'data-add': 'assign' 
+					}, react.fullShortCode( assign ) );
 				});
 				
 				return (
 					rEl('div', { className: 'row' },  
 						rEl('h4', null, 'Assign to'),
-						rEl('ul', { className: 'btn-list' }, listItems )
+						rEl('ul', { className: 'btn-list' }, assignBtns )
 					)	
 				);
 			}
@@ -6238,30 +6416,31 @@ const oePlotly = (function ( bj ) {
 			* @returns {ReactElement}
 			*/	
 			listSteps(){
+				
 				const pathStep = ( step, type ) => {
 					return rEl('span', { 
 							className: `oe-pathstep-btn ${type}`, 
 							key: react.getKey(), 
+							onClick: this.handleUpdates,
 							'data-shortcode': step, 
-							'data-type': 'step', 
-							 onClick: this.handleUpdates 
+							'data-add': 'step',
+							'data-step': type, 
 						}, 
 						rEl( 'span', { className: 'step' }, step ),
 						rEl( 'span', { className: 'time invisible' }, '00:00' )		
-					)
+					);
 				};
 				
-				const people = [ 'Nurse', 'MM', 'AB', 'AG', 'RB', 'CW' ].sort();
-				const process = [ 'VA', 'ORTH', 'Dilate', 'Ref' ].sort();	
+				const combinePeople = react.assignList.concat( react.clinicPersonList );
 				
-				const peopleSteps = people.map( step => pathStep( step, 'person'));
-				const processSteps = process.map( step => pathStep( step, 'process'));
+				const peopleSteps = combinePeople.map( step => pathStep( step, 'person'));
+				const processSteps = react.clinicProcessList.map( step => pathStep( step, 'process'));
 				
 				return (
 					rEl('div', { className: 'row' },  
 						rEl('h4', null, 'Add to pathway'),
-						rEl('div', { className: 'steps' }, peopleSteps ),
-						rEl('div', { className: 'steps' }, processSteps )
+						rEl('div', { className: 'steps' }, processSteps ),
+						rEl('div', { className: 'steps' }, peopleSteps )
 					)	
 				);
 			}
@@ -6271,11 +6450,9 @@ const oePlotly = (function ( bj ) {
 			* Render
 			*/
 			render(){ 
-				console.log('Render, PopupAdder', this.state.list );
 				return rEl('div', { className: 'oe-clinic-adder'},
 					// create 2 columns
 					this.listPatients(),
-					
 					
 					rEl('div', { className: 'update-actions' }, 
 						rEl('h3', null, 'Update'),
@@ -6510,6 +6687,12 @@ const oePlotly = (function ( bj ) {
 	*/
 	if( document.getElementById('js-clinic-manager') === null ) return;
 	
+	// ... waiting for React JS CDN to load ...
+	const loading = bj.div('oe-popup-wrap');
+	loading.innerHTML = '<div class="spinner"></div><div class="spinner-message">Loading...</div>';
+	document.body.appendChild(loading);
+	
+
 	/**
 	React JS. Notes to self.
 	Try to avoid deeply nested state objects. React JS is NOT oriented to work well with nested states 
@@ -6546,8 +6729,8 @@ const oePlotly = (function ( bj ) {
 	
 	
 	/*
-	Name space for React Components.
-	Loading ReactJS dynamic.	
+	Name space for React App
+	React JS componenets are built into this space	
 	*/
 	const react = bj.namespace('react');
 	
@@ -6556,7 +6739,7 @@ const oePlotly = (function ( bj ) {
 	React needs unique keys for all Elements in a list (anything in a loop)
 	It suggests Strings...
 	*/
-	function *UniqueKey(){
+	function *UniqueReactKey(){
 		let id = 0;
 		while( true ){
 			++id;
@@ -6564,11 +6747,13 @@ const oePlotly = (function ( bj ) {
 		}
 	}
 	
-	const keyIterator = UniqueKey();
-	
+	const keyIterator = UniqueReactKey();
 	react.getKey = () => keyIterator.next().value; 
 	
-	//react.getConsultants 
+	// central-ise these:
+	react.assignList = ['MM', 'AB', 'AG', 'RB', 'CW'].sort();
+	react.clinicPersonList = ['Nurse'];
+	react.clinicProcessList = ['Dilate', 'VisAcu', 'Orth', 'Ref' ].sort();
 	
 	react.fullShortCode = ( shortcode ) => {
 		let full = shortcode; // "Nurse" doesn't need expanding on
@@ -6576,6 +6761,7 @@ const oePlotly = (function ( bj ) {
 			case 'Arr': full = "Arrived"; break;
 			case 'Fin': full = "Finish"; break;
 			
+			case "nobody" : full = "Not assigned"; break;
 			case "MM" : full = "Mr Michael Morgan"; break;
 			case "AB" : full = "Dr Amit Baum"; break;
 			case "AG" : full = "Dr Angela Glasby"; break;
@@ -6583,7 +6769,7 @@ const oePlotly = (function ( bj ) {
 			case "CW" : full = "Dr Coral Woodhouse"; break; 
 			
 			case "DNA" : full = "Did Not Attend"; break;
-			case "VA" : full = "Visual Acuity"; break;
+			case "VisAcu" : full = "Visual Acuity"; break;
 			
 		}
 		return full; 
@@ -6667,23 +6853,27 @@ const oePlotly = (function ( bj ) {
 		});
 		
 		/* 
-		OK, ready.
-		ReactJS App for Clinic Manager
+		OK, ready!
 		*/
+		loading.remove();
+		
+		// ReactJS App for Clinic Manager
 		ReactDOM.render(
 		  React.createElement( react.Clinic, { patientsJSON }),
 		  document.getElementById('js-clinic-manager')
 		);
 	};
 	
+	
+	
 	/*
 	Load React JS, then initalise
 	Make sure to load the React package before loading ReactDOM.
 	react.production.min.js || react.development.js
 	*/
-    bj.loadJS('https://unpkg.com/react@17/umd/react.development.js', true)
+    bj.loadJS('https://unpkg.com/react@17/umd/react.production.min.js', true)
     	.then( () => {
-	    	 bj.loadJS('https://unpkg.com/react-dom@17/umd/react-dom.development.js', true)
+	    	 bj.loadJS('https://unpkg.com/react-dom@17/umd/react-dom.production.min.js', true)
 	    	 	.then( () => init() ); 
     	});
 	  

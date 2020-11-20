@@ -16,10 +16,10 @@
 						rEl('div', { className: 'patient-name' }, 
 							rEl('a', { href: '/v3-SEM/patient-overview' }, 
 								rEl('span', { className: 'patient-surname'}, 
-									this.props.firstname 
+									this.props.lastname 
 								),
 								rEl("span", { className: "patient-firstname"},
-								 	', ' + this.props.lastname 
+								 	', ' + this.props.firstname 
 								)
 							)
 						), 

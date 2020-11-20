@@ -3,7 +3,7 @@
 	'use strict';	
 	
 	/**
-	* React Component 
+	* React Component - using Portal to render outside the DOM tree.
 	*/
 	const buildComponent = () => {
 				
@@ -18,25 +18,73 @@
 				// Following React Docs example, store DOM Element here
 				// then use a Portal to render the children into the DOM.
 				this.dom = document.getElementById('js-clinic-filter');
+
+				// helper to build btnObj in state
+				const btnObj = ( btn, filter, isStep ) => ({ btn, filter, isStep, key: react.getKey() });
 				
+				this.state = {
+					filterBtns: [
+						btnObj('Show all','showAll', false ),
+						btnObj( ),
+						btnObj('MM', 'MM', true ),
+						btnObj('AB', 'AB', true ),
+						btnObj('AG', 'AG', true ),
+						btnObj('RB', 'RB', true ),
+						btnObj('CW', 'CW', true ),
+						btnObj( ),
+					]
+				};
+				
+				// Methods
+				this.btn = this.btn.bind( this );
 				this.filterBtns = this.filterBtns.bind( this );
 			}
+		
+			/**
+			* Build Filter Btn
+			* @returns {React Element}
+			*/
+			btn( btnText, filterCode, isStep, count ){
+				return rEl( react.FilterBtn, {
+					btn: btnText,
+					filter: filterCode, 
+					isStep,
+					count, 
+					key: react.getKey(),
+					onClick: this.props.onFilterChange,
+					selected: ( this.props.clinicFilter == filterCode )
+				});
+			}
+			
 		
 			/**
 			* Create <li> elements as buttons.
 			* @returns {Array} of React Elements
 			*/
 			filterBtns(){
-				const btns = this.props.btns.map( btn => {
-					btn.onClick = this.props.onFilterChange;
-					return rEl( react.FilterBtn, btn );
-				});
+				// work out the counts per filter.
+				const countFilters = filter => {
+					return this.props.allAssigned.reduce( (acc, curr ) => {
+						if( curr === filter ) return acc + 1;
+						return acc;
+					}, 0);
+				}
+			
 				
+				let btns = [];
+				
+				btns.push( this.btn('Show all','showAll', false, 0 ));
+				btns.push( this.btn('Hide completed','hideComplete', false, 0 ));
+	
+				btns = btns.concat( react.assignList.map( personCode => this.btn( personCode, personCode, true, countFilters( personCode ))));
+				
+				btns.push( this.btn('Unassigned', 'nobody', false, countFilters( false )));
+								
 				// add the update-patients button here.
 				btns.push(
 					rEl('li', { className: 'update-clinic-btn', key: react.getKey()},
 						rEl('button', { 
-							className: this.props.adderOpen ? 'adder close' : 'adder open', 
+							className: this.props.showAdder ? 'adder close' : 'adder open', 
 							onClick: this.props.onAdderBtn 
 						}, null )
 					)

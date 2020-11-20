@@ -14,21 +14,19 @@
 		
 			constructor( props ){
 				super( props );
-				
 				this.btnName = this.btnName.bind( this );
 			}
 			
 			btnName(){
 				// if filter btn is for a step, show full name
-				const btnName = this.props.btn; 
-				const isStep = this.props.isStep;
-				
-				let fullName = isStep ? rEl('div', { className: 'fullname' }, react.fullShortCode( btnName )) : null; 
-							
+				const fullName = this.props.isStep ? rEl('div', { className: 'fullname' }, react.fullShortCode( this.props.btn )) : null; 
+				const count = this.props.count ? rEl('div', { className: 'count' }, this.props.count ) : null; 
+			
 				return (
 					rEl('div', { className: 'filter' },
-						rEl('div', null, btnName ), 
-						fullName
+						rEl('div', { className: 'name' }, this.props.btn  ), 
+						fullName, 
+						count
 					)
 				);
 			}

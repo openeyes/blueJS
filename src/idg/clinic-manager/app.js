@@ -9,6 +9,12 @@
 	*/
 	if( document.getElementById('js-clinic-manager') === null ) return;
 	
+	// ... waiting for React JS CDN to load ...
+	const loading = bj.div('oe-popup-wrap');
+	loading.innerHTML = '<div class="spinner"></div><div class="spinner-message">Loading...</div>';
+	document.body.appendChild(loading);
+	
+
 	/**
 	React JS. Notes to self.
 	Try to avoid deeply nested state objects. React JS is NOT oriented to work well with nested states 
@@ -45,8 +51,8 @@
 	
 	
 	/*
-	Name space for React Components.
-	Loading ReactJS dynamic.	
+	Name space for React App
+	React JS componenets are built into this space	
 	*/
 	const react = bj.namespace('react');
 	
@@ -55,7 +61,7 @@
 	React needs unique keys for all Elements in a list (anything in a loop)
 	It suggests Strings...
 	*/
-	function *UniqueKey(){
+	function *UniqueReactKey(){
 		let id = 0;
 		while( true ){
 			++id;
@@ -63,11 +69,13 @@
 		}
 	}
 	
-	const keyIterator = UniqueKey();
-	
+	const keyIterator = UniqueReactKey();
 	react.getKey = () => keyIterator.next().value; 
 	
-	//react.getConsultants 
+	// central-ise these:
+	react.assignList = ['MM', 'AB', 'AG', 'RB', 'CW'].sort();
+	react.clinicPersonList = ['Nurse'];
+	react.clinicProcessList = ['Dilate', 'VisAcu', 'Orth', 'Ref' ].sort();
 	
 	react.fullShortCode = ( shortcode ) => {
 		let full = shortcode; // "Nurse" doesn't need expanding on
@@ -75,6 +83,7 @@
 			case 'Arr': full = "Arrived"; break;
 			case 'Fin': full = "Finish"; break;
 			
+			case "nobody" : full = "Not assigned"; break;
 			case "MM" : full = "Mr Michael Morgan"; break;
 			case "AB" : full = "Dr Amit Baum"; break;
 			case "AG" : full = "Dr Angela Glasby"; break;
@@ -82,7 +91,7 @@
 			case "CW" : full = "Dr Coral Woodhouse"; break; 
 			
 			case "DNA" : full = "Did Not Attend"; break;
-			case "VA" : full = "Visual Acuity"; break;
+			case "VisAcu" : full = "Visual Acuity"; break;
 			
 		}
 		return full; 
@@ -166,23 +175,27 @@
 		});
 		
 		/* 
-		OK, ready.
-		ReactJS App for Clinic Manager
+		OK, ready!
 		*/
+		loading.remove();
+		
+		// ReactJS App for Clinic Manager
 		ReactDOM.render(
 		  React.createElement( react.Clinic, { patientsJSON }),
 		  document.getElementById('js-clinic-manager')
 		);
 	};
 	
+	
+	
 	/*
 	Load React JS, then initalise
 	Make sure to load the React package before loading ReactDOM.
 	react.production.min.js || react.development.js
 	*/
-    bj.loadJS('https://unpkg.com/react@17/umd/react.development.js', true)
+    bj.loadJS('https://unpkg.com/react@17/umd/react.production.min.js', true)
     	.then( () => {
-	    	 bj.loadJS('https://unpkg.com/react-dom@17/umd/react-dom.development.js', true)
+	    	 bj.loadJS('https://unpkg.com/react-dom@17/umd/react-dom.production.min.js', true)
 	    	 	.then( () => init() ); 
     	});
 	  

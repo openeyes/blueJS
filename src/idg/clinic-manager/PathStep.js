@@ -10,7 +10,7 @@
 		const rEl = React.createElement;
 	
 		/**
-		* PathStep - stateless React Element (no need for Component Class)
+		* PathStep - Functional Component (no need for Component Class)
 		* @param {String} key - PathSteps are created in loop and require a key
 		* @parma {Object} step - see Patient.js
 		* @param {Function} onClick - Callback from parent

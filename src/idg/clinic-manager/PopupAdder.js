@@ -29,7 +29,7 @@
 				React hack, docs advise against this, but to save time
 				I'm using raw JS in this component, working with the DOM
 				directly(!) but updating the state in the React App.
-				Once mounted this stops any re-Rendering.
+				Once mounted (in real DOM!) this stops any re-Rendering.
 				*/
 				return false;
 			}
@@ -42,8 +42,9 @@
 				const el = ev.target;
 				
 				// JSON is added to the DOM by React to side step building a component
-				const type = el.dataset.type;
+				const type = el.dataset.add;
 				const shortcode = el.dataset.shortcode;
+				const stepType = el.dataset.step;
 
 				/*
 				React JS hack.
@@ -53,15 +54,15 @@
 				saves a bunch of messing about in React JS (yeah, i know) but this is only a demo! 
 				*/
 				const checkPatients = bj.nodeArray( document.querySelectorAll('.oe-clinic-adder .patients input'));
-				const updateList = new Set();
+				const selectedPatients = new Set();
 				checkPatients.forEach( patient => {
 					if( patient.checked ){
-						updateList.add( parseInt( patient.dataset.ref, 10));
+						selectedPatients.add( parseInt( patient.dataset.ref, 10));
 					}
 				});
 				
 				// pass up to Clinic to update state
-				this.state.onAdderRequest({ updateList, type, shortcode });
+				this.state.onAdderRequest({ selectedPatients, type, shortcode, stepType });
 			}
 			
 			/**
@@ -114,21 +115,22 @@
 			* @returns {ReactElement}
 			*/	
 			listAssign(){
-				const listItems = [ 'Not', 'MM', 'AB', 'AG', 'RB', 'CW' ].map( who => {
-					const fullName = who == 'Not' ? 'Not assigned' : react.fullShortCode( who ); 
-					const code = who == 'Not' ? 'Not' : who; 
+				
+				const assignOptions = ['nobody'].concat( react.assignList );
+				
+				const assignBtns = assignOptions.map( assign => {
 					return rEl('li', { 
 						key: react.getKey(), 
 						onClick: this.handleUpdates, 
-						'data-shortcode': code, 
-						'data-type': 'assign' 
-					}, fullName );
+						'data-shortcode': assign, 
+						'data-add': 'assign' 
+					}, react.fullShortCode( assign ) );
 				});
 				
 				return (
 					rEl('div', { className: 'row' },  
 						rEl('h4', null, 'Assign to'),
-						rEl('ul', { className: 'btn-list' }, listItems )
+						rEl('ul', { className: 'btn-list' }, assignBtns )
 					)	
 				);
 			}
@@ -138,30 +140,31 @@
 			* @returns {ReactElement}
 			*/	
 			listSteps(){
+				
 				const pathStep = ( step, type ) => {
 					return rEl('span', { 
 							className: `oe-pathstep-btn ${type}`, 
 							key: react.getKey(), 
+							onClick: this.handleUpdates,
 							'data-shortcode': step, 
-							'data-type': 'step', 
-							 onClick: this.handleUpdates 
+							'data-add': 'step',
+							'data-step': type, 
 						}, 
 						rEl( 'span', { className: 'step' }, step ),
 						rEl( 'span', { className: 'time invisible' }, '00:00' )		
-					)
+					);
 				};
 				
-				const people = [ 'Nurse', 'MM', 'AB', 'AG', 'RB', 'CW' ].sort();
-				const process = [ 'VA', 'ORTH', 'Dilate', 'Ref' ].sort();	
+				const combinePeople = react.assignList.concat( react.clinicPersonList );
 				
-				const peopleSteps = people.map( step => pathStep( step, 'person'));
-				const processSteps = process.map( step => pathStep( step, 'process'));
+				const peopleSteps = combinePeople.map( step => pathStep( step, 'person'));
+				const processSteps = react.clinicProcessList.map( step => pathStep( step, 'process'));
 				
 				return (
 					rEl('div', { className: 'row' },  
 						rEl('h4', null, 'Add to pathway'),
-						rEl('div', { className: 'steps' }, peopleSteps ),
-						rEl('div', { className: 'steps' }, processSteps )
+						rEl('div', { className: 'steps' }, processSteps ),
+						rEl('div', { className: 'steps' }, peopleSteps )
 					)	
 				);
 			}
@@ -171,11 +174,9 @@
 			* Render
 			*/
 			render(){ 
-				console.log('Render, PopupAdder', this.state.list );
 				return rEl('div', { className: 'oe-clinic-adder'},
 					// create 2 columns
 					this.listPatients(),
-					
 					
 					rEl('div', { className: 'update-actions' }, 
 						rEl('h3', null, 'Update'),

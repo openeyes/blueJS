@@ -86,7 +86,9 @@
 							btn('red hint', 'Remove', 'remove' )
 						)	
 					);
-				}					
+				}
+				
+									
 			}
 			
 			/**

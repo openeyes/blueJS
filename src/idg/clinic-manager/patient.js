@@ -10,57 +10,34 @@
 		const rEl = React.createElement;
 		const react = bj.namespace('react');
 		
-		class Patient extends React.PureComponent {	
+		class Patient extends React.Component {	
 			/**
 			* Patient - DOM is <tr>
 			* @param {*} props 
-			* props	-|- changeCount - Number (this is incremented to trigger a render)
-			*		 |- patient (patient data, inc pathway)
-			*		 |- onShowStepPopup (handler in Clinic) 
 			*/
 			constructor( props ){
 				super( props );
-		
-				const patient = props.patient;
-				
+			
 				this.state = {
-					onShowStepPopup: props.onShowStepPopup,
-					arriveTime: 0,
-					pathwayTotalMins: 0,
 					patientMeta: {
-						firstname: patient.firstname,
-						lastname: patient.lastname,
-						age: patient.age,
-						gender: patient.gender,
-						nhs: patient.nhs,	
+						firstname: props.firstname,
+						lastname: props.lastname,
+						age: props.age,
+						gender: props.gender,
+						nhs: props.nhs,	
 					}
 				};
-				
-				/* 
-				If there is a pathway, waitDuration needs to know the 
-				patient wait time. This is calculate from time of Arrival. 
-				If pathway is complete then work out pathwayTotalMins
-				*/
-				if( patient.pathway.length ){
-					patient.pathway.forEach( step => {
-						if( step.shortcode == "Arr" ){
-							this.state.arriveTime = step.timestamp;
-						}
-						if( step.shortcode === "Fin" ){
-							this.state.pathwayTotalMins = Math.floor(( step.timestamp - this.state.arriveTime ) / 60000 );
-						}
-					});
-				}
-				
+
 				/*
 				prototypal inheritence, correctly bind 'this' scope 
 				*/
 				this.handleStepClick = this.handleStepClick.bind( this );
 				this.pathwaySteps = this.pathwaySteps.bind( this );
 				this.assigned = this.assigned.bind( this );
+				this.complete = this.complete.bind( this );
+				this.waitMins = this.waitMins.bind( this );
 			}
 			
-
 			/**
 			* User clicks on a PathStep
 			* Step doesn't need to do anything, any change needs to happen
@@ -69,18 +46,17 @@
 			* @param {Object} rect - node boundingClientRect, to position the popup
 			*/
 			handleStepClick( step, rect ){
-				step.patientArrRef = this.props.patient.arrRef;
+				step.patientArrRef = this.props.arrRef;
 				step.rect = rect;
-				this.state.onShowStepPopup( step ); // callback from Clinic
+				this.props.onPathStepClick( step ); // callback from Clinic
 			}	
-			
 			
 			/**
 			* Build pathway steps 
 			* @returns {React Element}
 			*/
 			pathwaySteps(){
-				const pathway = this.props.patient.pathway;
+				const pathway = this.props.pathway;
 				let pathSteps = null; 
 				
 				// Build a PathStep pathway?
@@ -95,7 +71,7 @@
 				}
 				
 				// if patient pathway is 'complete' CSS will restyle the steps
-				return rEl('div', { className: `pathway ${this.props.patient.status}`}, pathSteps );
+				return rEl('div', { className: `pathway ${this.props.status}`}, pathSteps );
 			}
 			
 			/**
@@ -103,50 +79,94 @@
 			* @returns {React Element}
 			*/
 			assigned(){
-				const assigned = this.props.patient.assigned;
-				if( assigned ){
-					return rEl('td', null, react.fullShortCode( assigned ));
+				const assigned = this.props.assigned;
+				if( assigned  ){
+					return rEl('div', null, react.fullShortCode( assigned ));
 				} else {
+					return rEl('small', { className: 'fade' }, "Not assigned" );
+				}
+			}
+			
+			waitMins(){
+				
+				if( this.props.status === 'todo' ){
 					return (
-						rEl('td', null, 
-							rEl('small', { className: 'fade' }, 
-								'Not assigned'
-							)
+						rEl('div', { className: 'flex' }, 
+							rEl('button', { 
+								className: 'cols-7',  
+								onClick: () => this.props.onArrived( this.props.arrRef )
+							}, 'Arrived'), 
+							rEl('button', { 
+								className: 'cols-4', 
+								onClick: () => this.props.onDNA( this.props.arrRef ) 
+							}, 'DNA')
 						)
 					);
 				}
+				
+				let arriveTime = 0;
+				let totalMins = 0;
+				
+				this.props.pathway.forEach( step => {
+					if( step.shortcode == "Arr" ){
+						arriveTime = step.timestamp;
+					}
+					if( step.shortcode === "Fin" ){
+						totalMins = Math.floor(( step.timestamp - arriveTime ) / 60000 );
+					}
+				});
+				
+				return (
+					rEl( react.WaitDuration, { 
+						status: this.props.status,
+						arriveTime: arriveTime, // timestamps
+						pathwayTotalMins: totalMins // minutes!
+					})
+				);
+			}
+			
+			complete(){
+
+				let td = null;
+				
+				if( this.props.status === 'complete' ){
+					td = rEl('i', { className: 'oe-i tick small-icon pad disabled' }, null );
+				}
+				
+				if( this.props.status === 'active' ){
+					td = rEl('i', { 
+						className: 'oe-i save medium-icon pad js-has-tooltip', 
+						'data-tt-type': "basic", 
+						'data-tooltip-content': 'Patient pathway finished', 
+						onClick: () => this.props.onPathwayCompleted( this.props.arrRef ),
+					}, null );
+				}
+				
+				return td;
 			}
 			
 			/**
 			* Render 
 			*/
 			render(){
-				const patient = this.props.patient;
-				const filter = this.props.filter;
-				
-				console.log('Render - Patient', patient.key );
-				
 				/*
-				Table Rows can be filtered by their assignment. 
-				Check the Clinic filter state
+				Table Rows can be filtered by assignment. 
+				Check the Clinic filter state agains this props
 				*/
-				if( filter !== "all" ){
-					// if assignment is false that means "unassigned";
-					const assignment = this.props.patient.assigned || 'unassigned';
-					
-					if( assignment !== filter ){
-						return null; // remove <tr>	
-					}
+				if( this.props.clinicFilterState !== "showAll" ){
+					/*
+					If this patient assignment doesn't match the filter remove from DOM
+					*/
+					if( this.props.assigned !== this.props.clinicFilterState ) return null;
 				}
 				
-				
 				return (
-					rEl('tr', { "data-timestamp" : patient.booked },
-						rEl('td', null, bj.clock24( new Date( patient.booked ))),
-						rEl('td', null, patient.num ),
+					rEl('tr', { "data-timestamp" : this.props.booked, className: this.props.status == 'complete' ? 'fade' : 'todo' },
+						rEl('td', null, bj.clock24( new Date( this.props.booked ))),
+						rEl('td', null, this.props.num ),
 						rEl('td', null, 
-							rEl('div', { className: 'speciality' }, patient.speciality ), 
-							rEl('small', { className: 'type' }, patient.specialityState ) 
+							rEl('div', { className: 'speciality' }, this.props.speciality ), 
+							rEl('small', { className: 'type' }, this.props.specialityState ) 
 						),
 						rEl('td', null, 
 							rEl( react.PatientQuickView, this.state.patientMeta )
@@ -157,15 +177,14 @@
 						rEl('td', null,
 							this.pathwaySteps()
 						), 
-						
-						this.assigned(),
-						
+						rEl('td', null, 
+							this.assigned()
+						),
 						rEl('td', null,
-							rEl( react.WaitDuration, { 
-								status: patient.status,
-								arriveTime: this.state.arriveTime,
-								pathwayTotalMins: this.state.pathwayTotalMins
-							})
+							this.waitMins()
+						),
+						rEl('td', null, 
+							this.complete()
 						)
 					)
 				);
