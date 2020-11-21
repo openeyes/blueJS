@@ -22,19 +22,6 @@
 				// helper to build btnObj in state
 				const btnObj = ( btn, filter, isStep ) => ({ btn, filter, isStep, key: react.getKey() });
 				
-				this.state = {
-					filterBtns: [
-						btnObj('Show all','showAll', false ),
-						btnObj( ),
-						btnObj('MM', 'MM', true ),
-						btnObj('AB', 'AB', true ),
-						btnObj('AG', 'AG', true ),
-						btnObj('RB', 'RB', true ),
-						btnObj('CW', 'CW', true ),
-						btnObj( ),
-					]
-				};
-				
 				// Methods
 				this.btn = this.btn.bind( this );
 				this.filterBtns = this.filterBtns.bind( this );
@@ -68,7 +55,7 @@
 						if( curr === filter ) return acc + 1;
 						return acc;
 					}, 0);
-				}
+				};
 			
 				
 				let btns = [];

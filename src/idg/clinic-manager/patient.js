@@ -93,7 +93,7 @@
 					return (
 						rEl('div', { className: 'flex' }, 
 							rEl('button', { 
-								className: 'cols-7',  
+								className: 'cols-7 blue hint',  
 								onClick: () => this.props.onArrived( this.props.arrRef )
 							}, 'Arrived'), 
 							rEl('button', { 
@@ -150,18 +150,24 @@
 			*/
 			render(){
 				/*
-				Table Rows can be filtered by assignment. 
-				Check the Clinic filter state agains this props
+				Patient Rows can be filtered by their assignment OR status 
+				if filter is 'hideComplete' check by status, else check assigned
 				*/
-				if( this.props.clinicFilterState !== "showAll" ){
-					/*
-					If this patient assignment doesn't match the filter remove from DOM
-					*/
+				
+				if(	this.props.clinicFilterState == "hideComplete" && 
+					this.props.status == 'complete' ) return null;
+				
+				if( this.props.clinicFilterState !== "showAll" &&
+					this.props.clinicFilterState !== "hideComplete" ){
+					
 					if( this.props.assigned !== this.props.clinicFilterState ) return null;
 				}
 				
+				/*
+				OK, show it
+				*/
 				return (
-					rEl('tr', { "data-timestamp" : this.props.booked, className: this.props.status == 'complete' ? 'fade' : 'todo' },
+					rEl('tr', { "data-timestamp" : this.props.booked, className: this.props.status },
 						rEl('td', null, bj.clock24( new Date( this.props.booked ))),
 						rEl('td', null, this.props.num ),
 						rEl('td', null, 

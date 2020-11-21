@@ -14,10 +14,10 @@
 		
 			constructor( props ){
 				super( props );
-				this.btnName = this.btnName.bind( this );
+				this.btn = this.btn.bind( this );
 			}
 			
-			btnName(){
+			btn(){
 				// if filter btn is for a step, show full name
 				const fullName = this.props.isStep ? rEl('div', { className: 'fullname' }, react.fullShortCode( this.props.btn )) : null; 
 				const count = this.props.count ? rEl('div', { className: 'count' }, this.props.count ) : null; 
@@ -38,7 +38,7 @@
 				const css = this.props.selected ? 'filter-btn selected' : 'filter-btn';
 				return (
 					rEl('li', { className: css, onClick: () => this.props.onClick( this.props.filter ) }, 
-						this.btnName()
+						this.btn()
 					)
 				);	
 			}

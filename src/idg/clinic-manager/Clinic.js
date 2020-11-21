@@ -251,6 +251,9 @@
 			* @params {String} newFilter
 			*/
 			handleFilterChange( newFilter ){
+				// convert the "Unassigned" code to Boolean false:
+				newFilter = newFilter == 'nobody' ? false : newFilter;	
+				console.log( newFilter );
 				this.setState({ filter: newFilter });
 			}
 			
