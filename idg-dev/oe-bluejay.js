@@ -4164,6 +4164,1081 @@ const oePlotly = (function ( bj ) {
 	
 	
 })( bluejay ); 
+(function (uiApp) {
+
+	'use strict';
+	
+	if(document.querySelector('#tinymce-letterheader-editor') === null) return;
+	
+	let tinyEditor = null;
+	
+	const inserts = {
+		"user_name": {"label":"User Name","value":"<span>Admin Admin</span>"},
+		"firm_name": {"label":"Firm Name","value":"<span>Glaucoma Clinic</span>"},
+		"site_name": {"label":"Site Name","value":"<span>Kings Hospital</span>"},
+		"site_phone": {"label":"Site Phone","value":"<span>0123456789</span>"},
+		"site_fax": {"label":"Site Fax","value":null},
+		"site_email": {"label":"Site Email","value":null},
+		"site_address": {"label":"Site Address","value":"<span>100 Main Road</span>"},
+		"site_city":{"label":"Site City", "value":"<span>London</span>"},
+		"site_postcode": {"label":"Site Postcode","value":"<span>W1 1AA</span>"},
+		"primary_logo": {"label":"Primary Logo","value":'<img src="/idg-php/imgDemo/correspondence/letterhead-logo.png">'},
+		"secondary_logo": {"label":"Secondary Logo","value":null},
+		"current_date": {"label":"Today's Date","value":"<span>" + document.documentElement.dataset.today + "</span>"}
+	};
+
+	const insertData = (key, value) => {
+		tinyEditor.insertContent('<span contenteditable="false" data-substitution="' + key + '">' + value + '</span>');
+	};
+	
+	const quickInsertBtns = () => {
+		var frag = new DocumentFragment();
+		
+		// build Buttons
+		for (const key in inserts) {
+			let label = inserts[key].label;
+			let value = inserts[key].value;
+			if(value === null) continue; // not much point in adding this as a button!
+			
+			var btn = document.createElement('button');
+			btn.className = "idg-quick-insert";
+			btn.textContent = label;
+			btn.setAttribute('data-insert', JSON.stringify({key, value}));
+			
+			// build the Fragment
+			frag.appendChild(btn);
+		}
+		
+		document.querySelector('.editor-quick-insert-btns').appendChild(frag);
+	};
+
+	/*
+	tinyMCE editor - initialise
+	*/
+	tinymce.init({
+		selector: '#tinymce-letterheader-editor',
+		schema: 'html5-strict',
+		branding: false,
+		min_height:400, // can be dragged bigger
+		menubar: false,
+		plugins: ['lists table paste code'],
+		contextmenu: 'table',
+		toolbar: "undo redo | bold italic underline | alignleft aligncenter alignright | table | code",
+		//body_class: 'tiny_oe_body',	
+		custom_undo_redo_levels: 10, // save memory
+		//object_resizing : false
+		hidden_input: false,
+		block_formats: 'Paragraph=p; Header 2=h2; Header 3=h3',
+		content_css : '/newblue/css/style_oe3_print.min.css',
+		setup: function(editor) {
+			editor.on('init', (function(e) {
+				tinyEditor = editor;
+				quickInsertBtns();
+			}));
+		}
+	}); 
+		
+	uiApp.userDown('.idg-quick-insert', (ev) => {
+		let obj = JSON.parse(ev.target.dataset.insert);
+		insertData(obj.key, obj.value);
+	});
+	
+/*
+	$('select#substitution-selection').on('change', function () {
+                let key = $(this).val();
+                if (key !== '' && key !== 'none_selected') {
+                    let value = that.getSubstitution(key);
+                    editor_ref.insertContent('<span contenteditable="false" data-substitution="' + key + '">' + value + '</span>');
+                    console.log(key);
+                }
+
+                $(this).val('none_selected');
+            });
+	
+			
+			
+
+    $(document).ready(function () {
+        let html_editor_controller =
+            new OpenEyes.HTMLSettingEditorController(
+                "letter_header",
+                {"plugins":"lists table paste code pagebreak","branding":false,"visual":false,"min_height":400,"toolbar":"undo redo | bold italic underline | alignleft aligncenter alignright | bullist numlist | table | subtitle | labelitem | label-r-l | inputcheckbox | pagebreak code","valid_children":"+body[style]","custom_undo_redo_levels":10,"object_resizing":false,"menubar":false,"paste_as_text":true,"table_toolbar":"tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol","browser_spellcheck":true,"extended_valid_elements":"i[*]","valid_elements":"*[*]","pagebreak_separator":"<div class=\"pageBreak\" \/>","content_css":"\/assets\/ca6609ee\/css\/style_oe3_print.min.css"},
+                }            );
+    });
+*/
+			
+			
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';
+	
+	/*
+	IDG DEMO of some UX functionality
+	Eyedraw v2 (2.5)
+	*/
+	
+	if(document.querySelector('.js-idg-demo-ed2') === null) return;
+
+
+	uiApp.userDown('.js-idg-demo-doodle-drawer', (ev) => {
+		let icon = ev.target; 
+		let li = uiApp.getParent(icon,'li');
+		li.classList.toggle('ed2-drawer-open');
+	});
+	
+	
+	uiApp.userDown('.ed-canvas-edit', (ev) => {
+		let canvas = ev.target; 
+		let editor = uiApp.getParent(canvas,'.ed2-editor');
+		let popup = editor.querySelector('.ed2-doodle-popup');
+		popup.classList.toggle('closed');	
+	});
+	
+	uiApp.userDown('#js-idg-demo-ed2-search-input', (ev) => {
+		let autocomplete = ev.target.nextElementSibling;
+		console.log('hi');
+		if(autocomplete.style.display == "none"){
+			autocomplete.style.display = 'block';
+		} else {
+			autocomplete.style.display = 'none';
+		}
+	});
+	
+			
+})(bluejay); 
+(function( bj ) {
+
+	'use strict';
+	
+	if( document.querySelector('.oe-worklists.eferral-manager') === null ) return;
+	
+	/**
+	e-referral manaager demo
+	see: https://idg.knowego.com/v3/eferral-manager
+	demo shows UI/UX behaviour for setting Risk and Pathways
+	for selected patient lists.	
+	*/
+	
+	const collection = new bj.Collection();
+	
+	/**
+	This MUST match the array used in PHP.
+	*/
+	const pathways = ['DRSS', 'Cataract', 'Glaucoma', 'Uveitis', 'Lucentis', 'Glaucoma ODTC', 'Laser/YAG', 'General', 'Ocular Motility', 'Oculoplastic', 'Neuro', 'Botox', 'Corneal', 'VR', 'Paediatric Ophthalmology', 'Paediatric Neuro-Ophthalmology'];
+	
+	/**
+	* Get pathway index from Name
+	* @param {String} Pathway
+	* @returns {Number} index
+	*/
+	const getPathywayNum = ( str ) => {
+		let pathIndex = 99; // 99 = None 
+		pathways.forEach(( path, index ) => {
+			if( str == path ) pathIndex = index;
+		});
+		
+		return pathIndex; 
+	};
+	
+	/**
+	* Work out Risk number from CSS icon class
+	* @param {String} classes
+	* @returns {Number} risk
+	*/
+	const riskLevelFromClass = ( cssStr ) => {
+		if( cssStr.includes('green')) return 3;
+		if( cssStr.includes('amber')) return 2;
+		if( cssStr.includes('red')) return 1;
+		return 0;
+	};
+	
+	/** 
+	* update Patient Risk icon
+	* @params {Element} icon
+	* @params {Number} level
+	*/
+	const updateRiskIcon = ( icon, level ) => {
+		const colours = ['grey', 'red', 'amber', 'green'];
+		icon.className = `oe-i triangle-${colours[level]} selected`; // selected to remove cursor pointer
+	};
+	
+	/**
+	* @Class 
+	* Patient 
+	*/
+	const Patient = {
+		accepted: null, // rejected is false, accepted = true, starts unknown 
+		tr:null, 
+		
+		// icons in <tr>
+		iEdit:null, // pencil icon
+		iState:null, // tick / cross
+		iRisk:null, // triangle
+		
+		// Strings
+		fullName: 'JONES, David (Mr)', 
+		nhs: '000',
+		age: '42',
+		gender: 'Male',
+		
+		// states
+		riskNum: 0,
+		pathElem: null,
+		pathNum: 99, 
+		
+		/**
+		Active / Inactive <tr> state
+		*/
+		active(){
+			this.iEdit.classList.replace('pencil', 'direction-right');
+			this.iEdit.classList.replace('small-icon', 'large');
+			this.iEdit.classList.add('selected');	
+			this.tr.classList.add('active');
+		},
+		inactive(){
+			this.iEdit.classList.replace('direction-right', 'pencil');
+			this.iEdit.classList.replace('large', 'small-icon');
+			this.iEdit.classList.remove('selected');	
+			this.tr.classList.remove('active');
+		},
+		
+		/**
+		User can reject the referral, if so update UI <tr> state
+		*/
+		accept(){
+			this.accepted = true;
+			this.iState.classList.replace('status-query', 'tick-green');
+			this.iState.classList.replace('cross-red', 'tick-green');
+		},
+		reject(){
+			this.accepted = false;
+			this.iState.classList.replace('status-query', 'cross-red');
+			this.iState.classList.replace('tick-green', 'cross-red');
+		},
+		
+		/**
+		Patient info (quick hack to show this)
+		*/
+		name(){
+			return this.fullName;
+		},
+		details(){
+			return `${this.gender}, ${this.age}y`;
+		}, 
+		
+		/**
+		Risk state
+		*/
+		setRisk( icon ){
+			this.iRisk = icon;
+			this.riskNum = riskLevelFromClass( icon.className );
+		}, 
+		get risk(){
+			return this.riskNum;
+		}, 
+		set risk( val ){
+			this.riskNum = parseInt(val, 10);
+			updateRiskIcon( this.iRisk, val );
+			if( this.accepted === null ) this.accept();
+		}, 
+		
+		/**
+		Clinical Pathway
+		*/
+		setPathway( elem ){
+			this.pathElem = elem;
+			this.pathNum = getPathywayNum( elem.textContent );
+		}, 
+		set pathway( val ){
+			this.pathNum = parseInt(val, 10);
+			this.pathElem.textContent = pathways[ this.pathNum ];
+		}, 
+		get pathway(){
+			return this.pathNum;
+		}
+	};
+	
+	
+	/**
+	* Initalise Patients. 
+	* This is done from the DOM. It's set up to show a selection of lists
+	* There could be a few tables that need setting up.
+	*/
+	const tables = bj.nodeArray( document.querySelectorAll('table.eferrals'));
+	
+	// loop through all the tables...
+	tables.forEach(( table ) => {
+		
+		// then loop through all <tr> ...
+		let rows = Array.from( table.tBodies[0].rows );
+		
+		rows.forEach(( row ) => {
+			// build Patient
+			let patient = Object.create( Patient );
+			patient.tr = row;
+			
+			patient.iEdit = row.querySelector('.oe-i.pencil');
+			patient.iState = row.querySelector('.oe-i.js-referral-status-icon');
+			
+			patient.fullName = row.querySelector('.patient-name').textContent;
+			patient.age = row.querySelector('.patient-age').textContent.substring(3);
+			patient.gender = row.querySelector('.patient-gender').textContent.substring(3);
+			patient.nhs = row.querySelector('.nhs-number').textContent.substring(3);
+			
+			patient.setRisk( row.querySelector('[class*="triangle-"]'));
+			patient.setPathway( row.querySelector('.js-pathway') );
+			
+			patient.hasImage = Math.random() >= 0.5; // show randomly a thumbnail attachment
+			
+			// Quick hack to get group header to show when patient is selected
+			let workGroup = bj.getParent( row, '.worklist-group' );
+			patient.group = workGroup.querySelector('.worklist-summary h2').textContent;
+			
+			// build DOM collections, store 'key', need it for 'next' / 'previous'
+			patient.myKey = collection.add( patient, patient.iEdit );
+		});
+	});
+
+	/**
+	* Sidebar functionality 
+	* workhorse.
+	*/
+	const sidebar = (() => {
+		
+		let activePatient = null;
+	
+		const radioRisks = bj.nodeArray( document.querySelectorAll('#sidebar-patient-risk-settings input')); 
+		const radioPathways = bj.nodeArray( document.querySelectorAll('#sidebar-pathway-settings input'));
+	
+		/** 
+		* sidebar UI
+		*/
+		const ui = {
+			view: {
+				overview: document.getElementById('sidebar-eferral-overview'), 
+				patient: document.getElementById('sidebar-manage-patient'), 
+				reject: document.getElementById('sidebar-reject-accept')
+			},
+			btn: {
+				overview: document.getElementById('idg-js-sidebar-viewmode-1'),
+				patient: document.getElementById('idg-js-sidebar-viewmode-2'),
+				
+			}, 
+			patient: {
+				fullName: document.getElementById('js-sidebar-patient-fullname'),
+				details: document.getElementById('js-sidebar-patient-details'),
+				group: document.getElementById('js-sidebar-referral-group'),
+				attachment: document.getElementById('js-demo-attachment-image'), 
+			}	
+		};
+		
+		/**
+		* Update sidebar Reject / Accept area
+		* @param {Boolean} True or Null means 'accepted'
+		*/
+		const showAsAccepted = ( b ) => {
+			if( b || b === null ){
+				bj.show( ui.view.reject.querySelector('.js-reject'));
+				bj.hide( ui.view.reject.querySelector('.js-accept'));
+			} else {
+				bj.hide( ui.view.reject.querySelector('.js-reject'));
+				bj.show( ui.view.reject.querySelector('.js-accept'));
+			}
+		}; 
+		
+		/**
+		* Set Radio for Risk or Pathway
+		* @param {Array} arr
+		* @param {Number} num - radio to 'check'
+		*/
+		const setRadio = ( arr, num ) => {
+			arr.forEach(( radio ) => {
+				radio.checked = ( num == radio.value );
+			});
+		};
+		
+		/** 
+		public API
+		*/
+		
+		/**
+		* Callback from either "Reject" or "Accept" btn
+		* Updates Patient. See Events.
+		* @param {EventTarget} btn 
+		*/
+		const rejectPatient = ( btn ) => {
+			// check which button by it's colour
+			if( btn.classList.contains('red') ){
+				// reject
+				showAsAccepted( false );
+				activePatient.reject();
+			} else {
+				// re-accept
+				showAsAccepted( true );
+				activePatient.accept();
+			}
+		};
+		
+		
+		/**
+		* Callback from "Overview" or "Manage Patient" buttons
+		* This updates the sidebar UI
+		* @param {String} view 
+		*/
+		const change = ( view ) => {
+			if( view == "overview" ){
+				bj.show( ui.view.overview );
+				bj.hide( ui.view.patient );
+				ui.btn.overview.classList.add('selected');
+				ui.btn.patient.classList.remove('selected');
+			} else {
+				bj.hide( ui.view.overview );
+				bj.show( ui.view.patient );
+				ui.btn.overview.classList.remove('selected');
+				ui.btn.patient.classList.add('selected');
+			}
+		};
+		
+		/**
+		* Set up the Patient area in sidebar
+		* Controller calls this with the selected 'Patient'
+		* @param {Patient} custom Object. 
+		*/
+		const managePatient = ( patient ) => {
+			// inactive last patient?
+			if( activePatient !== null ) activePatient.inactive();
+			
+			ui.patient.fullName.textContent = patient.fullName;
+			ui.patient.details.innerHTML = `<small class="fade">NHS</small> ${patient.nhs}  
+				&nbsp;<small class="fade">Gen</small> ${patient.gender} 
+				&nbsp;<small class="fade">Age</small> ${patient.age}`;
+				
+			ui.patient.group.textContent = patient.group;
+			
+			// hacky demo of attachment
+			ui.patient.attachment.style.display = patient.hasImage ? 'block' : 'none';
+			
+			setRadio( radioRisks, patient.riskNum );
+			setRadio( radioPathways, patient.pathNum );
+			
+			showAsAccepted( patient.accepted ); // ?
+			
+			patient.active();
+			activePatient = patient;
+		};
+		
+		/**
+		* User can step through the patients from the sidebar
+		*/
+		const nextPatient = ( dir ) => {
+			let patientKey;
+			
+			if( dir == "next" ){
+				patientKey  = collection.next( activePatient.myKey );
+			} else {
+				patientKey  = collection.prev( activePatient.myKey );
+			}
+			
+			// if a key exists, show the patient data for it
+			if( patientKey ){
+				sidebar.managePatient( collection.get( patientKey ));
+			}
+		};
+		
+		/** 
+		User updates the radio settings in the sidebar
+		*/
+		document.addEventListener('change', ( ev ) => {
+			let input = ev.target; 
+			if( input.name === 'idg-radio-g-patient-risk' ){
+				activePatient.risk = input.value;
+			}	
+			
+			if( input.name === 'idg-radio-g-patient-pathway' ){
+				activePatient.pathway = input.value;
+			}
+		});
+		
+		// reveal the public methods
+		return { 
+			change, 
+			managePatient, 
+			nextPatient, 
+			rejectPatient 
+		};
+		
+	})();
+	
+	
+	/**
+	* Initise: setup the first patient by default
+	*/
+	document.addEventListener('DOMContentLoaded', () => {
+		sidebar.managePatient( collection.getFirst() ); // default to first patient
+		//sidebar.change('patient');
+	}, { once: true });
+
+
+	/**
+	* Call back for <tr> edit icon
+	* @param {Event} ev - use target to get the right Patient Key.
+	*/
+	const editPatient = ( ev ) => {
+		let icon = ev.target; 
+		let key = collection.getKey( icon );
+		// view Patient and pass Patient
+		sidebar.managePatient( collection.get( key ) );
+		sidebar.change('patient');
+	};
+	
+	/*
+	* Events	
+	*/
+	bj.userDown('.js-edit-patient-icon', editPatient );	 // pencil icon on <tr>
+	
+	bj.userDown('#idg-js-sidebar-viewmode-1', () => sidebar.change('overview'));
+	bj.userDown('#idg-js-sidebar-viewmode-2', () => sidebar.change('patient'));
+	
+	// navigating the patient list 
+	bj.userDown('#side-patient-next-btn', () =>  sidebar.nextPatient("next"));
+	bj.userDown('#side-patient-previous-btn', () => sidebar.nextPatient("prev"));
+	
+	// rejecting (or accepting) buttons
+	bj.userDown('#sidebar-reject-accept button', ( ev ) => sidebar.rejectPatient( ev.target ));
+	
+	/**
+	Allow users to use Keys to navigate the patient list
+	*/
+	document.addEventListener("keydown", ( ev ) => {
+		ev.stopPropagation();
+		if( ev.key === "z" ){
+			sidebar.nextPatient("next");
+		}
+		if( ev.key === "a" ){
+			sidebar.nextPatient("prev");
+		}
+	}, false );
+	
+	
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';
+	
+	if( document.querySelector('.js-event-date-change') === null ) return;
+	
+	const changeEventDate = ( ev ) => {
+		let icon = ev.target;
+		let input = ev.target.parentNode.querySelector('input');
+		let text = ev.target.parentNode.querySelector('.js-event-date');
+			
+		icon.classList.add('disabled');
+		bj.hide( text );
+		bj.show( input );
+		setTimeout(() => input.focus(), 20);
+	};
+	
+	bj.userDown('.js-event-date-change > .rewind', changeEventDate ); 	
+			
+})( bluejay ); 
+(function (uiApp) {
+
+	'use strict';
+	
+	const demo = () => {
+		const div = document.createElement('div');
+		div.className = "oe-popup-wrap dark";
+		document.body.appendChild( div );
+		
+		const template = [
+			'<div class="oe-login timeout">',
+			'<div class="login">',
+			'<h1>Timed out</h1>',
+			'<div class="user">',
+			'<input type="text" placeholder="Username">',
+			'<input type="password" placeholder="Password">',
+			'<button class="green hint" id="js-login">Login</button>',
+			'</div>',
+			'<div class="info">',
+			'For security reasons you have been logged out. Please login again',
+			'</div>',
+			'</div>',
+			'</div>'].join('');
+			
+		div.innerHTML = Mustache.render( template, {} );
+		
+	};
+
+	bluejay.demoLoginTimeOut = demo;	
+			
+})( bluejay ); 
+(function (uiApp) {
+
+	'use strict';
+	
+	/*
+	IDG DEMO of some UX functionality
+	*/
+	
+	// tr class hook: .js-idg-demo-13420;
+	if(document.querySelector('.js-idg-demo-13420') === null) return;
+	
+	
+	
+	// state change is based on the prescribed toggle switch
+	document.addEventListener('input',(ev) => {
+		let me = ev.target;
+		if(me.matches('.js-idg-demo-13420 .toggle-switch input')){
+			/*
+			toggling the presciption: 
+			ON: show 'Stop' / hide: Duration/dispense & taper
+			*/
+			let tr = uiApp.getParent(me, 'tr');
+			let ongoingTxt = tr.querySelector('.js-idg-ongoing-text');
+			let stopBtn = tr.querySelector('.js-idg-date-stop');
+			let durDis = tr.querySelector('.js-idg-duration-dispense');
+			let taperBtn = tr.querySelector('.js-idg-taper-btn');
+			let reasons = tr.querySelector('.js-idg-stopped-reasons');
+			
+			if(me.checked){
+				// on
+				uiApp.hide(stopBtn);
+				uiApp.hide(reasons);
+				uiApp.show(ongoingTxt, 'block');
+				uiApp.show(durDis, 'block');
+				uiApp.show(taperBtn, 'block');	
+			} else {
+				// off
+				uiApp.show(stopBtn, 'block');
+				uiApp.hide(ongoingTxt);	
+				uiApp.hide(durDis);
+				uiApp.hide(taperBtn);
+			}	
+		}
+	});
+	
+	const updateStopState = (td, stop) => {
+		
+		let stopBtn = td.querySelector('.js-idg-stop-btn');
+		let stopDate = td.querySelector('.js-idg-stop-date');
+		let reasons = td.querySelector('.js-idg-stopped-reasons');
+		let cancelIcon = td.querySelector('.js-idg-cancel-stop');
+		
+		if(stop){
+			uiApp.hide(stopBtn);
+			uiApp.show(stopDate, 'block');
+			uiApp.show(reasons, 'block');
+			uiApp.show(cancelIcon, 'block');
+		} else {
+			uiApp.show(stopBtn, 'block');
+			uiApp.hide(stopDate);
+			uiApp.hide(reasons);
+			uiApp.hide(cancelIcon);
+		}
+	};
+	
+	// 'stop' button
+	document.addEventListener('click', (ev) => {
+		if(ev.target.matches(".js-idg-stop-btn")){
+			updateStopState( uiApp.getParent(ev.target, 'td'), true);
+		}
+	});
+	
+	// cancel 'stop'
+	document.addEventListener('mousedown', (ev) => {
+		if(ev.target.matches('.js-idg-cancel-stop')){
+			updateStopState( uiApp.getParent(ev.target, 'td'), false);
+		}
+	});
+
+	
+	// Show history
+	document.addEventListener('mousedown',(ev) => {
+		let me = ev.target;
+		if(me.matches('.js-show-medication-history')){
+			let tableRows = document.querySelectorAll('.js-idg-medication-history-' + me.dataset.idgdemo);
+			tableRows.forEach((row) => {
+				if(row.style.visibility == "collapse"){
+					row.style.visibility = "visible";
+				} else {
+					row.style.visibility = "collapse";
+				}
+				
+			});
+		}
+	});
+			
+})(bluejay); 
+(function( bj ) {
+
+	'use strict';
+	
+	if( document.querySelector('.home-messages') === null ) return;
+	
+	const btn = {
+		messages: document.getElementById('idg-js-sidebar-viewmode-1'),
+		tags: document.getElementById('idg-js-sidebar-viewmode-2'),
+	};
+	
+	const sidebar = {
+		messages: document.querySelector('.sidebar-messages'),
+		tags: document.querySelector('.sidebar-tags'),
+	};
+	
+	const content = {
+		messages: document.querySelector('.messages-all'),
+		tags: document.querySelector('.tags-all'),
+	};
+	
+	const showMessages = () => {
+		if(btn.messages.classList.contains('selected')) return;
+		btn.messages.classList.add('selected');
+		btn.tags.classList.remove('selected');
+		
+		bj.show( sidebar.messages );
+		bj.hide( sidebar.tags );
+		bj.show( content.messages );
+		bj.hide( content.tags );
+		
+	};
+	
+	const showTags = () => {
+		if(btn.tags.classList.contains('selected')) return;
+		btn.messages.classList.remove('selected');
+		btn.tags.classList.add('selected');
+		
+		bj.hide( sidebar.messages );
+		bj.show( sidebar.tags );
+		bj.hide( content.messages );
+		bj.show( content.tags );
+	};
+	
+	
+	bj.userDown('#idg-js-sidebar-viewmode-1', showMessages );
+	bj.userDown('#idg-js-sidebar-viewmode-2', showTags ); 
+			
+})( bluejay ); 
+(function (uiApp) {
+
+	'use strict';
+	
+	/*
+	IDG DEMO of some UX functionality
+	for Ophthalmic Diagnosis v2!
+	*/
+	
+	if(document.querySelector('.js-idg-diagnosis-active-switcher') === null) return;
+	
+	/*
+	Update VIEW states to demo UX
+	*/
+	const updateActiveState = (div, state) => {
+		let text = div.querySelector('.js-idg-diagnosis-text');
+		let toggle = div.querySelector('.toggle-switch');
+		let remove = div.querySelector('.remove-circle');
+		let btn = div.querySelector('.js-idg-diagnosis-add-btn');
+		let doubt = div.querySelector('.js-idg-diagnosis-doubt');
+		let doubtInput = div.querySelector('.js-idg-diagnosis-doubt-input');
+		
+		let side = div.dataset.idgside;
+		let eyelatIcon = div.parentNode.previousElementSibling.querySelector('.oe-eye-lat-icons .oe-i');
+		
+		let date = div.parentNode.nextElementSibling.querySelector('.js-idg-diagnosis-date');	
+				
+		switch(state){
+			case 'active':
+			uiApp.reshow(text);
+			uiApp.reshow(toggle);
+			uiApp.reshow(doubt);
+			uiApp.hide(remove);
+			uiApp.hide(btn);
+			uiApp.reshow(date);
+			text.textContent = 'Active (confirmed)';
+			text.classList.remove('fade');
+			doubt.querySelector('input').checked = false;
+			toggle.querySelector('input').checked = true;
+			setEyeLatIcon(eyelatIcon, side, 'active');
+			break;
+			
+			case 'confirmed':
+			uiApp.hide(doubtInput);
+			uiApp.reshow(text);
+			break;
+			
+			case 'doubt':
+			uiApp.reshow(doubtInput);
+			uiApp.hide(text);
+			break;
+			
+			case 'inactive':
+			uiApp.reshow(text);
+			uiApp.reshow(toggle);
+			uiApp.reshow(remove);
+			uiApp.hide(btn);
+			uiApp.hide(doubt);
+			uiApp.hide(doubtInput);
+			uiApp.reshow(date);
+			text.textContent = 'Inactive from';
+			text.classList.add('fade');
+			setEyeLatIcon(eyelatIcon, side, 'inactive');
+			break;
+			
+			case 'removed':
+			uiApp.hide(toggle);
+			uiApp.hide(remove);
+			uiApp.reshow(btn);
+			uiApp.hide(date);
+			text.textContent = 'Not present';
+			setEyeLatIcon(eyelatIcon, side, 'none');
+			break; 
+		}
+	};
+	
+	const setEyeLatIcon = (i, side, state) => {
+		/*
+		oe-i laterality L small pad
+		oe-i laterality NA small pad	
+		*/
+		if(i === null) return;
+		
+		let css = ['oe-i'];
+		let eye = side == 'left' ? 'L' : 'R';
+		
+		switch(state){
+			case 'active':
+			css.push('laterality', eye);
+			break;
+			case 'inactive':
+			css.push('laterality', eye+'i');
+			break;
+			case 'none':
+			css.push('laterality', 'NA');
+			break;
+		}
+		
+		css.push('small', 'pad');
+		
+		i.className = css.join(' ');
+	};
+	
+	
+	// store the default <td> 
+	let tdDefault = null;
+	
+	let td1 = '<span class="oe-eye-lat-icons"><i class="oe-i laterality NA small pad"></i></span>';
+	let td2 = '<div class="flex-layout cols-11 js-idg-diagnosis-active-switcher" data-idgdemo="-r-nSysEx2" data-idgside="right"><div class="js-idg-diagnosis-actions"><label class="toggle-switch" style="display: none;"><input type="checkbox"><div class="toggle-btn"></div></label><label class="inline highlight js-idg-diagnosis-doubt" style="display: none;"><input value="diagnosis-doubt" name="idg-4131" type="checkbox"> <i class="oe-i doubt small-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="? = doubts; suspected, etc"></i></label><i class="oe-i remove-circle small-icon pad-left" style="display: none;"></i><button class="js-idg-diagnosis-add-btn ">Add right side</button></div><div class="js-idg-diagnosis-state"><input class="js-idg-diagnosis-doubt-input" value="Suspected" placeholder="Suspected" maxlength="32" style="display: none;"><span class="js-idg-diagnosis-text js-active-state fade ">Not present</span></div></div>';
+	let td3 = '<div class="js-idg-diagnosis-date"><input type="text" class="date" value="30 Apr 2020"></div>';
+	//td3.className = 'valign-top';
+	
+	
+	const updateSystemic = (tr, num) => {
+		
+		let sidesCheck = tr.querySelector('.js-idg-sides');
+		let text = tr.querySelector('.js-idg-diagnosis-text');
+		
+		let div = tr.querySelector('.js-idg-diagnosis-active-switcher');
+		let toggle = div.querySelector('.toggle-switch');
+		let doubt = div.querySelector('.js-idg-diagnosis-doubt');
+		let doubtInput = div.querySelector('.js-idg-diagnosis-doubt-input');
+		
+		let systemicIcons = tr.querySelector('.js-idg-right-icon .oe-systemic-icons');
+
+
+		if(tdDefault == null){
+			tdDefault = tr.querySelector('.js-idg-diagnosis-state-options').innerHTML;
+			uiApp.reshow(text);
+		}
+
+		
+		switch(num){
+			case '0':
+				uiApp.reshow(sidesCheck);
+				uiApp.reshow(text);
+				text.textContent = 'Active (confirmed)';
+				text.classList.remove('fade');
+				uiApp.reshow(toggle);
+				toggle.querySelector('input').checked = true;
+				uiApp.reshow(doubt);
+				doubt.querySelector('input').checked = false;
+				uiApp.hide(doubtInput);
+				systemicIcons.querySelector('.oe-i').className = "oe-i person-green small pad";
+				
+				
+			break;
+			
+			case '1':
+				uiApp.hide(sidesCheck);
+				uiApp.reshow(text);
+				text.textContent = 'Not present';
+				text.classList.add('fade');
+				uiApp.hide(toggle);
+				uiApp.reshow(doubt);
+				doubt.querySelector('input').checked = false;
+				uiApp.hide(doubtInput);
+				systemicIcons.querySelector('.oe-i').className = "oe-i NA small pad";
+			break;
+			
+			case '2':
+				uiApp.hide(sidesCheck);
+				uiApp.reshow(text);
+				text.textContent = 'Not checked';
+				text.classList.add('fade');
+				uiApp.hide(toggle);
+				uiApp.hide(doubt);
+				uiApp.hide(doubtInput);
+				systemicIcons.querySelector('.oe-i').className = "oe-i NA small pad";
+			break;
+		}
+	};
+	
+	const systemicSidesChange = (tr, val) => {
+		let td = tr.querySelector('.js-idg-diagnosis-state-options');
+		let systemicIcons = tr.querySelector('.js-idg-right-icon .oe-systemic-icons');
+		let eyeLatIcons = tr.querySelector('.js-idg-right-icon .oe-eye-lat-icons .oe-i');
+	
+		
+		if(val){
+			// show sides
+			td.innerHTML = td1;
+			td.colSpan = 0;
+			let newCell1 = tr.insertCell(2);
+			let newCell2 = tr.insertCell(3);
+			newCell1.innerHTML = td2;
+			newCell2.innerHTML = td3;	
+			
+			uiApp.hide(tr.cells[5].querySelector('.toggle-switch'));
+			uiApp.hide(tr.cells[5].querySelector('.highlight'));
+		
+			if(tr.cells[5].querySelector('.js-idg-diagnosis-actions .js-idg-diagnosis-add-btn') === null){
+				let btn = document.createElement('button');
+				btn.className = "js-idg-diagnosis-add-btn";
+				btn.textContent = "Add left side";
+				tr.cells[5].querySelector('.js-idg-diagnosis-actions').appendChild(btn);
+			} else {
+				uiApp.reshow(tr.cells[5].querySelector('.js-idg-diagnosis-add-btn'));
+			}
+			
+			let text = tr.cells[5].querySelector('.js-idg-diagnosis-text');
+			text.textContent = 'Inactive from';
+			text.classList.add('fade');
+			
+			systemicIcons.style.display = "none";
+			eyeLatIcons.style.display = "inline-block";
+			
+		} else {
+			// no sides
+			tr.deleteCell(2);
+			tr.deleteCell(2); // was 3, now 2!
+			td.innerHTML = tdDefault;
+			td.colSpan = 3;
+			
+			uiApp.hide(tr.cells[3].querySelector('.js-idg-diagnosis-add-btn'));
+			uiApp.reshow(tr.cells[3].querySelector('.toggle-switch'));
+			tr.cells[3].querySelector('.toggle-switch').checked = true;
+			uiApp.reshow(tr.cells[3].querySelector('.highlight'));
+			
+			td.querySelector('input').checked = true;
+			
+			systemicIcons.style.display = "inline-block";
+			eyeLatIcons.style.display = "none";
+		}		
+	};
+
+	const showAuditHistory = (id) => {
+		let tableRows = document.querySelectorAll('.js-idg-diagnosis-history-' + id);
+		tableRows.forEach((row) => {
+			// toggle the audit rows
+			if(row.style.visibility == "collapse"){
+				row.style.visibility = "visible";
+			} else {
+				row.style.visibility = "collapse";
+			}
+		});
+	};
+	
+
+	// Active Switcher
+	document.addEventListener('input',(ev) => {
+		let me = ev.target;
+		if(me.matches('.js-idg-diagnosis-active-switcher .toggle-switch input')){
+			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
+			updateActiveState(parent, (me.checked ? 'active' : 'inactive'));		
+		}
+		
+		if(me.matches('.js-idg-diagnosis-doubt input')){
+			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
+			updateActiveState(parent, (me.checked ? 'doubt' : 'confirmed'));
+		}
+		
+		// demo the Present, Not Present and Not checked raido
+		if(me.matches('.js-idg-demo-sys-diag-side-switcher .js-idg-diagnosis-state-options input')){
+			let parent = uiApp.getParent(me, '.js-idg-demo-sys-diag-side-switcher');
+			updateSystemic(parent, me.value);
+		}
+		
+	});
+	
+	document.addEventListener('click', (ev) => {
+		let me = ev.target;
+		if(me.matches('.js-idg-demo-sys-diag-side-switcher .js-idg-sides')){
+			let parent = uiApp.getParent(me, '.js-idg-demo-sys-diag-side-switcher');
+			let icon = me.querySelector('.oe-i');
+			if(me.dataset.state == "no-sides"){
+				systemicSidesChange(parent, true);
+				me.dataset.state = "sides";
+				icon.classList.replace("person", "person-split");
+			} else {
+				systemicSidesChange(parent, false);
+				me.dataset.state = "no-sides";
+				icon.classList.replace("person-split", "person");
+			}
+		}
+	});
+	
+	document.addEventListener('mousedown',(ev) => {
+		let me = ev.target;
+		
+		// show
+		if(me.matches('.js-show-diagnosis-history')){
+			showAuditHistory(me.dataset.idgdemo);
+		}
+		
+		if(me.matches('.js-idg-diagnosis-active-switcher .remove-circle')){
+			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
+			updateActiveState(parent, 'removed');
+		}
+		
+		if(me.matches('.js-idg-diagnosis-add-btn')){
+			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
+			updateActiveState(parent, 'active');
+		}
+
+	});
+	
+	const showDeletePopup = (ev) => {
+		// xhr returns a Promise... 
+		uiApp.xhr('/idg-php/v3/_load/specific/exam-oph-diag-delete.php')
+			.then( html => {
+				const div = document.createElement('div');
+				div.className = "oe-popup-wrap";
+				div.innerHTML = html;
+				div.querySelector('.close-icon-btn').addEventListener("mousedown", (ev) => {
+					ev.stopPropagation();
+					uiApp.remove(div);
+				}, {once:true} );
+				
+				// reflow DOM
+				document.body.appendChild( div );
+			})
+			.catch( e => console.log('failed to copy',e));  // maybe output this to UI at somepoint, but for now... 
+	};
+
+	uiApp.userDown('.js-idg-demo-remove-oph-diag', showDeletePopup);
+	
+	
+			
+})(bluejay); 
 (function( bj ){
 
 	'use strict';	
@@ -4419,7 +5494,6 @@ const oePlotly = (function ( bj ) {
 			handleFilterChange( newFilter ){
 				// convert the "Unassigned" code to Boolean false:
 				newFilter = newFilter == 'nobody' ? false : newFilter;	
-				console.log( newFilter );
 				this.setState({ filter: newFilter });
 			}
 			
@@ -5674,13 +6748,14 @@ const oePlotly = (function ( bj ) {
 	// central-ise these:
 	react.assignList = ['MM', 'AB', 'AG', 'RB', 'CW'].sort();
 	react.clinicPersonList = ['Nurse'];
-	react.clinicProcessList = ['Dilate', 'VisAcu', 'Orth', 'Ref' ].sort();
+	react.clinicProcessList = ['Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort();
 	
 	react.fullShortCode = ( shortcode ) => {
 		let full = shortcode; // "Nurse" doesn't need expanding on
 		switch( shortcode ){
 			case 'Arr': full = "Arrived"; break;
 			case 'Fin': full = "Finish"; break;
+			case "DNA" : full = "Did Not Attend"; break;
 			
 			case "nobody" : full = "Not assigned"; break;
 			case "MM" : full = "Mr Michael Morgan"; break;
@@ -5689,13 +6764,15 @@ const oePlotly = (function ( bj ) {
 			case "RB" : full = "Dr Robin Baum"; break;
 			case "CW" : full = "Dr Coral Woodhouse"; break; 
 			
-			case "DNA" : full = "Did Not Attend"; break;
+			case "Img" : full = "Imaging"; break;
 			case "VisAcu" : full = "Visual Acuity"; break;
+			case "Orth" : full = "Orthoptics"; break;
+			case "Fields" : full = "Visual Fields"; break;
+			case "Ref" : full = "Refraction"; break;
 			
 		}
 		return full; 
 	}; 
-	
 	
 	react.deepCopy = ( obj ) => {
 		// object clone	
@@ -5856,1081 +6933,6 @@ const oePlotly = (function ( bj ) {
 	  
 
 })( bluejay ); 
-(function (uiApp) {
-
-	'use strict';
-	
-	if(document.querySelector('#tinymce-letterheader-editor') === null) return;
-	
-	let tinyEditor = null;
-	
-	const inserts = {
-		"user_name": {"label":"User Name","value":"<span>Admin Admin</span>"},
-		"firm_name": {"label":"Firm Name","value":"<span>Glaucoma Clinic</span>"},
-		"site_name": {"label":"Site Name","value":"<span>Kings Hospital</span>"},
-		"site_phone": {"label":"Site Phone","value":"<span>0123456789</span>"},
-		"site_fax": {"label":"Site Fax","value":null},
-		"site_email": {"label":"Site Email","value":null},
-		"site_address": {"label":"Site Address","value":"<span>100 Main Road</span>"},
-		"site_city":{"label":"Site City", "value":"<span>London</span>"},
-		"site_postcode": {"label":"Site Postcode","value":"<span>W1 1AA</span>"},
-		"primary_logo": {"label":"Primary Logo","value":'<img src="/idg-php/imgDemo/correspondence/letterhead-logo.png">'},
-		"secondary_logo": {"label":"Secondary Logo","value":null},
-		"current_date": {"label":"Today's Date","value":"<span>" + document.documentElement.dataset.today + "</span>"}
-	};
-
-	const insertData = (key, value) => {
-		tinyEditor.insertContent('<span contenteditable="false" data-substitution="' + key + '">' + value + '</span>');
-	};
-	
-	const quickInsertBtns = () => {
-		var frag = new DocumentFragment();
-		
-		// build Buttons
-		for (const key in inserts) {
-			let label = inserts[key].label;
-			let value = inserts[key].value;
-			if(value === null) continue; // not much point in adding this as a button!
-			
-			var btn = document.createElement('button');
-			btn.className = "idg-quick-insert";
-			btn.textContent = label;
-			btn.setAttribute('data-insert', JSON.stringify({key, value}));
-			
-			// build the Fragment
-			frag.appendChild(btn);
-		}
-		
-		document.querySelector('.editor-quick-insert-btns').appendChild(frag);
-	};
-
-	/*
-	tinyMCE editor - initialise
-	*/
-	tinymce.init({
-		selector: '#tinymce-letterheader-editor',
-		schema: 'html5-strict',
-		branding: false,
-		min_height:400, // can be dragged bigger
-		menubar: false,
-		plugins: ['lists table paste code'],
-		contextmenu: 'table',
-		toolbar: "undo redo | bold italic underline | alignleft aligncenter alignright | table | code",
-		//body_class: 'tiny_oe_body',	
-		custom_undo_redo_levels: 10, // save memory
-		//object_resizing : false
-		hidden_input: false,
-		block_formats: 'Paragraph=p; Header 2=h2; Header 3=h3',
-		content_css : '/newblue/css/style_oe3_print.min.css',
-		setup: function(editor) {
-			editor.on('init', (function(e) {
-				tinyEditor = editor;
-				quickInsertBtns();
-			}));
-		}
-	}); 
-		
-	uiApp.userDown('.idg-quick-insert', (ev) => {
-		let obj = JSON.parse(ev.target.dataset.insert);
-		insertData(obj.key, obj.value);
-	});
-	
-/*
-	$('select#substitution-selection').on('change', function () {
-                let key = $(this).val();
-                if (key !== '' && key !== 'none_selected') {
-                    let value = that.getSubstitution(key);
-                    editor_ref.insertContent('<span contenteditable="false" data-substitution="' + key + '">' + value + '</span>');
-                    console.log(key);
-                }
-
-                $(this).val('none_selected');
-            });
-	
-			
-			
-
-    $(document).ready(function () {
-        let html_editor_controller =
-            new OpenEyes.HTMLSettingEditorController(
-                "letter_header",
-                {"plugins":"lists table paste code pagebreak","branding":false,"visual":false,"min_height":400,"toolbar":"undo redo | bold italic underline | alignleft aligncenter alignright | bullist numlist | table | subtitle | labelitem | label-r-l | inputcheckbox | pagebreak code","valid_children":"+body[style]","custom_undo_redo_levels":10,"object_resizing":false,"menubar":false,"paste_as_text":true,"table_toolbar":"tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol","browser_spellcheck":true,"extended_valid_elements":"i[*]","valid_elements":"*[*]","pagebreak_separator":"<div class=\"pageBreak\" \/>","content_css":"\/assets\/ca6609ee\/css\/style_oe3_print.min.css"},
-                }            );
-    });
-*/
-			
-			
-})(bluejay); 
-(function (uiApp) {
-
-	'use strict';
-	
-	/*
-	IDG DEMO of some UX functionality
-	Eyedraw v2 (2.5)
-	*/
-	
-	if(document.querySelector('.js-idg-demo-ed2') === null) return;
-
-
-	uiApp.userDown('.js-idg-demo-doodle-drawer', (ev) => {
-		let icon = ev.target; 
-		let li = uiApp.getParent(icon,'li');
-		li.classList.toggle('ed2-drawer-open');
-	});
-	
-	
-	uiApp.userDown('.ed-canvas-edit', (ev) => {
-		let canvas = ev.target; 
-		let editor = uiApp.getParent(canvas,'.ed2-editor');
-		let popup = editor.querySelector('.ed2-doodle-popup');
-		popup.classList.toggle('closed');	
-	});
-	
-	uiApp.userDown('#js-idg-demo-ed2-search-input', (ev) => {
-		let autocomplete = ev.target.nextElementSibling;
-		console.log('hi');
-		if(autocomplete.style.display == "none"){
-			autocomplete.style.display = 'block';
-		} else {
-			autocomplete.style.display = 'none';
-		}
-	});
-	
-			
-})(bluejay); 
-(function( bj ) {
-
-	'use strict';
-	
-	if( document.querySelector('.oe-worklists.eferral-manager') === null ) return;
-	
-	/**
-	e-referral manaager demo
-	see: https://idg.knowego.com/v3/eferral-manager
-	demo shows UI/UX behaviour for setting Risk and Pathways
-	for selected patient lists.	
-	*/
-	
-	const collection = new bj.Collection();
-	
-	/**
-	This MUST match the array used in PHP.
-	*/
-	const pathways = ['DRSS', 'Cataract', 'Glaucoma', 'Uveitis', 'Lucentis', 'Glaucoma ODTC', 'Laser/YAG', 'General', 'Ocular Motility', 'Oculoplastic', 'Neuro', 'Botox', 'Corneal', 'VR', 'Paediatric Ophthalmology', 'Paediatric Neuro-Ophthalmology'];
-	
-	/**
-	* Get pathway index from Name
-	* @param {String} Pathway
-	* @returns {Number} index
-	*/
-	const getPathywayNum = ( str ) => {
-		let pathIndex = 99; // 99 = None 
-		pathways.forEach(( path, index ) => {
-			if( str == path ) pathIndex = index;
-		});
-		
-		return pathIndex; 
-	};
-	
-	/**
-	* Work out Risk number from CSS icon class
-	* @param {String} classes
-	* @returns {Number} risk
-	*/
-	const riskLevelFromClass = ( cssStr ) => {
-		if( cssStr.includes('green')) return 3;
-		if( cssStr.includes('amber')) return 2;
-		if( cssStr.includes('red')) return 1;
-		return 0;
-	};
-	
-	/** 
-	* update Patient Risk icon
-	* @params {Element} icon
-	* @params {Number} level
-	*/
-	const updateRiskIcon = ( icon, level ) => {
-		const colours = ['grey', 'red', 'amber', 'green'];
-		icon.className = `oe-i triangle-${colours[level]} selected`; // selected to remove cursor pointer
-	};
-	
-	/**
-	* @Class 
-	* Patient 
-	*/
-	const Patient = {
-		accepted: null, // rejected is false, accepted = true, starts unknown 
-		tr:null, 
-		
-		// icons in <tr>
-		iEdit:null, // pencil icon
-		iState:null, // tick / cross
-		iRisk:null, // triangle
-		
-		// Strings
-		fullName: 'JONES, David (Mr)', 
-		nhs: '000',
-		age: '42',
-		gender: 'Male',
-		
-		// states
-		riskNum: 0,
-		pathElem: null,
-		pathNum: 99, 
-		
-		/**
-		Active / Inactive <tr> state
-		*/
-		active(){
-			this.iEdit.classList.replace('pencil', 'direction-right');
-			this.iEdit.classList.replace('small-icon', 'large');
-			this.iEdit.classList.add('selected');	
-			this.tr.classList.add('active');
-		},
-		inactive(){
-			this.iEdit.classList.replace('direction-right', 'pencil');
-			this.iEdit.classList.replace('large', 'small-icon');
-			this.iEdit.classList.remove('selected');	
-			this.tr.classList.remove('active');
-		},
-		
-		/**
-		User can reject the referral, if so update UI <tr> state
-		*/
-		accept(){
-			this.accepted = true;
-			this.iState.classList.replace('status-query', 'tick-green');
-			this.iState.classList.replace('cross-red', 'tick-green');
-		},
-		reject(){
-			this.accepted = false;
-			this.iState.classList.replace('status-query', 'cross-red');
-			this.iState.classList.replace('tick-green', 'cross-red');
-		},
-		
-		/**
-		Patient info (quick hack to show this)
-		*/
-		name(){
-			return this.fullName;
-		},
-		details(){
-			return `${this.gender}, ${this.age}y`;
-		}, 
-		
-		/**
-		Risk state
-		*/
-		setRisk( icon ){
-			this.iRisk = icon;
-			this.riskNum = riskLevelFromClass( icon.className );
-		}, 
-		get risk(){
-			return this.riskNum;
-		}, 
-		set risk( val ){
-			this.riskNum = parseInt(val, 10);
-			updateRiskIcon( this.iRisk, val );
-			if( this.accepted === null ) this.accept();
-		}, 
-		
-		/**
-		Clinical Pathway
-		*/
-		setPathway( elem ){
-			this.pathElem = elem;
-			this.pathNum = getPathywayNum( elem.textContent );
-		}, 
-		set pathway( val ){
-			this.pathNum = parseInt(val, 10);
-			this.pathElem.textContent = pathways[ this.pathNum ];
-		}, 
-		get pathway(){
-			return this.pathNum;
-		}
-	};
-	
-	
-	/**
-	* Initalise Patients. 
-	* This is done from the DOM. It's set up to show a selection of lists
-	* There could be a few tables that need setting up.
-	*/
-	const tables = bj.nodeArray( document.querySelectorAll('table.eferrals'));
-	
-	// loop through all the tables...
-	tables.forEach(( table ) => {
-		
-		// then loop through all <tr> ...
-		let rows = Array.from( table.tBodies[0].rows );
-		
-		rows.forEach(( row ) => {
-			// build Patient
-			let patient = Object.create( Patient );
-			patient.tr = row;
-			
-			patient.iEdit = row.querySelector('.oe-i.pencil');
-			patient.iState = row.querySelector('.oe-i.js-referral-status-icon');
-			
-			patient.fullName = row.querySelector('.patient-name').textContent;
-			patient.age = row.querySelector('.patient-age').textContent.substring(3);
-			patient.gender = row.querySelector('.patient-gender').textContent.substring(3);
-			patient.nhs = row.querySelector('.nhs-number').textContent.substring(3);
-			
-			patient.setRisk( row.querySelector('[class*="triangle-"]'));
-			patient.setPathway( row.querySelector('.js-pathway') );
-			
-			patient.hasImage = Math.random() >= 0.5; // show randomly a thumbnail attachment
-			
-			// Quick hack to get group header to show when patient is selected
-			let workGroup = bj.getParent( row, '.worklist-group' );
-			patient.group = workGroup.querySelector('.worklist-summary h2').textContent;
-			
-			// build DOM collections, store 'key', need it for 'next' / 'previous'
-			patient.myKey = collection.add( patient, patient.iEdit );
-		});
-	});
-
-	/**
-	* Sidebar functionality 
-	* workhorse.
-	*/
-	const sidebar = (() => {
-		
-		let activePatient = null;
-	
-		const radioRisks = bj.nodeArray( document.querySelectorAll('#sidebar-patient-risk-settings input')); 
-		const radioPathways = bj.nodeArray( document.querySelectorAll('#sidebar-pathway-settings input'));
-	
-		/** 
-		* sidebar UI
-		*/
-		const ui = {
-			view: {
-				overview: document.getElementById('sidebar-eferral-overview'), 
-				patient: document.getElementById('sidebar-manage-patient'), 
-				reject: document.getElementById('sidebar-reject-accept')
-			},
-			btn: {
-				overview: document.getElementById('idg-js-sidebar-viewmode-1'),
-				patient: document.getElementById('idg-js-sidebar-viewmode-2'),
-				
-			}, 
-			patient: {
-				fullName: document.getElementById('js-sidebar-patient-fullname'),
-				details: document.getElementById('js-sidebar-patient-details'),
-				group: document.getElementById('js-sidebar-referral-group'),
-				attachment: document.getElementById('js-demo-attachment-image'), 
-			}	
-		};
-		
-		/**
-		* Update sidebar Reject / Accept area
-		* @param {Boolean} True or Null means 'accepted'
-		*/
-		const showAsAccepted = ( b ) => {
-			if( b || b === null ){
-				bj.show( ui.view.reject.querySelector('.js-reject'));
-				bj.hide( ui.view.reject.querySelector('.js-accept'));
-			} else {
-				bj.hide( ui.view.reject.querySelector('.js-reject'));
-				bj.show( ui.view.reject.querySelector('.js-accept'));
-			}
-		}; 
-		
-		/**
-		* Set Radio for Risk or Pathway
-		* @param {Array} arr
-		* @param {Number} num - radio to 'check'
-		*/
-		const setRadio = ( arr, num ) => {
-			arr.forEach(( radio ) => {
-				radio.checked = ( num == radio.value );
-			});
-		};
-		
-		/** 
-		public API
-		*/
-		
-		/**
-		* Callback from either "Reject" or "Accept" btn
-		* Updates Patient. See Events.
-		* @param {EventTarget} btn 
-		*/
-		const rejectPatient = ( btn ) => {
-			// check which button by it's colour
-			if( btn.classList.contains('red') ){
-				// reject
-				showAsAccepted( false );
-				activePatient.reject();
-			} else {
-				// re-accept
-				showAsAccepted( true );
-				activePatient.accept();
-			}
-		};
-		
-		
-		/**
-		* Callback from "Overview" or "Manage Patient" buttons
-		* This updates the sidebar UI
-		* @param {String} view 
-		*/
-		const change = ( view ) => {
-			if( view == "overview" ){
-				bj.show( ui.view.overview );
-				bj.hide( ui.view.patient );
-				ui.btn.overview.classList.add('selected');
-				ui.btn.patient.classList.remove('selected');
-			} else {
-				bj.hide( ui.view.overview );
-				bj.show( ui.view.patient );
-				ui.btn.overview.classList.remove('selected');
-				ui.btn.patient.classList.add('selected');
-			}
-		};
-		
-		/**
-		* Set up the Patient area in sidebar
-		* Controller calls this with the selected 'Patient'
-		* @param {Patient} custom Object. 
-		*/
-		const managePatient = ( patient ) => {
-			// inactive last patient?
-			if( activePatient !== null ) activePatient.inactive();
-			
-			ui.patient.fullName.textContent = patient.fullName;
-			ui.patient.details.innerHTML = `<small class="fade">NHS</small> ${patient.nhs}  
-				&nbsp;<small class="fade">Gen</small> ${patient.gender} 
-				&nbsp;<small class="fade">Age</small> ${patient.age}`;
-				
-			ui.patient.group.textContent = patient.group;
-			
-			// hacky demo of attachment
-			ui.patient.attachment.style.display = patient.hasImage ? 'block' : 'none';
-			
-			setRadio( radioRisks, patient.riskNum );
-			setRadio( radioPathways, patient.pathNum );
-			
-			showAsAccepted( patient.accepted ); // ?
-			
-			patient.active();
-			activePatient = patient;
-		};
-		
-		/**
-		* User can step through the patients from the sidebar
-		*/
-		const nextPatient = ( dir ) => {
-			let patientKey;
-			
-			if( dir == "next" ){
-				patientKey  = collection.next( activePatient.myKey );
-			} else {
-				patientKey  = collection.prev( activePatient.myKey );
-			}
-			
-			// if a key exists, show the patient data for it
-			if( patientKey ){
-				sidebar.managePatient( collection.get( patientKey ));
-			}
-		};
-		
-		/** 
-		User updates the radio settings in the sidebar
-		*/
-		document.addEventListener('change', ( ev ) => {
-			let input = ev.target; 
-			if( input.name === 'idg-radio-g-patient-risk' ){
-				activePatient.risk = input.value;
-			}	
-			
-			if( input.name === 'idg-radio-g-patient-pathway' ){
-				activePatient.pathway = input.value;
-			}
-		});
-		
-		// reveal the public methods
-		return { 
-			change, 
-			managePatient, 
-			nextPatient, 
-			rejectPatient 
-		};
-		
-	})();
-	
-	
-	/**
-	* Initise: setup the first patient by default
-	*/
-	document.addEventListener('DOMContentLoaded', () => {
-		sidebar.managePatient( collection.getFirst() ); // default to first patient
-		//sidebar.change('patient');
-	}, { once: true });
-
-
-	/**
-	* Call back for <tr> edit icon
-	* @param {Event} ev - use target to get the right Patient Key.
-	*/
-	const editPatient = ( ev ) => {
-		let icon = ev.target; 
-		let key = collection.getKey( icon );
-		// view Patient and pass Patient
-		sidebar.managePatient( collection.get( key ) );
-		sidebar.change('patient');
-	};
-	
-	/*
-	* Events	
-	*/
-	bj.userDown('.js-edit-patient-icon', editPatient );	 // pencil icon on <tr>
-	
-	bj.userDown('#idg-js-sidebar-viewmode-1', () => sidebar.change('overview'));
-	bj.userDown('#idg-js-sidebar-viewmode-2', () => sidebar.change('patient'));
-	
-	// navigating the patient list 
-	bj.userDown('#side-patient-next-btn', () =>  sidebar.nextPatient("next"));
-	bj.userDown('#side-patient-previous-btn', () => sidebar.nextPatient("prev"));
-	
-	// rejecting (or accepting) buttons
-	bj.userDown('#sidebar-reject-accept button', ( ev ) => sidebar.rejectPatient( ev.target ));
-	
-	/**
-	Allow users to use Keys to navigate the patient list
-	*/
-	document.addEventListener("keydown", ( ev ) => {
-		ev.stopPropagation();
-		if( ev.key === "z" ){
-			sidebar.nextPatient("next");
-		}
-		if( ev.key === "a" ){
-			sidebar.nextPatient("prev");
-		}
-	}, false );
-	
-	
-})( bluejay ); 
-(function( bj ){
-
-	'use strict';
-	
-	if( document.querySelector('.js-event-date-change') === null ) return;
-	
-	const changeEventDate = ( ev ) => {
-		let icon = ev.target;
-		let input = ev.target.parentNode.querySelector('input');
-		let text = ev.target.parentNode.querySelector('.js-event-date');
-			
-		icon.classList.add('disabled');
-		bj.hide( text );
-		bj.show( input );
-		setTimeout(() => input.focus(), 20);
-	};
-	
-	bj.userDown('.js-event-date-change > .rewind', changeEventDate ); 	
-			
-})( bluejay ); 
-(function (uiApp) {
-
-	'use strict';
-	
-	const demo = () => {
-		const div = document.createElement('div');
-		div.className = "oe-popup-wrap dark";
-		document.body.appendChild( div );
-		
-		const template = [
-			'<div class="oe-login timeout">',
-			'<div class="login">',
-			'<h1>Timed out</h1>',
-			'<div class="user">',
-			'<input type="text" placeholder="Username">',
-			'<input type="password" placeholder="Password">',
-			'<button class="green hint" id="js-login">Login</button>',
-			'</div>',
-			'<div class="info">',
-			'For security reasons you have been logged out. Please login again',
-			'</div>',
-			'</div>',
-			'</div>'].join('');
-			
-		div.innerHTML = Mustache.render( template, {} );
-		
-	};
-
-	bluejay.demoLoginTimeOut = demo;	
-			
-})( bluejay ); 
-(function (uiApp) {
-
-	'use strict';
-	
-	/*
-	IDG DEMO of some UX functionality
-	*/
-	
-	// tr class hook: .js-idg-demo-13420;
-	if(document.querySelector('.js-idg-demo-13420') === null) return;
-	
-	
-	
-	// state change is based on the prescribed toggle switch
-	document.addEventListener('input',(ev) => {
-		let me = ev.target;
-		if(me.matches('.js-idg-demo-13420 .toggle-switch input')){
-			/*
-			toggling the presciption: 
-			ON: show 'Stop' / hide: Duration/dispense & taper
-			*/
-			let tr = uiApp.getParent(me, 'tr');
-			let ongoingTxt = tr.querySelector('.js-idg-ongoing-text');
-			let stopBtn = tr.querySelector('.js-idg-date-stop');
-			let durDis = tr.querySelector('.js-idg-duration-dispense');
-			let taperBtn = tr.querySelector('.js-idg-taper-btn');
-			let reasons = tr.querySelector('.js-idg-stopped-reasons');
-			
-			if(me.checked){
-				// on
-				uiApp.hide(stopBtn);
-				uiApp.hide(reasons);
-				uiApp.show(ongoingTxt, 'block');
-				uiApp.show(durDis, 'block');
-				uiApp.show(taperBtn, 'block');	
-			} else {
-				// off
-				uiApp.show(stopBtn, 'block');
-				uiApp.hide(ongoingTxt);	
-				uiApp.hide(durDis);
-				uiApp.hide(taperBtn);
-			}	
-		}
-	});
-	
-	const updateStopState = (td, stop) => {
-		
-		let stopBtn = td.querySelector('.js-idg-stop-btn');
-		let stopDate = td.querySelector('.js-idg-stop-date');
-		let reasons = td.querySelector('.js-idg-stopped-reasons');
-		let cancelIcon = td.querySelector('.js-idg-cancel-stop');
-		
-		if(stop){
-			uiApp.hide(stopBtn);
-			uiApp.show(stopDate, 'block');
-			uiApp.show(reasons, 'block');
-			uiApp.show(cancelIcon, 'block');
-		} else {
-			uiApp.show(stopBtn, 'block');
-			uiApp.hide(stopDate);
-			uiApp.hide(reasons);
-			uiApp.hide(cancelIcon);
-		}
-	};
-	
-	// 'stop' button
-	document.addEventListener('click', (ev) => {
-		if(ev.target.matches(".js-idg-stop-btn")){
-			updateStopState( uiApp.getParent(ev.target, 'td'), true);
-		}
-	});
-	
-	// cancel 'stop'
-	document.addEventListener('mousedown', (ev) => {
-		if(ev.target.matches('.js-idg-cancel-stop')){
-			updateStopState( uiApp.getParent(ev.target, 'td'), false);
-		}
-	});
-
-	
-	// Show history
-	document.addEventListener('mousedown',(ev) => {
-		let me = ev.target;
-		if(me.matches('.js-show-medication-history')){
-			let tableRows = document.querySelectorAll('.js-idg-medication-history-' + me.dataset.idgdemo);
-			tableRows.forEach((row) => {
-				if(row.style.visibility == "collapse"){
-					row.style.visibility = "visible";
-				} else {
-					row.style.visibility = "collapse";
-				}
-				
-			});
-		}
-	});
-			
-})(bluejay); 
-(function( bj ) {
-
-	'use strict';
-	
-	if( document.querySelector('.home-messages') === null ) return;
-	
-	const btn = {
-		messages: document.getElementById('idg-js-sidebar-viewmode-1'),
-		tags: document.getElementById('idg-js-sidebar-viewmode-2'),
-	};
-	
-	const sidebar = {
-		messages: document.querySelector('.sidebar-messages'),
-		tags: document.querySelector('.sidebar-tags'),
-	};
-	
-	const content = {
-		messages: document.querySelector('.messages-all'),
-		tags: document.querySelector('.tags-all'),
-	};
-	
-	const showMessages = () => {
-		if(btn.messages.classList.contains('selected')) return;
-		btn.messages.classList.add('selected');
-		btn.tags.classList.remove('selected');
-		
-		bj.show( sidebar.messages );
-		bj.hide( sidebar.tags );
-		bj.show( content.messages );
-		bj.hide( content.tags );
-		
-	};
-	
-	const showTags = () => {
-		if(btn.tags.classList.contains('selected')) return;
-		btn.messages.classList.remove('selected');
-		btn.tags.classList.add('selected');
-		
-		bj.hide( sidebar.messages );
-		bj.show( sidebar.tags );
-		bj.hide( content.messages );
-		bj.show( content.tags );
-	};
-	
-	
-	bj.userDown('#idg-js-sidebar-viewmode-1', showMessages );
-	bj.userDown('#idg-js-sidebar-viewmode-2', showTags ); 
-			
-})( bluejay ); 
-(function (uiApp) {
-
-	'use strict';
-	
-	/*
-	IDG DEMO of some UX functionality
-	for Ophthalmic Diagnosis v2!
-	*/
-	
-	if(document.querySelector('.js-idg-diagnosis-active-switcher') === null) return;
-	
-	/*
-	Update VIEW states to demo UX
-	*/
-	const updateActiveState = (div, state) => {
-		let text = div.querySelector('.js-idg-diagnosis-text');
-		let toggle = div.querySelector('.toggle-switch');
-		let remove = div.querySelector('.remove-circle');
-		let btn = div.querySelector('.js-idg-diagnosis-add-btn');
-		let doubt = div.querySelector('.js-idg-diagnosis-doubt');
-		let doubtInput = div.querySelector('.js-idg-diagnosis-doubt-input');
-		
-		let side = div.dataset.idgside;
-		let eyelatIcon = div.parentNode.previousElementSibling.querySelector('.oe-eye-lat-icons .oe-i');
-		
-		let date = div.parentNode.nextElementSibling.querySelector('.js-idg-diagnosis-date');	
-				
-		switch(state){
-			case 'active':
-			uiApp.reshow(text);
-			uiApp.reshow(toggle);
-			uiApp.reshow(doubt);
-			uiApp.hide(remove);
-			uiApp.hide(btn);
-			uiApp.reshow(date);
-			text.textContent = 'Active (confirmed)';
-			text.classList.remove('fade');
-			doubt.querySelector('input').checked = false;
-			toggle.querySelector('input').checked = true;
-			setEyeLatIcon(eyelatIcon, side, 'active');
-			break;
-			
-			case 'confirmed':
-			uiApp.hide(doubtInput);
-			uiApp.reshow(text);
-			break;
-			
-			case 'doubt':
-			uiApp.reshow(doubtInput);
-			uiApp.hide(text);
-			break;
-			
-			case 'inactive':
-			uiApp.reshow(text);
-			uiApp.reshow(toggle);
-			uiApp.reshow(remove);
-			uiApp.hide(btn);
-			uiApp.hide(doubt);
-			uiApp.hide(doubtInput);
-			uiApp.reshow(date);
-			text.textContent = 'Inactive from';
-			text.classList.add('fade');
-			setEyeLatIcon(eyelatIcon, side, 'inactive');
-			break;
-			
-			case 'removed':
-			uiApp.hide(toggle);
-			uiApp.hide(remove);
-			uiApp.reshow(btn);
-			uiApp.hide(date);
-			text.textContent = 'Not present';
-			setEyeLatIcon(eyelatIcon, side, 'none');
-			break; 
-		}
-	};
-	
-	const setEyeLatIcon = (i, side, state) => {
-		/*
-		oe-i laterality L small pad
-		oe-i laterality NA small pad	
-		*/
-		if(i === null) return;
-		
-		let css = ['oe-i'];
-		let eye = side == 'left' ? 'L' : 'R';
-		
-		switch(state){
-			case 'active':
-			css.push('laterality', eye);
-			break;
-			case 'inactive':
-			css.push('laterality', eye+'i');
-			break;
-			case 'none':
-			css.push('laterality', 'NA');
-			break;
-		}
-		
-		css.push('small', 'pad');
-		
-		i.className = css.join(' ');
-	};
-	
-	
-	// store the default <td> 
-	let tdDefault = null;
-	
-	let td1 = '<span class="oe-eye-lat-icons"><i class="oe-i laterality NA small pad"></i></span>';
-	let td2 = '<div class="flex-layout cols-11 js-idg-diagnosis-active-switcher" data-idgdemo="-r-nSysEx2" data-idgside="right"><div class="js-idg-diagnosis-actions"><label class="toggle-switch" style="display: none;"><input type="checkbox"><div class="toggle-btn"></div></label><label class="inline highlight js-idg-diagnosis-doubt" style="display: none;"><input value="diagnosis-doubt" name="idg-4131" type="checkbox"> <i class="oe-i doubt small-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="? = doubts; suspected, etc"></i></label><i class="oe-i remove-circle small-icon pad-left" style="display: none;"></i><button class="js-idg-diagnosis-add-btn ">Add right side</button></div><div class="js-idg-diagnosis-state"><input class="js-idg-diagnosis-doubt-input" value="Suspected" placeholder="Suspected" maxlength="32" style="display: none;"><span class="js-idg-diagnosis-text js-active-state fade ">Not present</span></div></div>';
-	let td3 = '<div class="js-idg-diagnosis-date"><input type="text" class="date" value="30 Apr 2020"></div>';
-	//td3.className = 'valign-top';
-	
-	
-	const updateSystemic = (tr, num) => {
-		
-		let sidesCheck = tr.querySelector('.js-idg-sides');
-		let text = tr.querySelector('.js-idg-diagnosis-text');
-		
-		let div = tr.querySelector('.js-idg-diagnosis-active-switcher');
-		let toggle = div.querySelector('.toggle-switch');
-		let doubt = div.querySelector('.js-idg-diagnosis-doubt');
-		let doubtInput = div.querySelector('.js-idg-diagnosis-doubt-input');
-		
-		let systemicIcons = tr.querySelector('.js-idg-right-icon .oe-systemic-icons');
-
-
-		if(tdDefault == null){
-			tdDefault = tr.querySelector('.js-idg-diagnosis-state-options').innerHTML;
-			uiApp.reshow(text);
-		}
-
-		
-		switch(num){
-			case '0':
-				uiApp.reshow(sidesCheck);
-				uiApp.reshow(text);
-				text.textContent = 'Active (confirmed)';
-				text.classList.remove('fade');
-				uiApp.reshow(toggle);
-				toggle.querySelector('input').checked = true;
-				uiApp.reshow(doubt);
-				doubt.querySelector('input').checked = false;
-				uiApp.hide(doubtInput);
-				systemicIcons.querySelector('.oe-i').className = "oe-i person-green small pad";
-				
-				
-			break;
-			
-			case '1':
-				uiApp.hide(sidesCheck);
-				uiApp.reshow(text);
-				text.textContent = 'Not present';
-				text.classList.add('fade');
-				uiApp.hide(toggle);
-				uiApp.reshow(doubt);
-				doubt.querySelector('input').checked = false;
-				uiApp.hide(doubtInput);
-				systemicIcons.querySelector('.oe-i').className = "oe-i NA small pad";
-			break;
-			
-			case '2':
-				uiApp.hide(sidesCheck);
-				uiApp.reshow(text);
-				text.textContent = 'Not checked';
-				text.classList.add('fade');
-				uiApp.hide(toggle);
-				uiApp.hide(doubt);
-				uiApp.hide(doubtInput);
-				systemicIcons.querySelector('.oe-i').className = "oe-i NA small pad";
-			break;
-		}
-	};
-	
-	const systemicSidesChange = (tr, val) => {
-		let td = tr.querySelector('.js-idg-diagnosis-state-options');
-		let systemicIcons = tr.querySelector('.js-idg-right-icon .oe-systemic-icons');
-		let eyeLatIcons = tr.querySelector('.js-idg-right-icon .oe-eye-lat-icons .oe-i');
-	
-		
-		if(val){
-			// show sides
-			td.innerHTML = td1;
-			td.colSpan = 0;
-			let newCell1 = tr.insertCell(2);
-			let newCell2 = tr.insertCell(3);
-			newCell1.innerHTML = td2;
-			newCell2.innerHTML = td3;	
-			
-			uiApp.hide(tr.cells[5].querySelector('.toggle-switch'));
-			uiApp.hide(tr.cells[5].querySelector('.highlight'));
-		
-			if(tr.cells[5].querySelector('.js-idg-diagnosis-actions .js-idg-diagnosis-add-btn') === null){
-				let btn = document.createElement('button');
-				btn.className = "js-idg-diagnosis-add-btn";
-				btn.textContent = "Add left side";
-				tr.cells[5].querySelector('.js-idg-diagnosis-actions').appendChild(btn);
-			} else {
-				uiApp.reshow(tr.cells[5].querySelector('.js-idg-diagnosis-add-btn'));
-			}
-			
-			let text = tr.cells[5].querySelector('.js-idg-diagnosis-text');
-			text.textContent = 'Inactive from';
-			text.classList.add('fade');
-			
-			systemicIcons.style.display = "none";
-			eyeLatIcons.style.display = "inline-block";
-			
-		} else {
-			// no sides
-			tr.deleteCell(2);
-			tr.deleteCell(2); // was 3, now 2!
-			td.innerHTML = tdDefault;
-			td.colSpan = 3;
-			
-			uiApp.hide(tr.cells[3].querySelector('.js-idg-diagnosis-add-btn'));
-			uiApp.reshow(tr.cells[3].querySelector('.toggle-switch'));
-			tr.cells[3].querySelector('.toggle-switch').checked = true;
-			uiApp.reshow(tr.cells[3].querySelector('.highlight'));
-			
-			td.querySelector('input').checked = true;
-			
-			systemicIcons.style.display = "inline-block";
-			eyeLatIcons.style.display = "none";
-		}		
-	};
-
-	const showAuditHistory = (id) => {
-		let tableRows = document.querySelectorAll('.js-idg-diagnosis-history-' + id);
-		tableRows.forEach((row) => {
-			// toggle the audit rows
-			if(row.style.visibility == "collapse"){
-				row.style.visibility = "visible";
-			} else {
-				row.style.visibility = "collapse";
-			}
-		});
-	};
-	
-
-	// Active Switcher
-	document.addEventListener('input',(ev) => {
-		let me = ev.target;
-		if(me.matches('.js-idg-diagnosis-active-switcher .toggle-switch input')){
-			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
-			updateActiveState(parent, (me.checked ? 'active' : 'inactive'));		
-		}
-		
-		if(me.matches('.js-idg-diagnosis-doubt input')){
-			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
-			updateActiveState(parent, (me.checked ? 'doubt' : 'confirmed'));
-		}
-		
-		// demo the Present, Not Present and Not checked raido
-		if(me.matches('.js-idg-demo-sys-diag-side-switcher .js-idg-diagnosis-state-options input')){
-			let parent = uiApp.getParent(me, '.js-idg-demo-sys-diag-side-switcher');
-			updateSystemic(parent, me.value);
-		}
-		
-	});
-	
-	document.addEventListener('click', (ev) => {
-		let me = ev.target;
-		if(me.matches('.js-idg-demo-sys-diag-side-switcher .js-idg-sides')){
-			let parent = uiApp.getParent(me, '.js-idg-demo-sys-diag-side-switcher');
-			let icon = me.querySelector('.oe-i');
-			if(me.dataset.state == "no-sides"){
-				systemicSidesChange(parent, true);
-				me.dataset.state = "sides";
-				icon.classList.replace("person", "person-split");
-			} else {
-				systemicSidesChange(parent, false);
-				me.dataset.state = "no-sides";
-				icon.classList.replace("person-split", "person");
-			}
-		}
-	});
-	
-	document.addEventListener('mousedown',(ev) => {
-		let me = ev.target;
-		
-		// show
-		if(me.matches('.js-show-diagnosis-history')){
-			showAuditHistory(me.dataset.idgdemo);
-		}
-		
-		if(me.matches('.js-idg-diagnosis-active-switcher .remove-circle')){
-			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
-			updateActiveState(parent, 'removed');
-		}
-		
-		if(me.matches('.js-idg-diagnosis-add-btn')){
-			let parent = uiApp.getParent(me, '.js-idg-diagnosis-active-switcher');
-			updateActiveState(parent, 'active');
-		}
-
-	});
-	
-	const showDeletePopup = (ev) => {
-		// xhr returns a Promise... 
-		uiApp.xhr('/idg-php/v3/_load/specific/exam-oph-diag-delete.php')
-			.then( html => {
-				const div = document.createElement('div');
-				div.className = "oe-popup-wrap";
-				div.innerHTML = html;
-				div.querySelector('.close-icon-btn').addEventListener("mousedown", (ev) => {
-					ev.stopPropagation();
-					uiApp.remove(div);
-				}, {once:true} );
-				
-				// reflow DOM
-				document.body.appendChild( div );
-			})
-			.catch( e => console.log('failed to copy',e));  // maybe output this to UI at somepoint, but for now... 
-	};
-
-	uiApp.userDown('.js-idg-demo-remove-oph-diag', showDeletePopup);
-	
-	
-			
-})(bluejay); 
 (function( bj ){
 
 	'use strict';	

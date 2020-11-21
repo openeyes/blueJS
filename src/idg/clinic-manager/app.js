@@ -75,13 +75,14 @@
 	// central-ise these:
 	react.assignList = ['MM', 'AB', 'AG', 'RB', 'CW'].sort();
 	react.clinicPersonList = ['Nurse'];
-	react.clinicProcessList = ['Dilate', 'VisAcu', 'Orth', 'Ref' ].sort();
+	react.clinicProcessList = ['Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort();
 	
 	react.fullShortCode = ( shortcode ) => {
 		let full = shortcode; // "Nurse" doesn't need expanding on
 		switch( shortcode ){
 			case 'Arr': full = "Arrived"; break;
 			case 'Fin': full = "Finish"; break;
+			case "DNA" : full = "Did Not Attend"; break;
 			
 			case "nobody" : full = "Not assigned"; break;
 			case "MM" : full = "Mr Michael Morgan"; break;
@@ -90,13 +91,15 @@
 			case "RB" : full = "Dr Robin Baum"; break;
 			case "CW" : full = "Dr Coral Woodhouse"; break; 
 			
-			case "DNA" : full = "Did Not Attend"; break;
+			case "Img" : full = "Imaging"; break;
 			case "VisAcu" : full = "Visual Acuity"; break;
+			case "Orth" : full = "Orthoptics"; break;
+			case "Fields" : full = "Visual Fields"; break;
+			case "Ref" : full = "Refraction"; break;
 			
 		}
 		return full; 
 	}; 
-	
 	
 	react.deepCopy = ( obj ) => {
 		// object clone	
