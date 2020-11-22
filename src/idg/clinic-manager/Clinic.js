@@ -98,7 +98,9 @@
 				
 				if( action == 'arrived'){
 					thisPatient.status = 'active';
-					thisPathway.push( this.buildPathStep( 0, 'Arr', 'done', 'arrive' )); 
+					// if there are already steps need to adjust their step array position ref
+					thisPathway.forEach( step => step.arrRef++ );
+					patientsCopy[ patientRef ].pathway = [ this.buildPathStep( 0, 'Arr', 'done', 'arrive' )].concat( thisPathway );
 				}
 				
 				if( action == 'DNA'){

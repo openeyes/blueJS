@@ -5339,7 +5339,9 @@ const oePlotly = (function ( bj ) {
 				
 				if( action == 'arrived'){
 					thisPatient.status = 'active';
-					thisPathway.push( this.buildPathStep( 0, 'Arr', 'done', 'arrive' )); 
+					// if there are already steps need to adjust their step array position ref
+					thisPathway.forEach( step => step.arrRef++ );
+					patientsCopy[ patientRef ].pathway = [ this.buildPathStep( 0, 'Arr', 'done', 'arrive' )].concat( thisPathway );
 				}
 				
 				if( action == 'DNA'){
@@ -5844,6 +5846,7 @@ const oePlotly = (function ( bj ) {
 				
 				this.setTitle = this.setTitle.bind( this );
 				this.content = this.content.bind( this );
+				this.stepPIN = this.stepPIN.bind( this );
 				this.stepActions = this.stepActions.bind( this );
 				this.stepStatus = this.stepStatus.bind( this );
 			}
@@ -5875,6 +5878,39 @@ const oePlotly = (function ( bj ) {
 						})
 					)
 				);
+			}
+			
+			/**
+			* Demo PIN inputs
+			* @params {*} this.props.step
+			* @returns {ReactElement}
+			<div class="oe-user-pin pin-right-eye"><input class="user-pin-entry" type="text" maxlength="4" inputmode="numeric" placeholder="****"></div>
+			*/
+			stepPIN( step ){
+				if( step.status == 'active' ){
+					return (
+						rEl('div', { className: 'step-pin cols-6 flex' }, 
+							rEl('div', { className: 'oe-user-pin pin-right-eye' },  
+								rEl('input', { 
+									className: 'user-pin-entry', 
+									type:'text', 
+									maxlength: 4, 
+									inputmode: 'numeric',
+									placeholder: '****',
+								})
+							),
+							rEl('div', { className: 'oe-user-pin pin-left-eye' },  
+								rEl('input', { 
+									className: 'user-pin-entry', 
+									type:'text', 
+									maxlength: 4, 
+									inputmode: 'numeric',
+									placeholder: '****',
+								})
+							)
+						)	
+					);
+				}
 			}
 			
 			
@@ -5932,7 +5968,6 @@ const oePlotly = (function ( bj ) {
 			* Render
 			*/
 			render(){ 
-				console.log('Render: PathStepPopup');
 				// Build and position the popup	
 				const step = this.props.step; 
 				
@@ -5952,6 +5987,7 @@ const oePlotly = (function ( bj ) {
 						
 						this.setTitle( step ), 
 						this.content( step ), 
+						this.stepPIN( step ),
 						this.stepActions( step ),
 						this.stepStatus( step )
 					)

@@ -19,6 +19,7 @@
 				
 				this.setTitle = this.setTitle.bind( this );
 				this.content = this.content.bind( this );
+				this.stepPIN = this.stepPIN.bind( this );
 				this.stepActions = this.stepActions.bind( this );
 				this.stepStatus = this.stepStatus.bind( this );
 			}
@@ -50,6 +51,39 @@
 						})
 					)
 				);
+			}
+			
+			/**
+			* Demo PIN inputs
+			* @params {*} this.props.step
+			* @returns {ReactElement}
+			<div class="oe-user-pin pin-right-eye"><input class="user-pin-entry" type="text" maxlength="4" inputmode="numeric" placeholder="****"></div>
+			*/
+			stepPIN( step ){
+				if( step.status == 'active' ){
+					return (
+						rEl('div', { className: 'step-pin cols-6 flex' }, 
+							rEl('div', { className: 'oe-user-pin pin-right-eye' },  
+								rEl('input', { 
+									className: 'user-pin-entry', 
+									type:'text', 
+									maxlength: 4, 
+									inputmode: 'numeric',
+									placeholder: '****',
+								})
+							),
+							rEl('div', { className: 'oe-user-pin pin-left-eye' },  
+								rEl('input', { 
+									className: 'user-pin-entry', 
+									type:'text', 
+									maxlength: 4, 
+									inputmode: 'numeric',
+									placeholder: '****',
+								})
+							)
+						)	
+					);
+				}
 			}
 			
 			
@@ -107,7 +141,6 @@
 			* Render
 			*/
 			render(){ 
-				console.log('Render: PathStepPopup');
 				// Build and position the popup	
 				const step = this.props.step; 
 				
@@ -127,6 +160,7 @@
 						
 						this.setTitle( step ), 
 						this.content( step ), 
+						this.stepPIN( step ),
 						this.stepActions( step ),
 						this.stepStatus( step )
 					)
