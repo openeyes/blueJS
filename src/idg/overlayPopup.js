@@ -31,10 +31,10 @@
 		const showPopup = () => {
 			// xhr returns a Promise... 
 			uiApp.xhr('/idg-php/v3/_load/' + php)
-				.then( html => {
+				.then( xreq => {
 					const div = document.createElement('div');
 					div.className = "oe-popup-wrap";
-					div.innerHTML = html;
+					div.innerHTML = xreq.html;
 					div.querySelector('.close-icon-btn').addEventListener("mousedown", (ev) => {
 						ev.stopPropagation();
 						uiApp.remove(div);

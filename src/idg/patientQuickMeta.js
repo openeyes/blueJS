@@ -127,10 +127,10 @@
 		
 		// xhr returns a Promise... 
 		uiApp.xhr('/idg-php/v3/_load/' + php)
-			.then( html => {
+			.then( xreq => {
 				clearTimeout(spinnerID);
 				if(open){
-					content.innerHTML = html;
+					content.innerHTML = xreq.html;
 					div.style.display = "block";
 				}
 				

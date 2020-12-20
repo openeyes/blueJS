@@ -34,6 +34,7 @@
 				this.handleStepClick = this.handleStepClick.bind( this );
 				this.pathwaySteps = this.pathwaySteps.bind( this );
 				this.assigned = this.assigned.bind( this );
+				this.update = this.update.bind( this );
 				this.complete = this.complete.bind( this );
 				this.waitMins = this.waitMins.bind( this );
 			}
@@ -87,6 +88,24 @@
 				}
 			}
 			
+			/**
+			* Plus icon to open directly the adder popup
+			* @returns {React Element}
+			*/
+			update(){
+				if( this.props.status === 'complete' ) return null;
+				
+				return rEl('i', { 
+					className: 'oe-i plus-circle small pad', 
+					onClick: () => this.props.onUpdate( this.props.arrRef )
+				}, null );
+			}
+			
+			
+			/**
+			* Arrived DNA or Wait Duration Graphic
+			* @returns {React Element}
+			*/
 			waitMins(){
 				
 				if( this.props.status === 'todo' ){
@@ -130,7 +149,7 @@
 				let td = null;
 				
 				if( this.props.status === 'complete' ){
-					td = rEl('i', { className: 'oe-i tick small-icon pad disabled' }, null );
+					td = rEl('i', { className: 'fade' }, 'Done' );
 				}
 				
 				if( this.props.status === 'active' ){
@@ -185,6 +204,9 @@
 						), 
 						rEl('td', null, 
 							this.assigned()
+						),
+						rEl('td', null, 
+							this.update()
 						),
 						rEl('td', null,
 							this.waitMins()

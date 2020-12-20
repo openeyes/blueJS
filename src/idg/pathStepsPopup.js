@@ -1,11 +1,10 @@
-(function (uiApp) {
+(function( bj ){
 
 	'use strict';	
 	
-	uiApp.addModule('pathSteps');	
+	bj.addModule('pathStepsPopup');	
 	
-	const selector = '.oe-pathstep-btn';
-	if(document.querySelector(selector) === null) return;
+	const selector = '.oe-pathstep-btn:not(.no-popup)';
 	
 	let activePathBtn = false;
 	
@@ -160,13 +159,14 @@
 		popup.tbody.appendChild(fragment);
 		
 		// store a reference to the all the 'administered' <tr> data
-		popup.detailRows = uiApp.nodeArray(div.querySelectorAll('.administer-details'));	
+		popup.detailRows = bj.nodeArray(div.querySelectorAll('.administer-details'));	
 	};
 	
 	/**
 	* update popup DOM
 	*/
-	const updatePopup = () => {
+	const updatePopup = () => { 
+		
 		let json = JSON.parse(activePathBtn.dataset.step);
 		popup.title.textContent = json.title;
 		buildPSDTable(json.psd);
@@ -204,6 +204,9 @@
 		div.style.left = left - divWidth + "px";
 		div.style.display = "block";
 	};
+	
+	
+	
 	
 	/**
 	* Callback for 'Click'
@@ -250,9 +253,9 @@
 	/*
 	Events 
 	*/
-	uiApp.userDown(selector,userClick);
-	uiApp.userEnter(selector,userHover);
-	uiApp.userLeave(selector,userOut);
-	uiApp.userDown('.oe-pathstep-popup .close-icon-btn .oe-i',hide);
+	bj.userDown( selector, userClick );
+	bj.userEnter( selector, userHover );
+	bj.userLeave( selector, userOut );
+	bj.userDown( '.oe-pathstep-popup .close-icon-btn .oe-i', hide );
 		
-})(bluejay); 
+})( bluejay ); 

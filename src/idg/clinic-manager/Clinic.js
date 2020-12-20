@@ -22,10 +22,11 @@
 				specific patient.
 				*/
 				this.state = {
-					tableHead: ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', 'Pathway', 'Assigned', 'Mins', ''],
+					tableHead: ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', 'Pathway', 'Assigned', '', 'Mins', ''],
 					patients: this.props.patientsJSON,
 					popupStepKey: null, 	// use this to close popup if already open
 					popupStep: null, 		// step info passed to PathStep popup (not doing much with this at the moment)
+					adderForSpecificPatient: null,
 					showAdder: false,
 					filter: 'showAll', 		// filter state of Clinic
 				};
@@ -41,6 +42,7 @@
 				// direct actions on patient
 				this.handlePatientArrived = this.handlePatientArrived.bind( this );
 				this.handlePatientDNA = this.handlePatientDNA.bind( this );
+				this.handlePatientUpdate = this.handlePatientUpdate.bind( this );
 				this.handlePathwayCompleted = this.handlePathwayCompleted.bind( this );
 				this.handleChangeStepStatus = this.handleChangeStepStatus.bind( this );
 				
@@ -150,6 +152,17 @@
 			}
 			
 			/**
+			* Open Adder Popup setup for specific patient
+			* @param {Number} patientRef
+			*/
+			handlePatientUpdate( patientRef ){
+				this.setState( state => ({ 
+					showAdder: true, 
+					adderForSpecificPatient: this.state.patients[ patientRef ] 
+				}));
+			}
+			
+			/**
 			* Direct patient action: <i> green tick icon
 			* @param {Number} patientRef
 			*/
@@ -214,7 +227,10 @@
 			*/
 			handleAdderBtn(){
 				// simple shallow update.
-				this.setState( state => ({ showAdder: !state.showAdder }));
+				this.setState( state => ({ 
+					showAdder: !state.showAdder, 
+					adderForSpecificPatient: null 
+				}));
 			}
 			
 			/**
@@ -291,6 +307,7 @@
 					patient.onPathwayCompleted = this.handlePathwayCompleted;
 					patient.onArrived = this.handlePatientArrived;
 					patient.onDNA = this.handlePatientDNA;
+					patient.onUpdate = this.handlePatientUpdate;
 					patient.clinicFilterState = this.state.filter;
 					
 					return rEl( react.Patient, patient );
@@ -320,7 +337,9 @@
 			
 				return rEl( react.AdderPopup, { 
 					list: todo, 
-					onAdderRequest: this.handleAdderRequest 
+					singlePatient: this.state.adderForSpecificPatient,
+					onAdderRequest: this.handleAdderRequest, 
+					onCloseBtn: this.handleAdderBtn 
 				});
 			}
 			

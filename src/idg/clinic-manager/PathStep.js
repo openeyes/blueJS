@@ -17,7 +17,7 @@
 		*/
 		const PathStep = ({ key, step, onClick }) => {
 				
-			const css = ['oe-pathstep-btn'];
+			const css = ['oe-pathstep-btn', 'no-popup'];
 			
 			if( step.status === 'done') css.push('green');
 			if( step.status === 'active') css.push('orange');
@@ -34,7 +34,7 @@
 						className: css.join(' '), 
 						onClick: ( ev ) => onClick( step, ev.target.getBoundingClientRect())
 					},
-					rEl('span', { className: 'step' }, step.shortcode ), 
+					rEl('span', { className: 'step' }, step.shortcode  ), 
 					rEl('span', { className: cssTime }, bj.clock24( new Date( step.timestamp )))
 				)
 			);

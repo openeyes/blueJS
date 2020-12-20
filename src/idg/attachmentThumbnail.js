@@ -116,7 +116,7 @@
 		
 			// load in PHP using XHR (returns a Promise)	
 			uiApp.xhr(json.idgPHP)
-				.then( html => {	notes.innerHTML = html;
+				.then( xreq => {	notes.innerHTML = xreq.html;
 									// IDG demo eyelat inputs...
 									if(json.eyelat == "L")	notes.querySelector('#annotation-right').style.visibility = "hidden"; // maintain layout?
 									if(json.eyelat == "R")	notes.querySelector('#annotation-left').style.visibility = "hidden";

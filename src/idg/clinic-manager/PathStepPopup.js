@@ -137,13 +137,29 @@
 				return rEl('div', { className: css }, step.status );
 			}
 			
+			
 			/**
 			* Render
 			*/
 			render(){ 
 				// Build and position the popup	
 				const step = this.props.step; 
+		
+				if( step.shortcode == "~Fields"){
+					return rEl( react.PopupFields, {
+						step, 
+						onActions: this.props.onClosePopup,
+					});
+				}
 				
+				if( step.shortcode == "~Img"){
+					return rEl( react.PopupImage, {
+						step, 
+						onActions: this.props.onClosePopup,
+					});
+				}
+
+				// set up a default standard step.
 				return (
 					rEl('div', {
 							className: 'oe-pathstep-popup a-t-l',
@@ -158,8 +174,8 @@
 							dangerouslySetInnerHTML: { __html : '<i class="oe-i remove-circle medium"></i>'}
 						}),
 						
-						this.setTitle( step ), 
-						this.content( step ), 
+						this.setTitle( step ),
+						this.content( step ),
 						this.stepPIN( step ),
 						this.stepActions( step ),
 						this.stepStatus( step )

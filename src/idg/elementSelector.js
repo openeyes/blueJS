@@ -16,13 +16,13 @@
 		loadPHP:function(demo){
 			// xhr returns a Promise... 
 			uiApp.xhr(demo)
-				.then( html => {
+				.then( xreq => {
 					// in the meantime has the user clicked to close?
 					if(this.open === false) return; 
 					
 					this.nav = document.createElement('nav');
 					this.nav.className = this.wrapClass;
-					this.nav.innerHTML = html;
+					this.nav.innerHTML = xreq.html;
 					// reflow DOM
 					this.btn.classList.add('selected');	
 					

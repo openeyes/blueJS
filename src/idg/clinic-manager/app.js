@@ -75,7 +75,7 @@
 	// central-ise these:
 	react.assignList = ['MM', 'AB', 'AG', 'RB', 'CW'].sort();
 	react.clinicPersonList = ['Nurse'];
-	react.clinicProcessList = ['Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort();
+	react.clinicProcessList = ['Dilate', 'VisAcu', 'Orth', 'Ref', '~Img', '~Fields' ].sort();
 	
 	react.fullShortCode = ( shortcode ) => {
 		let full = shortcode; // "Nurse" doesn't need expanding on

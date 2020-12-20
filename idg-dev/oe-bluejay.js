@@ -498,21 +498,23 @@ const bluejay = (function () {
 	/**
 	* XMLHttpRequest 
 	* @param {string} url
+	* @param {string} token - returned in Promise for crosschecking
 	* @returns {Promise} resolve(responseText) or reject(errorMsg)
 	*/
-	const xhr = ( url ) => {
+	const xhr = ( url, token = false ) => {
 		bj.log('[XHR] - ' + url );
 		// wrap XHR in Promise
 		return new Promise(( resolve, reject ) => {
 			let xReq = new XMLHttpRequest();
-			xReq.open("GET", url);
+			xReq.open("GET", url );
 			xReq.onreadystatechange = function(){
 				
 				if(xReq.readyState !== 4) return; // only run if request is fully complete 
 				
 				if(xReq.status >= 200 && xReq.status < 300){
 					bj.log('[XHR] - Success');
-					resolve(xReq.responseText);
+					xReq.token = token;
+					resolve({ html: xReq.responseText, token });
 					// success
 				} else {
 					// failure
@@ -525,6 +527,20 @@ const bluejay = (function () {
 		});
 	};
 	
+	/**
+	* Unique tokens, use a generator to always create unique tokens
+	* token will always return a unique token
+	*/
+	function *UniqueToken(){
+		let id = 1;
+		while( true ){
+			++id;
+			yield `t-${id}`;
+		}
+	}
+	const tokenIterator = UniqueToken();
+	const token = () => tokenIterator.next().value;
+
 	/**
 	* Load JS on request. 
 	* @param {String} url - external JS file
@@ -625,6 +641,7 @@ const bluejay = (function () {
 	bj.extend('reshow', reshow );
 	bj.extend('hide', hide );
 	bj.extend('xhr', xhr );
+	bj.extend('getToken', token );
 	bj.extend('loadJS', loadJS );
 	bj.extend('getHiddenElemSize', getHiddenElemSize );
 	bj.extend('idgReporter', idgMsgReporter );
@@ -4742,6 +4759,59 @@ const oePlotly = (function ( bj ) {
 	bj.userDown('.js-event-date-change > .rewind', changeEventDate ); 	
 			
 })( bluejay ); 
+(function( bj ) {
+
+	'use strict';
+	
+	/*
+	IDG DEMO of adding pathSteps to pathway in Orders element
+	*/
+	
+	const pathwayDemo = document.getElementById('js-idg-demo-orders-pathway');
+	if( pathwayDemo === null) return;
+	
+	
+	const addPathStep = ( ev ) => {
+		const stepName = ev.target.dataset.idgDemo;
+		const span = document.createElement('span');
+		span.className = "oe-pathstep-btn process";
+		span.innerHTML = `<span class="step">${ stepName }</span><span class="time invisible">Todo</span>`;
+		pathwayDemo.appendChild( span );
+	};
+	
+	const showPopup = ( ev ) => {
+		
+		// position popup on button
+		const rect = ev.target.getBoundingClientRect();
+
+		const template = [
+			'<div class="close-icon-btn"></div>',	
+			'{{#pathSteps}}',
+			'<span class="oe-pathstep-btn no-popup process" data-idg-demo="{{.}}">',
+			'<span class="step">{{.}}</span><span class="time invisible">Todo</span>',
+			'</span>',
+			'{{/pathSteps}}',
+		].join('');
+		
+		const div = bj.div('oe-pathstep-adder');
+		div.innerHTML = Mustache.render( template, {
+			pathSteps: ['Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort(), // copied from Clinic Manager
+		});
+		
+		div.style.bottom = ( bj.getWinH() - rect.bottom ) + 'px';
+		div.style.right = ( bj.getWinW() - rect.right ) + 'px';
+		
+		document.body.appendChild( div );
+		
+		// close icon
+		div.querySelector('.close-icon-btn').addEventListener( 'mousedown', () => div.remove(), { once: true });
+	};
+	
+		
+	bj.userDown('button#js-idg-demo-orders-btn-adder', showPopup );
+	bj.userDown('.oe-pathstep-adder > .oe-pathstep-btn', addPathStep );
+			
+})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';
@@ -5219,10 +5289,10 @@ const oePlotly = (function ( bj ) {
 	const showDeletePopup = (ev) => {
 		// xhr returns a Promise... 
 		uiApp.xhr('/idg-php/v3/_load/specific/exam-oph-diag-delete.php')
-			.then( html => {
+			.then( xreq => {
 				const div = document.createElement('div');
 				div.className = "oe-popup-wrap";
-				div.innerHTML = html;
+				div.innerHTML = xreq.html;
 				div.querySelector('.close-icon-btn').addEventListener("mousedown", (ev) => {
 					ev.stopPropagation();
 					uiApp.remove(div);
@@ -5263,10 +5333,11 @@ const oePlotly = (function ( bj ) {
 				specific patient.
 				*/
 				this.state = {
-					tableHead: ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', 'Pathway', 'Assigned', 'Mins', ''],
+					tableHead: ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', 'Pathway', 'Assigned', '', 'Mins', ''],
 					patients: this.props.patientsJSON,
 					popupStepKey: null, 	// use this to close popup if already open
 					popupStep: null, 		// step info passed to PathStep popup (not doing much with this at the moment)
+					adderForSpecificPatient: null,
 					showAdder: false,
 					filter: 'showAll', 		// filter state of Clinic
 				};
@@ -5282,6 +5353,7 @@ const oePlotly = (function ( bj ) {
 				// direct actions on patient
 				this.handlePatientArrived = this.handlePatientArrived.bind( this );
 				this.handlePatientDNA = this.handlePatientDNA.bind( this );
+				this.handlePatientUpdate = this.handlePatientUpdate.bind( this );
 				this.handlePathwayCompleted = this.handlePathwayCompleted.bind( this );
 				this.handleChangeStepStatus = this.handleChangeStepStatus.bind( this );
 				
@@ -5391,6 +5463,17 @@ const oePlotly = (function ( bj ) {
 			}
 			
 			/**
+			* Open Adder Popup setup for specific patient
+			* @param {Number} patientRef
+			*/
+			handlePatientUpdate( patientRef ){
+				this.setState( state => ({ 
+					showAdder: true, 
+					adderForSpecificPatient: this.state.patients[ patientRef ] 
+				}));
+			}
+			
+			/**
 			* Direct patient action: <i> green tick icon
 			* @param {Number} patientRef
 			*/
@@ -5455,7 +5538,10 @@ const oePlotly = (function ( bj ) {
 			*/
 			handleAdderBtn(){
 				// simple shallow update.
-				this.setState( state => ({ showAdder: !state.showAdder }));
+				this.setState( state => ({ 
+					showAdder: !state.showAdder, 
+					adderForSpecificPatient: null 
+				}));
 			}
 			
 			/**
@@ -5532,6 +5618,7 @@ const oePlotly = (function ( bj ) {
 					patient.onPathwayCompleted = this.handlePathwayCompleted;
 					patient.onArrived = this.handlePatientArrived;
 					patient.onDNA = this.handlePatientDNA;
+					patient.onUpdate = this.handlePatientUpdate;
 					patient.clinicFilterState = this.state.filter;
 					
 					return rEl( react.Patient, patient );
@@ -5561,7 +5648,9 @@ const oePlotly = (function ( bj ) {
 			
 				return rEl( react.AdderPopup, { 
 					list: todo, 
-					onAdderRequest: this.handleAdderRequest 
+					singlePatient: this.state.adderForSpecificPatient,
+					onAdderRequest: this.handleAdderRequest, 
+					onCloseBtn: this.handleAdderBtn 
 				});
 			}
 			
@@ -5790,7 +5879,7 @@ const oePlotly = (function ( bj ) {
 		*/
 		const PathStep = ({ key, step, onClick }) => {
 				
-			const css = ['oe-pathstep-btn'];
+			const css = ['oe-pathstep-btn', 'no-popup'];
 			
 			if( step.status === 'done') css.push('green');
 			if( step.status === 'active') css.push('orange');
@@ -5807,7 +5896,7 @@ const oePlotly = (function ( bj ) {
 						className: css.join(' '), 
 						onClick: ( ev ) => onClick( step, ev.target.getBoundingClientRect())
 					},
-					rEl('span', { className: 'step' }, step.shortcode ), 
+					rEl('span', { className: 'step' }, step.shortcode  ), 
 					rEl('span', { className: cssTime }, bj.clock24( new Date( step.timestamp )))
 				)
 			);
@@ -5964,13 +6053,29 @@ const oePlotly = (function ( bj ) {
 				return rEl('div', { className: css }, step.status );
 			}
 			
+			
 			/**
 			* Render
 			*/
 			render(){ 
 				// Build and position the popup	
 				const step = this.props.step; 
+		
+				if( step.shortcode == "~Fields"){
+					return rEl( react.PopupFields, {
+						step, 
+						onActions: this.props.onClosePopup,
+					});
+				}
 				
+				if( step.shortcode == "~Img"){
+					return rEl( react.PopupImage, {
+						step, 
+						onActions: this.props.onClosePopup,
+					});
+				}
+
+				// set up a default standard step.
 				return (
 					rEl('div', {
 							className: 'oe-pathstep-popup a-t-l',
@@ -5985,8 +6090,8 @@ const oePlotly = (function ( bj ) {
 							dangerouslySetInnerHTML: { __html : '<i class="oe-i remove-circle medium"></i>'}
 						}),
 						
-						this.setTitle( step ), 
-						this.content( step ), 
+						this.setTitle( step ),
+						this.content( step ),
 						this.stepPIN( step ),
 						this.stepActions( step ),
 						this.stepStatus( step )
@@ -6043,6 +6148,7 @@ const oePlotly = (function ( bj ) {
 				this.handleStepClick = this.handleStepClick.bind( this );
 				this.pathwaySteps = this.pathwaySteps.bind( this );
 				this.assigned = this.assigned.bind( this );
+				this.update = this.update.bind( this );
 				this.complete = this.complete.bind( this );
 				this.waitMins = this.waitMins.bind( this );
 			}
@@ -6096,6 +6202,24 @@ const oePlotly = (function ( bj ) {
 				}
 			}
 			
+			/**
+			* Plus icon to open directly the adder popup
+			* @returns {React Element}
+			*/
+			update(){
+				if( this.props.status === 'complete' ) return null;
+				
+				return rEl('i', { 
+					className: 'oe-i plus-circle small pad', 
+					onClick: () => this.props.onUpdate( this.props.arrRef )
+				}, null );
+			}
+			
+			
+			/**
+			* Arrived DNA or Wait Duration Graphic
+			* @returns {React Element}
+			*/
 			waitMins(){
 				
 				if( this.props.status === 'todo' ){
@@ -6139,7 +6263,7 @@ const oePlotly = (function ( bj ) {
 				let td = null;
 				
 				if( this.props.status === 'complete' ){
-					td = rEl('i', { className: 'oe-i tick small-icon pad disabled' }, null );
+					td = rEl('i', { className: 'fade' }, 'Done' );
 				}
 				
 				if( this.props.status === 'active' ){
@@ -6194,6 +6318,9 @@ const oePlotly = (function ( bj ) {
 						), 
 						rEl('td', null, 
 							this.assigned()
+						),
+						rEl('td', null, 
+							this.update()
 						),
 						rEl('td', null,
 							this.waitMins()
@@ -6327,8 +6454,14 @@ const oePlotly = (function ( bj ) {
 					onAdderRequest: this.props.onAdderRequest,
 				};
 				
+				this.handleUpdates = this.handleUpdates.bind( this );	
+				
+				// builders
 				this.listPatients = this.listPatients.bind( this );	
-				this.handleUpdates = this.handleUpdates.bind( this );		
+				this.listAssign = this.listAssign.bind( this );
+				this.listSteps = this.listSteps.bind( this );
+				this.singlePatient = this.singlePatient.bind( this );
+					
 			}
 			
 			shouldComponentUpdate(){
@@ -6360,23 +6493,44 @@ const oePlotly = (function ( bj ) {
 				However, if I use a a bit of vanilla to check the DOM (not the virtual DOM) it 
 				saves a bunch of messing about in React JS (yeah, i know) but this is only a demo! 
 				*/
-				const checkPatients = bj.nodeArray( document.querySelectorAll('.oe-clinic-adder .patients input'));
 				const selectedPatients = new Set();
-				checkPatients.forEach( patient => {
-					if( patient.checked ){
-						selectedPatients.add( parseInt( patient.dataset.ref, 10));
-					}
-				});
+				
+				if( this.props.singlePatient === null ){
+					const checkPatients = bj.nodeArray( document.querySelectorAll('.oe-clinic-adder .patients input'));
+					checkPatients.forEach( patient => {
+						if( patient.checked ){
+							selectedPatients.add( parseInt( patient.dataset.ref, 10));
+						}
+					});
+				} else {
+					selectedPatients.add( this.props.singlePatient.arrRef );	
+				}
+				
 				
 				// pass up to Clinic to update state
 				this.state.onAdderRequest({ selectedPatients, type, shortcode, stepType });
 			}
 			
+			
+			singlePatient(){
+				if( this.props.singlePatient === null ) return null;
+				
+				const patient = this.props.singlePatient; 
+				return (
+					rEl('div', { className: 'specific-patient' },  
+						`${patient.lastname}, ${patient.firstname}`
+					)	
+				);
+			}
+			
 			/**
-			* list Patients in Clinic or coming later
+			* Full list of Patients arrived in Clinic
+			* or coming later, show this list if not updating a specific patient
 			* @returns {ReactElement}
 			*/
 			listPatients(){
+				if( this.props.singlePatient !== null ) return null;
+				
 				// 2 groups
 				const arrived = [];
 				const later = [];
@@ -6409,7 +6563,6 @@ const oePlotly = (function ( bj ) {
 		
 				return (
 					rEl('div', { className: 'patients' }, 
-						rEl('h3', null, 'Select Patients'),
 						ul( 'Arrived', arrived), 
 						ul( 'Later', later)
 					)	
@@ -6450,7 +6603,7 @@ const oePlotly = (function ( bj ) {
 				
 				const pathStep = ( step, type ) => {
 					return rEl('span', { 
-							className: `oe-pathstep-btn ${type}`, 
+							className: `oe-pathstep-btn no-popup ${type}`, 
 							key: react.getKey(), 
 							onClick: this.handleUpdates,
 							'data-shortcode': step, 
@@ -6475,27 +6628,475 @@ const oePlotly = (function ( bj ) {
 					)	
 				);
 			}
-			
-			
+					
 			/**
 			* Render
 			*/
 			render(){ 
-				return rEl('div', { className: 'oe-clinic-adder'},
+				// single patient or all?
+				const css = this.props.singlePatient === null ? 'all-patients' : 'single-patient';
+				
+				return rEl('div', { className: `oe-clinic-adder ${css}`},
 					// create 2 columns
 					this.listPatients(),
 					
 					rEl('div', { className: 'update-actions' }, 
-						rEl('h3', null, 'Update'),
+						this.singlePatient(),
 						this.listAssign(), 
 						this.listSteps()
-					)
+					), 
+					
+					rEl('div', { 
+						className: 'big-close-btn', 
+						onClick: this.props.onCloseBtn	 
+					}, null )
 				);		
 			}
 		}
 		
 		// make component available	
 		react.AdderPopup = AdderPopup;			
+	};
+	
+	/*
+	When React is available build the Component
+	*/
+	document.addEventListener('reactJSloaded', buildComponent, { once: true });
+	  
+
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	/**
+	* React Component 
+	*/
+	const buildComponent = () => {
+				
+		const rEl = React.createElement;
+		const react = bj.namespace('react');
+
+		class PopupFields extends React.Component {
+			
+			constructor( props ){
+				super( props );
+				
+				// no need for state (at least, as I currently understand React JS ;)
+				
+				this.setTitle = this.setTitle.bind( this );
+				this.content = this.content.bind( this );
+				this.stepActions = this.stepActions.bind( this );
+				this.stepStatus = this.stepStatus.bind( this );
+			}
+			
+			/**
+			* Title, convert shortcode into full title
+			* @params {*} this.props.step
+			* @returns {ReactElement}
+			*/
+			setTitle( step ){
+				const title = react.fullShortCode( step.shortcode );
+				const time = ( step.status == 'next' ) ? "Configure" : bj.clock24( new Date( step.timestamp ));
+				return rEl('h3', null, `Configure - Visual Fields` ); 
+			}
+			
+			/**
+			* Demo some content example for popup
+			*/
+			content(){
+				return (
+					rEl('div', { className: 'popup-overflow' }, 
+						rEl('div', { className: 'data-group' }, 
+							rEl('table', null, 
+								rEl('tbody', null, 
+									rEl('tr', null, 
+										rEl('th', null, 'Eye:'),
+										rEl('td', null, 
+											rEl('fieldset', null, 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'checkbox', name:'eye' }, null), 
+													rEl('i', { className: 'oe-i laterality R medium' }, null)
+												), 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'checkbox', name:'eye' }, null), 
+													rEl('i', { className: 'oe-i laterality L medium' }, null)
+												)
+											)
+										)
+									),
+									rEl('tr', null, 
+										rEl('th', null, 'Test type:'), 
+										rEl('td', null, 
+											rEl('fieldset', null, 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'radio', name:'fieldtest' }, null), 
+													rEl('span', null, '10-2')
+												), 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'radio', name:'fieldtest' }, null), 
+													rEl('span', null, '24-2')
+												), 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'radio', name:'fieldtest' }, null), 
+													rEl('span', null, '30-2')
+												)
+											)
+										)
+									),
+									rEl('tr', null, 
+										rEl('th', null, 'Esterman:'), 
+										rEl('td', null, 
+											rEl('fieldset', null, 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'checkbox', name:'fieldtest' }, null), 
+													rEl('span', null, 'Esterman')
+												)
+											)
+										)
+									),
+									rEl('tr', null, 
+										rEl('th', null, 'STA:'), 
+										rEl('td', null, 
+											rEl('fieldset', null, 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'radio', name:'sta' }, null), 
+													rEl('span', null, 'Standard')
+												), 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'radio', name:'sta' }, null), 
+													rEl('span', null, 'Fast')
+												)
+											)
+										)
+									)
+								)
+							)								
+						)
+					)
+				);
+			}
+			
+			//<label class="inline highlight"><input value="R" name="a-eye-sides" type="checkbox" checked=""> <i class="oe-i laterality R medium"></i></label>
+			
+			
+			
+			
+			/**
+			* <button> actions for the popup, 
+			* available actions depend on step status
+			* @params {*} this.props.step
+			* @returns {ReactElement}
+			*/
+			stepActions( step ){
+				
+				if( step.status != 'active' && step.status != 'next') return null; 
+				
+				const btn = ( css, btnTxt, newStatus ) => {
+					return rEl( 'button', { 
+						className: css,
+						onClick: this.props.onActions
+					}, btnTxt );
+				};
+				
+				if( step.status == 'active' ){
+					return (
+						rEl('div', { className: 'step-actions' }, 
+							btn('green hint', 'Complete', 'done' ),
+							btn('red hint', 'Remove', 'remove' )
+						)	
+					);
+				}
+				
+				if( step.status == 'next' ){
+					return (
+						rEl('div', { className: 'step-actions' }, 
+							btn('blue hint', 'Request Test', 'active' ),
+							btn('red hint', 'Cancel Test', 'remove' )
+						)	
+					);
+				}
+				
+									
+			}
+			
+			/**
+			* show the steps status with CSS 
+			* @params {*} this.props.step
+			* @returns {ReactElement}
+			*/
+			stepStatus( step ){
+				let css = 'step-status'; 
+				if( step.status == 'done' ) css += ' green';
+				if( step.status == 'active' ) css += ' orange';
+				return rEl('div', { className: css }, step.status );
+			}
+			
+			
+			/**
+			* Render
+			*/
+			render(){ 
+				// Build and position the popup	
+				const step = this.props.step; 
+
+				// set up a default standard step.
+				return (
+					rEl('div', {
+							className: 'oe-pathstep-popup a-t-l',
+							style: {
+								top: step.rect.bottom,
+								left: step.rect.left,
+							}
+						},
+						rEl('div', { 
+							className: 'close-icon-btn', 
+							onClick: this.props.onActions,
+							dangerouslySetInnerHTML: { __html : '<i class="oe-i remove-circle medium"></i>'}
+						}),
+						
+						this.setTitle( step ),
+						this.content( step ),
+						this.stepActions( step ),
+						this.stepStatus( step )
+					)
+				);
+					
+			}
+		}
+		
+		// make component available	
+		react.PopupFields = PopupFields;			
+	};
+	
+	/*
+	When React is available build the Component
+	*/
+	document.addEventListener('reactJSloaded', buildComponent, { once: true });
+	  
+
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	/**
+	* React Component 
+	*/
+	const buildComponent = () => {
+				
+		const rEl = React.createElement;
+		const react = bj.namespace('react');
+
+		class PopupImage extends React.Component {
+			
+			constructor( props ){
+				super( props );
+				
+				// no need for state (at least, as I currently understand React JS ;)
+				
+				this.setTitle = this.setTitle.bind( this );
+				this.content = this.content.bind( this );
+				this.stepActions = this.stepActions.bind( this );
+				this.stepStatus = this.stepStatus.bind( this );
+			}
+			
+			/**
+			* Title, convert shortcode into full title
+			* @params {*} this.props.step
+			* @returns {ReactElement}
+			*/
+			setTitle( step ){
+				const title = react.fullShortCode( step.shortcode );
+				const time = ( step.status == 'next' ) ? "Configure" : bj.clock24( new Date( step.timestamp ));
+				return rEl('h3', null, `Configure - Imaging` ); 
+			}
+			
+			/**
+			* Demo some content example for popup
+			*/
+			content(){
+				return (
+					rEl('div', { className: 'popup-overflow' }, 
+						rEl('div', { className: 'data-group' }, 
+							rEl('table', null, 
+								rEl('tbody', null, 
+									rEl('tr', null, 
+										rEl('th', null, 'Eye:'),
+										rEl('td', null, 
+											rEl('fieldset', null, 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'checkbox', name:'eye' }, null), 
+													rEl('i', { className: 'oe-i laterality R medium' }, null)
+												), 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'checkbox', name:'eye' }, null), 
+													rEl('i', { className: 'oe-i laterality L medium' }, null)
+												)
+											)
+										)
+									),
+									rEl('tr', null, 
+										rEl('th', null, 'OCT:'), 
+										rEl('td', null, 
+											rEl('fieldset', null, 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'radio', name:'fieldtest' }, null), 
+													rEl('span', null, 'Disc')
+												), 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'radio', name:'fieldtest' }, null), 
+													rEl('span', null, 'Mac')
+												), 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'radio', name:'fieldtest' }, null), 
+													rEl('span', null, 'Mac-Disc')
+												)
+											)
+										)
+									),
+									rEl('tr', null, 
+										rEl('th', null, 'Type:'), 
+										rEl('td', null, 
+											rEl('fieldset', null, 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'radio', name:'type' }, null), 
+													rEl('span', null, 'Zeiss')
+												), 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'radio', name:'type' }, null), 
+													rEl('span', null, 'Topcon')
+												), 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'radio', name:'type' }, null), 
+													rEl('span', null, 'Spectralis')
+												)
+											)
+										)
+									),
+									rEl('tr', null, 
+										rEl('th', null, 'KOWA-Disc:'), 
+										rEl('td', null, 
+											rEl('fieldset', null, 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'checkbox', name:'kowa' }, null), 
+													rEl('span', null, 'KOWA-Dis')
+												)
+											)
+										)
+									),
+									rEl('tr', null, 
+										rEl('th', null, 'Optos:'), 
+										rEl('td', null, 
+											rEl('fieldset', null, 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'radio', name:'sta' }, null), 
+													rEl('span', null, 'Daytona')
+												), 
+												rEl('label', { className: 'highlight inline'}, 
+													rEl('input', { type: 'radio', name:'sta' }, null), 
+													rEl('span', null, 'Silverstone')
+												)
+											)
+										)
+									)
+								)
+							)								
+						)
+					)
+				);
+			}
+			
+			//<label class="inline highlight"><input value="R" name="a-eye-sides" type="checkbox" checked=""> <i class="oe-i laterality R medium"></i></label>
+			
+			
+			
+			
+			/**
+			* <button> actions for the popup, 
+			* available actions depend on step status
+			* @params {*} this.props.step
+			* @returns {ReactElement}
+			*/
+			stepActions( step ){
+				
+				if( step.status != 'active' && step.status != 'next') return null; 
+				
+				const btn = ( css, btnTxt, newStatus ) => {
+					return rEl( 'button', { 
+						className: css,
+						onClick: this.props.onActions
+					}, btnTxt );
+				};
+				
+				if( step.status == 'active' ){
+					return (
+						rEl('div', { className: 'step-actions' }, 
+							btn('green hint', 'Complete', 'done' ),
+							btn('red hint', 'Remove', 'remove' )
+						)	
+					);
+				}
+				
+				if( step.status == 'next' ){
+					return (
+						rEl('div', { className: 'step-actions' }, 
+							btn('blue hint', 'Request Test', 'active' ),
+							btn('red hint', 'Cancel Test', 'remove' )
+						)	
+					);
+				}
+				
+									
+			}
+			
+			/**
+			* show the steps status with CSS 
+			* @params {*} this.props.step
+			* @returns {ReactElement}
+			*/
+			stepStatus( step ){
+				let css = 'step-status'; 
+				if( step.status == 'done' ) css += ' green';
+				if( step.status == 'active' ) css += ' orange';
+				return rEl('div', { className: css }, step.status );
+			}
+			
+			
+			/**
+			* Render
+			*/
+			render(){ 
+				// Build and position the popup	
+				const step = this.props.step; 
+
+				// set up a default standard step.
+				return (
+					rEl('div', {
+							className: 'oe-pathstep-popup a-t-l',
+							style: {
+								top: step.rect.bottom,
+								left: step.rect.left,
+							}
+						},
+						rEl('div', { 
+							className: 'close-icon-btn', 
+							onClick: this.props.onActions,
+							dangerouslySetInnerHTML: { __html : '<i class="oe-i remove-circle medium"></i>'}
+						}),
+						
+						this.setTitle( step ),
+						this.content( step ),
+						this.stepActions( step ),
+						this.stepStatus( step )
+					)
+				);
+					
+			}
+		}
+		
+		// make component available	
+		react.PopupImage = PopupImage;			
 	};
 	
 	/*
@@ -6784,7 +7385,7 @@ const oePlotly = (function ( bj ) {
 	// central-ise these:
 	react.assignList = ['MM', 'AB', 'AG', 'RB', 'CW'].sort();
 	react.clinicPersonList = ['Nurse'];
-	react.clinicProcessList = ['Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort();
+	react.clinicProcessList = ['Dilate', 'VisAcu', 'Orth', 'Ref', '~Img', '~Fields' ].sort();
 	
 	react.fullShortCode = ( shortcode ) => {
 		let full = shortcode; // "Nurse" doesn't need expanding on
@@ -7192,7 +7793,7 @@ const oePlotly = (function ( bj ) {
 		
 			// load in PHP using XHR (returns a Promise)	
 			uiApp.xhr(json.idgPHP)
-				.then( html => {	notes.innerHTML = html;
+				.then( xreq => {	notes.innerHTML = xreq.html;
 									// IDG demo eyelat inputs...
 									if(json.eyelat == "L")	notes.querySelector('#annotation-right').style.visibility = "hidden"; // maintain layout?
 									if(json.eyelat == "R")	notes.querySelector('#annotation-left').style.visibility = "hidden";
@@ -7714,8 +8315,8 @@ const oePlotly = (function ( bj ) {
 		
 		// xhr returns a Promise... 
 		uiApp.xhr('/idg-php/v3/_load/ed3/ed3-app.php?' + queryString)
-			.then( html => {
-				ed3app.innerHTML = html;
+			.then( xreq => {
+				ed3app.innerHTML = xreq.html;
 				ed3app.querySelector('.close-icon-btn').addEventListener('mousedown', () => {
 					ed3app.style.display = "none";
 				},{once:true});
@@ -7744,13 +8345,13 @@ const oePlotly = (function ( bj ) {
 		loadPHP:function(demo){
 			// xhr returns a Promise... 
 			uiApp.xhr(demo)
-				.then( html => {
+				.then( xreq => {
 					// in the meantime has the user clicked to close?
 					if(this.open === false) return; 
 					
 					this.nav = document.createElement('nav');
 					this.nav.className = this.wrapClass;
-					this.nav.innerHTML = html;
+					this.nav.innerHTML = xreq.html;
 					// reflow DOM
 					this.btn.classList.add('selected');	
 					
@@ -8108,9 +8709,9 @@ const oePlotly = (function ( bj ) {
 		
 		// xhr returns a Promise... 	
 		uiApp.xhr('/idg-php/v3/_load/sidebar/events-user-trail-v2.php')
-			.then( html => {
+			.then( xreq => {
 				clearTimeout(spinnerID);
-				content.innerHTML = html;
+				content.innerHTML = xreq.html;
 			})
 			.catch(e => console.log('ed3app php failed to load',e));  // maybe output this to UI at somepoint, but for now...	
 	};
@@ -9620,10 +10221,10 @@ Updated to Vanilla JS for IDG
 		const showPopup = () => {
 			// xhr returns a Promise... 
 			uiApp.xhr('/idg-php/v3/_load/' + php)
-				.then( html => {
+				.then( xreq => {
 					const div = document.createElement('div');
 					div.className = "oe-popup-wrap";
-					div.innerHTML = html;
+					div.innerHTML = xreq.html;
 					div.querySelector('.close-icon-btn').addEventListener("mousedown", (ev) => {
 						ev.stopPropagation();
 						uiApp.remove(div);
@@ -9677,10 +10278,10 @@ Updated to Vanilla JS for IDG
 
 		// xhr returns a Promise... 
 		uiApp.xhr('/idg-php/v3/_load/' + php)
-			.then( html => {
+			.then( xreq => {
 				const div = document.createElement('div');
 				div.className = "oe-popup-wrap";
-				div.innerHTML = html;
+				div.innerHTML = xreq.html;
 				// reflow DOM
 				document.body.appendChild( div );
 				
@@ -9700,14 +10301,13 @@ Updated to Vanilla JS for IDG
 	uiApp.userDown('.js-idg-demo-popup-json', showPopup);
 			
 })(bluejay); 
-(function (uiApp) {
+(function( bj ){
 
 	'use strict';	
 	
-	uiApp.addModule('pathSteps');	
+	bj.addModule('pathStepsPopup');	
 	
-	const selector = '.oe-pathstep-btn';
-	if(document.querySelector(selector) === null) return;
+	const selector = '.oe-pathstep-btn:not(.no-popup)';
 	
 	let activePathBtn = false;
 	
@@ -9862,13 +10462,14 @@ Updated to Vanilla JS for IDG
 		popup.tbody.appendChild(fragment);
 		
 		// store a reference to the all the 'administered' <tr> data
-		popup.detailRows = uiApp.nodeArray(div.querySelectorAll('.administer-details'));	
+		popup.detailRows = bj.nodeArray(div.querySelectorAll('.administer-details'));	
 	};
 	
 	/**
 	* update popup DOM
 	*/
-	const updatePopup = () => {
+	const updatePopup = () => { 
+		
 		let json = JSON.parse(activePathBtn.dataset.step);
 		popup.title.textContent = json.title;
 		buildPSDTable(json.psd);
@@ -9906,6 +10507,9 @@ Updated to Vanilla JS for IDG
 		div.style.left = left - divWidth + "px";
 		div.style.display = "block";
 	};
+	
+	
+	
 	
 	/**
 	* Callback for 'Click'
@@ -9952,12 +10556,12 @@ Updated to Vanilla JS for IDG
 	/*
 	Events 
 	*/
-	uiApp.userDown(selector,userClick);
-	uiApp.userEnter(selector,userHover);
-	uiApp.userLeave(selector,userOut);
-	uiApp.userDown('.oe-pathstep-popup .close-icon-btn .oe-i',hide);
+	bj.userDown( selector, userClick );
+	bj.userEnter( selector, userHover );
+	bj.userLeave( selector, userOut );
+	bj.userDown( '.oe-pathstep-popup .close-icon-btn .oe-i', hide );
 		
-})(bluejay); 
+})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';	
@@ -10243,10 +10847,10 @@ Updated to Vanilla JS for IDG
 		
 		// xhr returns a Promise... 
 		uiApp.xhr('/idg-php/v3/_load/' + php)
-			.then( html => {
+			.then( xreq => {
 				clearTimeout(spinnerID);
 				if(open){
-					content.innerHTML = html;
+					content.innerHTML = xreq.html;
 					div.style.display = "block";
 				}
 				
@@ -11482,128 +12086,140 @@ Updated to Vanilla JS for IDG
 	
 
 })(bluejay); 
-(function (uiApp) {
+(function( bj ){
 
 	'use strict';	
 	
-	uiApp.addModule('sidebarQuicklookView');
+	bj.addModule('sidebarQuicklookView');
 	
 	/*
+	Note: the event sidebar can be re-oredered and filtered
 	sidebar event list - DOM
-	<ul> .events 
-	- <li> .event
-	-- .tooltip.quicklook (hover info for event type)
-	-- <a> (Event data)
-	--- .event-type (data attributes all in here for quickView)
+	ul.events -|- li.event -|
+							|- .tooltip.quicklook (hover info for event type)
+							|- <a> -|- .event-type
+									|- .event-extra (for eyelat icons)
+									|- .event-date
+									|- .tag
 	
-	Remember!: the event sidebar can be re-oredered and filtered
+	Event sidebar only exists on SEM pages
 	*/
-	
+	if( document.querySelector('.sidebar-eventlist') === null ) return;
+
 	/*
-	Quicklook (in DOM)
+	There can only be one sidebar 'quicklook' open (tooltip for sidebar element)
+	and only one quickview (the big popup that shows more lightning view of Event)	
 	*/
-	
-	if( document.querySelector('ul.events') === null ) return;
-
-	let active = null;
-	
-	const findQuickLook = (eventType) => {
-		let li = uiApp.getParent(eventType, 'li');
-		return li.querySelector('.quicklook');
-	};
-
-	const hideQuickLook = () => {
-		if(active != null){
-			findQuickLook(active).classList.remove('fade-in');
-			active = null;
-		}
-	};
-
-	const showQuickLook = (newActive) => {
-		findQuickLook(newActive).classList.add('fade-in');
-		active = newActive;
-	};
-	
-	/*
-	QuickView 
-	DOM built dymnamically and content is loaded from PHP
-	*/
-
-	const _show = () => ({
-		/**
-		* Callback for 'hover'
-		* Enhanced behaviour for mouse/trackpad
-		*/
-		show:function(target){
-			this.open = true;
-			const json = JSON.parse(target.dataset.quickview);
-			this.icon.className = "oe-i-e large " + json.icon;
-			this.titleDate.textContent = json.title + " - " + json.date;
-			
-			// returns a promise
-			uiApp.xhr('/idg-php/v3/_load/sidebar/quick-view/' + json.php)
-				.then( html => {
-					if(this.open === false) return;
-					this.open = true;
-					this.content.innerHTML = html;
-					this.div.classList.remove('fade-out');
-					this.div.classList.add("fade-in");
-				})
-				.catch(e => console.log('PHP failed to load',e));  // maybe output this to UI at somepoint, but for now...
-			
-		}	
-	});
-	
-	const _hide = () => ({
-		/**
-		* Hide content
-		*/
-		hide:function(){
-			this.open = false;
-			this.div.classList.add('fade-out');
-			this.div.classList.remove("fade-in");
-			/*
-			Must remove the fade-out class or it will cover
-			the Event and prevent interaction!
-			*/
-			setTimeout(() => this.div.classList.remove('fade-out'), 300); 	// CSS fade-out animation lasts 0.2s
-		}
-	});
 	
 	/**
-	* quickView singleton 
-	* (using IIFE to maintain code pattern)
+	* Quicklook, DOM is hidden.
 	*/
-	const quickView = (() => {	
-		const div = document.createElement('div');
-		div.className = "oe-event-quick-view";
-		div.id = "js-event-quick-view";
-		div.innerHTML = [
-			'<div class="event-icon"><i class="oe-i-e large"></i></div>',
-			'<div class="title-date">Title - DD Mth YYYY</div>',
-			'<div class="audit-trail">Michael Morgan</div>',
-			'<div class="quick-view-content"></div>'].join('');
-		
-		document.body.appendChild( div );
-		
-		return Object.assign(	{	div: div,
-									titleDate: div.querySelector('.title-date'),
-									icon: div.querySelector('.event-icon > .oe-i-e'),
-									content: div.querySelector('.quick-view-content'),
-									open:false,
-								},
-								_show(),
-								_hide() );
-	})();
+	const quicklook = {
+		el:null, 
+		show( eventType ){
+			this.el = eventType.parentNode.previousSibling; // unless DOM structure changes
+			this.el.classList.add('fade-in');
+		},
+		hide(){
+			this.el.classList.remove('fade-in');
+		}
+	};
+	
+
+	/**
+	* Quick / Lightning View
+	* DOM built dymnamically and content is loaded from PHP
+	*/
+	const lightningView = {
+		locked:false,
+		div:null,
+		xhrToken:null,
+		php:null,
+		over( json ){
+			if( this.locked ) return; // ignore
+			this.show( json );
+		},
+		out(){
+			if( this.locked ) return; // ignore
+			this.remove();
+		},
+		click( json ){
+			if( json.php == this.php && this.locked ){
+				this.locked = false;
+				this.div.querySelector('.close-icon-btn').remove();
+				return;
+			}
+			this.locked = true;
+			this.show( json );
+			
+			const closeBtn = bj.div('close-icon-btn');
+			closeBtn.innerHTML = '<i class="oe-i remove-circle"></i>';
+			this.div.appendChild( closeBtn );
+		},
+		close(){
+			this.remove();
+			this.locked = false;	
+		},
+		show( json ){
+			// there is only ever one lightning view at a time
+			if( this.div !== null ) this.remove();
+			
+			const template =  [
+				'<div class="event-icon"><i class="oe-i-e large {{icon}}"></i></div>',
+				'<div class="lightning-icon"></div>',
+				'<div class="title-date">{{title}} - {{humandate}}</div>',
+				'<div class="quick-view-content"></div>'
+			].join('');
+			
+			this.div = bj.div('oe-event-quick-view fade-in');
+			this.div.innerHTML = Mustache.render( template, json );
+			
+			/*
+			xhr, returns a promise, but check user hasn't moved on to another event icon
+			by comparing tokens
+			*/
+			this.php = json.php;
+			this.xhrToken = bj.getToken();
+			bj.xhr('/idg-php/v3/_load/sidebar/quick-view/' + json.php, this.xhrToken )
+				.then( xreq => {
+					if( this.xhrToken != xreq.token ) return;
+					this.div.querySelector('.quick-view-content').innerHTML = xreq.html;
+				})
+				.catch(e => console.log('PHP failed to load',e));
+			
+			// append div, and wait to load PHP content	
+			document.body.appendChild( this.div );
+		},
+		remove(){
+			this.div.classList.add('fade-out'); // CSS fade-out animation lasts 0.2s
+			this.div.remove();
+			this.div = null;
+			this.php = null;
+		}
+	};
+	
+	// create a way of reviewing a Quickvew. 
+	const testTarget = document.querySelector('.js-idg-sidebar-demo-quickview');
+	if( testTarget !== null ){
+		lightningView.show( JSON.parse( testTarget.dataset.quickview ));
+	}
 	
 	/*
 	Events 
 	*/
-	uiApp.userEnter('.event .event-type', (ev) => {	showQuickLook(ev.target);
-															quickView.show(ev.target);	});	
+	bj.userEnter('.event .event-type', (ev) => {	
+		quicklook.show( ev.target );
+		lightningView.over( JSON.parse( ev.target.dataset.quickview ));	
+	});	
 																				
-	uiApp.userLeave('.event .event-type', (ev) => {	hideQuickLook(); 
-															quickView.hide();	});
+	bj.userLeave('.event .event-type', (ev) => {
+		quicklook.hide(); 
+		lightningView.out();	
+	});
+	
+	bj.userDown('.oe-event-quick-view .close-icon-btn', () => {
+		lightningView.close();
+	});
 	
 	/*
 	No click events?! Why?
@@ -11613,17 +12229,18 @@ Updated to Vanilla JS for IDG
 	but it should STILL be only a hover enhancement (at least for now on IDG).
 	
 	If 'click' to lock OR touch support is required this will handle default <a> click:
-	document.addEventListener('click',(e) => {
-		if(e.target.matches('.event .event-type')){
-			e.preventDefault();
-			e.stopImmediatePropagation();
-			console.log('phew');
-		}
-	},{capture:true})
 	*/
+	document.addEventListener('click',( ev ) => {
+		if( ev.target.matches('.event .event-type')){
+			ev.preventDefault();
+			ev.stopImmediatePropagation();
+			lightningView.click( JSON.parse( ev.target.dataset.quickview ));
+		}
+	},{ capture:true });
+	
 
 	
-})(bluejay); 
+})( bluejay ); 
 (function( bj ){
 
 	'use strict';	
@@ -11683,9 +12300,9 @@ Updated to Vanilla JS for IDG
 	const loadSignaturePad = () => {
 		// xhr returns a Promise... 
 		bj.xhr('/idg-php/v3/_load/signature-pad.php')
-			.then( html => {
+			.then( xreq => {
 				const div = bj.div("oe-popup-wrap");
-				div.innerHTML = html;
+				div.innerHTML = xreq.html;
 				
 				// reflow DOM
 				document.body.appendChild( div );

@@ -20,8 +20,14 @@
 					onAdderRequest: this.props.onAdderRequest,
 				};
 				
+				this.handleUpdates = this.handleUpdates.bind( this );	
+				
+				// builders
 				this.listPatients = this.listPatients.bind( this );	
-				this.handleUpdates = this.handleUpdates.bind( this );		
+				this.listAssign = this.listAssign.bind( this );
+				this.listSteps = this.listSteps.bind( this );
+				this.singlePatient = this.singlePatient.bind( this );
+					
 			}
 			
 			shouldComponentUpdate(){
@@ -53,23 +59,44 @@
 				However, if I use a a bit of vanilla to check the DOM (not the virtual DOM) it 
 				saves a bunch of messing about in React JS (yeah, i know) but this is only a demo! 
 				*/
-				const checkPatients = bj.nodeArray( document.querySelectorAll('.oe-clinic-adder .patients input'));
 				const selectedPatients = new Set();
-				checkPatients.forEach( patient => {
-					if( patient.checked ){
-						selectedPatients.add( parseInt( patient.dataset.ref, 10));
-					}
-				});
+				
+				if( this.props.singlePatient === null ){
+					const checkPatients = bj.nodeArray( document.querySelectorAll('.oe-clinic-adder .patients input'));
+					checkPatients.forEach( patient => {
+						if( patient.checked ){
+							selectedPatients.add( parseInt( patient.dataset.ref, 10));
+						}
+					});
+				} else {
+					selectedPatients.add( this.props.singlePatient.arrRef );	
+				}
+				
 				
 				// pass up to Clinic to update state
 				this.state.onAdderRequest({ selectedPatients, type, shortcode, stepType });
 			}
 			
+			
+			singlePatient(){
+				if( this.props.singlePatient === null ) return null;
+				
+				const patient = this.props.singlePatient; 
+				return (
+					rEl('div', { className: 'specific-patient' },  
+						`${patient.lastname}, ${patient.firstname}`
+					)	
+				);
+			}
+			
 			/**
-			* list Patients in Clinic or coming later
+			* Full list of Patients arrived in Clinic
+			* or coming later, show this list if not updating a specific patient
 			* @returns {ReactElement}
 			*/
 			listPatients(){
+				if( this.props.singlePatient !== null ) return null;
+				
 				// 2 groups
 				const arrived = [];
 				const later = [];
@@ -102,7 +129,6 @@
 		
 				return (
 					rEl('div', { className: 'patients' }, 
-						rEl('h3', null, 'Select Patients'),
 						ul( 'Arrived', arrived), 
 						ul( 'Later', later)
 					)	
@@ -143,7 +169,7 @@
 				
 				const pathStep = ( step, type ) => {
 					return rEl('span', { 
-							className: `oe-pathstep-btn ${type}`, 
+							className: `oe-pathstep-btn no-popup ${type}`, 
 							key: react.getKey(), 
 							onClick: this.handleUpdates,
 							'data-shortcode': step, 
@@ -168,21 +194,28 @@
 					)	
 				);
 			}
-			
-			
+					
 			/**
 			* Render
 			*/
 			render(){ 
-				return rEl('div', { className: 'oe-clinic-adder'},
+				// single patient or all?
+				const css = this.props.singlePatient === null ? 'all-patients' : 'single-patient';
+				
+				return rEl('div', { className: `oe-clinic-adder ${css}`},
 					// create 2 columns
 					this.listPatients(),
 					
 					rEl('div', { className: 'update-actions' }, 
-						rEl('h3', null, 'Update'),
+						this.singlePatient(),
 						this.listAssign(), 
 						this.listSteps()
-					)
+					), 
+					
+					rEl('div', { 
+						className: 'big-close-btn', 
+						onClick: this.props.onCloseBtn	 
+					}, null )
 				);		
 			}
 		}

@@ -42,8 +42,8 @@
 		
 		// xhr returns a Promise... 
 		uiApp.xhr('/idg-php/v3/_load/ed3/ed3-app.php?' + queryString)
-			.then( html => {
-				ed3app.innerHTML = html;
+			.then( xreq => {
+				ed3app.innerHTML = xreq.html;
 				ed3app.querySelector('.close-icon-btn').addEventListener('mousedown', () => {
 					ed3app.style.display = "none";
 				},{once:true});

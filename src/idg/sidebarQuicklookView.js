@@ -1,125 +1,137 @@
-(function (uiApp) {
+(function( bj ){
 
 	'use strict';	
 	
-	uiApp.addModule('sidebarQuicklookView');
+	bj.addModule('sidebarQuicklookView');
 	
 	/*
+	Note: the event sidebar can be re-oredered and filtered
 	sidebar event list - DOM
-	<ul> .events 
-	- <li> .event
-	-- .tooltip.quicklook (hover info for event type)
-	-- <a> (Event data)
-	--- .event-type (data attributes all in here for quickView)
+	ul.events -|- li.event -|
+							|- .tooltip.quicklook (hover info for event type)
+							|- <a> -|- .event-type
+									|- .event-extra (for eyelat icons)
+									|- .event-date
+									|- .tag
 	
-	Remember!: the event sidebar can be re-oredered and filtered
+	Event sidebar only exists on SEM pages
 	*/
-	
+	if( document.querySelector('.sidebar-eventlist') === null ) return;
+
 	/*
-	Quicklook (in DOM)
+	There can only be one sidebar 'quicklook' open (tooltip for sidebar element)
+	and only one quickview (the big popup that shows more lightning view of Event)	
 	*/
-	
-	if( document.querySelector('ul.events') === null ) return;
-
-	let active = null;
-	
-	const findQuickLook = (eventType) => {
-		let li = uiApp.getParent(eventType, 'li');
-		return li.querySelector('.quicklook');
-	};
-
-	const hideQuickLook = () => {
-		if(active != null){
-			findQuickLook(active).classList.remove('fade-in');
-			active = null;
-		}
-	};
-
-	const showQuickLook = (newActive) => {
-		findQuickLook(newActive).classList.add('fade-in');
-		active = newActive;
-	};
-	
-	/*
-	QuickView 
-	DOM built dymnamically and content is loaded from PHP
-	*/
-
-	const _show = () => ({
-		/**
-		* Callback for 'hover'
-		* Enhanced behaviour for mouse/trackpad
-		*/
-		show:function(target){
-			this.open = true;
-			const json = JSON.parse(target.dataset.quickview);
-			this.icon.className = "oe-i-e large " + json.icon;
-			this.titleDate.textContent = json.title + " - " + json.date;
-			
-			// returns a promise
-			uiApp.xhr('/idg-php/v3/_load/sidebar/quick-view/' + json.php)
-				.then( html => {
-					if(this.open === false) return;
-					this.open = true;
-					this.content.innerHTML = html;
-					this.div.classList.remove('fade-out');
-					this.div.classList.add("fade-in");
-				})
-				.catch(e => console.log('PHP failed to load',e));  // maybe output this to UI at somepoint, but for now...
-			
-		}	
-	});
-	
-	const _hide = () => ({
-		/**
-		* Hide content
-		*/
-		hide:function(){
-			this.open = false;
-			this.div.classList.add('fade-out');
-			this.div.classList.remove("fade-in");
-			/*
-			Must remove the fade-out class or it will cover
-			the Event and prevent interaction!
-			*/
-			setTimeout(() => this.div.classList.remove('fade-out'), 300); 	// CSS fade-out animation lasts 0.2s
-		}
-	});
 	
 	/**
-	* quickView singleton 
-	* (using IIFE to maintain code pattern)
+	* Quicklook, DOM is hidden.
 	*/
-	const quickView = (() => {	
-		const div = document.createElement('div');
-		div.className = "oe-event-quick-view";
-		div.id = "js-event-quick-view";
-		div.innerHTML = [
-			'<div class="event-icon"><i class="oe-i-e large"></i></div>',
-			'<div class="title-date">Title - DD Mth YYYY</div>',
-			'<div class="audit-trail">Michael Morgan</div>',
-			'<div class="quick-view-content"></div>'].join('');
-		
-		document.body.appendChild( div );
-		
-		return Object.assign(	{	div: div,
-									titleDate: div.querySelector('.title-date'),
-									icon: div.querySelector('.event-icon > .oe-i-e'),
-									content: div.querySelector('.quick-view-content'),
-									open:false,
-								},
-								_show(),
-								_hide() );
-	})();
+	const quicklook = {
+		el:null, 
+		show( eventType ){
+			this.el = eventType.parentNode.previousSibling; // unless DOM structure changes
+			this.el.classList.add('fade-in');
+		},
+		hide(){
+			this.el.classList.remove('fade-in');
+		}
+	};
+	
+
+	/**
+	* Quick / Lightning View
+	* DOM built dymnamically and content is loaded from PHP
+	*/
+	const lightningView = {
+		locked:false,
+		div:null,
+		xhrToken:null,
+		php:null,
+		over( json ){
+			if( this.locked ) return; // ignore
+			this.show( json );
+		},
+		out(){
+			if( this.locked ) return; // ignore
+			this.remove();
+		},
+		click( json ){
+			if( json.php == this.php && this.locked ){
+				this.locked = false;
+				this.div.querySelector('.close-icon-btn').remove();
+				return;
+			}
+			this.locked = true;
+			this.show( json );
+			
+			const closeBtn = bj.div('close-icon-btn');
+			closeBtn.innerHTML = '<i class="oe-i remove-circle"></i>';
+			this.div.appendChild( closeBtn );
+		},
+		close(){
+			this.remove();
+			this.locked = false;	
+		},
+		show( json ){
+			// there is only ever one lightning view at a time
+			if( this.div !== null ) this.remove();
+			
+			const template =  [
+				'<div class="event-icon"><i class="oe-i-e large {{icon}}"></i></div>',
+				'<div class="lightning-icon"></div>',
+				'<div class="title-date">{{title}} - {{humandate}}</div>',
+				'<div class="quick-view-content"></div>'
+			].join('');
+			
+			this.div = bj.div('oe-event-quick-view fade-in');
+			this.div.innerHTML = Mustache.render( template, json );
+			
+			/*
+			xhr, returns a promise, but check user hasn't moved on to another event icon
+			by comparing tokens
+			*/
+			this.php = json.php;
+			this.xhrToken = bj.getToken();
+			bj.xhr('/idg-php/v3/_load/sidebar/quick-view/' + json.php, this.xhrToken )
+				.then( xreq => {
+					if( this.xhrToken != xreq.token ) return;
+					this.div.querySelector('.quick-view-content').innerHTML = xreq.html;
+				})
+				.catch(e => console.log('PHP failed to load',e));
+			
+			// append div, and wait to load PHP content	
+			document.body.appendChild( this.div );
+		},
+		remove(){
+			this.div.classList.add('fade-out'); // CSS fade-out animation lasts 0.2s
+			this.div.remove();
+			this.div = null;
+			this.php = null;
+		}
+	};
+	
+	// create a way of reviewing a Quickvew. 
+	const testTarget = document.querySelector('.js-idg-sidebar-demo-quickview');
+	if( testTarget !== null ){
+		lightningView.show( JSON.parse( testTarget.dataset.quickview ));
+	}
 	
 	/*
 	Events 
 	*/
-	uiApp.userEnter('.event .event-type', (ev) => {	showQuickLook(ev.target);
-															quickView.show(ev.target);	});	
+	bj.userEnter('.event .event-type', (ev) => {	
+		quicklook.show( ev.target );
+		lightningView.over( JSON.parse( ev.target.dataset.quickview ));	
+	});	
 																				
-	uiApp.userLeave('.event .event-type', (ev) => {	hideQuickLook(); 
-															quickView.hide();	});
+	bj.userLeave('.event .event-type', (ev) => {
+		quicklook.hide(); 
+		lightningView.out();	
+	});
+	
+	bj.userDown('.oe-event-quick-view .close-icon-btn', () => {
+		lightningView.close();
+	});
 	
 	/*
 	No click events?! Why?
@@ -129,14 +141,15 @@
 	but it should STILL be only a hover enhancement (at least for now on IDG).
 	
 	If 'click' to lock OR touch support is required this will handle default <a> click:
-	document.addEventListener('click',(e) => {
-		if(e.target.matches('.event .event-type')){
-			e.preventDefault();
-			e.stopImmediatePropagation();
-			console.log('phew');
-		}
-	},{capture:true})
 	*/
+	document.addEventListener('click',( ev ) => {
+		if( ev.target.matches('.event .event-type')){
+			ev.preventDefault();
+			ev.stopImmediatePropagation();
+			lightningView.click( JSON.parse( ev.target.dataset.quickview ));
+		}
+	},{ capture:true });
+	
 
 	
-})(bluejay); 
+})( bluejay ); 

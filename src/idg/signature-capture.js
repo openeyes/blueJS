@@ -57,9 +57,9 @@
 	const loadSignaturePad = () => {
 		// xhr returns a Promise... 
 		bj.xhr('/idg-php/v3/_load/signature-pad.php')
-			.then( html => {
+			.then( xreq => {
 				const div = bj.div("oe-popup-wrap");
-				div.innerHTML = html;
+				div.innerHTML = xreq.html;
 				
 				// reflow DOM
 				document.body.appendChild( div );

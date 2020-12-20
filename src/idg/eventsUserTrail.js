@@ -40,9 +40,9 @@
 		
 		// xhr returns a Promise... 	
 		uiApp.xhr('/idg-php/v3/_load/sidebar/events-user-trail-v2.php')
-			.then( html => {
+			.then( xreq => {
 				clearTimeout(spinnerID);
-				content.innerHTML = html;
+				content.innerHTML = xreq.html;
 			})
 			.catch(e => console.log('ed3app php failed to load',e));  // maybe output this to UI at somepoint, but for now...	
 	};

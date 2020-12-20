@@ -127,21 +127,23 @@
 	/**
 	* XMLHttpRequest 
 	* @param {string} url
+	* @param {string} token - returned in Promise for crosschecking
 	* @returns {Promise} resolve(responseText) or reject(errorMsg)
 	*/
-	const xhr = ( url ) => {
+	const xhr = ( url, token = false ) => {
 		bj.log('[XHR] - ' + url );
 		// wrap XHR in Promise
 		return new Promise(( resolve, reject ) => {
 			let xReq = new XMLHttpRequest();
-			xReq.open("GET", url);
+			xReq.open("GET", url );
 			xReq.onreadystatechange = function(){
 				
 				if(xReq.readyState !== 4) return; // only run if request is fully complete 
 				
 				if(xReq.status >= 200 && xReq.status < 300){
 					bj.log('[XHR] - Success');
-					resolve(xReq.responseText);
+					xReq.token = token;
+					resolve({ html: xReq.responseText, token });
 					// success
 				} else {
 					// failure
@@ -154,6 +156,20 @@
 		});
 	};
 	
+	/**
+	* Unique tokens, use a generator to always create unique tokens
+	* token will always return a unique token
+	*/
+	function *UniqueToken(){
+		let id = 1;
+		while( true ){
+			++id;
+			yield `t-${id}`;
+		}
+	}
+	const tokenIterator = UniqueToken();
+	const token = () => tokenIterator.next().value;
+
 	/**
 	* Load JS on request. 
 	* @param {String} url - external JS file
@@ -254,6 +270,7 @@
 	bj.extend('reshow', reshow );
 	bj.extend('hide', hide );
 	bj.extend('xhr', xhr );
+	bj.extend('getToken', token );
 	bj.extend('loadJS', loadJS );
 	bj.extend('getHiddenElemSize', getHiddenElemSize );
 	bj.extend('idgReporter', idgMsgReporter );
