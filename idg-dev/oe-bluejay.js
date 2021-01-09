@@ -8731,7 +8731,7 @@ Updated to Vanilla JS for IDG
 					contentDiv.innerHTML = `<img src="${content}" />`;
 				break;
 				case 'pdf': 
-					contentDiv.innerHTML = `<embed src="${content}" width="100%" height="100%"></embed>`;
+					contentDiv.innerHTML = `<embed src="${content}#toolbar=0" width="100%" height="100%"></embed>`;
 				break;
 				case 'php': 
 					bj.xhr( content, this.id )
