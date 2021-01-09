@@ -54,12 +54,10 @@
 		locked:false,
 		iCloseBtn: 'i-btn-close',
 		
-		/*
-		primary action (because of touch)
-		*/
+		// primary action (for touch)
 		click( json ){
 			if( json.id == this.id ){
-				// Quick view is open...
+				// Quick view is already open...
 				if( this.locked ){
 					this.unlock();
 				} else {
@@ -72,7 +70,7 @@
 			}
 		},
 		
-		// mouse/track pad UX enhancements
+		// mouse/track pad UX enhancement
 		over( json ){
 			if( this.locked ) return; // ignore
 			this.show( json );
@@ -82,6 +80,7 @@
 			this.remove();
 		},
 		
+		// click behaviour
 		lock(){
 			this.locked = true;
 			this.div.appendChild( bj.div(`${this.iCloseBtn}`));
@@ -97,11 +96,10 @@
 			this.locked = false;	
 		},
 		
-		// remove DOM
+		// remove DOM, and reset
 		remove(){
 			// this.div.classList.add('fade-out'); // CSS fade-out animation lasts 0.2s
 			this.div.remove();
-			// reset
 			this.div = null;
 			this.id = null;
 		},
@@ -117,14 +115,14 @@
 			
 			const template =  [
 				'<div class="event-icon"><i class="oe-i-e large {{icon}}"></i></div>',
-				'<div class="title">{{type}} - {{date}}</div>',
-				'<div class="quick-view-content {{idgQuickView.type}}"></div>'
+				'<div class="title">{{event}} - {{date}}</div>',
+				'<div class="quick-view-content {{type}}"></div>'
 			].join('');
 			
 			this.div = bj.div('oe-event-quickview fade-in');
 			this.div.innerHTML = Mustache.render( template, json );
 			
-			this.load( json.idgQuickView );
+			this.load( json.type, json.content );
 
 			// append div, and wait to load PHP content	
 			document.body.appendChild( this.div );
@@ -133,17 +131,17 @@
 		/**
 		Load the QuickView content
 		*/
-		load( qv ){
+		load( type, content ){
 			const contentDiv = this.div.querySelector('.quick-view-content');
-			switch( qv.type ){
+			switch( type ){
 				case 'img': 
-					contentDiv.innerHTML = `<img src="${qv.content}" />`;
+					contentDiv.innerHTML = `<img src="${content}" />`;
 				break;
 				case 'pdf': 
-					contentDiv.innerHTML = `<embed src="${qv.content}" width="100%" height="100%"></embed>`;
+					contentDiv.innerHTML = `<embed src="${content}" width="100%" height="100%"></embed>`;
 				break;
 				case 'php': 
-					bj.xhr( qv.content, this.id )
+					bj.xhr( content, this.id )
 						.then( xreq => {
 							// check user hasn't move on whilst we were loading in
 							if( this.id != xreq.token ) return; 
@@ -151,15 +149,21 @@
 						})
 						.catch(e => console.log('PHP failed to load',e));
 				break;
-				
-				// just to check the old DOM is still supported by the CSS
-				case 'v3': 
-					this.v3DOM( qv.content );
+				case "none":
+					contentDiv.innerHTML = `<div class="not-available">${content}</div>`;
 				break;
 				
-				default: bj.log('QuickView Error - load content type unknown:' + qv.type);
+/*
+				case 'v3': 
+					this.v3DOM( content ); // to check the old DOM is still supported by the CSS, test on an IMG
+				break;
+*/
+				
+				default: bj.log('QuickView Error - load content type unknown:' + type);
 			}
 		},
+		
+/*
 		v3DOM( src ){
 			const oldDOM = [
 				'<div class="event-quickview">',
@@ -174,6 +178,7 @@
 			].join('');
 			this.div.innerHTML = Mustache.render( oldDOM, { imgSrc: src });
 		}
+*/
 	};
 	
 	/*
@@ -183,14 +188,14 @@
 		quicklook.show( ev.target );
 		// quick view JSON is held in <li> parent
 		const li = bj.getParent( ev.target, 'li.event' );
-		quickview.over( JSON.parse( li.dataset.event ));	
+		quickview.over( JSON.parse( li.dataset.quick ));	
 	});	
 																				
 	bj.userLeave('.event .event-type', (ev) => {
 		quicklook.hide(); 
 		quickview.out();	
 	});
-	
+
 	bj.userDown(`.oe-event-quickview .${quickview.iCloseBtn}`, () => {
 		quickview.close();
 	});
@@ -204,7 +209,7 @@
 			ev.stopImmediatePropagation();
 			// quick view JSON is held in <li> parent
 			const li = bj.getParent( ev.target, 'li.event' );
-			quickview.click( JSON.parse( li.dataset.event ));
+			quickview.click( JSON.parse( li.dataset.quick ));
 		}
 	},{ capture:true });
 	
