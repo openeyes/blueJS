@@ -13,15 +13,15 @@
 	
 	DOM
 	ul.events -|- li.event -|
-							|- .tooltip.quicklook (hover info for event type)
-							|- <a> -|- .event-type
-									|- .event-extra (for eyelat icons)
-									|- .event-date
-									|- .tag
+	                        |- .tooltip.quicklook (hover info for event type)
+	                        |- <a> -|- .event-type
+	                                |- .event-extra (for eyelat icons)
+	                                |- .event-date
+	                                |- .tag
 	
 	DOM data attributes:
 	<li> -|- data-id = "0000001" // OE (this repeated on <a> child)
-		  |- data-quick = JSON that provides all the bits we need.
+	      |- data-quick = JSON that provides all the bits we need.
 	
 	Event sidebar only exists on SEM pages:
 	*/
