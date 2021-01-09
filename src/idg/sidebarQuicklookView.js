@@ -3,10 +3,15 @@
 	'use strict';	
 	
 	bj.addModule('sidebarQuicklookView');
-	
 	/*
-	Note: the event sidebar can be re-oredered and filtered
-	sidebar event list - DOM
+	This handles the displaying of Quicklook/QuickView elements in the SEM Event sidebar
+	Quicklook DOM is prebuilt in DOM, QuickView (lightning) is built by JS on request.		
+	The event sidebar can be re-ordered and filtered, but this should not affect that.
+	
+	There can only be one sidebar 'quicklook' open (tooltip for sidebar element)
+	and only one quickview (the big popup that shows more lightning view of Event)
+	
+	DOM
 	ul.events -|- li.event -|
 							|- .tooltip.quicklook (hover info for event type)
 							|- <a> -|- .event-type
@@ -16,17 +21,12 @@
 	
 	DOM data attributes:
 	<li> -|- data-id = "0000001" // OE (this repeated on <a> child)
-		  |- data-bj = complex JSON (combines all OE seperate data attribures into 1)
+		  |- data-quick = JSON that provides all the bits we need.
 	
-	Event sidebar only exists on SEM pages...
+	Event sidebar only exists on SEM pages:
 	*/
 	if( document.querySelector('.sidebar-eventlist') === null ) return;
 
-	/*
-	There can only be one sidebar 'quicklook' open (tooltip for sidebar element)
-	and only one quickview (the big popup that shows more lightning view of Event)	
-	*/
-	
 	/**
 	* Quicklook, the little tooltip underneath <li>, in the DOM but hidden.
 	*/
@@ -44,8 +44,7 @@
 
 	/**
 	* Quickview, big popup preview.
-	* DOM struture is built dymnamically and content is loaded from an IDG PHP
-	* This is to demo loading.
+	* DOM struture is built dymnamically and content from JSON.
 	*/
 	const quickview = {
 		
@@ -152,17 +151,12 @@
 				case "none":
 					contentDiv.innerHTML = `<div class="not-available">${content}</div>`;
 				break;
-				
-/*
-				case 'v3': 
+				/* case 'v3': 
 					this.v3DOM( content ); // to check the old DOM is still supported by the CSS, test on an IMG
-				break;
-*/
-				
+				break; */
 				default: bj.log('QuickView Error - load content type unknown:' + type);
 			}
 		},
-		
 /*
 		v3DOM( src ){
 			const oldDOM = [
