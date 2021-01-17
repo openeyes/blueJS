@@ -244,6 +244,7 @@ const bluejay = (function () {
 	const mouseDown = new Map();	
 	const mouseEnter = new Map();	
 	const mouseLeave = new Map();	
+	const click = new Map();
 	const resize = new Set(); // no selectors to match too.
 
 	/**
@@ -254,7 +255,7 @@ const bluejay = (function () {
 	*/
 	const addListener = ( map, selector, cb ) => {
 		
-		if( map.has(selector)){
+		if( map.has( selector )){
 			throw new TypeError('Event Delegation: selector already added : ' + selector); 
 		} 
 		
@@ -286,7 +287,7 @@ const bluejay = (function () {
 		// ignore if document
 		if( target === document ) return false;
 		
-		listeners.forEach( ( cb, key ) => {
+		listeners.forEach(( cb, key ) => {
 			if( target.matches( key )){
 				cb( event );
 			}
@@ -359,11 +360,13 @@ const bluejay = (function () {
 	document.addEventListener('mousedown', handleMouserDown, { capture:true }); 
 	document.addEventListener('mouseleave', handleMouserLeave, { capture:true });
 	document.addEventListener('touchstart', ( e ) => handleTouchStart( e ), { capture:true });
+	document.addEventListener('click', ( e ) => notifyListeners( e, click ), { capture:true });
 
 	// extend App
 	bj.extend('userEnter', ( selector, cb ) => addListener( mouseEnter, selector, cb ));
 	bj.extend('userDown', ( selector, cb ) => addListener( mouseDown, selector, cb ));
 	bj.extend('userLeave', ( selector, cb ) => addListener( mouseLeave, selector, cb ));
+	bj.extend('userClick', ( selector, cb ) => addListener( click, selector, cb ));
 	
 	// window resize, no need for selectors
 	bj.extend('listenForResize', ( cb ) => resize.add( cb ));
@@ -535,7 +538,7 @@ const bluejay = (function () {
 		let id = 1;
 		while( true ){
 			++id;
-			yield `t-${id}`;
+			yield `bj${id}`;
 		}
 	}
 	const tokenIterator = UniqueToken();
@@ -8607,15 +8610,15 @@ Updated to Vanilla JS for IDG
 	
 	DOM
 	ul.events -|- li.event -|
-							|- .tooltip.quicklook (hover info for event type)
-							|- <a> -|- .event-type
-									|- .event-extra (for eyelat icons)
-									|- .event-date
-									|- .tag
+	                        |- .tooltip.quicklook (hover info for event type)
+	                        |- <a> -|- .event-type
+	                                |- .event-extra (for eyelat icons)
+	                                |- .event-date
+	                                |- .tag
 	
 	DOM data attributes:
 	<li> -|- data-id = "0000001" // OE (this repeated on <a> child)
-		  |- data-quick = JSON that provides all the bits we need.
+	      	|- data-quick = JSON that provides all the bits we need.
 	
 	Event sidebar only exists on SEM pages:
 	*/
@@ -10562,395 +10565,6 @@ Updated to Vanilla JS for IDG
 	'use strict';	
 	
 	/**
-	* React Parent Component 
-	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-		const react = bj.namespace('react');
-
-		class Clinic extends React.Component {
-			
-			constructor( props ){
-				super( props );
-		
-				/* 
-				React JS is optimised for shallow comparisons
-				where possible avoid deep nesting. Unable to avoid 
-				this for patients but state undates are targeted to 
-				specific patient.
-				*/
-				this.state = {
-					tableHead: ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', 'Pathway', 'Assigned', '', 'Mins', ''],
-					patients: this.props.patientsJSON,
-					popupStepKey: null, 	// use this to close popup if already open
-					popupStep: null, 		// step info passed to PathStep popup (not doing much with this at the moment)
-					adderForSpecificPatient: null,
-					showAdder: false,
-					filter: 'showAll', 		// filter state of Clinic
-				};
-				
-				/*
-				handlers and helpers
-				*/
-				
-				// generic handler patterns
-				this.buildPathStep = this.buildPathStep.bind( this );
-				this.updatePatientState = this.updatePatientState.bind( this );
-				
-				// direct actions on patient
-				this.handlePatientArrived = this.handlePatientArrived.bind( this );
-				this.handlePatientDNA = this.handlePatientDNA.bind( this );
-				this.handlePatientUpdate = this.handlePatientUpdate.bind( this );
-				this.handlePathwayCompleted = this.handlePathwayCompleted.bind( this );
-				this.handleChangeStepStatus = this.handleChangeStepStatus.bind( this );
-				
-				// Pathstep popup
-				this.handleShowStepPopup = this.handleShowStepPopup.bind( this );
-				this.handleCloseStepPopup = this.handleCloseStepPopup.bind( this );
-				
-				// Patients 'adder' (in Filters row)
-				this.handleAdderBtn = this.handleAdderBtn.bind( this );
-				this.handleAdderRequest = this.handleAdderRequest.bind( this );
-				
-				// Assignment filters
-				this.handleFilterChange = this.handleFilterChange.bind( this );
-				
-				/*
-				builders
-				*/
-				this.tablePatientRows = this.tablePatientRows.bind( this );
-				this.filters = this.filters.bind( this );
-				this.adderPopup = this.adderPopup.bind( this );
-				this.pathStepPopup = this.pathStepPopup.bind( this );
-			}
-			
-			/**
-			* Helper: PathStep Object pattern
-			* @returns {Object}
-			*/
-			buildPathStep( arrRef, shortcode, status, type ){
-				return {
-					arrRef, 				// store array position to update state later
-					key: react.getKey(), 	// this provides a unique React key
-					shortcode,
-					timestamp: Date.now(), 
-					status,
-					type,
-				};
-			}
-			
-			/**
-			* Helper: Update Patient state. 
-			* Deep clones state to maintain immutable states
-			* @param {Number} patientRef - array position
-			* @param {*} update - update is either simple or complex, either a string or an Object
-			*/
-
-			updatePatientState( patientRef, update ){
-				const action = typeof update === "string" ? update : update.action;
-				const patientsCopy = react.deepCopy( this.state.patients ); 
-				const thisPatient = patientsCopy[ patientRef ];
-				const thisPathway = thisPatient.pathway;
-				
-				if( action == 'assign' ){
-					thisPatient.assigned = update.assign;
-				}
-				
-				if( action == 'arrived'){
-					thisPatient.status = 'active';
-					// if there are already steps need to adjust their step array position ref
-					thisPathway.forEach( step => step.arrRef++ );
-					patientsCopy[ patientRef ].pathway = [ this.buildPathStep( 0, 'Arr', 'done', 'arrive' )].concat( thisPathway );
-				}
-				
-				if( action == 'DNA'){
-					thisPatient.status = 'complete';
-					thisPathway.push( this.buildPathStep( 0, 'DNA', 'done', 'DNA' )); 
-				}
-				
-				if( action == 'addStep' ){
-					thisPathway.push( this.buildPathStep( thisPathway.length, update.stepCode, 'next', update.stepType ));
-				}
-				
-				if( action == 'removeStep'){
-					thisPathway.splice( update.stepRef, 1 );
-				}
-				
-				if( action == 'changeStepStatus' ){
-					thisPathway[ update.stepRef ].status = update.newStatus;
-					thisPathway[ update.stepRef ].timestamp = Date.now(); 
-				}
-				
-				if( action == 'finished' ){
-					thisPatient.status = 'complete';
-					thisPathway.push( this.buildPathStep( thisPathway.length, 'Fin', 'done', 'finish' ));
-				}
-				
-				// target specific patient in state and update to avoid mutating state directly
-				this.setState( state => {
-					state.patients[ patientRef ] = thisPatient;
-					return state; 
-				});	
-			}
-			
-			/**
-			* Direct patient action: <button> "Arrived"
-			* @param {Number} patientRef
-			*/
-			handlePatientArrived( patientRef ){
-				this.updatePatientState( patientRef, 'arrived');
-			}
-			
-			/**
-			* Direct patient action: <button> "DNA"
-			* @param {Number} patientRef
-			*/
-			handlePatientDNA( patientRef ){
-				this.updatePatientState( patientRef, 'DNA');
-			}
-			
-			/**
-			* Open Adder Popup setup for specific patient
-			* @param {Number} patientRef
-			*/
-			handlePatientUpdate( patientRef ){
-				this.setState( state => ({ 
-					showAdder: true, 
-					adderForSpecificPatient: this.state.patients[ patientRef ] 
-				}));
-			}
-			
-			/**
-			* Direct patient action: <i> green tick icon
-			* @param {Number} patientRef
-			*/
-			handlePathwayCompleted( patientRef ){
-				this.updatePatientState( patientRef, 'finished');
-			}
-			
-			/**
-			* User clicks on PathStep and in the popup updates PathStep status
-			* @param {Number} patientRef - Array Ref
-			* @param {Number} stepRef - Array Ref
-			* @param {String} newStatus - "done", "remove" or "active"
-			*/
-			handleChangeStepStatus( patientRef, stepRef, newStatus ){
-				// close the step popup
-				this.handleCloseStepPopup();
-				
-				if( newStatus == "done" || newStatus == "active" ){
-					this.updatePatientState( patientRef, {
-						action: 'changeStepStatus',
-						stepRef,
-						newStatus
-					});
-				}
-				
-				if( newStatus == "remove"){
-					this.updatePatientState( patientRef, {
-						action: 'removeStep',
-						stepRef,
-					});
-				}
-			}
-			
-			/** 
-			* PathStep Popup - callback from Patient.
-			* @params {Object} step - PathStep info
-			*/
-			handleShowStepPopup( step ){
-				if( step.key == this.state.popupStepKey ){
-					// user is clicking on the same step
-					this.handleCloseStepPopup();
-				} else {
-					this.setState({
-						popupStepKey: step.key,
-						popupStep: step
-					});
-				}
-			}
-			
-			/** 
-			* PathStep Popup - close icon button in popup (or clicked on step to close it).
-			*/
-			handleCloseStepPopup(){
-				this.setState({
-					popupStepKey: null,
-					popupStep: null
-				});
-			}
-			
-			/**
-			* Click on 'Adder' button in Filters. Toggles state (show/hide)
-			*/
-			handleAdderBtn(){
-				// simple shallow update.
-				this.setState( state => ({ 
-					showAdder: !state.showAdder, 
-					adderForSpecificPatient: null 
-				}));
-			}
-			
-			/**
-			* Adder can assign and add steps to selected patients
-			* every time user clicks on either an assignment or a step the
-			* select patients get updated
-			* @params {Object} add
-			*/
-			handleAdderRequest( add ){
-				const type = add.type;
-				const shortcode = add.shortcode;
-				const stepType = add.stepType; // process or person?
-				
-				// adder provides a list of patient ref numbers
-				add.selectedPatients.forEach( arrRef => {
-					
-					if( type === 'assign'){
-						this.updatePatientState( arrRef, {
-							action: 'assign',
-							assign: shortcode == 'nobody' ? false : shortcode
-						});
-					} 
-					
-					if( type === 'step' ){
-						this.updatePatientState( arrRef, {
-							action: 'addStep',
-							stepCode: shortcode, 
-							stepType,
-						});
-					}
-				});
-			}
-			
-			/**
-			* Filter button clicked. Update Clinic patients shown
-			* @params {String} newFilter
-			*/
-			handleFilterChange( newFilter ){
-				// convert the "Unassigned" code to Boolean false:
-				newFilter = newFilter == 'nobody' ? false : newFilter;	
-				this.setState({ filter: newFilter });
-			}
-			
-			/*
-			builders	
-			*/
-
-			/**
-			* PathStep popup
-			* @returns React Element
-			*/
-			pathStepPopup(){
-				// null? popup is hidden
-				if( this.state.popupStep === null ) return null;
-				
-				return rEl( react.PathStepPopup, {
-					 step: this.state.popupStep,
-					 onClosePopup: this.handleCloseStepPopup,
-					 onChangeStepStatus: this.handleChangeStepStatus,
-				});
-				
-			}
-			
-			/**
-			* Add all the patients to the main <table>
-			* Before adding the React Element add all the handles 
-			* to keep the props shallow.
-			* @returns React Element
-			*/
-			tablePatientRows(){
-				const tableRows = this.state.patients.map(( patient, i ) => {
-					// keep the passed props shallow.
-					patient.onPathStepClick = this.handleShowStepPopup;
-					patient.onPathwayCompleted = this.handlePathwayCompleted;
-					patient.onArrived = this.handlePatientArrived;
-					patient.onDNA = this.handlePatientDNA;
-					patient.onUpdate = this.handlePatientUpdate;
-					patient.clinicFilterState = this.state.filter;
-					
-					return rEl( react.Patient, patient );
-				});
-				
-				return rEl('tbody', null, tableRows );
-			}
-			
-			/**
-			* Adder popup. Doesn't show 'completed' patients
-			* @returns React Element || null
-			*/
-			adderPopup(){
-				if( this.state.showAdder == false ) return null; // not needed
-				
-				const todo = []; // generate a list of patients NOT completed
-				this.state.patients.forEach( patient => {
-					if( patient.status !== 'complete' ){
-						todo.push({
-							booked: patient.booked,
-							lastname: patient.lastname,
-							arrRef: patient.arrRef,
-							status: patient.status,
-						});
-					}
-				});
-			
-				return rEl( react.AdderPopup, { 
-					list: todo, 
-					singlePatient: this.state.adderForSpecificPatient,
-					onAdderRequest: this.handleAdderRequest, 
-					onCloseBtn: this.handleAdderBtn 
-				});
-			}
-			
-			/**
-			* Filter Buttons
-			* Note: They are outside the parent DOM BUT children of React Virtual DOM
-			* @returns React Element
-			*/
-			filters(){
-				return rEl( react.Filters, { 
-					allAssigned: this.state.patients.map( patient => patient.assigned ),
-					clinicFilter: this.state.filter,
-					showAdder: this.state.showAdder,
-					onAdderBtn: this.handleAdderBtn,
-					onFilterChange: this.handleFilterChange, 
-				});
-			}
-			
-			/**
-			* Render
-			*/
-			render(){
-				return (
-					 rEl('div', { className: 'app' }, 
-					 	rEl('table', { className: 'oe-clinic-list' },
-					 		rEl( react.TableHead, { th: this.state.tableHead }),
-							this.tablePatientRows()
-						), 
-						this.pathStepPopup(), 
-						this.adderPopup(),
-						this.filters()
-					)
-				);
-			}
-		}
-		
-		// make component available
-		react.Clinic = Clinic;			
-	};
-	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
-
-})( bluejay ); 
-(function( bj ){
-
-	'use strict';	
-	
-	/**
 	* React Component 
 	*/
 	const buildComponent = () => {
@@ -11099,60 +10713,6 @@ Updated to Vanilla JS for IDG
 		
 		// make component available	
 		react.Filters = Filters;			
-	};
-	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
-
-})( bluejay ); 
-(function( bj ){
-
-	'use strict';	
-	
-	/**
-	* React Component 
-	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-	
-		/**
-		* PathStep - Functional Component (no need for Component Class)
-		* @param {String} key - PathSteps are created in loop and require a key
-		* @parma {Object} step - see Patient.js
-		* @param {Function} onClick - Callback from parent
-		*/
-		const PathStep = ({ key, step, onClick }) => {
-				
-			const css = ['oe-pathstep-btn', 'no-popup'];
-			
-			if( step.status === 'done') css.push('green');
-			if( step.status === 'active') css.push('orange');
-			
-			css.push( step.type );
-			
-			// use 'invisible' to maintain layout:
-			const cssTime = step.status == 'next' ? 'time invisible' : 'time';
-			
-			return (
-				rEl('span',
-					{ 
-						key: step.key,
-						className: css.join(' '), 
-						onClick: ( ev ) => onClick( step, ev.target.getBoundingClientRect())
-					},
-					rEl('span', { className: 'step' }, step.shortcode  ), 
-					rEl('span', { className: cssTime }, bj.clock24( new Date( step.timestamp )))
-				)
-			);
-					
-		};
-		
-		// make component available	
-		bj.namespace('react').PathStep = PathStep;			
 	};
 	
 	/*
@@ -11360,326 +10920,208 @@ Updated to Vanilla JS for IDG
 	  
 
 })( bluejay ); 
-(function( bj ){
+(function( bj, clinic, gui ){
 
 	'use strict';	
 	
 	/**
-	* React Component 
+	* Patient (<tr>)
+	* @param {*} props
+	* @returns {*} public methods
 	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-		const react = bj.namespace('react');
+	const Patient = ( props ) => {
+		/** 
+		* Model
+		* status:  "todo", "active", "complete"
+		* Extended with views
+		*/
+		const model = Object.assign({
+			_uid: props.uid,
+			_status: null,
+			_assigned: false,
+			
+			get status(){
+				return this._status;
+			},
+			set status( val ){
+				this._status = val; 
+				this.views.notify();
+			},
+			get assigned(){
+				return this._assigned; 
+			},	
+			set assigned( val ){
+				this._assigned = val;
+				this.views.notify();	
+			},
+		}, bj.ModelViews());
 		
-		class Patient extends React.Component {	
-			/**
-			* Patient - DOM is <tr>
-			* @param {*} props 
-			*/
-			constructor( props ){
-				super( props );
-			
-				this.state = {
-					patientMeta: {
-						firstname: props.firstname,
-						lastname: props.lastname,
-						age: props.age,
-						gender: props.gender,
-						nhs: props.nhs,	
-					}
-				};
-
-				/*
-				prototypal inheritence, correctly bind 'this' scope 
-				*/
-				this.handleStepClick = this.handleStepClick.bind( this );
-				this.pathwaySteps = this.pathwaySteps.bind( this );
-				this.assigned = this.assigned.bind( this );
-				this.update = this.update.bind( this );
-				this.complete = this.complete.bind( this );
-				this.waitMins = this.waitMins.bind( this );
-			}
-			
-			/**
-			* User clicks on a PathStep
-			* Step doesn't need to do anything, any change needs to happen
-			* to the Clinic state, it will be updated/removed through a render
-			* @param {Object} step - step info
-			* @param {Object} rect - node boundingClientRect, to position the popup
-			*/
-			handleStepClick( step, rect ){
-				step.patientArrRef = this.props.arrRef;
-				step.rect = rect;
-				this.props.onPathStepClick( step ); // callback from Clinic
+		/*
+		Hold these Elements in memory, as they will need updating directly
+		*/
+		const tr = document.createElement('tr');
+		const dom = {
+			pathway: bj.div('pathway'),
+			assigned: document.createElement('td'),
+			addIcon: document.createElement('td'),
+			complete: document.createElement('td'),
+		};
+		
+		/*
+		WaitDuration is based on the Arrival time and rendered based on 
+		patient state, when patient arrives start the clock
+		*/
+		const waitDuration = clinic.waitDuration( props.uid );
+		
+		/**
+		* VIEW: status of patient
+		* if patient is "complete" hide the specific + icon
+		*/
+		const changeStatus = () => {
+			tr.className = model.status;
+			dom.pathway.className = `pathway ${model.status}`;
+			dom.addIcon.innerHTML = model.status == "complete" ? "" : '<i class="oe-i plus-circle small pad"></i>';
+			waitDuration.render( model.status );
+		};
+		
+		/**
+		* VIEW: patient assignment
+		*/
+		const changeAssignment = () => {
+			if( model.assigned ){
+				const fullText = clinic.fullShortCode( model.assigned );
+				dom.assigned.innerHTML = `<div>${fullText}</div>`;
+			} else {
+				dom.assigned.innerHTML = '<small class="fade">Not asssigned</div>';
 			}	
-			
-			/**
-			* Build pathway steps 
-			* @returns {React Element}
-			*/
-			pathwaySteps(){
-				const pathway = this.props.pathway;
-				let pathSteps = null; 
-				
-				// Build a PathStep pathway?
-				if( pathway.length ){
-					pathSteps = pathway.map( step  => {
-						return react.PathStep({ 
-							key: step.key, 
-							step: step, 
-							onClick: this.handleStepClick
-						});
-					});		
-				}
-				
-				// if patient pathway is 'complete' CSS will restyle the steps
-				return rEl('div', { className: `pathway ${this.props.status}`}, pathSteps );
-			}
-			
-			/**
-			* Show who's assigned to patient
-			* @returns {React Element}
-			*/
-			assigned(){
-				const assigned = this.props.assigned;
-				if( assigned  ){
-					return rEl('div', null, react.fullShortCode( assigned ));
-				} else {
-					return rEl('small', { className: 'fade' }, "Not assigned" );
-				}
-			}
-			
-			/**
-			* Plus icon to open directly the adder popup
-			* @returns {React Element}
-			*/
-			update(){
-				if( this.props.status === 'complete' ) return null;
-				
-				return rEl('i', { 
-					className: 'oe-i plus-circle small pad', 
-					onClick: () => this.props.onUpdate( this.props.arrRef )
-				}, null );
-			}
-			
-			
-			/**
-			* Arrived DNA or Wait Duration Graphic
-			* @returns {React Element}
-			*/
-			waitMins(){
-				
-				if( this.props.status === 'todo' ){
-					return (
-						rEl('div', { className: 'flex' }, 
-							rEl('button', { 
-								className: 'cols-7 blue hint',  
-								onClick: () => this.props.onArrived( this.props.arrRef )
-							}, 'Arrived'), 
-							rEl('button', { 
-								className: 'cols-4', 
-								onClick: () => this.props.onDNA( this.props.arrRef ) 
-							}, 'DNA')
-						)
-					);
-				}
-				
-				let arriveTime = 0;
-				let totalMins = 0;
-				
-				this.props.pathway.forEach( step => {
-					if( step.shortcode == "Arr" ){
-						arriveTime = step.timestamp;
-					}
-					if( step.shortcode === "Fin" ){
-						totalMins = Math.floor(( step.timestamp - arriveTime ) / 60000 );
-					}
-				});
-				
-				return (
-					rEl( react.WaitDuration, { 
-						status: this.props.status,
-						arriveTime: arriveTime, // timestamps
-						pathwayTotalMins: totalMins // minutes!
-					})
-				);
-			}
-			
-			complete(){
-
-				let td = null;
-				
-				if( this.props.status === 'complete' ){
-					td = rEl('i', { className: 'fade' }, 'Done' );
-				}
-				
-				if( this.props.status === 'active' ){
-					td = rEl('i', { 
-						className: 'oe-i save medium-icon pad js-has-tooltip', 
-						'data-tt-type': "basic", 
-						'data-tooltip-content': 'Patient pathway finished', 
-						onClick: () => this.props.onPathwayCompleted( this.props.arrRef ),
-					}, null );
-				}
-				
-				return td;
-			}
-			
-			/**
-			* Render 
-			*/
-			render(){
-				/*
-				Patient Rows can be filtered by their assignment OR status 
-				if filter is 'hideComplete' check by status, else check assigned
-				*/
-				
-				if(	this.props.clinicFilterState == "hideComplete" && 
-					this.props.status == 'complete' ) return null;
-				
-				if( this.props.clinicFilterState !== "showAll" &&
-					this.props.clinicFilterState !== "hideComplete" ){
-					
-					if( this.props.assigned !== this.props.clinicFilterState ) return null;
-				}
-				
-				/*
-				OK, show it
-				*/
-				return (
-					rEl('tr', { "data-timestamp" : this.props.booked, className: this.props.status },
-						rEl('td', null, bj.clock24( new Date( this.props.booked ))),
-						rEl('td', null, this.props.num ),
-						rEl('td', null, 
-							rEl('div', { className: 'speciality' }, this.props.speciality ), 
-							rEl('small', { className: 'type' }, this.props.specialityState ) 
-						),
-						rEl('td', null, 
-							rEl( react.PatientQuickView, this.state.patientMeta )
-						),
-						rEl('td', null, 
-							rEl( react.PatientMeta, this.state.patientMeta )
-						),
-						rEl('td', null,
-							this.pathwaySteps()
-						), 
-						rEl('td', null, 
-							this.assigned()
-						),
-						rEl('td', null, 
-							this.update()
-						),
-						rEl('td', null,
-							this.waitMins()
-						),
-						rEl('td', null, 
-							this.complete()
-						)
-					)
-				);
-			}
-		}
+		};
 		
-		// make component available	
-		react.Patient = Patient;			
+		/**
+		* VIEW: complete / done
+		*/
+		const changeComplete = () => {
+			dom.complete.innerHTML = "";
+			if( model.status == "complete"){
+				dom.complete.innerHTML = '<span class="fade">Done</span>';
+			}
+			if( model.status == "active"){
+				dom.complete.innerHTML = '<i class="oe-i save medium-icon pad js-has-tooltip" data-tt-type="basic" data-tooltip-content="Patient pathway finished"></i>';
+			}
+		};
+		
+		model.views.add( changeStatus );
+		model.views.add( changeAssignment );
+		model.views.add( changeComplete );
+		
+		/**
+		* Add PathStep to patient pathway
+		* @param {Object} step
+		*/
+		const addPathStep = ( step ) => {
+			if( step.type == "arrive" )waitDuration.arrived( step.timestamp, model.status );
+			if( step.type == "finish" ) waitDuration.finished( step.timestamp );
+			// build pathStep
+			gui.pathStep( step, dom.pathway, (step.type == "arrive"));
+		};
+		
+		/*
+		onArrived (Button: "Arrived")
+		*/
+		const onArrived = () => {
+			// add Arrived Pathstep
+			addPathStep({
+				shortcode: 'Arr',
+				timestamp: Date.now(),
+				status: 'done',
+				type: 'arrive',
+			});
+			model.status = "active";
+		};
+		
+		/*
+		onDNA (Button: "DNA")
+		*/
+		const onDNA = () => {
+			// add Arrived Pathstep
+			addPathStep({
+				shortcode: 'DNA',
+				timestamp: Date.now(),
+				status: 'done',
+				type: 'DNA',
+			});
+			model.status = "complete";
+		};
+		
+	
+		const render = ( filter ) => {
+			
+			console.log('render patient');
+			
+			/*
+			Patients can be filtered by their assignment OR status 
+			if filter is 'completed' check by status, else check assigned
+			*/
+			
+/*
+			if(	state == "hideComplete" && 
+				this.props.status == 'complete' ) return null;
+			
+			if( this.props.clinicFilterState !== "showAll" &&
+				this.props.clinicFilterState !== "hideComplete" ){
+				
+				if( this.props.assigned !== this.props.clinicFilterState ) return null;
+			}
+*/			
+			
+			return tr;
+		};
+		
+		/*
+		Initiate inital patient state from JSON	
+		and build the <tr> DOM
+		*/
+		(() => {
+			// patient state 
+			model.status = props.status; 
+			model.assigned = props.assigned;
+			
+			// build pathway steps
+			props.pathway.forEach( step => addPathStep( step ));
+			
+			// convert to clock time
+			props.time = bj.clock24( new Date( props.booked ));
+			
+			// build <tr>
+			tr.setAttribute( 'date-timestamp', props.booked );
+			tr.innerHTML = Mustache.render([
+				'<td>{{time}}</td>',
+				'<td>{{num}}</td>',
+				'<td><div class="speciality">{{speciality}}</div><small class="type">{{specialityState}}</small></td>'
+			].join(''), props );
+			
+			// slightly more complex Elements, but static content
+			const td = document.createElement('td');
+			tr.appendChild( clinic.patientQuickView( props ));
+			tr.appendChild( clinic.patientMeta( props ));
+			tr.appendChild( td.appendChild( dom.pathway ));		
+			tr.appendChild( dom.assigned );
+			tr.appendChild( dom.addIcon );
+			tr.appendChild( waitDuration.render( props.status ));
+			tr.appendChild( dom.complete );
+		})();
+		
+		
+		/* 
+		API
+		*/
+		return { onArrived, onDNA, render };
 	};
 	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
-
-})( bluejay ); 
-(function( bj ){
-
-	'use strict';	
+	// make component available to Clinic SPA	
+	clinic.Patient = Patient;
 	
-	/**
-	* React Component 
-	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-		
-		class PatientMeta extends React.PureComponent {
-			render(){
-				return (
-					rEl('div', { className: 'oe-patient-meta' }, 
-						rEl('div', { className: 'patient-name' }, 
-							rEl('a', { href: '/v3-SEM/patient-overview' }, 
-								rEl('span', { className: 'patient-surname'}, 
-									this.props.lastname 
-								),
-								rEl("span", { className: "patient-firstname"},
-								 	', ' + this.props.firstname 
-								)
-							)
-						), 
-						rEl("div", { className: "patient-details" }, 
-							rEl("div", { className: "nhs-number", dangerouslySetInnerHTML: { __html : '<span>NHS</span>' + this.props.nhs }}),
-							rEl("div", { className: "patient-gender", dangerouslySetInnerHTML: { __html : '<em>Gen</em>' + this.props.gender }}),
-							rEl("div", { className: "patient-age", dangerouslySetInnerHTML: { __html : '<em>Age</em>' + this.props.age }})
-						)
-					)
-				);
-			}
-		}
-		
-		// make component available	
-		bj.namespace('react').PatientMeta = PatientMeta;			
-	};
-	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
 
-})( bluejay ); 
-(function( bj ){
-
-	'use strict';	
-	
-	/**
-	* React Component 
-	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-		
-		class PatientQuickView extends React.PureComponent {
-			render(){ 
-				const patient = {
-					surname: this.props.lastname,
-					first: this.props.firstname,
-					id: false, 
-					nhs: this.props.nhs, 
-					gender: this.props.gender, 
-					age: this.props.age,
-				};
-				
-				return rEl('i', {
-					className: 'oe-i eye-circle medium pad js-patient-quick-overview',
-					"data-patient": JSON.stringify( patient ),
-					"data-mode": 'side',
-					"data-php": "patient/quick/overview.php",
-				}, null );
-			}
-		}
-		
-		// make component available	
-		bj.namespace('react').PatientQuickView = PatientQuickView;			
-	};
-	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
-
-})( bluejay ); 
+})( bluejay, bluejay.namespace('clinic'), bluejay.namespace('gui')); 
 (function( bj ){
 
 	'use strict';	
@@ -12354,208 +11796,143 @@ Updated to Vanilla JS for IDG
 	  
 
 })( bluejay ); 
-(function( bj ){
+(function( bj, clinic ){
 
 	'use strict';	
 	
 	/**
-	* React Component 
+	* waitDuration
+	* @param {String} patientID - Patient uid
+	* @returns {*} API;	
 	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-		const react = bj.namespace('react');
-
-		/*
-		TableHeaders don't change - use React.PureComponent:
-		"...instead of writing shouldComponentUpdate() by hand, inherit from React.PureComponent. Equivalent 
-		to implementing shouldComponentUpdate() with a shallow comparison of current and previous props and state."
+	const waitDuration = ( patientID ) => {
+		const td = document.createElement('td');
+		let timestamp = null;
+		let mins = 0;
+		let timerID = null;				
+	
+		/**
+		* Calculate wait minutes from arrival time
+		* @returns {Number} minutes
 		*/
-		class TableHead extends React.PureComponent {
-			
-			/*
-			Or, could use a regular Component and just set this to false
-			shouldComponentUpdate(nextProps, nextState) {
-			  return false;
-			}
-			*/
-			
-			render(){
-				const headers = this.props.th.map( th => rEl('th', { key: react.getKey() }, th ));
-				return (
-					rEl('thead', null, 
-				 		rEl('tr', null, headers)
-				 	)
-				);
-			}
-		}
+		const calcWaitMins = ( finishTime = false ) => {
+			const endTime = finishTime == false ? Date.now() : finishTime;
+			mins = Math.floor(( endTime - timestamp ) / 60000 );
+		};
 		
-		// make component available	
-		react.TableHead = TableHead;			
+		/**
+		* Callback from patient when the "Arr" step is added to the pathway
+		* @param {Number} arriveTime - timestamp
+		* @param {String} patientStatus - only looking for "active"
+		*/
+		const arrived = ( arriveTime, patientStatus ) => {	
+			if( timestamp !== null ) return;
+			timestamp = arriveTime;
+			calcWaitMins();
+			if( patientStatus === "active"){
+				timerID = setInterval(() => {
+					calcWaitMins();
+					render("active");
+					console.log('waitDuration is running!');
+				}, 15000 ); 	
+			}
+		};
+		
+		/**
+		* Callback from patient when the "Fin" step is added to the pathway
+		* @param {Number} finishedTime - timestamp
+		*/
+		const finished = ( finishTime ) => {
+			clearInterval( timerID );
+			calcWaitMins( finishTime );
+		};
+					
+		/**
+		* SVG Circles to represent time waiting
+		* @param {String} color (based on wait mins)
+		* @returns {React Element}
+		*/
+		const svgCircles = () => {
+			let color = 'green';			
+			if( mins > 14 ) color = 'yellow';
+			if( mins > 29 ) color = 'orange';
+			if( mins > 59 ) color = 'red';
+			
+			const r = 6;
+			const d = r * 2;
+			const w = d * 4;
+			
+			const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+			svg.setAttribute('class', `duration-graphic ${color}`);
+			svg.setAttribute('viewBox', `0 0 ${w} ${d}`);
+			svg.setAttribute('height', d );
+			svg.setAttribute('width', w );
+
+			for( let i=0; i<4; i++ ){
+				const cx = ((i + 1) * (r * 2)) - r;
+				const circle = document.createElementNS("http://www.w3.org/2000/svg", 'circle');
+				circle.setAttribute('class',`c${i}`);
+				circle.setAttribute('cx',`${cx}`);
+				circle.setAttribute('cy',`${r}`);
+				circle.setAttribute('r',`${r}`);
+				svg.appendChild( circle );
+			}
+			
+			return svg;
+		};	
+
+		/**
+		* Render Mins DOM
+		* @returns {Element}
+		*/
+		const waitMins = () => {
+			const div = bj.div('mins');
+			const suffix = mins > 1 ? 'mins' : 'min';
+			div.innerHTML = `<span>${mins}</span><small>${suffix}</small>`;
+			return div;
+		};
+		
+		/**
+		* Render depends on status
+		* @param {String} status - could be: "complete", "active", "todo"
+		* @returns {Element} - appropriate element based on status
+		*/
+		const render = ( status ) => {
+			const div = bj.div();
+			
+			if( status  == 'complete' ){
+				div.className = 'wait-duration';
+				div.appendChild( waitMins());
+			}
+			
+			if( status == "active"){
+				div.className = 'wait-duration';
+				div.appendChild( svgCircles());
+				div.appendChild( waitMins());
+			}
+			
+			if( status == "todo" ){
+				div.className = 'flex';
+				div.innerHTML = [
+					`<button class="cols-7 blue hint js-idg-clinic-btn-arrived" data-patient="${patientID}">Arrived</button>`,
+					`<button class="cols-4 js-idg-clinic-btn-DNA" data-patient="${patientID}">DNA</button>`
+				].join('');
+			}
+			
+			td.innerHTML = "";
+			td.appendChild( div );
+			return td;
+		};
+		
+		// API
+		return { arrived, finished, render };
 	};
 	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
-
-})( bluejay ); 
-(function( bj ){
-
-	'use strict';	
+	// make component available	
+	clinic.waitDuration = waitDuration;	
 	
-	/**
-	* React Component 
-	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-		const react = bj.namespace('react');
-		
-		class WaitDuration extends React.Component {
-			
-			/**
-			* WaitDuration SVG wait time graphic circles
-			*/
-			constructor( props ){
-				super( props );
-				
-				this.state = {
-					arrive: props.arriveTime,
-					waitMins: 0
-				};
-			
-				this.updateWaitMins = this.updateWaitMins.bind( this );
-				this.state.waitMins = this.updateWaitMins();
-			}
-			
-			/**
-			* DOM lifecycle 
-			* component output has been rendered to the DOM
-			* recommended to set up a timer here
-			*/
-			componentDidMount(){
-				if( this.props.status == 'active' ){
-					// update Render with correct waitMins
-					this.state.waitMins = this.updateWaitMins();
-					// then check every 15 secs.
-					this.interval = setInterval(() => {
-						this.setState({ waitMins: this.updateWaitMins() });
-					}, 15000 );
-				}
-			}
-			
-			/**
-			* DOM lifecycle 
-			* clean up the setInterval
-			*/
-			componentWillUnmount() {
-				clearInterval( this.interval );
-			}
-			
-			
-			/**
-			* Calculate wait minutes. Can only do this whilst mounted.
-			* @returns {Number} minutes
-			*/
-			updateWaitMins(){
-				return Math.floor(( Date.now() - this.state.arrive ) / 60000 );
-			}
-			
-			/*
-			
-			/**
-			* SVG Circles to represent time waiting
-			* @param {String} color (based on wait mins)
-			* @returns {React Element}
-			*/
-			svgCircles( color = "" ){
-				const r = 6;
-				const d = r * 2;
-				const w = d * 4;
-				
-				const circles = [ 'green', 'yellow', 'orange', 'red' ].map(( color, i ) => {
-					const cx = ((i + 1) * (r * 2)) - r;
-					return rEl('circle', { key: react.getKey(), className: `c${i}`, cx, cy:r, r });
-				});
-				
-				return (
-					rEl('svg', 
-						{ 
-							className: `duration-graphic ${color}`, 
-							viewBox:`0 0 ${w} ${d}`, 
-							height: d, 
-							width: w 
-						}, 
-						circles
-					)
-				);
-			}
-			
-			/**
-			* Show the wait minutes
-			* @param {Number} mins
-			* @returns {React Element}
-			*/
-			waitTime( mins ){
-				return (
-					rEl('div', { className: 'mins'},
-						rEl('span', null, mins ),
-						rEl('small', null, mins > 1 ? 'mins' : 'min' )
-					)	
-				);
-			}
-			
-			/**
-			* Render depends on status
-			* Patient status could be: "complete", "active", "todo"
-			*/
-			render(){
-				
-				if( this.props.status == 'complete' ){
-					return (
-						rEl('div', { className: 'wait-duration'},
-							this.waitTime( this.props.pathwayTotalMins )
-						)
-					);
-				}
-				
-				if( this.props.status == "todo" ){
-					return (
-						rEl('div', { className: 'wait-duration'},
-							this.svgCircles()
-						)
-					);
-				}
-				
-				// it's "active" and we need to count the wait mins
-				const mins = this.state.waitMins; 	
-				let cssColor = 'green';				
-				if( mins > 14 ) cssColor = 'yellow';
-				if( mins > 29 ) cssColor = 'orange';
-				if( mins > 59 ) cssColor = 'red';
-			
-				return (
-					rEl('div', { className: 'wait-duration'},
-						this.svgCircles( cssColor ),
-						this.waitTime( mins )
-					)
-				);
-			}
-		}
-		
-		// make component available	
-		react.WaitDuration = WaitDuration;			
-	};
-	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
 
-})( bluejay ); 
+})( bluejay, bluejay.namespace('clinic') ); 
 (function( bj ){
 
 	'use strict';	
@@ -12567,75 +11944,27 @@ Updated to Vanilla JS for IDG
 	*/
 	if( document.getElementById('js-clinic-manager') === null ) return;
 	
-	// ... waiting for React JS CDN to load ...
+	/*
+	Fake a loading delay, gives the impression it's doing something important
+	and shows how to do the loader.
+	*/
 	const loading = bj.div('oe-popup-wrap');
 	loading.innerHTML = '<div class="spinner"></div><div class="spinner-message">Loading...</div>';
 	document.body.appendChild(loading);
-	
-
-	/**
-	React JS. Notes to self.
-	Try to avoid deeply nested state objects. React JS is NOT oriented to work well with nested states 
-	(and other solutions are hack) so.. e.g. 
-	
-	this.state = {
-	    someProperty: {
-	        flag: true
-	    }
-	}
-	
-	should be...
-	
-	this.state = {
-	    somePropertyFlag: true
-	}
-	
-	Unless you need features available only in a class, React encourages you to use function components instead.
-	
-	PureComponent: If your React component’s render() function renders the same result given the 
-	same props and state, you can use React.PureComponent for a performance boost in some cases. 
-	PureComponent is exactly the same as Component except that it handles the shouldComponentUpdate method for you.
-	Use PureComponent instead of Component so long as you follow two simple rules: 
-	1) Mutations are bad in general, but the problems are compounded when using PureComponent. 
-	2) If you’re creating new functions, objects, or arrays in the render method you’re (probably) doing it wrong.
-	
-	Don’t bind values in functions in render
-	Don’t derive data in the render method
-	
-	Useful articles:
-	https://reactjs.org/blog/2015/12/18/react-components-elements-and-instances.html
-	https://codeburst.io/when-to-use-component-or-purecomponent-a60cfad01a81
-	*/
-	
+	setTimeout(() => initClinicApp(), 500 );
 	
 	/*
 	Name space for React App
 	React JS componenets are built into this space	
 	*/
-	const react = bj.namespace('react');
-	
-	/*
-	Helpers
-	React needs unique keys for all Elements in a list (anything in a loop)
-	It suggests Strings...
-	*/
-	function *UniqueReactKey(){
-		let id = 0;
-		while( true ){
-			++id;
-			yield `uid${id}`;
-		}
-	}
-	
-	const keyIterator = UniqueReactKey();
-	react.getKey = () => keyIterator.next().value; 
+	const clinic = bj.namespace('clinic');
 	
 	// central-ise these:
-	react.assignList = ['MM', 'AB', 'AG', 'RB', 'CW'].sort();
-	react.clinicPersonList = ['Nurse'];
-	react.clinicProcessList = ['Dilate', 'VisAcu', 'Orth', 'Ref', '~Img', '~Fields' ].sort();
+	clinic.assignList = ['MM', 'AB', 'AG', 'RB', 'CW'].sort();
+	clinic.clinicPersonList = ['Nurse'];
+	clinic.clinicProcessList = ['Dilate', 'VisAcu', 'Orth', 'Ref', '~Img', '~Fields' ].sort();
 	
-	react.fullShortCode = ( shortcode ) => {
+	clinic.fullShortCode = ( shortcode ) => {
 		let full = shortcode; // "Nurse" doesn't need expanding on
 		switch( shortcode ){
 			case 'Arr': full = "Arrived"; break;
@@ -12659,53 +11988,23 @@ Updated to Vanilla JS for IDG
 		return full; 
 	}; 
 	
-	react.deepCopy = ( obj ) => {
-		// object clone	
-		const cloneObj = () => {
-			const clone = {};
-			for ( let key in obj ) {
-				if ( obj.hasOwnProperty( key )) {
-					clone[key] = react.deepCopy( obj[key] );
-				}
-			}
-			return clone;
-		};
-		
-		// array clone
-		const cloneArr = () => obj.map( item => react.deepCopy( item ));
-		
-		// check type
-		const type = Object.prototype.toString.call(obj).slice(8, -1).toLowerCase();
-		if( type === "object" ) return cloneObj();
-		if( type === "array") return cloneArr();
-		return obj; // primitive value
-	};
-	
-
 	/**
 	* Initalise Clinic Manager SPA
 	* Broadcast to all listeners that React is now available to use for building elements
 	*/
-	const init = () => {
+	const initClinicApp = () => {
 		bj.log('[Clinic Manager] - intialising');
 		
 		/*
-		reactJS is now available
-		OK to build React components/elements, let 'em know...
-		*/
-		bj.customEvent('reactJSloaded');
-		
-		/*
-		To make the IDG UX prototype easier to change initial state JSON is provided by PHP.
-		For the purposes of the demo all times are set in RELATIVE minutes. 
-		Update all JSON times to full timestamps
+		To make the IDG UX prototype easier to test an initial state JSON is provided by PHP.
+		The demo all times are set in RELATIVE minutes, update all JSON times to full timestamps
 		*/
 		const patientsJSON = JSON.parse( phpClinicDemoJSON );
 		patientsJSON.forEach(( patientRow, i ) => {
 			/*
 			Add extra Patient React info here
 			*/
-			patientRow.arrRef = i; 
+			patientRow.uid = bj.getToken(); 
 			
 			/*
 			As times are relative to 'now', make sure appointments 
@@ -12722,8 +12021,6 @@ Updated to Vanilla JS for IDG
 			*/		
 			patientRow.pathway.forEach(( step, i, thisArr ) => {
 				const obj = {
-					arrRef:i, // will need this to update state 
-					key: react.getKey(), // this provides a unique React key
 					shortcode: step[0],
 					timestamp: Date.now() + ( step[1] * 60000 ),
 					status: step[2],
@@ -12736,32 +12033,97 @@ Updated to Vanilla JS for IDG
 		});
 		
 		/* 
-		OK, ready!
+		OK, ready to run this app!
 		*/
 		loading.remove();
 		
-		// ReactJS App for Clinic Manager
-		ReactDOM.render(
-		  React.createElement( react.Clinic, { patientsJSON }),
-		  document.getElementById('js-clinic-manager')
-		);
+		/*
+		Only tableRows in <tbody> need managing, 
+		may as well build the rest of the DOM immediately	
+		*/
+		const table = document.createElement('table');
+		table.className = "oe-clinic-list";
+		table.innerHTML = Mustache.render([
+			'<thead><tr>{{#th}}<th>{{.}}</th>{{/th}}</tr></thead>',
+			'<tbody></tbody>'
+		].join(''), {
+			"th": ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', 'Pathway', 'Assigned', '', 'Mins', '']
+		});
+		document.getElementById('js-clinic-manager').appendChild( table );
+		
+		/*
+		Init the Clinic App	
+		*/
+		clinic.app( document.querySelector('table.oe-clinic-list tbody'), patientsJSON );
 	};
 	
-	
-	
-	/*
-	Load React JS, then initalise
-	Make sure to load the React package before loading ReactDOM.
-	react.production.min.js || react.development.js
-	*/
-    bj.loadJS('https://unpkg.com/react@17/umd/react.production.min.js', true)
-    	.then( () => {
-	    	 bj.loadJS('https://unpkg.com/react-dom@17/umd/react-dom.production.min.js', true)
-	    	 	.then( () => init() ); 
-    	});
-	  
-
 })( bluejay ); 
+(function( bj, clinic ){
+
+	'use strict';	
+	
+	const app = ( tbody, json ) => {
+	
+		/** 
+		* Model
+		* Extended with views
+		*/
+		const model = Object.assign({
+			_filter: "all", // "hideCompleted", "Unassigned", "MM", etc
+			patients: new Map(),
+			
+			get filter(){
+				return this._filter;
+			},
+			set filter( val ){
+				this._filter = val; 
+				this.views.notify();
+			}
+			
+		}, bj.ModelViews());
+
+		/**
+		* Filter Patients in Clinic
+		* Updated on any change to the model
+		*/
+		const filterPatients = () => {
+			const fragment = new DocumentFragment();
+			model.patients.forEach( patient => fragment.appendChild( patient.render( model.filter )));
+			
+			// update <tbody>
+			tbody.innerHTML = "";
+			tbody.appendChild( fragment );
+		};
+		
+		// update if any change to the Clinic state
+		model.views.add( filterPatients );
+		
+
+		/**
+		Use Event delegation for all User actions
+		*/
+		// Button: "Arrived"
+		bj.userClick('.js-idg-clinic-btn-arrived', ( ev ) => {
+			model.patients.get( ev.target.dataset.patient ).onArrived();
+		});
+		
+		// Button: "DNA"
+		bj.userClick('.js-idg-clinic-btn-DNA', ( ev ) => {
+			model.patients.get( ev.target.dataset.patient ).onDNA();
+		});
+		
+		
+		/**
+		* Init Patients and set state from the JSON	
+		*/
+		json.forEach( patient => model.patients.set( patient.uid, clinic.Patient( patient )));	
+		model.filter = "all";
+	};
+
+	// set up in namespace
+	clinic.app = app;			
+
+})( bluejay, bluejay.namespace('clinic')); 
 (function( bj ){
 
 	'use strict';	
@@ -12818,6 +12180,84 @@ Updated to Vanilla JS for IDG
 	  
 
 })( bluejay ); 
+(function( bj, clinic ){
+
+	'use strict';	
+
+	/**
+	* Patient Meta DOM
+	* @param {Object} props 
+	* @return {DocumentFragment} 
+	*/
+	const patientMeta = ( props ) => {
+		/*
+		DOM
+		div.oe-patient-meta -|- div.patient-name -|- a -|- span.patient-surname
+		                     |                          |- span.patient-firstname	
+		                     |
+		                     |- div.patient-details -|- div.nhs-number
+		                                             |- div.patient-gender
+		                                             |- div.patient-age 
+		*/
+		const template = [
+			'<div class="oe-patient-meta">',
+				'<div class="patient-name">',
+					'<span class="patient-surname">{{lastname}}</span>, ',
+					'<span class="patient-firstname">{{firstname}}</span>',
+				'</div>',
+				'<div class="patient-details">',
+					'<div class="nhs-number"><span>NHS</span>{{nhs}}</div>',
+					'<div class="patient-gender"><span>Gen</span>{{gender}}</div>',
+					'<div class="patient-age"><span>Age</span>{{age}}</div>',
+				'</div>',
+			'</div>'
+		].join('');
+		
+		const td = document.createElement('td');
+		td.innerHTML = Mustache.render( template, props );
+		
+		return td;
+	};
+	
+	// make component available to Clinic SPA	
+	clinic.patientMeta = patientMeta;			
+  
+
+})( bluejay, bluejay.namespace('clinic')); 
+(function( bj, clinic ){
+
+	'use strict';	
+	
+	/**
+	* Patient Meta DOM
+	* @param {Object} props 
+	* @return {Element} 
+	*/
+	const patientQuickView = ( props ) => {
+		
+		const i = document.createElement('i');
+		i.className = "oe-i eye-circle medium pad js-patient-quick-overview";
+		i.setAttribute('data-mode', 'side');
+		i.setAttribute('data-php', 'patient/quick/overview.php');
+		i.setAttribute('data-patient', JSON.stringify({
+			surname: props.lastname,
+			first: props.firstname,
+			id: false, 
+			nhs: props.nhs, 
+			gender: props.gender, 
+			age: props.age,
+		}));
+		
+		const td = document.createElement('td');
+		td.appendChild( i );
+		
+		return td;
+	};
+	
+	// make component available to Clinic SPA	
+	clinic.patientQuickView = patientQuickView;		
+
+})( bluejay, bluejay.namespace('clinic')); 
 (function( bj ){
 
 	'use strict';	
@@ -12923,6 +12363,42 @@ Updated to Vanilla JS for IDG
 		
 
 })( bluejay ); 
+(function( bj, gui ){
+
+	'use strict';	
+	
+	bj.addModule('gui.pathStep');	
+	
+	const pathStep = ( step, pathway, prepend = false ) => {
+		/*
+		DOM
+		span.oe-pathstep-btn -|- span.step
+		                      |- span.time 	
+		*/
+		const css = ['oe-pathstep-btn', 'no-popup'];
+		if( step.status === 'done') css.push('green');
+		if( step.status === 'active') css.push('orange');
+		
+		// use 'invisible' to maintain layout:
+		const cssTime = step.status == 'next' ? 'time invisible' : 'time';	
+		const time = bj.clock24( new Date( step.timestamp ));
+	
+		const span = document.createElement('span');
+		span.className = css.join(' ');
+		span.innerHTML = `<span class="step">${step.shortcode}</span><span class="${cssTime}">${time}</span>`;
+	
+		if( prepend ){
+			pathway.prepend( span );
+		} else {
+			pathway.appendChild( span );
+		}
+		
+	};
+	
+	// make available to Bluejay
+	gui.pathStep = pathStep;
+		
+})( bluejay, bluejay.namespace('gui')); 
 /*
 Add Select Search insert Popup (v2)
 Updated to Vanilla JS for IDG

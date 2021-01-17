@@ -1,155 +1,137 @@
-(function( bj ){
+(function( bj, clinic ){
 
 	'use strict';	
 	
 	/**
-	* React Component 
+	* waitDuration
+	* @param {String} patientID - Patient uid
+	* @returns {*} API;	
 	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-		const react = bj.namespace('react');
+	const waitDuration = ( patientID ) => {
+		const td = document.createElement('td');
+		let timestamp = null;
+		let mins = 0;
+		let timerID = null;				
+	
+		/**
+		* Calculate wait minutes from arrival time
+		* @returns {Number} minutes
+		*/
+		const calcWaitMins = ( finishTime = false ) => {
+			const endTime = finishTime == false ? Date.now() : finishTime;
+			mins = Math.floor(( endTime - timestamp ) / 60000 );
+		};
 		
-		class WaitDuration extends React.Component {
-			
-			/**
-			* WaitDuration SVG wait time graphic circles
-			*/
-			constructor( props ){
-				super( props );
-				
-				this.state = {
-					arrive: props.arriveTime,
-					waitMins: 0
-				};
-			
-				this.updateWaitMins = this.updateWaitMins.bind( this );
-				this.state.waitMins = this.updateWaitMins();
+		/**
+		* Callback from patient when the "Arr" step is added to the pathway
+		* @param {Number} arriveTime - timestamp
+		* @param {String} patientStatus - only looking for "active"
+		*/
+		const arrived = ( arriveTime, patientStatus ) => {	
+			if( timestamp !== null ) return;
+			timestamp = arriveTime;
+			calcWaitMins();
+			if( patientStatus === "active"){
+				timerID = setInterval(() => {
+					calcWaitMins();
+					render("active");
+					console.log('waitDuration is running!');
+				}, 15000 ); 	
 			}
-			
-			/**
-			* DOM lifecycle 
-			* component output has been rendered to the DOM
-			* recommended to set up a timer here
-			*/
-			componentDidMount(){
-				if( this.props.status == 'active' ){
-					// update Render with correct waitMins
-					this.state.waitMins = this.updateWaitMins();
-					// then check every 15 secs.
-					this.interval = setInterval(() => {
-						this.setState({ waitMins: this.updateWaitMins() });
-					}, 15000 );
-				}
-			}
-			
-			/**
-			* DOM lifecycle 
-			* clean up the setInterval
-			*/
-			componentWillUnmount() {
-				clearInterval( this.interval );
-			}
-			
-			
-			/**
-			* Calculate wait minutes. Can only do this whilst mounted.
-			* @returns {Number} minutes
-			*/
-			updateWaitMins(){
-				return Math.floor(( Date.now() - this.state.arrive ) / 60000 );
-			}
-			
-			/*
-			
-			/**
-			* SVG Circles to represent time waiting
-			* @param {String} color (based on wait mins)
-			* @returns {React Element}
-			*/
-			svgCircles( color = "" ){
-				const r = 6;
-				const d = r * 2;
-				const w = d * 4;
-				
-				const circles = [ 'green', 'yellow', 'orange', 'red' ].map(( color, i ) => {
-					const cx = ((i + 1) * (r * 2)) - r;
-					return rEl('circle', { key: react.getKey(), className: `c${i}`, cx, cy:r, r });
-				});
-				
-				return (
-					rEl('svg', 
-						{ 
-							className: `duration-graphic ${color}`, 
-							viewBox:`0 0 ${w} ${d}`, 
-							height: d, 
-							width: w 
-						}, 
-						circles
-					)
-				);
-			}
-			
-			/**
-			* Show the wait minutes
-			* @param {Number} mins
-			* @returns {React Element}
-			*/
-			waitTime( mins ){
-				return (
-					rEl('div', { className: 'mins'},
-						rEl('span', null, mins ),
-						rEl('small', null, mins > 1 ? 'mins' : 'min' )
-					)	
-				);
-			}
-			
-			/**
-			* Render depends on status
-			* Patient status could be: "complete", "active", "todo"
-			*/
-			render(){
-				
-				if( this.props.status == 'complete' ){
-					return (
-						rEl('div', { className: 'wait-duration'},
-							this.waitTime( this.props.pathwayTotalMins )
-						)
-					);
-				}
-				
-				if( this.props.status == "todo" ){
-					return (
-						rEl('div', { className: 'wait-duration'},
-							this.svgCircles()
-						)
-					);
-				}
-				
-				// it's "active" and we need to count the wait mins
-				const mins = this.state.waitMins; 	
-				let cssColor = 'green';				
-				if( mins > 14 ) cssColor = 'yellow';
-				if( mins > 29 ) cssColor = 'orange';
-				if( mins > 59 ) cssColor = 'red';
-			
-				return (
-					rEl('div', { className: 'wait-duration'},
-						this.svgCircles( cssColor ),
-						this.waitTime( mins )
-					)
-				);
-			}
-		}
+		};
 		
-		// make component available	
-		react.WaitDuration = WaitDuration;			
+		/**
+		* Callback from patient when the "Fin" step is added to the pathway
+		* @param {Number} finishedTime - timestamp
+		*/
+		const finished = ( finishTime ) => {
+			clearInterval( timerID );
+			calcWaitMins( finishTime );
+		};
+					
+		/**
+		* SVG Circles to represent time waiting
+		* @param {String} color (based on wait mins)
+		* @returns {React Element}
+		*/
+		const svgCircles = () => {
+			let color = 'green';			
+			if( mins > 14 ) color = 'yellow';
+			if( mins > 29 ) color = 'orange';
+			if( mins > 59 ) color = 'red';
+			
+			const r = 6;
+			const d = r * 2;
+			const w = d * 4;
+			
+			const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+			svg.setAttribute('class', `duration-graphic ${color}`);
+			svg.setAttribute('viewBox', `0 0 ${w} ${d}`);
+			svg.setAttribute('height', d );
+			svg.setAttribute('width', w );
+
+			for( let i=0; i<4; i++ ){
+				const cx = ((i + 1) * (r * 2)) - r;
+				const circle = document.createElementNS("http://www.w3.org/2000/svg", 'circle');
+				circle.setAttribute('class',`c${i}`);
+				circle.setAttribute('cx',`${cx}`);
+				circle.setAttribute('cy',`${r}`);
+				circle.setAttribute('r',`${r}`);
+				svg.appendChild( circle );
+			}
+			
+			return svg;
+		};	
+
+		/**
+		* Render Mins DOM
+		* @returns {Element}
+		*/
+		const waitMins = () => {
+			const div = bj.div('mins');
+			const suffix = mins > 1 ? 'mins' : 'min';
+			div.innerHTML = `<span>${mins}</span><small>${suffix}</small>`;
+			return div;
+		};
+		
+		/**
+		* Render depends on status
+		* @param {String} status - could be: "complete", "active", "todo"
+		* @returns {Element} - appropriate element based on status
+		*/
+		const render = ( status ) => {
+			const div = bj.div();
+			
+			if( status  == 'complete' ){
+				div.className = 'wait-duration';
+				div.appendChild( waitMins());
+			}
+			
+			if( status == "active"){
+				div.className = 'wait-duration';
+				div.appendChild( svgCircles());
+				div.appendChild( waitMins());
+			}
+			
+			if( status == "todo" ){
+				div.className = 'flex';
+				div.innerHTML = [
+					`<button class="cols-7 blue hint js-idg-clinic-btn-arrived" data-patient="${patientID}">Arrived</button>`,
+					`<button class="cols-4 js-idg-clinic-btn-DNA" data-patient="${patientID}">DNA</button>`
+				].join('');
+			}
+			
+			td.innerHTML = "";
+			td.appendChild( div );
+			return td;
+		};
+		
+		// API
+		return { arrived, finished, render };
 	};
 	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
+	// make component available	
+	clinic.waitDuration = waitDuration;	
+	
 
-})( bluejay ); 
+})( bluejay, bluejay.namespace('clinic') ); 

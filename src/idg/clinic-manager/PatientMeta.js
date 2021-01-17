@@ -1,46 +1,44 @@
-(function( bj ){
+(function( bj, clinic ){
 
 	'use strict';	
-	
+
 	/**
-	* React Component 
+	* Patient Meta DOM
+	* @param {Object} props 
+	* @return {DocumentFragment} 
 	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
+	const patientMeta = ( props ) => {
+		/*
+		DOM
+		div.oe-patient-meta -|- div.patient-name -|- a -|- span.patient-surname
+		                     |                          |- span.patient-firstname	
+		                     |
+		                     |- div.patient-details -|- div.nhs-number
+		                                             |- div.patient-gender
+		                                             |- div.patient-age 
+		*/
+		const template = [
+			'<div class="oe-patient-meta">',
+				'<div class="patient-name">',
+					'<span class="patient-surname">{{lastname}}</span>, ',
+					'<span class="patient-firstname">{{firstname}}</span>',
+				'</div>',
+				'<div class="patient-details">',
+					'<div class="nhs-number"><span>NHS</span>{{nhs}}</div>',
+					'<div class="patient-gender"><span>Gen</span>{{gender}}</div>',
+					'<div class="patient-age"><span>Age</span>{{age}}</div>',
+				'</div>',
+			'</div>'
+		].join('');
 		
-		class PatientMeta extends React.PureComponent {
-			render(){
-				return (
-					rEl('div', { className: 'oe-patient-meta' }, 
-						rEl('div', { className: 'patient-name' }, 
-							rEl('a', { href: '/v3-SEM/patient-overview' }, 
-								rEl('span', { className: 'patient-surname'}, 
-									this.props.lastname 
-								),
-								rEl("span", { className: "patient-firstname"},
-								 	', ' + this.props.firstname 
-								)
-							)
-						), 
-						rEl("div", { className: "patient-details" }, 
-							rEl("div", { className: "nhs-number", dangerouslySetInnerHTML: { __html : '<span>NHS</span>' + this.props.nhs }}),
-							rEl("div", { className: "patient-gender", dangerouslySetInnerHTML: { __html : '<em>Gen</em>' + this.props.gender }}),
-							rEl("div", { className: "patient-age", dangerouslySetInnerHTML: { __html : '<em>Age</em>' + this.props.age }})
-						)
-					)
-				);
-			}
-		}
+		const td = document.createElement('td');
+		td.innerHTML = Mustache.render( template, props );
 		
-		// make component available	
-		bj.namespace('react').PatientMeta = PatientMeta;			
+		return td;
 	};
 	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
+	// make component available to Clinic SPA	
+	clinic.patientMeta = patientMeta;			
+  
 
-})( bluejay ); 
+})( bluejay, bluejay.namespace('clinic')); 

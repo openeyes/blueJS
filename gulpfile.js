@@ -22,7 +22,7 @@ const oePlotly = [
 ]
 
 const productionModules = [
-	'./src/openeyes/**/*.js',   	// OE distribution modules
+	'./src/build/**/*.js',   	// OE distribution modules
 ]
 
 const idgModules = [

@@ -1,232 +1,202 @@
-(function( bj ){
+(function( bj, clinic, gui ){
 
 	'use strict';	
 	
 	/**
-	* React Component 
+	* Patient (<tr>)
+	* @param {*} props
+	* @returns {*} public methods
 	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-		const react = bj.namespace('react');
+	const Patient = ( props ) => {
+		/** 
+		* Model
+		* status:  "todo", "active", "complete"
+		* Extended with views
+		*/
+		const model = Object.assign({
+			_uid: props.uid,
+			_status: null,
+			_assigned: false,
+			
+			get status(){
+				return this._status;
+			},
+			set status( val ){
+				this._status = val; 
+				this.views.notify();
+			},
+			get assigned(){
+				return this._assigned; 
+			},	
+			set assigned( val ){
+				this._assigned = val;
+				this.views.notify();	
+			},
+		}, bj.ModelViews());
 		
-		class Patient extends React.Component {	
-			/**
-			* Patient - DOM is <tr>
-			* @param {*} props 
-			*/
-			constructor( props ){
-				super( props );
-			
-				this.state = {
-					patientMeta: {
-						firstname: props.firstname,
-						lastname: props.lastname,
-						age: props.age,
-						gender: props.gender,
-						nhs: props.nhs,	
-					}
-				};
-
-				/*
-				prototypal inheritence, correctly bind 'this' scope 
-				*/
-				this.handleStepClick = this.handleStepClick.bind( this );
-				this.pathwaySteps = this.pathwaySteps.bind( this );
-				this.assigned = this.assigned.bind( this );
-				this.update = this.update.bind( this );
-				this.complete = this.complete.bind( this );
-				this.waitMins = this.waitMins.bind( this );
-			}
-			
-			/**
-			* User clicks on a PathStep
-			* Step doesn't need to do anything, any change needs to happen
-			* to the Clinic state, it will be updated/removed through a render
-			* @param {Object} step - step info
-			* @param {Object} rect - node boundingClientRect, to position the popup
-			*/
-			handleStepClick( step, rect ){
-				step.patientArrRef = this.props.arrRef;
-				step.rect = rect;
-				this.props.onPathStepClick( step ); // callback from Clinic
+		/*
+		Hold these Elements in memory, as they will need updating directly
+		*/
+		const tr = document.createElement('tr');
+		const dom = {
+			pathway: bj.div('pathway'),
+			assigned: document.createElement('td'),
+			addIcon: document.createElement('td'),
+			complete: document.createElement('td'),
+		};
+		
+		/*
+		WaitDuration is based on the Arrival time and rendered based on 
+		patient state, when patient arrives start the clock
+		*/
+		const waitDuration = clinic.waitDuration( props.uid );
+		
+		/**
+		* VIEW: status of patient
+		* if patient is "complete" hide the specific + icon
+		*/
+		const changeStatus = () => {
+			tr.className = model.status;
+			dom.pathway.className = `pathway ${model.status}`;
+			dom.addIcon.innerHTML = model.status == "complete" ? "" : '<i class="oe-i plus-circle small pad"></i>';
+			waitDuration.render( model.status );
+		};
+		
+		/**
+		* VIEW: patient assignment
+		*/
+		const changeAssignment = () => {
+			if( model.assigned ){
+				const fullText = clinic.fullShortCode( model.assigned );
+				dom.assigned.innerHTML = `<div>${fullText}</div>`;
+			} else {
+				dom.assigned.innerHTML = '<small class="fade">Not asssigned</div>';
 			}	
-			
-			/**
-			* Build pathway steps 
-			* @returns {React Element}
-			*/
-			pathwaySteps(){
-				const pathway = this.props.pathway;
-				let pathSteps = null; 
-				
-				// Build a PathStep pathway?
-				if( pathway.length ){
-					pathSteps = pathway.map( step  => {
-						return react.PathStep({ 
-							key: step.key, 
-							step: step, 
-							onClick: this.handleStepClick
-						});
-					});		
-				}
-				
-				// if patient pathway is 'complete' CSS will restyle the steps
-				return rEl('div', { className: `pathway ${this.props.status}`}, pathSteps );
-			}
-			
-			/**
-			* Show who's assigned to patient
-			* @returns {React Element}
-			*/
-			assigned(){
-				const assigned = this.props.assigned;
-				if( assigned  ){
-					return rEl('div', null, react.fullShortCode( assigned ));
-				} else {
-					return rEl('small', { className: 'fade' }, "Not assigned" );
-				}
-			}
-			
-			/**
-			* Plus icon to open directly the adder popup
-			* @returns {React Element}
-			*/
-			update(){
-				if( this.props.status === 'complete' ) return null;
-				
-				return rEl('i', { 
-					className: 'oe-i plus-circle small pad', 
-					onClick: () => this.props.onUpdate( this.props.arrRef )
-				}, null );
-			}
-			
-			
-			/**
-			* Arrived DNA or Wait Duration Graphic
-			* @returns {React Element}
-			*/
-			waitMins(){
-				
-				if( this.props.status === 'todo' ){
-					return (
-						rEl('div', { className: 'flex' }, 
-							rEl('button', { 
-								className: 'cols-7 blue hint',  
-								onClick: () => this.props.onArrived( this.props.arrRef )
-							}, 'Arrived'), 
-							rEl('button', { 
-								className: 'cols-4', 
-								onClick: () => this.props.onDNA( this.props.arrRef ) 
-							}, 'DNA')
-						)
-					);
-				}
-				
-				let arriveTime = 0;
-				let totalMins = 0;
-				
-				this.props.pathway.forEach( step => {
-					if( step.shortcode == "Arr" ){
-						arriveTime = step.timestamp;
-					}
-					if( step.shortcode === "Fin" ){
-						totalMins = Math.floor(( step.timestamp - arriveTime ) / 60000 );
-					}
-				});
-				
-				return (
-					rEl( react.WaitDuration, { 
-						status: this.props.status,
-						arriveTime: arriveTime, // timestamps
-						pathwayTotalMins: totalMins // minutes!
-					})
-				);
-			}
-			
-			complete(){
-
-				let td = null;
-				
-				if( this.props.status === 'complete' ){
-					td = rEl('i', { className: 'fade' }, 'Done' );
-				}
-				
-				if( this.props.status === 'active' ){
-					td = rEl('i', { 
-						className: 'oe-i save medium-icon pad js-has-tooltip', 
-						'data-tt-type': "basic", 
-						'data-tooltip-content': 'Patient pathway finished', 
-						onClick: () => this.props.onPathwayCompleted( this.props.arrRef ),
-					}, null );
-				}
-				
-				return td;
-			}
-			
-			/**
-			* Render 
-			*/
-			render(){
-				/*
-				Patient Rows can be filtered by their assignment OR status 
-				if filter is 'hideComplete' check by status, else check assigned
-				*/
-				
-				if(	this.props.clinicFilterState == "hideComplete" && 
-					this.props.status == 'complete' ) return null;
-				
-				if( this.props.clinicFilterState !== "showAll" &&
-					this.props.clinicFilterState !== "hideComplete" ){
-					
-					if( this.props.assigned !== this.props.clinicFilterState ) return null;
-				}
-				
-				/*
-				OK, show it
-				*/
-				return (
-					rEl('tr', { "data-timestamp" : this.props.booked, className: this.props.status },
-						rEl('td', null, bj.clock24( new Date( this.props.booked ))),
-						rEl('td', null, this.props.num ),
-						rEl('td', null, 
-							rEl('div', { className: 'speciality' }, this.props.speciality ), 
-							rEl('small', { className: 'type' }, this.props.specialityState ) 
-						),
-						rEl('td', null, 
-							rEl( react.PatientQuickView, this.state.patientMeta )
-						),
-						rEl('td', null, 
-							rEl( react.PatientMeta, this.state.patientMeta )
-						),
-						rEl('td', null,
-							this.pathwaySteps()
-						), 
-						rEl('td', null, 
-							this.assigned()
-						),
-						rEl('td', null, 
-							this.update()
-						),
-						rEl('td', null,
-							this.waitMins()
-						),
-						rEl('td', null, 
-							this.complete()
-						)
-					)
-				);
-			}
-		}
+		};
 		
-		// make component available	
-		react.Patient = Patient;			
+		/**
+		* VIEW: complete / done
+		*/
+		const changeComplete = () => {
+			dom.complete.innerHTML = "";
+			if( model.status == "complete"){
+				dom.complete.innerHTML = '<span class="fade">Done</span>';
+			}
+			if( model.status == "active"){
+				dom.complete.innerHTML = '<i class="oe-i save medium-icon pad js-has-tooltip" data-tt-type="basic" data-tooltip-content="Patient pathway finished"></i>';
+			}
+		};
+		
+		model.views.add( changeStatus );
+		model.views.add( changeAssignment );
+		model.views.add( changeComplete );
+		
+		/**
+		* Add PathStep to patient pathway
+		* @param {Object} step
+		*/
+		const addPathStep = ( step ) => {
+			if( step.type == "arrive" )waitDuration.arrived( step.timestamp, model.status );
+			if( step.type == "finish" ) waitDuration.finished( step.timestamp );
+			// build pathStep
+			gui.pathStep( step, dom.pathway, (step.type == "arrive"));
+		};
+		
+		/*
+		onArrived (Button: "Arrived")
+		*/
+		const onArrived = () => {
+			// add Arrived Pathstep
+			addPathStep({
+				shortcode: 'Arr',
+				timestamp: Date.now(),
+				status: 'done',
+				type: 'arrive',
+			});
+			model.status = "active";
+		};
+		
+		/*
+		onDNA (Button: "DNA")
+		*/
+		const onDNA = () => {
+			// add Arrived Pathstep
+			addPathStep({
+				shortcode: 'DNA',
+				timestamp: Date.now(),
+				status: 'done',
+				type: 'DNA',
+			});
+			model.status = "complete";
+		};
+		
+	
+		const render = ( filter ) => {
+			
+			console.log('render patient');
+			
+			/*
+			Patients can be filtered by their assignment OR status 
+			if filter is 'completed' check by status, else check assigned
+			*/
+			
+/*
+			if(	state == "hideComplete" && 
+				this.props.status == 'complete' ) return null;
+			
+			if( this.props.clinicFilterState !== "showAll" &&
+				this.props.clinicFilterState !== "hideComplete" ){
+				
+				if( this.props.assigned !== this.props.clinicFilterState ) return null;
+			}
+*/			
+			
+			return tr;
+		};
+		
+		/*
+		Initiate inital patient state from JSON	
+		and build the <tr> DOM
+		*/
+		(() => {
+			// patient state 
+			model.status = props.status; 
+			model.assigned = props.assigned;
+			
+			// build pathway steps
+			props.pathway.forEach( step => addPathStep( step ));
+			
+			// convert to clock time
+			props.time = bj.clock24( new Date( props.booked ));
+			
+			// build <tr>
+			tr.setAttribute( 'date-timestamp', props.booked );
+			tr.innerHTML = Mustache.render([
+				'<td>{{time}}</td>',
+				'<td>{{num}}</td>',
+				'<td><div class="speciality">{{speciality}}</div><small class="type">{{specialityState}}</small></td>'
+			].join(''), props );
+			
+			// slightly more complex Elements, but static content
+			const td = document.createElement('td');
+			tr.appendChild( clinic.patientQuickView( props ));
+			tr.appendChild( clinic.patientMeta( props ));
+			tr.appendChild( td.appendChild( dom.pathway ));		
+			tr.appendChild( dom.assigned );
+			tr.appendChild( dom.addIcon );
+			tr.appendChild( waitDuration.render( props.status ));
+			tr.appendChild( dom.complete );
+		})();
+		
+		
+		/* 
+		API
+		*/
+		return { onArrived, onDNA, render };
 	};
 	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
+	// make component available to Clinic SPA	
+	clinic.Patient = Patient;
+	
 
-})( bluejay ); 
+})( bluejay, bluejay.namespace('clinic'), bluejay.namespace('gui')); 

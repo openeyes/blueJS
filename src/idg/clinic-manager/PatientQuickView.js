@@ -1,42 +1,34 @@
-(function( bj ){
+(function( bj, clinic ){
 
 	'use strict';	
 	
 	/**
-	* React Component 
+	* Patient Meta DOM
+	* @param {Object} props 
+	* @return {Element} 
 	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
+	const patientQuickView = ( props ) => {
 		
-		class PatientQuickView extends React.PureComponent {
-			render(){ 
-				const patient = {
-					surname: this.props.lastname,
-					first: this.props.firstname,
-					id: false, 
-					nhs: this.props.nhs, 
-					gender: this.props.gender, 
-					age: this.props.age,
-				};
-				
-				return rEl('i', {
-					className: 'oe-i eye-circle medium pad js-patient-quick-overview',
-					"data-patient": JSON.stringify( patient ),
-					"data-mode": 'side',
-					"data-php": "patient/quick/overview.php",
-				}, null );
-			}
-		}
+		const i = document.createElement('i');
+		i.className = "oe-i eye-circle medium pad js-patient-quick-overview";
+		i.setAttribute('data-mode', 'side');
+		i.setAttribute('data-php', 'patient/quick/overview.php');
+		i.setAttribute('data-patient', JSON.stringify({
+			surname: props.lastname,
+			first: props.firstname,
+			id: false, 
+			nhs: props.nhs, 
+			gender: props.gender, 
+			age: props.age,
+		}));
 		
-		// make component available	
-		bj.namespace('react').PatientQuickView = PatientQuickView;			
+		const td = document.createElement('td');
+		td.appendChild( i );
+		
+		return td;
 	};
 	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
+	// make component available to Clinic SPA	
+	clinic.patientQuickView = patientQuickView;		
 
-})( bluejay ); 
+})( bluejay, bluejay.namespace('clinic')); 

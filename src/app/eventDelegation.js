@@ -15,6 +15,7 @@
 	const mouseDown = new Map();	
 	const mouseEnter = new Map();	
 	const mouseLeave = new Map();	
+	const click = new Map();
 	const resize = new Set(); // no selectors to match too.
 
 	/**
@@ -25,7 +26,7 @@
 	*/
 	const addListener = ( map, selector, cb ) => {
 		
-		if( map.has(selector)){
+		if( map.has( selector )){
 			throw new TypeError('Event Delegation: selector already added : ' + selector); 
 		} 
 		
@@ -57,7 +58,7 @@
 		// ignore if document
 		if( target === document ) return false;
 		
-		listeners.forEach( ( cb, key ) => {
+		listeners.forEach(( cb, key ) => {
 			if( target.matches( key )){
 				cb( event );
 			}
@@ -130,11 +131,13 @@
 	document.addEventListener('mousedown', handleMouserDown, { capture:true }); 
 	document.addEventListener('mouseleave', handleMouserLeave, { capture:true });
 	document.addEventListener('touchstart', ( e ) => handleTouchStart( e ), { capture:true });
+	document.addEventListener('click', ( e ) => notifyListeners( e, click ), { capture:true });
 
 	// extend App
 	bj.extend('userEnter', ( selector, cb ) => addListener( mouseEnter, selector, cb ));
 	bj.extend('userDown', ( selector, cb ) => addListener( mouseDown, selector, cb ));
 	bj.extend('userLeave', ( selector, cb ) => addListener( mouseLeave, selector, cb ));
+	bj.extend('userClick', ( selector, cb ) => addListener( click, selector, cb ));
 	
 	// window resize, no need for selectors
 	bj.extend('listenForResize', ( cb ) => resize.add( cb ));
