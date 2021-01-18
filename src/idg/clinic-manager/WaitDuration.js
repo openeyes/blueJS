@@ -31,13 +31,11 @@
 			if( timestamp !== null ) return;
 			timestamp = arriveTime;
 			calcWaitMins();
-			if( patientStatus === "active"){
-				timerID = setInterval(() => {
-					calcWaitMins();
-					render("active");
-					console.log('waitDuration is running!');
-				}, 15000 ); 	
-			}
+			timerID = setInterval(() => {
+				calcWaitMins();
+				render("active");
+				console.log('waitDuration setInterval running!', patientID );
+			}, 15000 ); 				
 		};
 		
 		/**

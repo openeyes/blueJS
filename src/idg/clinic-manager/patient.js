@@ -7,7 +7,7 @@
 	* @param {*} props
 	* @returns {*} public methods
 	*/
-	const Patient = ( props ) => {
+	const patient = ( props ) => {
 		/** 
 		* Model
 		* status:  "todo", "active", "complete"
@@ -58,7 +58,9 @@
 		const changeStatus = () => {
 			tr.className = model.status;
 			dom.pathway.className = `pathway ${model.status}`;
-			dom.addIcon.innerHTML = model.status == "complete" ? "" : '<i class="oe-i plus-circle small pad"></i>';
+			dom.addIcon.innerHTML = model.status == "complete" ? 
+				"" : 
+				`<i class="oe-i plus-circle small pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
 			waitDuration.render( model.status );
 		};
 		
@@ -66,11 +68,11 @@
 		* VIEW: patient assignment
 		*/
 		const changeAssignment = () => {
-			if( model.assigned ){
-				const fullText = clinic.fullShortCode( model.assigned );
-				dom.assigned.innerHTML = `<div>${fullText}</div>`;
+			const fullText = clinic.fullShortCode( model.assigned );
+			if( model.assigned == "unassigned" ){
+				dom.assigned.innerHTML = `<small class="fade">${fullText}</small>`;
 			} else {
-				dom.assigned.innerHTML = '<small class="fade">Not asssigned</div>';
+				dom.assigned.innerHTML = `<div>${fullText}</div>`;
 			}	
 		};
 		
@@ -83,7 +85,7 @@
 				dom.complete.innerHTML = '<span class="fade">Done</span>';
 			}
 			if( model.status == "active"){
-				dom.complete.innerHTML = '<i class="oe-i save medium-icon pad js-has-tooltip" data-tt-type="basic" data-tooltip-content="Patient pathway finished"></i>';
+				dom.complete.innerHTML = `<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model._uid}"></i>`;
 			}
 		};
 		
@@ -96,17 +98,16 @@
 		* @param {Object} step
 		*/
 		const addPathStep = ( step ) => {
-			if( step.type == "arrive" )waitDuration.arrived( step.timestamp, model.status );
+			if( step.type == "arrive" ) waitDuration.arrived( step.timestamp, model.status );
 			if( step.type == "finish" ) waitDuration.finished( step.timestamp );
 			// build pathStep
 			gui.pathStep( step, dom.pathway, (step.type == "arrive"));
 		};
 		
-		/*
-		onArrived (Button: "Arrived")
+		/**
+		* 'on' Handlers for Event delegation
 		*/
 		const onArrived = () => {
-			// add Arrived Pathstep
 			addPathStep({
 				shortcode: 'Arr',
 				timestamp: Date.now(),
@@ -116,11 +117,7 @@
 			model.status = "active";
 		};
 		
-		/*
-		onDNA (Button: "DNA")
-		*/
 		const onDNA = () => {
-			// add Arrived Pathstep
 			addPathStep({
 				shortcode: 'DNA',
 				timestamp: Date.now(),
@@ -130,27 +127,37 @@
 			model.status = "complete";
 		};
 		
-	
+		const onComplete = () => {
+			addPathStep({
+				shortcode: 'Fin',
+				timestamp: Date.now(),
+				status: 'done',
+				type: 'finish',
+			});
+			model.status = "complete";
+		};
+		
+		/*
+		
+		*/
+		
+		
+		/**
+		* Render Patient <tr>
+		* @params {String} filter - filter buttons set this
+		* @returns {Element} (if covered by filter option)	
+		*/
 		const render = ( filter ) => {
+			// completed?
+			if(	filter == "completed" && 
+				model.status == 'complete' ) return null;
 			
-			console.log('render patient');
-			
-			/*
-			Patients can be filtered by their assignment OR status 
-			if filter is 'completed' check by status, else check assigned
-			*/
-			
-/*
-			if(	state == "hideComplete" && 
-				this.props.status == 'complete' ) return null;
-			
-			if( this.props.clinicFilterState !== "showAll" &&
-				this.props.clinicFilterState !== "hideComplete" ){
-				
-				if( this.props.assigned !== this.props.clinicFilterState ) return null;
+			// assigned?
+			if( filter !== "all" &&
+				filter !== "completed" ){
+				if( model.assigned !== filter) return null;
 			}
-*/			
-			
+			// ok! 	
 			return tr;
 		};
 		
@@ -170,7 +177,7 @@
 			props.time = bj.clock24( new Date( props.booked ));
 			
 			// build <tr>
-			tr.setAttribute( 'date-timestamp', props.booked );
+			tr.setAttribute( 'data-timestamp', props.booked );
 			tr.innerHTML = Mustache.render([
 				'<td>{{time}}</td>',
 				'<td>{{num}}</td>',
@@ -192,11 +199,13 @@
 		/* 
 		API
 		*/
-		return { onArrived, onDNA, render };
+		const getAssignment = () => model.assigned;
+		
+		return { onArrived, onDNA, onComplete, render, getAssignment };
 	};
 	
 	// make component available to Clinic SPA	
-	clinic.Patient = Patient;
+	clinic.patient = patient;
 	
 
 })( bluejay, bluejay.namespace('clinic'), bluejay.namespace('gui')); 

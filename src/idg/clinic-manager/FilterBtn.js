@@ -1,57 +1,70 @@
-(function( bj ){
+(function( bj, clinic ){
 
 	'use strict';	
 	
 	/**
-	* React Component 
+	* Filter Btn <li>
+	* @param {Object} props 
+	* @param {parentNode} ul - <ul>
+	* @return {Element} 
 	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-		const react = bj.namespace('react');
-
-		class FilterBtn extends React.PureComponent {
+	const filterBtn = ( props, ul ) => {
 		
-			constructor( props ){
-				super( props );
-				this.btn = this.btn.bind( this );
+		const filter = props.filter;
+		const li = document.createElement('li');
+		const count = bj.div('count');
+		
+		li.className = "filter-btn js-idg-clinic-btn-filter"; 
+		li.setAttribute('data-filter', filter );
+		
+		
+		// build btn and add to <ul> header
+		(() => {
+			const name = props.name;
+			// check if it's short code
+			const fullName = clinic.fullShortCode( name ) == name ? false : clinic.fullShortCode( name );
+			
+			const div = bj.div('filter');
+			let html = `<div class="name">${name}</div>`;
+			if( fullName ) html += `<div class="fullname">${fullName}</div>`;
+			div.innerHTML = html;
+			
+			// only show the count for patient assignments
+			if( filter !== "all" && filter !== "completed"){
+				div.appendChild( count );	
 			}
 			
-			btn(){
-				// if filter btn is for a step, show full name
-				const fullName = this.props.isStep ? rEl('div', { className: 'fullname' }, react.fullShortCode( this.props.btn )) : null; 
-				const count = this.props.count ? rEl('div', { className: 'count' }, this.props.count ) : null; 
 			
-				return (
-					rEl('div', { className: 'filter' },
-						rEl('div', { className: 'name' }, this.props.btn  ), 
-						fullName, 
-						count
-					)
-				);
-			}
+			
+			li.appendChild( div );
+			
+			// update DOM
+			ul.appendChild( li );
+			
+		})();
 		
-			/**
-			* Render
-			*/
-			render(){ 
-				const css = this.props.selected ? 'filter-btn selected' : 'filter-btn';
-				return (
-					rEl('li', { className: css, onClick: () => this.props.onClick( this.props.filter ) }, 
-						this.btn()
-					)
-				);	
-			}
-		}
 		
-		// make component available	
-		react.FilterBtn = FilterBtn;			
+		const update = ( allPatientAssignments, currentFilter ) => {
+			// work out the counts per filter.
+			const num = allPatientAssignments.reduce((acc, assigned ) => {
+				if( assigned == filter ) return acc + 1; 
+				return acc;
+			}, 0 );
+			
+			count.textContent = num;
+			
+			if( currentFilter === filter ){
+				li.classList.add('selected');	
+			} else {
+				li.classList.remove('selected');
+			}
+			
+		};
+		
+		return { update };	
 	};
 	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
-
-})( bluejay ); 
+	// make component available to Clinic SPA	
+	clinic.filterBtn = filterBtn;			
+  
+})( bluejay, bluejay.namespace('clinic')); 

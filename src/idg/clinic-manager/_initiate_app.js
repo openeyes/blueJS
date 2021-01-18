@@ -36,7 +36,8 @@
 			case 'Fin': full = "Finish"; break;
 			case "DNA" : full = "Did Not Attend"; break;
 			
-			case "nobody" : full = "Not assigned"; break;
+			case "unassigned" : full = "Not assigned"; break;
+			
 			case "MM" : full = "Mr Michael Morgan"; break;
 			case "AB" : full = "Dr Amit Baum"; break;
 			case "AG" : full = "Dr Angela Glasby"; break;

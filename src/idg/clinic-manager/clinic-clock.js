@@ -1,18 +1,16 @@
-(function( bj ){
+(function( bj, clinic ){
 
 	'use strict';	
 	
 	/**
-	* Clinic clock is so simple keeping it Vanilla
-	* however, need to keep it out of the DOM that React is controlling.
+	* Clinic clock
 	*/
-	const addClinicClock = () => {
+	const showClock = () => {
 		const div = bj.div('oe-clinic-clock');
 		div.textContent = "";
 		div.style.top = "100%";
 		document.body.appendChild( div );
 		
-
 		const updateClock = () => {
 			const tableRows = bj.nodeArray( document.querySelectorAll('table.oe-clinic-list tbody tr'));
 			
@@ -22,7 +20,7 @@
 				return;
 			}
 			
-			// table TRs have a timestamp on them, this is provided by ReactJS
+			// table TRs have a timestamp on them
 			const now = Date.now();
 			
 			// move offscreen if all TRs are in the "past". 
@@ -47,10 +45,8 @@
 		setInterval( updateClock, 1000 );
 	};
 	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', addClinicClock, { once: true });
+	// make component available to Clinic SPA	
+	clinic.clock = showClock;
 	  
 
-})( bluejay ); 
+})( bluejay, bluejay.namespace('clinic')); 

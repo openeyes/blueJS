@@ -10565,63 +10565,6 @@ Updated to Vanilla JS for IDG
 	'use strict';	
 	
 	/**
-	* React Component 
-	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-		const react = bj.namespace('react');
-
-		class FilterBtn extends React.PureComponent {
-		
-			constructor( props ){
-				super( props );
-				this.btn = this.btn.bind( this );
-			}
-			
-			btn(){
-				// if filter btn is for a step, show full name
-				const fullName = this.props.isStep ? rEl('div', { className: 'fullname' }, react.fullShortCode( this.props.btn )) : null; 
-				const count = this.props.count ? rEl('div', { className: 'count' }, this.props.count ) : null; 
-			
-				return (
-					rEl('div', { className: 'filter' },
-						rEl('div', { className: 'name' }, this.props.btn  ), 
-						fullName, 
-						count
-					)
-				);
-			}
-		
-			/**
-			* Render
-			*/
-			render(){ 
-				const css = this.props.selected ? 'filter-btn selected' : 'filter-btn';
-				return (
-					rEl('li', { className: css, onClick: () => this.props.onClick( this.props.filter ) }, 
-						this.btn()
-					)
-				);	
-			}
-		}
-		
-		// make component available	
-		react.FilterBtn = FilterBtn;			
-	};
-	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
-
-})( bluejay ); 
-(function( bj ){
-
-	'use strict';	
-	
-	/**
 	* React Component - using Portal to render outside the DOM tree.
 	*/
 	const buildComponent = () => {
@@ -10679,8 +10622,8 @@ Updated to Vanilla JS for IDG
 				
 				let btns = [];
 				
-				btns.push( this.btn('Show all','showAll', false, 0 ));
-				btns.push( this.btn('Hide completed','hideComplete', false, 0 ));
+				btns.push( this.btn( ));
+				btns.push( this.btn());
 	
 				btns = btns.concat( react.assignList.map( personCode => this.btn( personCode, personCode, true, countFilters( personCode ))));
 				
@@ -10920,208 +10863,6 @@ Updated to Vanilla JS for IDG
 	  
 
 })( bluejay ); 
-(function( bj, clinic, gui ){
-
-	'use strict';	
-	
-	/**
-	* Patient (<tr>)
-	* @param {*} props
-	* @returns {*} public methods
-	*/
-	const Patient = ( props ) => {
-		/** 
-		* Model
-		* status:  "todo", "active", "complete"
-		* Extended with views
-		*/
-		const model = Object.assign({
-			_uid: props.uid,
-			_status: null,
-			_assigned: false,
-			
-			get status(){
-				return this._status;
-			},
-			set status( val ){
-				this._status = val; 
-				this.views.notify();
-			},
-			get assigned(){
-				return this._assigned; 
-			},	
-			set assigned( val ){
-				this._assigned = val;
-				this.views.notify();	
-			},
-		}, bj.ModelViews());
-		
-		/*
-		Hold these Elements in memory, as they will need updating directly
-		*/
-		const tr = document.createElement('tr');
-		const dom = {
-			pathway: bj.div('pathway'),
-			assigned: document.createElement('td'),
-			addIcon: document.createElement('td'),
-			complete: document.createElement('td'),
-		};
-		
-		/*
-		WaitDuration is based on the Arrival time and rendered based on 
-		patient state, when patient arrives start the clock
-		*/
-		const waitDuration = clinic.waitDuration( props.uid );
-		
-		/**
-		* VIEW: status of patient
-		* if patient is "complete" hide the specific + icon
-		*/
-		const changeStatus = () => {
-			tr.className = model.status;
-			dom.pathway.className = `pathway ${model.status}`;
-			dom.addIcon.innerHTML = model.status == "complete" ? "" : '<i class="oe-i plus-circle small pad"></i>';
-			waitDuration.render( model.status );
-		};
-		
-		/**
-		* VIEW: patient assignment
-		*/
-		const changeAssignment = () => {
-			if( model.assigned ){
-				const fullText = clinic.fullShortCode( model.assigned );
-				dom.assigned.innerHTML = `<div>${fullText}</div>`;
-			} else {
-				dom.assigned.innerHTML = '<small class="fade">Not asssigned</div>';
-			}	
-		};
-		
-		/**
-		* VIEW: complete / done
-		*/
-		const changeComplete = () => {
-			dom.complete.innerHTML = "";
-			if( model.status == "complete"){
-				dom.complete.innerHTML = '<span class="fade">Done</span>';
-			}
-			if( model.status == "active"){
-				dom.complete.innerHTML = '<i class="oe-i save medium-icon pad js-has-tooltip" data-tt-type="basic" data-tooltip-content="Patient pathway finished"></i>';
-			}
-		};
-		
-		model.views.add( changeStatus );
-		model.views.add( changeAssignment );
-		model.views.add( changeComplete );
-		
-		/**
-		* Add PathStep to patient pathway
-		* @param {Object} step
-		*/
-		const addPathStep = ( step ) => {
-			if( step.type == "arrive" )waitDuration.arrived( step.timestamp, model.status );
-			if( step.type == "finish" ) waitDuration.finished( step.timestamp );
-			// build pathStep
-			gui.pathStep( step, dom.pathway, (step.type == "arrive"));
-		};
-		
-		/*
-		onArrived (Button: "Arrived")
-		*/
-		const onArrived = () => {
-			// add Arrived Pathstep
-			addPathStep({
-				shortcode: 'Arr',
-				timestamp: Date.now(),
-				status: 'done',
-				type: 'arrive',
-			});
-			model.status = "active";
-		};
-		
-		/*
-		onDNA (Button: "DNA")
-		*/
-		const onDNA = () => {
-			// add Arrived Pathstep
-			addPathStep({
-				shortcode: 'DNA',
-				timestamp: Date.now(),
-				status: 'done',
-				type: 'DNA',
-			});
-			model.status = "complete";
-		};
-		
-	
-		const render = ( filter ) => {
-			
-			console.log('render patient');
-			
-			/*
-			Patients can be filtered by their assignment OR status 
-			if filter is 'completed' check by status, else check assigned
-			*/
-			
-/*
-			if(	state == "hideComplete" && 
-				this.props.status == 'complete' ) return null;
-			
-			if( this.props.clinicFilterState !== "showAll" &&
-				this.props.clinicFilterState !== "hideComplete" ){
-				
-				if( this.props.assigned !== this.props.clinicFilterState ) return null;
-			}
-*/			
-			
-			return tr;
-		};
-		
-		/*
-		Initiate inital patient state from JSON	
-		and build the <tr> DOM
-		*/
-		(() => {
-			// patient state 
-			model.status = props.status; 
-			model.assigned = props.assigned;
-			
-			// build pathway steps
-			props.pathway.forEach( step => addPathStep( step ));
-			
-			// convert to clock time
-			props.time = bj.clock24( new Date( props.booked ));
-			
-			// build <tr>
-			tr.setAttribute( 'date-timestamp', props.booked );
-			tr.innerHTML = Mustache.render([
-				'<td>{{time}}</td>',
-				'<td>{{num}}</td>',
-				'<td><div class="speciality">{{speciality}}</div><small class="type">{{specialityState}}</small></td>'
-			].join(''), props );
-			
-			// slightly more complex Elements, but static content
-			const td = document.createElement('td');
-			tr.appendChild( clinic.patientQuickView( props ));
-			tr.appendChild( clinic.patientMeta( props ));
-			tr.appendChild( td.appendChild( dom.pathway ));		
-			tr.appendChild( dom.assigned );
-			tr.appendChild( dom.addIcon );
-			tr.appendChild( waitDuration.render( props.status ));
-			tr.appendChild( dom.complete );
-		})();
-		
-		
-		/* 
-		API
-		*/
-		return { onArrived, onDNA, render };
-	};
-	
-	// make component available to Clinic SPA	
-	clinic.Patient = Patient;
-	
-
-})( bluejay, bluejay.namespace('clinic'), bluejay.namespace('gui')); 
 (function( bj ){
 
 	'use strict';	
@@ -11829,13 +11570,11 @@ Updated to Vanilla JS for IDG
 			if( timestamp !== null ) return;
 			timestamp = arriveTime;
 			calcWaitMins();
-			if( patientStatus === "active"){
-				timerID = setInterval(() => {
-					calcWaitMins();
-					render("active");
-					console.log('waitDuration is running!');
-				}, 15000 ); 	
-			}
+			timerID = setInterval(() => {
+				calcWaitMins();
+				render("active");
+				console.log('waitDuration setInterval running!', patientID );
+			}, 15000 ); 				
 		};
 		
 		/**
@@ -11971,7 +11710,8 @@ Updated to Vanilla JS for IDG
 			case 'Fin': full = "Finish"; break;
 			case "DNA" : full = "Did Not Attend"; break;
 			
-			case "nobody" : full = "Not assigned"; break;
+			case "unassigned" : full = "Not assigned"; break;
+			
 			case "MM" : full = "Mr Michael Morgan"; break;
 			case "AB" : full = "Dr Amit Baum"; break;
 			case "AG" : full = "Dr Angela Glasby"; break;
@@ -12063,6 +11803,9 @@ Updated to Vanilla JS for IDG
 	'use strict';	
 	
 	const app = ( tbody, json ) => {
+		
+		const patients = new Map();
+		const filters = new Set();
 	
 		/** 
 		* Model
@@ -12070,8 +11813,6 @@ Updated to Vanilla JS for IDG
 		*/
 		const model = Object.assign({
 			_filter: "all", // "hideCompleted", "Unassigned", "MM", etc
-			patients: new Map(),
-			
 			get filter(){
 				return this._filter;
 			},
@@ -12088,57 +11829,102 @@ Updated to Vanilla JS for IDG
 		*/
 		const filterPatients = () => {
 			const fragment = new DocumentFragment();
-			model.patients.forEach( patient => fragment.appendChild( patient.render( model.filter )));
+			patients.forEach( patient => {
+				const tr = patient.render( model.filter );
+				if( tr != null )fragment.appendChild( tr );
+			});
 			
 			// update <tbody>
 			tbody.innerHTML = "";
 			tbody.appendChild( fragment );
 		};
 		
-		// update if any change to the Clinic state
-		model.views.add( filterPatients );
+		const updateFilters = () => {
+			const allPatientAssignments = [];
+			patients.forEach( patient => allPatientAssignments.push( patient.getAssignment()));
+			filters.forEach( filter => filter.update( allPatientAssignments, model.filter ));
+		};
 		
+		model.views.add( filterPatients );
+		model.views.add( updateFilters );
 
 		/**
 		Use Event delegation for all User actions
 		*/
 		// Button: "Arrived"
 		bj.userClick('.js-idg-clinic-btn-arrived', ( ev ) => {
-			model.patients.get( ev.target.dataset.patient ).onArrived();
+			patients.get( ev.target.dataset.patient ).onArrived();
 		});
 		
 		// Button: "DNA"
 		bj.userClick('.js-idg-clinic-btn-DNA', ( ev ) => {
-			model.patients.get( ev.target.dataset.patient ).onDNA();
+			patients.get( ev.target.dataset.patient ).onDNA();
 		});
 		
+		// Icon: "tick" (complete)
+		bj.userDown('.js-idg-clinic-icon-complete', ( ev ) => {
+			patients.get( ev.target.dataset.patient ).onComplete();
+		});
+		
+		// Filter button
+		bj.userDown('.js-idg-clinic-btn-filter', ( ev ) => {
+			model.filter = ev.target.dataset.filter;
+		});
 		
 		/**
 		* Init Patients and set state from the JSON	
+		* Add filters in the header bar
 		*/
-		json.forEach( patient => model.patients.set( patient.uid, clinic.Patient( patient )));	
-		model.filter = "all";
+		(() => {
+			// build patients (<tr>)
+			json.forEach( patient => patients.set( patient.uid, clinic.patient( patient )));
+			
+			// add in filter buttons to the header
+			const ul = document.getElementById('js-clinic-filter');
+			[
+				['Show all','all'],
+				['Hide completed','completed'],
+				['MM', 'MM'],
+				['Not assigned', 'unassigned']
+			].forEach( btn => {
+				filters.add( clinic.filterBtn({
+					name: btn[0],
+					filter: btn[1],
+				}, ul ));
+			});
+			
+			// add in + all adder button to header
+			const li = document.createElement('li');
+			li.className = 'update-clinic-btn';
+			li.innerHTML = '<button class="adder open"></button>'; // 'adder close'
+			ul.appendChild( li );
+			
+			// clinic always starts on "all"
+			model.filter = "all";
+		
+			// the clock is running! 
+			clinic.clock();
+	
+		})();
 	};
 
-	// set up in namespace
+	// add to namespace
 	clinic.app = app;			
 
 })( bluejay, bluejay.namespace('clinic')); 
-(function( bj ){
+(function( bj, clinic ){
 
 	'use strict';	
 	
 	/**
-	* Clinic clock is so simple keeping it Vanilla
-	* however, need to keep it out of the DOM that React is controlling.
+	* Clinic clock
 	*/
-	const addClinicClock = () => {
+	const showClock = () => {
 		const div = bj.div('oe-clinic-clock');
 		div.textContent = "";
 		div.style.top = "100%";
 		document.body.appendChild( div );
 		
-
 		const updateClock = () => {
 			const tableRows = bj.nodeArray( document.querySelectorAll('table.oe-clinic-list tbody tr'));
 			
@@ -12148,7 +11934,7 @@ Updated to Vanilla JS for IDG
 				return;
 			}
 			
-			// table TRs have a timestamp on them, this is provided by ReactJS
+			// table TRs have a timestamp on them
 			const now = Date.now();
 			
 			// move offscreen if all TRs are in the "past". 
@@ -12173,13 +11959,292 @@ Updated to Vanilla JS for IDG
 		setInterval( updateClock, 1000 );
 	};
 	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', addClinicClock, { once: true });
+	// make component available to Clinic SPA	
+	clinic.clock = showClock;
 	  
 
-})( bluejay ); 
+})( bluejay, bluejay.namespace('clinic')); 
+(function( bj, clinic ){
+
+	'use strict';	
+	
+	/**
+	* Filter Btn <li>
+	* @param {Object} props 
+	* @param {parentNode} ul - <ul>
+	* @return {Element} 
+	*/
+	const filterBtn = ( props, ul ) => {
+		
+		const filter = props.filter;
+		const li = document.createElement('li');
+		const count = bj.div('count');
+		
+		li.className = "filter-btn js-idg-clinic-btn-filter"; 
+		li.setAttribute('data-filter', filter );
+		
+		
+		// build btn and add to <ul> header
+		(() => {
+			const name = props.name;
+			// check if it's short code
+			const fullName = clinic.fullShortCode( name ) == name ? false : clinic.fullShortCode( name );
+			
+			const div = bj.div('filter');
+			let html = `<div class="name">${name}</div>`;
+			if( fullName ) html += `<div class="fullname">${fullName}</div>`;
+			div.innerHTML = html;
+			
+			// only show the count for patient assignments
+			if( filter !== "all" && filter !== "completed"){
+				div.appendChild( count );	
+			}
+			
+			
+			
+			li.appendChild( div );
+			
+			// update DOM
+			ul.appendChild( li );
+			
+		})();
+		
+		
+		const update = ( allPatientAssignments, currentFilter ) => {
+			// work out the counts per filter.
+			const num = allPatientAssignments.reduce((acc, assigned ) => {
+				if( assigned == filter ) return acc + 1; 
+				return acc;
+			}, 0 );
+			
+			count.textContent = num;
+			
+			if( currentFilter === filter ){
+				li.classList.add('selected');	
+			} else {
+				li.classList.remove('selected');
+			}
+			
+		};
+		
+		return { update };	
+	};
+	
+	// make component available to Clinic SPA	
+	clinic.filterBtn = filterBtn;			
+  
+})( bluejay, bluejay.namespace('clinic')); 
+(function( bj, clinic, gui ){
+
+	'use strict';	
+	
+	/**
+	* Patient (<tr>)
+	* @param {*} props
+	* @returns {*} public methods
+	*/
+	const patient = ( props ) => {
+		/** 
+		* Model
+		* status:  "todo", "active", "complete"
+		* Extended with views
+		*/
+		const model = Object.assign({
+			_uid: props.uid,
+			_status: null,
+			_assigned: false,
+			
+			get status(){
+				return this._status;
+			},
+			set status( val ){
+				this._status = val; 
+				this.views.notify();
+			},
+			get assigned(){
+				return this._assigned; 
+			},	
+			set assigned( val ){
+				this._assigned = val;
+				this.views.notify();	
+			},
+		}, bj.ModelViews());
+		
+		/*
+		Hold these Elements in memory, as they will need updating directly
+		*/
+		const tr = document.createElement('tr');
+		const dom = {
+			pathway: bj.div('pathway'),
+			assigned: document.createElement('td'),
+			addIcon: document.createElement('td'),
+			complete: document.createElement('td'),
+		};
+		
+		/*
+		WaitDuration is based on the Arrival time and rendered based on 
+		patient state, when patient arrives start the clock
+		*/
+		const waitDuration = clinic.waitDuration( props.uid );
+		
+		/**
+		* VIEW: status of patient
+		* if patient is "complete" hide the specific + icon
+		*/
+		const changeStatus = () => {
+			tr.className = model.status;
+			dom.pathway.className = `pathway ${model.status}`;
+			dom.addIcon.innerHTML = model.status == "complete" ? 
+				"" : 
+				`<i class="oe-i plus-circle small pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
+			waitDuration.render( model.status );
+		};
+		
+		/**
+		* VIEW: patient assignment
+		*/
+		const changeAssignment = () => {
+			const fullText = clinic.fullShortCode( model.assigned );
+			if( model.assigned == "unassigned" ){
+				dom.assigned.innerHTML = `<small class="fade">${fullText}</small>`;
+			} else {
+				dom.assigned.innerHTML = `<div>${fullText}</div>`;
+			}	
+		};
+		
+		/**
+		* VIEW: complete / done
+		*/
+		const changeComplete = () => {
+			dom.complete.innerHTML = "";
+			if( model.status == "complete"){
+				dom.complete.innerHTML = '<span class="fade">Done</span>';
+			}
+			if( model.status == "active"){
+				dom.complete.innerHTML = `<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model._uid}"></i>`;
+			}
+		};
+		
+		model.views.add( changeStatus );
+		model.views.add( changeAssignment );
+		model.views.add( changeComplete );
+		
+		/**
+		* Add PathStep to patient pathway
+		* @param {Object} step
+		*/
+		const addPathStep = ( step ) => {
+			if( step.type == "arrive" ) waitDuration.arrived( step.timestamp, model.status );
+			if( step.type == "finish" ) waitDuration.finished( step.timestamp );
+			// build pathStep
+			gui.pathStep( step, dom.pathway, (step.type == "arrive"));
+		};
+		
+		/**
+		* 'on' Handlers for Event delegation
+		*/
+		const onArrived = () => {
+			addPathStep({
+				shortcode: 'Arr',
+				timestamp: Date.now(),
+				status: 'done',
+				type: 'arrive',
+			});
+			model.status = "active";
+		};
+		
+		const onDNA = () => {
+			addPathStep({
+				shortcode: 'DNA',
+				timestamp: Date.now(),
+				status: 'done',
+				type: 'DNA',
+			});
+			model.status = "complete";
+		};
+		
+		const onComplete = () => {
+			addPathStep({
+				shortcode: 'Fin',
+				timestamp: Date.now(),
+				status: 'done',
+				type: 'finish',
+			});
+			model.status = "complete";
+		};
+		
+		/*
+		
+		*/
+		
+		
+		/**
+		* Render Patient <tr>
+		* @params {String} filter - filter buttons set this
+		* @returns {Element} (if covered by filter option)	
+		*/
+		const render = ( filter ) => {
+			// completed?
+			if(	filter == "completed" && 
+				model.status == 'complete' ) return null;
+			
+			// assigned?
+			if( filter !== "all" &&
+				filter !== "completed" ){
+				if( model.assigned !== filter) return null;
+			}
+			// ok! 	
+			return tr;
+		};
+		
+		/*
+		Initiate inital patient state from JSON	
+		and build the <tr> DOM
+		*/
+		(() => {
+			// patient state 
+			model.status = props.status; 
+			model.assigned = props.assigned;
+			
+			// build pathway steps
+			props.pathway.forEach( step => addPathStep( step ));
+			
+			// convert to clock time
+			props.time = bj.clock24( new Date( props.booked ));
+			
+			// build <tr>
+			tr.setAttribute( 'data-timestamp', props.booked );
+			tr.innerHTML = Mustache.render([
+				'<td>{{time}}</td>',
+				'<td>{{num}}</td>',
+				'<td><div class="speciality">{{speciality}}</div><small class="type">{{specialityState}}</small></td>'
+			].join(''), props );
+			
+			// slightly more complex Elements, but static content
+			const td = document.createElement('td');
+			tr.appendChild( clinic.patientQuickView( props ));
+			tr.appendChild( clinic.patientMeta( props ));
+			tr.appendChild( td.appendChild( dom.pathway ));		
+			tr.appendChild( dom.assigned );
+			tr.appendChild( dom.addIcon );
+			tr.appendChild( waitDuration.render( props.status ));
+			tr.appendChild( dom.complete );
+		})();
+		
+		
+		/* 
+		API
+		*/
+		const getAssignment = () => model.assigned;
+		
+		return { onArrived, onDNA, onComplete, render, getAssignment };
+	};
+	
+	// make component available to Clinic SPA	
+	clinic.patient = patient;
+	
+
+})( bluejay, bluejay.namespace('clinic'), bluejay.namespace('gui')); 
 (function( bj, clinic ){
 
 	'use strict';	

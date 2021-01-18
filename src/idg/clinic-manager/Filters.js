@@ -60,8 +60,8 @@
 				
 				let btns = [];
 				
-				btns.push( this.btn('Show all','showAll', false, 0 ));
-				btns.push( this.btn('Hide completed','hideComplete', false, 0 ));
+				btns.push( this.btn( ));
+				btns.push( this.btn());
 	
 				btns = btns.concat( react.assignList.map( personCode => this.btn( personCode, personCode, true, countFilters( personCode ))));
 				
