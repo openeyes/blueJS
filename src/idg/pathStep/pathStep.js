@@ -10,9 +10,12 @@
 		span.oe-pathstep-btn -|- span.step
 		                      |- span.time 	
 		*/
-		const css = ['oe-pathstep-btn', 'no-popup'];
+		const css = ['oe-pathstep-btn'];
 		if( step.status === 'done') css.push('green');
 		if( step.status === 'active') css.push('orange');
+		
+		// type - person or process? 
+		if(  step.type === 'person' ) css.push('person');
 		
 		// use 'invisible' to maintain layout:
 		const cssTime = step.status == 'next' ? 'time invisible' : 'time';	

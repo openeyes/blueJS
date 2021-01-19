@@ -34,7 +34,6 @@
 			timerID = setInterval(() => {
 				calcWaitMins();
 				render("active");
-				console.log('waitDuration setInterval running!', patientID );
 			}, 15000 ); 				
 		};
 		

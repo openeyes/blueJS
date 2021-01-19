@@ -10565,111 +10565,6 @@ Updated to Vanilla JS for IDG
 	'use strict';	
 	
 	/**
-	* React Component - using Portal to render outside the DOM tree.
-	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-		const react = bj.namespace('react');
-
-		class Filters extends React.Component {
-			
-			constructor( props ){
-				super( props );
-				
-				// Following React Docs example, store DOM Element here
-				// then use a Portal to render the children into the DOM.
-				this.dom = document.getElementById('js-clinic-filter');
-
-				// helper to build btnObj in state
-				const btnObj = ( btn, filter, isStep ) => ({ btn, filter, isStep, key: react.getKey() });
-				
-				// Methods
-				this.btn = this.btn.bind( this );
-				this.filterBtns = this.filterBtns.bind( this );
-			}
-		
-			/**
-			* Build Filter Btn
-			* @returns {React Element}
-			*/
-			btn( btnText, filterCode, isStep, count ){
-				return rEl( react.FilterBtn, {
-					btn: btnText,
-					filter: filterCode, 
-					isStep,
-					count, 
-					key: react.getKey(),
-					onClick: this.props.onFilterChange,
-					selected: ( this.props.clinicFilter == filterCode )
-				});
-			}
-			
-		
-			/**
-			* Create <li> elements as buttons.
-			* @returns {Array} of React Elements
-			*/
-			filterBtns(){
-				// work out the counts per filter.
-				const countFilters = filter => {
-					return this.props.allAssigned.reduce( (acc, curr ) => {
-						if( curr === filter ) return acc + 1;
-						return acc;
-					}, 0);
-				};
-			
-				
-				let btns = [];
-				
-				btns.push( this.btn( ));
-				btns.push( this.btn());
-	
-				btns = btns.concat( react.assignList.map( personCode => this.btn( personCode, personCode, true, countFilters( personCode ))));
-				
-				btns.push( this.btn('Unassigned', 'nobody', false, countFilters( false )));
-								
-				// add the update-patients button here.
-				btns.push(
-					rEl('li', { className: 'update-clinic-btn', key: react.getKey()},
-						rEl('button', { 
-							className: this.props.showAdder ? 'adder close' : 'adder open', 
-							onClick: this.props.onAdderBtn 
-						}, null )
-					)
-				);
-				
-				return btns;
-			}
-		
-			/**
-			* Render, Use a portal to render the children into a specific DOM element
-			* note: It's STILL in the React DOM tree!
-			*/
-			render(){ 
-				return ReactDOM.createPortal(
-					this.filterBtns(),
-					this.dom
-				);	
-			}
-		}
-		
-		// make component available	
-		react.Filters = Filters;			
-	};
-	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
-
-})( bluejay ); 
-(function( bj ){
-
-	'use strict';	
-	
-	/**
 	* React Component 
 	*/
 	const buildComponent = () => {
@@ -10854,239 +10749,6 @@ Updated to Vanilla JS for IDG
 		
 		// make component available	
 		react.PathStepPopup = PathStepPopup;			
-	};
-	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
-
-})( bluejay ); 
-(function( bj ){
-
-	'use strict';	
-	
-	/**
-	* React Component - but a bit hacked to quickly get the demo working.
-	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-		const react = bj.namespace('react');
-
-		class AdderPopup extends React.Component {
-			
-			constructor( props ){
-				super( props );	
-				
-				this.state = {
-					list: this.props.list,
-					onAdderRequest: this.props.onAdderRequest,
-				};
-				
-				this.handleUpdates = this.handleUpdates.bind( this );	
-				
-				// builders
-				this.listPatients = this.listPatients.bind( this );	
-				this.listAssign = this.listAssign.bind( this );
-				this.listSteps = this.listSteps.bind( this );
-				this.singlePatient = this.singlePatient.bind( this );
-					
-			}
-			
-			shouldComponentUpdate(){
-				/**
-				React hack, docs advise against this, but to save time
-				I'm using raw JS in this component, working with the DOM
-				directly(!) but updating the state in the React App.
-				Once mounted (in real DOM!) this stops any re-Rendering.
-				*/
-				return false;
-			}
-			
-			/** 
-			* Every click on an assignment or a step is pushed to Clinic
-			* @param {Event} ev - using raw JS here to handle this
-			*/
-			handleUpdates( ev ){
-				const el = ev.target;
-				
-				// JSON is added to the DOM by React to side step building a component
-				const type = el.dataset.add;
-				const shortcode = el.dataset.shortcode;
-				const stepType = el.dataset.step;
-
-				/*
-				React JS hack.
-				Really I should be running all this through a bunch of React Elements
-				and these should be monitoring their clicked state in the Virtual DOM
-				However, if I use a a bit of vanilla to check the DOM (not the virtual DOM) it 
-				saves a bunch of messing about in React JS (yeah, i know) but this is only a demo! 
-				*/
-				const selectedPatients = new Set();
-				
-				if( this.props.singlePatient === null ){
-					const checkPatients = bj.nodeArray( document.querySelectorAll('.oe-clinic-adder .patients input'));
-					checkPatients.forEach( patient => {
-						if( patient.checked ){
-							selectedPatients.add( parseInt( patient.dataset.ref, 10));
-						}
-					});
-				} else {
-					selectedPatients.add( this.props.singlePatient.arrRef );	
-				}
-				
-				
-				// pass up to Clinic to update state
-				this.state.onAdderRequest({ selectedPatients, type, shortcode, stepType });
-			}
-			
-			
-			singlePatient(){
-				if( this.props.singlePatient === null ) return null;
-				
-				const patient = this.props.singlePatient; 
-				return (
-					rEl('div', { className: 'specific-patient' },  
-						`${patient.lastname}, ${patient.firstname}`
-					)	
-				);
-			}
-			
-			/**
-			* Full list of Patients arrived in Clinic
-			* or coming later, show this list if not updating a specific patient
-			* @returns {ReactElement}
-			*/
-			listPatients(){
-				if( this.props.singlePatient !== null ) return null;
-				
-				// 2 groups
-				const arrived = [];
-				const later = [];
-				
-				// split the list into arrived and later groups
-				this.state.list.forEach( patient => {
-					const li = rEl('li', { key: react.getKey() }, 
-						rEl('label', { className: 'highlight' }, 
-							rEl('input', { type: 'checkbox', 'data-ref': patient.arrRef }), 
-							rEl('span', null,
-								bj.clock24( new Date( patient.booked )) + ' - '+ patient.lastname
-							)
-						)
-					);
-					
-					if( patient.status === 'active' ){
-						arrived.push( li );
-					} else {
-						later.push( li );
-					}
-				});
-				
-				// common <ul> DOM for both lists
-				const ul = ( title, listItems ) => {
-					return rEl('div', { className: 'row' }, 
-						rEl('h4', null, title),
-						rEl('ul', { className: 'row-list' }, listItems )
-					);
-				};
-		
-				return (
-					rEl('div', { className: 'patients' }, 
-						ul( 'Arrived', arrived), 
-						ul( 'Later', later)
-					)	
-				);	
-			}
-			
-			
-			/**
-			* list assignments
-			* @returns {ReactElement}
-			*/	
-			listAssign(){
-				
-				const assignOptions = ['nobody'].concat( react.assignList );
-				
-				const assignBtns = assignOptions.map( assign => {
-					return rEl('li', { 
-						key: react.getKey(), 
-						onClick: this.handleUpdates, 
-						'data-shortcode': assign, 
-						'data-add': 'assign' 
-					}, react.fullShortCode( assign ) );
-				});
-				
-				return (
-					rEl('div', { className: 'row' },  
-						rEl('h4', null, 'Assign to'),
-						rEl('ul', { className: 'btn-list' }, assignBtns )
-					)	
-				);
-			}
-			
-			/**
-			* list steps that can be added
-			* @returns {ReactElement}
-			*/	
-			listSteps(){
-				
-				const pathStep = ( step, type ) => {
-					return rEl('span', { 
-							className: `oe-pathstep-btn no-popup ${type}`, 
-							key: react.getKey(), 
-							onClick: this.handleUpdates,
-							'data-shortcode': step, 
-							'data-add': 'step',
-							'data-step': type, 
-						}, 
-						rEl( 'span', { className: 'step' }, step ),
-						rEl( 'span', { className: 'time invisible' }, '00:00' )		
-					);
-				};
-				
-				const combinePeople = react.assignList.concat( react.clinicPersonList );
-				
-				const peopleSteps = combinePeople.map( step => pathStep( step, 'person'));
-				const processSteps = react.clinicProcessList.map( step => pathStep( step, 'process'));
-				
-				return (
-					rEl('div', { className: 'row' },  
-						rEl('h4', null, 'Add to pathway'),
-						rEl('div', { className: 'steps' }, processSteps ),
-						rEl('div', { className: 'steps' }, peopleSteps )
-					)	
-				);
-			}
-					
-			/**
-			* Render
-			*/
-			render(){ 
-				// single patient or all?
-				const css = this.props.singlePatient === null ? 'all-patients' : 'single-patient';
-				
-				return rEl('div', { className: `oe-clinic-adder ${css}`},
-					// create 2 columns
-					this.listPatients(),
-					
-					rEl('div', { className: 'update-actions' }, 
-						this.singlePatient(),
-						this.listAssign(), 
-						this.listSteps()
-					), 
-					
-					rEl('div', { 
-						className: 'big-close-btn', 
-						onClick: this.props.onCloseBtn	 
-					}, null )
-				);		
-			}
-		}
-		
-		// make component available	
-		react.AdderPopup = AdderPopup;			
 	};
 	
 	/*
@@ -11537,141 +11199,6 @@ Updated to Vanilla JS for IDG
 	  
 
 })( bluejay ); 
-(function( bj, clinic ){
-
-	'use strict';	
-	
-	/**
-	* waitDuration
-	* @param {String} patientID - Patient uid
-	* @returns {*} API;	
-	*/
-	const waitDuration = ( patientID ) => {
-		const td = document.createElement('td');
-		let timestamp = null;
-		let mins = 0;
-		let timerID = null;				
-	
-		/**
-		* Calculate wait minutes from arrival time
-		* @returns {Number} minutes
-		*/
-		const calcWaitMins = ( finishTime = false ) => {
-			const endTime = finishTime == false ? Date.now() : finishTime;
-			mins = Math.floor(( endTime - timestamp ) / 60000 );
-		};
-		
-		/**
-		* Callback from patient when the "Arr" step is added to the pathway
-		* @param {Number} arriveTime - timestamp
-		* @param {String} patientStatus - only looking for "active"
-		*/
-		const arrived = ( arriveTime, patientStatus ) => {	
-			if( timestamp !== null ) return;
-			timestamp = arriveTime;
-			calcWaitMins();
-			timerID = setInterval(() => {
-				calcWaitMins();
-				render("active");
-				console.log('waitDuration setInterval running!', patientID );
-			}, 15000 ); 				
-		};
-		
-		/**
-		* Callback from patient when the "Fin" step is added to the pathway
-		* @param {Number} finishedTime - timestamp
-		*/
-		const finished = ( finishTime ) => {
-			clearInterval( timerID );
-			calcWaitMins( finishTime );
-		};
-					
-		/**
-		* SVG Circles to represent time waiting
-		* @param {String} color (based on wait mins)
-		* @returns {React Element}
-		*/
-		const svgCircles = () => {
-			let color = 'green';			
-			if( mins > 14 ) color = 'yellow';
-			if( mins > 29 ) color = 'orange';
-			if( mins > 59 ) color = 'red';
-			
-			const r = 6;
-			const d = r * 2;
-			const w = d * 4;
-			
-			const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-			svg.setAttribute('class', `duration-graphic ${color}`);
-			svg.setAttribute('viewBox', `0 0 ${w} ${d}`);
-			svg.setAttribute('height', d );
-			svg.setAttribute('width', w );
-
-			for( let i=0; i<4; i++ ){
-				const cx = ((i + 1) * (r * 2)) - r;
-				const circle = document.createElementNS("http://www.w3.org/2000/svg", 'circle');
-				circle.setAttribute('class',`c${i}`);
-				circle.setAttribute('cx',`${cx}`);
-				circle.setAttribute('cy',`${r}`);
-				circle.setAttribute('r',`${r}`);
-				svg.appendChild( circle );
-			}
-			
-			return svg;
-		};	
-
-		/**
-		* Render Mins DOM
-		* @returns {Element}
-		*/
-		const waitMins = () => {
-			const div = bj.div('mins');
-			const suffix = mins > 1 ? 'mins' : 'min';
-			div.innerHTML = `<span>${mins}</span><small>${suffix}</small>`;
-			return div;
-		};
-		
-		/**
-		* Render depends on status
-		* @param {String} status - could be: "complete", "active", "todo"
-		* @returns {Element} - appropriate element based on status
-		*/
-		const render = ( status ) => {
-			const div = bj.div();
-			
-			if( status  == 'complete' ){
-				div.className = 'wait-duration';
-				div.appendChild( waitMins());
-			}
-			
-			if( status == "active"){
-				div.className = 'wait-duration';
-				div.appendChild( svgCircles());
-				div.appendChild( waitMins());
-			}
-			
-			if( status == "todo" ){
-				div.className = 'flex';
-				div.innerHTML = [
-					`<button class="cols-7 blue hint js-idg-clinic-btn-arrived" data-patient="${patientID}">Arrived</button>`,
-					`<button class="cols-4 js-idg-clinic-btn-DNA" data-patient="${patientID}">DNA</button>`
-				].join('');
-			}
-			
-			td.innerHTML = "";
-			td.appendChild( div );
-			return td;
-		};
-		
-		// API
-		return { arrived, finished, render };
-	};
-	
-	// make component available	
-	clinic.waitDuration = waitDuration;	
-	
-
-})( bluejay, bluejay.namespace('clinic') ); 
 (function( bj ){
 
 	'use strict';	
@@ -11697,12 +11224,7 @@ Updated to Vanilla JS for IDG
 	React JS componenets are built into this space	
 	*/
 	const clinic = bj.namespace('clinic');
-	
-	// central-ise these:
-	clinic.assignList = ['MM', 'AB', 'AG', 'RB', 'CW'].sort();
-	clinic.clinicPersonList = ['Nurse'];
-	clinic.clinicProcessList = ['Dilate', 'VisAcu', 'Orth', 'Ref', '~Img', '~Fields' ].sort();
-	
+
 	clinic.fullShortCode = ( shortcode ) => {
 		let full = shortcode; // "Nurse" doesn't need expanding on
 		switch( shortcode ){
@@ -11824,8 +11346,7 @@ Updated to Vanilla JS for IDG
 		}, bj.ModelViews());
 
 		/**
-		* Filter Patients in Clinic
-		* Updated on any change to the model
+		* VIEW: Filter Patients in Clinic
 		*/
 		const filterPatients = () => {
 			const fragment = new DocumentFragment();
@@ -11839,21 +11360,38 @@ Updated to Vanilla JS for IDG
 			tbody.appendChild( fragment );
 		};
 		
+		/**
+		* VIEW: Update Filter Buttons
+		* loop through patients and get all their assignments
+		*/
 		const updateFilters = () => {
-			const allPatientAssignments = [];
-			patients.forEach( patient => allPatientAssignments.push( patient.getAssignment()));
-			filters.forEach( filter => filter.update( allPatientAssignments, model.filter ));
+			const assignments = [];
+			patients.forEach( patient => assignments.push( patient.getAssignment()));
+			filters.forEach( filter => filter.update( assignments, model.filter ));
 		};
 		
 		model.views.add( filterPatients );
 		model.views.add( updateFilters );
 
+		
+		/**
+		* Adder callback function
+		*/
+		const handlePatientUpdates = () => {
+			
+		}
+		
+		
+		
+		
 		/**
 		Use Event delegation for all User actions
 		*/
 		// Button: "Arrived"
 		bj.userClick('.js-idg-clinic-btn-arrived', ( ev ) => {
-			patients.get( ev.target.dataset.patient ).onArrived();
+			const id = ev.target.dataset.patient;
+			patients.get( id ).onArrived();
+			adder.onPatientArrived( id );
 		});
 		
 		// Button: "DNA"
@@ -11885,6 +11423,10 @@ Updated to Vanilla JS for IDG
 				['Show all','all'],
 				['Hide completed','completed'],
 				['MM', 'MM'],
+				['AB', 'AB'],
+				['AG', 'AG'],
+				['RB', 'RB'],
+				['CW', 'CW'],
 				['Not assigned', 'unassigned']
 			].forEach( btn => {
 				filters.add( clinic.filterBtn({
@@ -11899,6 +11441,8 @@ Updated to Vanilla JS for IDG
 			li.innerHTML = '<button class="adder open"></button>'; // 'adder close'
 			ul.appendChild( li );
 			
+			clinic.adder( json, handlePatientUpdates );
+			
 			// clinic always starts on "all"
 			model.filter = "all";
 		
@@ -11912,6 +11456,187 @@ Updated to Vanilla JS for IDG
 	clinic.app = app;			
 
 })( bluejay, bluejay.namespace('clinic')); 
+(function( bj, clinic ){
+
+	'use strict';	
+	
+	/**
+	* @param {JSON} json
+	* @parm {Function} handlePatientUpdates - hard link to app function
+	*/
+	const adder = ( json, handlePatientUpdates ) => {
+		
+		// hold in memory
+		const patients = bj.div('patients'); 
+		const arrived = new Map();
+		const later = new Map();
+		
+		/**
+		* <div> row with <h4> title 
+		* @param {String} title
+		* @returns {Element};
+		*/
+		const _row = ( title ) => {
+			const row = bj.div('row');
+			row.innerHTML = `<h4>${title}</h4>`;
+			return row;
+		}
+		
+		/**
+		* <ul>
+		* @param {String} class
+		* @returns {Element};
+		*/
+		const _ul = ( css ) => {
+			const ul = document.createElement('ul');
+			ul.className = css;
+			return ul;
+		} 
+		
+		
+		/**
+		* Every time a patient arrives this needs updating
+		*/
+		const showPatientList = () => {
+			const list = ( title, listMap ) => {
+				
+				const row = _row( title );
+				const ul = _ul("row-list");
+				
+				listMap.forEach(( value, key ) => {
+					const li = document.createElement('li');
+					li.innerHTML = `<label class="highlight"><input type="checkbox" value="${key}" /><span>${value.time} - ${value.lastname}</span></label>`;
+					ul.appendChild( li );
+				});
+				
+				row.append( ul );
+				return row;
+			} 
+			
+			// update DOM
+			patients.innerHTML = "";
+			patients.appendChild( list( "Arrived", arrived ));
+			patients.appendChild( list( "Later", later ));			
+		}
+		
+
+		const checkedPatientList = () => {
+			const selectedPatients = new Set();
+				
+			const checkPatients = bj.nodeArray( document.querySelectorAll('.oe-clinic-adder .patients input'));
+			checkPatients.forEach( patient => {
+				if( patient.checked ) selectedPatients.add( patient.value );
+			});
+		}
+				
+		
+		/*
+		Init Clinic Adder	
+		*/
+		(() => {
+
+			const div = bj.div('oe-clinic-adder'); 
+			
+			// split patients into arrived and later groups
+			json.forEach( patient => {
+				if( patient.status == "active"){
+					arrived.set( patient.uid, {
+						time: patient.time, 
+						lastname: patient.lastname
+					});
+				} 
+				if( patient.status === 'todo' ){
+					later.set( patient.uid, {
+						time: patient.time, 
+						lastname: patient.lastname
+					});
+				}
+			});
+			
+			showPatientList();
+			
+			/*
+			Update actions are static, build once
+			*/
+			const doctors = ['MM', 'AB', 'AG', 'RB', 'CW'].sort();
+			const people = ['Nurse'];
+			const process = ['Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort();
+			
+			const updates = bj.div('update-actions');
+			
+			// assignment options
+			let row = _row('Assign to');
+			let ul = _ul('btn-list');
+			
+			const assignTo = ['unassigned'].concat( doctors );
+			assignTo.forEach( code => {
+				const li = document.createElement('li');
+				li.setAttribute('data-shortcode', code );
+				li.setAttribute('data-type', 'assign');
+				li.textContent = clinic.fullShortCode( code );
+				ul.appendChild( li ); 
+			});
+			
+			row.append( ul );
+			updates.appendChild( row );
+			
+			
+			// people & processes pathsteps
+			row = _row('Add to patient pathway');
+			ul = _ul('btn-list');
+			
+			// people
+			const peopleSteps = [].concat( doctors, people );
+			peopleSteps.forEach( code => {
+				const fullText = clinic.fullShortCode( code );
+				const li = document.createElement('li');
+				li.setAttribute('data-shortcode', code );
+				li.setAttribute('data-type', 'people');
+				li.innerHTML = `${code} <small>- ${fullText}</small>`;
+				ul.appendChild( li ); 
+			});
+			
+			// processes 
+			process.forEach( code => {
+				const fullText = clinic.fullShortCode( code );
+				const li = document.createElement('li');
+				li.setAttribute('data-shortcode', code );
+				li.setAttribute('data-type', 'process');
+				li.innerHTML = `${code} <small>- ${fullText}</small>`;
+				ul.appendChild( li ); 
+			});
+			
+			row.append( ul );
+			updates.appendChild( row );
+			
+			// build structure.
+			div.append( bj.div('close-btn'), patients, updates );
+			
+			// update DOM
+			document.querySelector('.oe-clinic').appendChild( div );
+	
+		})();
+		
+		/**
+		* API patient arrived, need to update my lists
+		* @param {String} id - patient key
+		*/
+		const onPatientArrived = ( id ) => {
+			if( later.has( id )){
+				arrived.set( id, later.get(id));
+				later.delete( id );
+			}	
+		};	
+		
+		return { onPatientArrived }
+		
+	}
+	
+	clinic.adder = adder;
+		
+
+
+})( bluejay, bluejay.namespace('clinic') ); 
 (function( bj, clinic ){
 
 	'use strict';	
@@ -12323,6 +12048,140 @@ Updated to Vanilla JS for IDG
 	clinic.patientQuickView = patientQuickView;		
 
 })( bluejay, bluejay.namespace('clinic')); 
+(function( bj, clinic ){
+
+	'use strict';	
+	
+	/**
+	* waitDuration
+	* @param {String} patientID - Patient uid
+	* @returns {*} API;	
+	*/
+	const waitDuration = ( patientID ) => {
+		const td = document.createElement('td');
+		let timestamp = null;
+		let mins = 0;
+		let timerID = null;				
+	
+		/**
+		* Calculate wait minutes from arrival time
+		* @returns {Number} minutes
+		*/
+		const calcWaitMins = ( finishTime = false ) => {
+			const endTime = finishTime == false ? Date.now() : finishTime;
+			mins = Math.floor(( endTime - timestamp ) / 60000 );
+		};
+		
+		/**
+		* Callback from patient when the "Arr" step is added to the pathway
+		* @param {Number} arriveTime - timestamp
+		* @param {String} patientStatus - only looking for "active"
+		*/
+		const arrived = ( arriveTime, patientStatus ) => {	
+			if( timestamp !== null ) return;
+			timestamp = arriveTime;
+			calcWaitMins();
+			timerID = setInterval(() => {
+				calcWaitMins();
+				render("active");
+			}, 15000 ); 				
+		};
+		
+		/**
+		* Callback from patient when the "Fin" step is added to the pathway
+		* @param {Number} finishedTime - timestamp
+		*/
+		const finished = ( finishTime ) => {
+			clearInterval( timerID );
+			calcWaitMins( finishTime );
+		};
+					
+		/**
+		* SVG Circles to represent time waiting
+		* @param {String} color (based on wait mins)
+		* @returns {React Element}
+		*/
+		const svgCircles = () => {
+			let color = 'green';			
+			if( mins > 14 ) color = 'yellow';
+			if( mins > 29 ) color = 'orange';
+			if( mins > 59 ) color = 'red';
+			
+			const r = 6;
+			const d = r * 2;
+			const w = d * 4;
+			
+			const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+			svg.setAttribute('class', `duration-graphic ${color}`);
+			svg.setAttribute('viewBox', `0 0 ${w} ${d}`);
+			svg.setAttribute('height', d );
+			svg.setAttribute('width', w );
+
+			for( let i=0; i<4; i++ ){
+				const cx = ((i + 1) * (r * 2)) - r;
+				const circle = document.createElementNS("http://www.w3.org/2000/svg", 'circle');
+				circle.setAttribute('class',`c${i}`);
+				circle.setAttribute('cx',`${cx}`);
+				circle.setAttribute('cy',`${r}`);
+				circle.setAttribute('r',`${r}`);
+				svg.appendChild( circle );
+			}
+			
+			return svg;
+		};	
+
+		/**
+		* Render Mins DOM
+		* @returns {Element}
+		*/
+		const waitMins = () => {
+			const div = bj.div('mins');
+			const suffix = mins > 1 ? 'mins' : 'min';
+			div.innerHTML = `<span>${mins}</span><small>${suffix}</small>`;
+			return div;
+		};
+		
+		/**
+		* Render depends on status
+		* @param {String} status - could be: "complete", "active", "todo"
+		* @returns {Element} - appropriate element based on status
+		*/
+		const render = ( status ) => {
+			const div = bj.div();
+			
+			if( status  == 'complete' ){
+				div.className = 'wait-duration';
+				div.appendChild( waitMins());
+			}
+			
+			if( status == "active"){
+				div.className = 'wait-duration';
+				div.appendChild( svgCircles());
+				div.appendChild( waitMins());
+			}
+			
+			if( status == "todo" ){
+				div.className = 'flex';
+				div.innerHTML = [
+					`<button class="cols-7 blue hint js-idg-clinic-btn-arrived" data-patient="${patientID}">Arrived</button>`,
+					`<button class="cols-4 js-idg-clinic-btn-DNA" data-patient="${patientID}">DNA</button>`
+				].join('');
+			}
+			
+			td.innerHTML = "";
+			td.appendChild( div );
+			return td;
+		};
+		
+		// API
+		return { arrived, finished, render };
+	};
+	
+	// make component available	
+	clinic.waitDuration = waitDuration;	
+	
+
+})( bluejay, bluejay.namespace('clinic') ); 
 (function( bj ){
 
 	'use strict';	
@@ -12440,9 +12299,12 @@ Updated to Vanilla JS for IDG
 		span.oe-pathstep-btn -|- span.step
 		                      |- span.time 	
 		*/
-		const css = ['oe-pathstep-btn', 'no-popup'];
+		const css = ['oe-pathstep-btn'];
 		if( step.status === 'done') css.push('green');
 		if( step.status === 'active') css.push('orange');
+		
+		// type - person or process? 
+		if(  step.type === 'person' ) css.push('person');
 		
 		// use 'invisible' to maintain layout:
 		const cssTime = step.status == 'next' ? 'time invisible' : 'time';	

@@ -23,12 +23,7 @@
 	React JS componenets are built into this space	
 	*/
 	const clinic = bj.namespace('clinic');
-	
-	// central-ise these:
-	clinic.assignList = ['MM', 'AB', 'AG', 'RB', 'CW'].sort();
-	clinic.clinicPersonList = ['Nurse'];
-	clinic.clinicProcessList = ['Dilate', 'VisAcu', 'Orth', 'Ref', '~Img', '~Fields' ].sort();
-	
+
 	clinic.fullShortCode = ( shortcode ) => {
 		let full = shortcode; // "Nurse" doesn't need expanding on
 		switch( shortcode ){

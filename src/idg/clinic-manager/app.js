@@ -6,6 +6,7 @@
 		
 		const patients = new Map();
 		const filters = new Set();
+		const adder = 
 	
 		/** 
 		* Model
@@ -24,8 +25,7 @@
 		}, bj.ModelViews());
 
 		/**
-		* Filter Patients in Clinic
-		* Updated on any change to the model
+		* VIEW: Filter Patients in Clinic
 		*/
 		const filterPatients = () => {
 			const fragment = new DocumentFragment();
@@ -39,21 +39,38 @@
 			tbody.appendChild( fragment );
 		};
 		
+		/**
+		* VIEW: Update Filter Buttons
+		* loop through patients and get all their assignments
+		*/
 		const updateFilters = () => {
-			const allPatientAssignments = [];
-			patients.forEach( patient => allPatientAssignments.push( patient.getAssignment()));
-			filters.forEach( filter => filter.update( allPatientAssignments, model.filter ));
+			const assignments = [];
+			patients.forEach( patient => assignments.push( patient.getAssignment()));
+			filters.forEach( filter => filter.update( assignments, model.filter ));
 		};
 		
 		model.views.add( filterPatients );
 		model.views.add( updateFilters );
 
+		
+		/**
+		* Adder callback function
+		*/
+		const handlePatientUpdates = () => {
+			
+		}
+		
+		
+		
+		
 		/**
 		Use Event delegation for all User actions
 		*/
 		// Button: "Arrived"
 		bj.userClick('.js-idg-clinic-btn-arrived', ( ev ) => {
-			patients.get( ev.target.dataset.patient ).onArrived();
+			const id = ev.target.dataset.patient;
+			patients.get( id ).onArrived();
+			adder.onPatientArrived( id );
 		});
 		
 		// Button: "DNA"
@@ -85,6 +102,10 @@
 				['Show all','all'],
 				['Hide completed','completed'],
 				['MM', 'MM'],
+				['AB', 'AB'],
+				['AG', 'AG'],
+				['RB', 'RB'],
+				['CW', 'CW'],
 				['Not assigned', 'unassigned']
 			].forEach( btn => {
 				filters.add( clinic.filterBtn({
@@ -98,6 +119,8 @@
 			li.className = 'update-clinic-btn';
 			li.innerHTML = '<button class="adder open"></button>'; // 'adder close'
 			ul.appendChild( li );
+			
+			clinic.adder( json, handlePatientUpdates );
 			
 			// clinic always starts on "all"
 			model.filter = "all";
