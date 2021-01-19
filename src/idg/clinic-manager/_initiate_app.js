@@ -61,26 +61,29 @@
 		The demo all times are set in RELATIVE minutes, update all JSON times to full timestamps
 		*/
 		const patientsJSON = JSON.parse( phpClinicDemoJSON );
-		patientsJSON.forEach(( patientRow, i ) => {
+		patientsJSON.forEach(( patient, i ) => {
 			/*
 			Add extra Patient React info here
 			*/
-			patientRow.uid = bj.getToken(); 
-			
+			patient.uid = bj.getToken(); 
+		
 			/*
 			As times are relative to 'now', make sure appointments 
 			always appeared scheduled on whole 5 minutes 
 			*/
-			const appointment = new Date( Date.now() + ( patientRow.booked * 60000 )); 
+			const appointment = new Date( Date.now() + ( patient.booked * 60000 )); 
 			const offsetFive = appointment.getMinutes() % 5; 
 			appointment.setMinutes( appointment.getMinutes() - offsetFive );
-			patientRow.booked = appointment.getTime();
+			patient.booked = appointment.getTime();
+			
+			// convert to booked time to human time
+			patient.time = bj.clock24( new Date( patient.booked ));
 			
 			/*
 			Step Pathway is multi-dimensional array.
 			Convert each step into an Object and add other useful info here. 
 			*/		
-			patientRow.pathway.forEach(( step, i, thisArr ) => {
+			patient.pathway.forEach(( step, i, thisArr ) => {
 				const obj = {
 					shortcode: step[0],
 					timestamp: Date.now() + ( step[1] * 60000 ),
@@ -108,7 +111,7 @@
 			'<thead><tr>{{#th}}<th>{{.}}</th>{{/th}}</tr></thead>',
 			'<tbody></tbody>'
 		].join(''), {
-			"th": ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', 'Pathway', 'Assigned', '', 'Mins', '']
+			"th": ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', '', 'Pathway', 'Assigned', 'Mins', '']
 		});
 		document.getElementById('js-clinic-manager').appendChild( table );
 		

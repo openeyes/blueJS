@@ -8,14 +8,20 @@
 	* @returns {*} public methods
 	*/
 	const patient = ( props ) => {
+		
+		const tr = document.createElement('tr');
+		const pathway =  bj.div('pathway');
+		const assigned = document.createElement('td');
+		const addIcon = document.createElement('td');
+		const complete = document.createElement('td');
+		
 		/** 
 		* Model
-		* status:  "todo", "active", "complete"
 		* Extended with views
 		*/
 		const model = Object.assign({
 			_uid: props.uid,
-			_status: null,
+			_status: null, // "todo", "active", "complete"
 			_assigned: false,
 			
 			get status(){
@@ -34,16 +40,11 @@
 			},
 		}, bj.ModelViews());
 		
-		/*
-		Hold these Elements in memory, as they will need updating directly
+		/**
+		* GETTER / SETTER: App needs to get and set patient assigned from Adder
 		*/
-		const tr = document.createElement('tr');
-		const dom = {
-			pathway: bj.div('pathway'),
-			assigned: document.createElement('td'),
-			addIcon: document.createElement('td'),
-			complete: document.createElement('td'),
-		};
+		const getAssigned = () => model.assigned;
+		const setAssigned = ( val ) => model.assigned = val;
 		
 		/*
 		WaitDuration is based on the Arrival time and rendered based on 
@@ -57,10 +58,11 @@
 		*/
 		const changeStatus = () => {
 			tr.className = model.status;
-			dom.pathway.className = `pathway ${model.status}`;
-			dom.addIcon.innerHTML = model.status == "complete" ? 
+			pathway.className = `pathway ${model.status}`;
+			addIcon.innerHTML = model.status == "complete" ? 
 				"" : 
 				`<i class="oe-i plus-circle small pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
+			
 			waitDuration.render( model.status );
 		};
 		
@@ -69,23 +71,21 @@
 		*/
 		const changeAssignment = () => {
 			const fullText = clinic.fullShortCode( model.assigned );
-			if( model.assigned == "unassigned" ){
-				dom.assigned.innerHTML = `<small class="fade">${fullText}</small>`;
-			} else {
-				dom.assigned.innerHTML = `<div>${fullText}</div>`;
-			}	
+			assigned.innerHTML = model.assigned == "unassigned" ?  
+				`<small class="fade">${fullText}</small>` : 
+				`<div>${fullText}</div>`;
 		};
 		
 		/**
-		* VIEW: complete / done
+		* VIEW: complete (tick icon) / done
 		*/
 		const changeComplete = () => {
-			dom.complete.innerHTML = "";
+			complete.innerHTML = "";
 			if( model.status == "complete"){
-				dom.complete.innerHTML = '<span class="fade">Done</span>';
+				complete.innerHTML = '<span class="fade">Done</span>';
 			}
 			if( model.status == "active"){
-				dom.complete.innerHTML = `<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model._uid}"></i>`;
+				complete.innerHTML = `<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model._uid}"></i>`;
 			}
 		};
 		
@@ -101,7 +101,7 @@
 			if( step.type == "arrive" ) waitDuration.arrived( step.timestamp, model.status );
 			if( step.type == "finish" ) waitDuration.finished( step.timestamp );
 			// build pathStep
-			gui.pathStep( step, dom.pathway, (step.type == "arrive"));
+			gui.pathStep( step, pathway, (step.type == "arrive"));
 		};
 		
 		/**
@@ -137,11 +137,6 @@
 			model.status = "complete";
 		};
 		
-		/*
-		
-		*/
-		
-		
 		/**
 		* Render Patient <tr>
 		* @params {String} filter - filter buttons set this
@@ -161,9 +156,9 @@
 			return tr;
 		};
 		
-		/*
-		Initiate inital patient state from JSON	
-		and build the <tr> DOM
+		/**
+		* Initiate inital patient state from JSON	
+		* and build the <tr> DOM
 		*/
 		(() => {
 			// patient state 
@@ -172,9 +167,6 @@
 			
 			// build pathway steps
 			props.pathway.forEach( step => addPathStep( step ));
-			
-			// convert to clock time
-			props.time = bj.clock24( new Date( props.booked ));
 			
 			// build <tr>
 			tr.setAttribute( 'data-timestamp', props.booked );
@@ -185,23 +177,24 @@
 			].join(''), props );
 			
 			// slightly more complex Elements, but static content
+			
+			tr.append( clinic.patientQuickView( props ));
+			tr.append( clinic.patientMeta( props ));
+			tr.append( addIcon );
+			
 			const td = document.createElement('td');
-			tr.appendChild( clinic.patientQuickView( props ));
-			tr.appendChild( clinic.patientMeta( props ));
-			tr.appendChild( td.appendChild( dom.pathway ));		
-			tr.appendChild( dom.assigned );
-			tr.appendChild( dom.addIcon );
-			tr.appendChild( waitDuration.render( props.status ));
-			tr.appendChild( dom.complete );
+			td.append( pathway );
+			tr.append( td );	
+				
+			tr.append( assigned );
+			tr.append( waitDuration.render( props.status ));
+			tr.append( complete );
 		})();
-		
-		
+			
 		/* 
 		API
 		*/
-		const getAssignment = () => model.assigned;
-		
-		return { onArrived, onDNA, onComplete, render, getAssignment };
+		return { onArrived, onDNA, onComplete, render, getAssigned, setAssigned, addPathStep };
 	};
 	
 	// make component available to Clinic SPA	

@@ -6,7 +6,8 @@
 		
 		const patients = new Map();
 		const filters = new Set();
-		const adder = 
+		const adder = clinic.adder( json );
+		let adderAllBtn;
 	
 		/** 
 		* Model
@@ -45,27 +46,45 @@
 		*/
 		const updateFilters = () => {
 			const assignments = [];
-			patients.forEach( patient => assignments.push( patient.getAssignment()));
+			patients.forEach( patient => assignments.push( patient.getAssigned()));
 			filters.forEach( filter => filter.update( assignments, model.filter ));
 		};
 		
 		model.views.add( filterPatients );
 		model.views.add( updateFilters );
 
-		
 		/**
-		* Adder callback function
+		* Adder: when an update options is pressed. Update all selected patients
+		* @param {String} code - shortcode
+		* @param {String} type - option type (assign, people, process)
 		*/
-		const handlePatientUpdates = () => {
-			
+		const updateSelectedPatients = ( code, type ) => {
+			adder.getSelectedPatients().forEach( key => {
+				const patient = patients.get( key );
+				if( type == 'assign'){
+					patient.setAssigned( code );
+					updateFilters();
+				} else {
+					patient.addPathStep({
+						shortcode: code,
+						timestamp: Date.now(),
+						status: 'next',
+						type,
+					});
+				}
+			});
+		};
+		
+		const hideAdder = () => {
+			adderAllBtn.classList.replace('close', 'open');
+			adder.hide();
 		}
 		
-		
-		
-		
+	
 		/**
-		Use Event delegation for all User actions
+		* Event delegation
 		*/
+		
 		// Button: "Arrived"
 		bj.userClick('.js-idg-clinic-btn-arrived', ( ev ) => {
 			const id = ev.target.dataset.patient;
@@ -83,10 +102,37 @@
 			patients.get( ev.target.dataset.patient ).onComplete();
 		});
 		
-		// Filter button
+		// Filter button (in header bar)
 		bj.userDown('.js-idg-clinic-btn-filter', ( ev ) => {
 			model.filter = ev.target.dataset.filter;
+			hideAdder();
 		});
+		
+		//  + icon specific for patient (<tr>)
+		bj.userDown('.js-idg-clinic-icon-add', ( ev ) => {
+			adder.showSingle( ev.target.dataset.patient );
+		});
+		
+		//  + icon for ALL patients in header
+		bj.userDown('.oe-clinic-filter button.adder', ( ev ) => {
+			if( adderAllBtn.classList.contains('open')){
+				adderAllBtn.classList.replace('open', 'close');
+				adder.showAll();
+			} else {
+				hideAdder();
+			}
+		});
+		
+		// Adder popup update action 
+		bj.userDown('.oe-clinic-adder .update-actions li', ( ev ) => {
+			updateSelectedPatients(
+				ev.target.dataset.shortcode, 
+				ev.target.dataset.type
+			);
+		});
+		
+		// Adder close btn
+		bj.userDown('.oe-clinic-adder .close-btn', hideAdder );
 		
 		/**
 		* Init Patients and set state from the JSON	
@@ -116,12 +162,11 @@
 			
 			// add in + all adder button to header
 			const li = document.createElement('li');
-			li.className = 'update-clinic-btn';
-			li.innerHTML = '<button class="adder open"></button>'; // 'adder close'
-			ul.appendChild( li );
-			
-			clinic.adder( json, handlePatientUpdates );
-			
+			adderAllBtn = document.createElement('button');
+			adderAllBtn.className = "adder open";
+			li.append( adderAllBtn );
+			ul.append( li );
+
 			// clinic always starts on "all"
 			model.filter = "all";
 		

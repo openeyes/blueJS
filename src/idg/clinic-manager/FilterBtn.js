@@ -34,8 +34,6 @@
 				div.appendChild( count );	
 			}
 			
-			
-			
 			li.appendChild( div );
 			
 			// update DOM

@@ -11262,26 +11262,29 @@ Updated to Vanilla JS for IDG
 		The demo all times are set in RELATIVE minutes, update all JSON times to full timestamps
 		*/
 		const patientsJSON = JSON.parse( phpClinicDemoJSON );
-		patientsJSON.forEach(( patientRow, i ) => {
+		patientsJSON.forEach(( patient, i ) => {
 			/*
 			Add extra Patient React info here
 			*/
-			patientRow.uid = bj.getToken(); 
-			
+			patient.uid = bj.getToken(); 
+		
 			/*
 			As times are relative to 'now', make sure appointments 
 			always appeared scheduled on whole 5 minutes 
 			*/
-			const appointment = new Date( Date.now() + ( patientRow.booked * 60000 )); 
+			const appointment = new Date( Date.now() + ( patient.booked * 60000 )); 
 			const offsetFive = appointment.getMinutes() % 5; 
 			appointment.setMinutes( appointment.getMinutes() - offsetFive );
-			patientRow.booked = appointment.getTime();
+			patient.booked = appointment.getTime();
+			
+			// convert to booked time to human time
+			patient.time = bj.clock24( new Date( patient.booked ));
 			
 			/*
 			Step Pathway is multi-dimensional array.
 			Convert each step into an Object and add other useful info here. 
 			*/		
-			patientRow.pathway.forEach(( step, i, thisArr ) => {
+			patient.pathway.forEach(( step, i, thisArr ) => {
 				const obj = {
 					shortcode: step[0],
 					timestamp: Date.now() + ( step[1] * 60000 ),
@@ -11309,7 +11312,7 @@ Updated to Vanilla JS for IDG
 			'<thead><tr>{{#th}}<th>{{.}}</th>{{/th}}</tr></thead>',
 			'<tbody></tbody>'
 		].join(''), {
-			"th": ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', 'Pathway', 'Assigned', '', 'Mins', '']
+			"th": ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', '', 'Pathway', 'Assigned', 'Mins', '']
 		});
 		document.getElementById('js-clinic-manager').appendChild( table );
 		
@@ -11328,6 +11331,8 @@ Updated to Vanilla JS for IDG
 		
 		const patients = new Map();
 		const filters = new Set();
+		const adder = clinic.adder( json );
+		let adderAllBtn;
 	
 		/** 
 		* Model
@@ -11366,27 +11371,45 @@ Updated to Vanilla JS for IDG
 		*/
 		const updateFilters = () => {
 			const assignments = [];
-			patients.forEach( patient => assignments.push( patient.getAssignment()));
+			patients.forEach( patient => assignments.push( patient.getAssigned()));
 			filters.forEach( filter => filter.update( assignments, model.filter ));
 		};
 		
 		model.views.add( filterPatients );
 		model.views.add( updateFilters );
 
-		
 		/**
-		* Adder callback function
+		* Adder: when an update options is pressed. Update all selected patients
+		* @param {String} code - shortcode
+		* @param {String} type - option type (assign, people, process)
 		*/
-		const handlePatientUpdates = () => {
-			
+		const updateSelectedPatients = ( code, type ) => {
+			adder.getSelectedPatients().forEach( key => {
+				const patient = patients.get( key );
+				if( type == 'assign'){
+					patient.setAssigned( code );
+					updateFilters();
+				} else {
+					patient.addPathStep({
+						shortcode: code,
+						timestamp: Date.now(),
+						status: 'next',
+						type,
+					});
+				}
+			});
+		};
+		
+		const hideAdder = () => {
+			adderAllBtn.classList.replace('close', 'open');
+			adder.hide();
 		}
 		
-		
-		
-		
+	
 		/**
-		Use Event delegation for all User actions
+		* Event delegation
 		*/
+		
 		// Button: "Arrived"
 		bj.userClick('.js-idg-clinic-btn-arrived', ( ev ) => {
 			const id = ev.target.dataset.patient;
@@ -11404,10 +11427,37 @@ Updated to Vanilla JS for IDG
 			patients.get( ev.target.dataset.patient ).onComplete();
 		});
 		
-		// Filter button
+		// Filter button (in header bar)
 		bj.userDown('.js-idg-clinic-btn-filter', ( ev ) => {
 			model.filter = ev.target.dataset.filter;
+			hideAdder();
 		});
+		
+		//  + icon specific for patient (<tr>)
+		bj.userDown('.js-idg-clinic-icon-add', ( ev ) => {
+			adder.showSingle( ev.target.dataset.patient );
+		});
+		
+		//  + icon for ALL patients in header
+		bj.userDown('.oe-clinic-filter button.adder', ( ev ) => {
+			if( adderAllBtn.classList.contains('open')){
+				adderAllBtn.classList.replace('open', 'close');
+				adder.showAll();
+			} else {
+				hideAdder();
+			}
+		});
+		
+		// Adder popup update action 
+		bj.userDown('.oe-clinic-adder .update-actions li', ( ev ) => {
+			updateSelectedPatients(
+				ev.target.dataset.shortcode, 
+				ev.target.dataset.type
+			);
+		});
+		
+		// Adder close btn
+		bj.userDown('.oe-clinic-adder .close-btn', hideAdder );
 		
 		/**
 		* Init Patients and set state from the JSON	
@@ -11437,12 +11487,11 @@ Updated to Vanilla JS for IDG
 			
 			// add in + all adder button to header
 			const li = document.createElement('li');
-			li.className = 'update-clinic-btn';
-			li.innerHTML = '<button class="adder open"></button>'; // 'adder close'
-			ul.appendChild( li );
-			
-			clinic.adder( json, handlePatientUpdates );
-			
+			adderAllBtn = document.createElement('button');
+			adderAllBtn.className = "adder open";
+			li.append( adderAllBtn );
+			ul.append( li );
+
 			// clinic always starts on "all"
 			model.filter = "all";
 		
@@ -11462,14 +11511,19 @@ Updated to Vanilla JS for IDG
 	
 	/**
 	* @param {JSON} json
-	* @parm {Function} handlePatientUpdates - hard link to app function
 	*/
-	const adder = ( json, handlePatientUpdates ) => {
+	const adder = ( json ) => {
 		
-		// hold in memory
+		const div = bj.div('oe-clinic-adder');
 		const patients = bj.div('patients'); 
 		const arrived = new Map();
 		const later = new Map();
+		const selectedPatients = new Set(); 
+		
+		/**
+		* GETTER: App
+		*/
+		const getSelectedPatients = () => selectedPatients;
 		
 		/**
 		* <div> row with <h4> title 
@@ -11480,7 +11534,7 @@ Updated to Vanilla JS for IDG
 			const row = bj.div('row');
 			row.innerHTML = `<h4>${title}</h4>`;
 			return row;
-		}
+		};
 		
 		/**
 		* <ul>
@@ -11491,52 +11545,92 @@ Updated to Vanilla JS for IDG
 			const ul = document.createElement('ul');
 			ul.className = css;
 			return ul;
-		} 
-		
-		
+		}; 
+
 		/**
-		* Every time a patient arrives this needs updating
+		* Patient list - update the DOM for Arrived and Later groups
 		*/
-		const showPatientList = () => {
+		const updatePatientList = () => {
+			
 			const list = ( title, listMap ) => {
-				
 				const row = _row( title );
 				const ul = _ul("row-list");
-				
 				listMap.forEach(( value, key ) => {
 					const li = document.createElement('li');
 					li.innerHTML = `<label class="highlight"><input type="checkbox" value="${key}" /><span>${value.time} - ${value.lastname}</span></label>`;
-					ul.appendChild( li );
+					ul.append( li );
 				});
-				
 				row.append( ul );
 				return row;
-			} 
+			}; 
 			
 			// update DOM
 			patients.innerHTML = "";
-			patients.appendChild( list( "Arrived", arrived ));
-			patients.appendChild( list( "Later", later ));			
-		}
+			patients.append( list( "Arrived", arrived ));
+			patients.append( list( "Later", later ));			
+		};
 		
-
-		const checkedPatientList = () => {
-			const selectedPatients = new Set();
-				
-			const checkPatients = bj.nodeArray( document.querySelectorAll('.oe-clinic-adder .patients input'));
-			checkPatients.forEach( patient => {
-				if( patient.checked ) selectedPatients.add( patient.value );
+		/**
+		* Patient list - update who's selected
+		*/
+		const updateSelectPatients = () => {
+			selectedPatients.clear();
+			const inputs = bj.nodeArray( patients.querySelectorAll('input[type=checkbox]'));
+			inputs.forEach( input => {
+				if( input.checked ) selectedPatients.add( input.value );
 			});
-		}
-				
+		};
 		
-		/*
-		Init Clinic Adder	
+		/**
+		* Event delegation, just interested if a checkbox is changed
+		*/
+		patients.addEventListener('change', updateSelectPatients );
+		
+		/**
+		* API patient arrived, need to update my lists
+		* @param {String} id - patient key
+		*/
+		const onPatientArrived = ( id ) => {
+			if( later.has( id )){
+				arrived.set( id, later.get(id));
+				later.delete( id );
+			}	
+			// update Arrived and Later patient groups
+			updatePatientList();
+		};
+
+		/**
+		* API: Show ALL patients
+		*/
+		const showAll = () => {
+			patients.style.display = "";
+			div.style.display = "";
+			updateSelectPatients(); // reset the selected list
+		};
+		
+		/**
+		* API: Show for specific patient
+		* specific patient 
+		*/
+		const showSingle = ( id ) => {
+			patients.style.display = "none";
+			div.style.display = "";
+			selectedPatients.clear();
+			selectedPatients.add( id );
+		};
+		
+		/**
+		* API: Hide adder
+		*/
+		const hide = () => {
+			patients.style.display = "none";
+			div.style.display = "none";
+		};
+		
+		/**
+		* Init Adder and build staic DOM elements	
 		*/
 		(() => {
-
-			const div = bj.div('oe-clinic-adder'); 
-			
 			// split patients into arrived and later groups
 			json.forEach( patient => {
 				if( patient.status == "active"){
@@ -11553,84 +11647,77 @@ Updated to Vanilla JS for IDG
 				}
 			});
 			
-			showPatientList();
+			updatePatientList();
 			
 			/*
 			Update actions are static, build once
 			*/
+			const updates = bj.div('update-actions');
+			
 			const doctors = ['MM', 'AB', 'AG', 'RB', 'CW'].sort();
 			const people = ['Nurse'];
 			const process = ['Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort();
 			
-			const updates = bj.div('update-actions');
+			// helper
+			const _li = ( code, type, html ) => {
+				const li = document.createElement('li');
+				li.setAttribute('data-shortcode', code );
+				li.setAttribute('data-type', type);
+				li.innerHTML = html;
+				return li;
+			};
 			
-			// assignment options
+			/*
+			assignment options
+			*/
 			let row = _row('Assign to');
 			let ul = _ul('btn-list');
 			
-			const assignTo = ['unassigned'].concat( doctors );
-			assignTo.forEach( code => {
-				const li = document.createElement('li');
-				li.setAttribute('data-shortcode', code );
-				li.setAttribute('data-type', 'assign');
-				li.textContent = clinic.fullShortCode( code );
-				ul.appendChild( li ); 
+			['unassigned'].concat( doctors ).forEach( code => {
+				ul.append( _li( code, 'assign', clinic.fullShortCode( code ))); 
 			});
 			
 			row.append( ul );
-			updates.appendChild( row );
+			updates.append( row );
 			
-			
-			// people & processes pathsteps
+			/*
+			people & processes pathsteps
+			*/
 			row = _row('Add to patient pathway');
 			ul = _ul('btn-list');
 			
 			// people
-			const peopleSteps = [].concat( doctors, people );
-			peopleSteps.forEach( code => {
+			[].concat( doctors, people ).forEach( code => {
 				const fullText = clinic.fullShortCode( code );
-				const li = document.createElement('li');
-				li.setAttribute('data-shortcode', code );
-				li.setAttribute('data-type', 'people');
-				li.innerHTML = `${code} <small>- ${fullText}</small>`;
-				ul.appendChild( li ); 
+				ul.append( _li( code, 'people', `${code} <small>- ${fullText}</small>`)); 
 			});
 			
 			// processes 
 			process.forEach( code => {
 				const fullText = clinic.fullShortCode( code );
-				const li = document.createElement('li');
-				li.setAttribute('data-shortcode', code );
-				li.setAttribute('data-type', 'process');
-				li.innerHTML = `${code} <small>- ${fullText}</small>`;
-				ul.appendChild( li ); 
+				ul.append( _li( code, 'process', `${code} <small>- ${fullText}</small>`)); 
 			});
 			
 			row.append( ul );
-			updates.appendChild( row );
+			updates.append( row );
 			
-			// build structure.
+			/*
+			build structure & hide it
+			*/
 			div.append( bj.div('close-btn'), patients, updates );
+			hide();
 			
 			// update DOM
-			document.querySelector('.oe-clinic').appendChild( div );
+			document.querySelector('.oe-clinic').append( div );
 	
 		})();
 		
-		/**
-		* API patient arrived, need to update my lists
-		* @param {String} id - patient key
+		/* 
+		API
 		*/
-		const onPatientArrived = ( id ) => {
-			if( later.has( id )){
-				arrived.set( id, later.get(id));
-				later.delete( id );
-			}	
-		};	
+		return { showAll, showSingle, hide, onPatientArrived, getSelectedPatients };
 		
-		return { onPatientArrived }
-		
-	}
+	};
 	
 	clinic.adder = adder;
 		
@@ -11725,8 +11812,6 @@ Updated to Vanilla JS for IDG
 				div.appendChild( count );	
 			}
 			
-			
-			
 			li.appendChild( div );
 			
 			// update DOM
@@ -11769,14 +11854,20 @@ Updated to Vanilla JS for IDG
 	* @returns {*} public methods
 	*/
 	const patient = ( props ) => {
+		
+		const tr = document.createElement('tr');
+		const pathway =  bj.div('pathway');
+		const assigned = document.createElement('td');
+		const addIcon = document.createElement('td');
+		const complete = document.createElement('td');
+		
 		/** 
 		* Model
-		* status:  "todo", "active", "complete"
 		* Extended with views
 		*/
 		const model = Object.assign({
 			_uid: props.uid,
-			_status: null,
+			_status: null, // "todo", "active", "complete"
 			_assigned: false,
 			
 			get status(){
@@ -11795,16 +11886,11 @@ Updated to Vanilla JS for IDG
 			},
 		}, bj.ModelViews());
 		
-		/*
-		Hold these Elements in memory, as they will need updating directly
+		/**
+		* GETTER / SETTER: App needs to get and set patient assigned from Adder
 		*/
-		const tr = document.createElement('tr');
-		const dom = {
-			pathway: bj.div('pathway'),
-			assigned: document.createElement('td'),
-			addIcon: document.createElement('td'),
-			complete: document.createElement('td'),
-		};
+		const getAssigned = () => model.assigned;
+		const setAssigned = ( val ) => model.assigned = val;
 		
 		/*
 		WaitDuration is based on the Arrival time and rendered based on 
@@ -11818,10 +11904,11 @@ Updated to Vanilla JS for IDG
 		*/
 		const changeStatus = () => {
 			tr.className = model.status;
-			dom.pathway.className = `pathway ${model.status}`;
-			dom.addIcon.innerHTML = model.status == "complete" ? 
+			pathway.className = `pathway ${model.status}`;
+			addIcon.innerHTML = model.status == "complete" ? 
 				"" : 
 				`<i class="oe-i plus-circle small pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
+			
 			waitDuration.render( model.status );
 		};
 		
@@ -11830,23 +11917,21 @@ Updated to Vanilla JS for IDG
 		*/
 		const changeAssignment = () => {
 			const fullText = clinic.fullShortCode( model.assigned );
-			if( model.assigned == "unassigned" ){
-				dom.assigned.innerHTML = `<small class="fade">${fullText}</small>`;
-			} else {
-				dom.assigned.innerHTML = `<div>${fullText}</div>`;
-			}	
+			assigned.innerHTML = model.assigned == "unassigned" ?  
+				`<small class="fade">${fullText}</small>` : 
+				`<div>${fullText}</div>`;
 		};
 		
 		/**
-		* VIEW: complete / done
+		* VIEW: complete (tick icon) / done
 		*/
 		const changeComplete = () => {
-			dom.complete.innerHTML = "";
+			complete.innerHTML = "";
 			if( model.status == "complete"){
-				dom.complete.innerHTML = '<span class="fade">Done</span>';
+				complete.innerHTML = '<span class="fade">Done</span>';
 			}
 			if( model.status == "active"){
-				dom.complete.innerHTML = `<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model._uid}"></i>`;
+				complete.innerHTML = `<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model._uid}"></i>`;
 			}
 		};
 		
@@ -11862,7 +11947,7 @@ Updated to Vanilla JS for IDG
 			if( step.type == "arrive" ) waitDuration.arrived( step.timestamp, model.status );
 			if( step.type == "finish" ) waitDuration.finished( step.timestamp );
 			// build pathStep
-			gui.pathStep( step, dom.pathway, (step.type == "arrive"));
+			gui.pathStep( step, pathway, (step.type == "arrive"));
 		};
 		
 		/**
@@ -11898,11 +11983,6 @@ Updated to Vanilla JS for IDG
 			model.status = "complete";
 		};
 		
-		/*
-		
-		*/
-		
-		
 		/**
 		* Render Patient <tr>
 		* @params {String} filter - filter buttons set this
@@ -11922,9 +12002,9 @@ Updated to Vanilla JS for IDG
 			return tr;
 		};
 		
-		/*
-		Initiate inital patient state from JSON	
-		and build the <tr> DOM
+		/**
+		* Initiate inital patient state from JSON	
+		* and build the <tr> DOM
 		*/
 		(() => {
 			// patient state 
@@ -11933,9 +12013,6 @@ Updated to Vanilla JS for IDG
 			
 			// build pathway steps
 			props.pathway.forEach( step => addPathStep( step ));
-			
-			// convert to clock time
-			props.time = bj.clock24( new Date( props.booked ));
 			
 			// build <tr>
 			tr.setAttribute( 'data-timestamp', props.booked );
@@ -11946,23 +12023,24 @@ Updated to Vanilla JS for IDG
 			].join(''), props );
 			
 			// slightly more complex Elements, but static content
+			
+			tr.append( clinic.patientQuickView( props ));
+			tr.append( clinic.patientMeta( props ));
+			tr.append( addIcon );
+			
 			const td = document.createElement('td');
-			tr.appendChild( clinic.patientQuickView( props ));
-			tr.appendChild( clinic.patientMeta( props ));
-			tr.appendChild( td.appendChild( dom.pathway ));		
-			tr.appendChild( dom.assigned );
-			tr.appendChild( dom.addIcon );
-			tr.appendChild( waitDuration.render( props.status ));
-			tr.appendChild( dom.complete );
+			td.append( pathway );
+			tr.append( td );	
+				
+			tr.append( assigned );
+			tr.append( waitDuration.render( props.status ));
+			tr.append( complete );
 		})();
-		
-		
+			
 		/* 
 		API
 		*/
-		const getAssignment = () => model.assigned;
-		
-		return { onArrived, onDNA, onComplete, render, getAssignment };
+		return { onArrived, onDNA, onComplete, render, getAssigned, setAssigned, addPathStep };
 	};
 	
 	// make component available to Clinic SPA	
