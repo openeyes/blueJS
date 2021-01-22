@@ -8,7 +8,8 @@
 	const adder = ( json ) => {
 		
 		const div = bj.div('oe-clinic-adder');
-		const patients = bj.div('patients'); 
+		const patients = bj.div('patients');
+		const singlePatient = bj.div('single-patient'); 
 		const arrived = new Map();
 		const later = new Map();
 		const selectedPatients = new Set(); 
@@ -80,6 +81,14 @@
 		patients.addEventListener('change', updateSelectPatients );
 		
 		/**
+		* CSS Animation touch
+		*/
+		const fadein = () => {
+			if( div.classList.contains('fadein')) div.classList.remove('fadein');
+			div.classList.add('fadein');
+		};
+		
+		/**
 		* API patient arrived, need to update my lists
 		* @param {String} id - patient key
 		*/
@@ -96,29 +105,29 @@
 		* API: Show ALL patients
 		*/
 		const showAll = () => {
-			patients.style.display = "";
-			div.style.display = "";
+			bj.show( patients );
+			bj.hide( singlePatient );
 			updateSelectPatients(); // reset the selected list
+			fadein();
 		};
 		
 		/**
 		* API: Show for specific patient
 		* specific patient 
 		*/
-		const showSingle = ( id ) => {
-			patients.style.display = "none";
-			div.style.display = "";
+		const showSingle = ( id, time, surname ) => {
+			bj.hide( patients );
+			singlePatient.innerHTML = `${time} - ${surname}`;
+			bj.show( singlePatient );
 			selectedPatients.clear();
 			selectedPatients.add( id );
+			fadein();
 		};
 		
 		/**
 		* API: Hide adder
 		*/
-		const hide = () => {
-			patients.style.display = "none";
-			div.style.display = "none";
-		};
+		const hide = () => div.classList.remove('fadein');
 		
 		/**
 		* Init Adder and build staic DOM elements	
@@ -146,6 +155,7 @@
 			Update actions are static, build once
 			*/
 			const updates = bj.div('update-actions');
+			updates.append( singlePatient );
 			
 			const doctors = ['MM', 'AB', 'AG', 'RB', 'CW'].sort();
 			const people = ['Nurse'];
@@ -182,7 +192,7 @@
 			// people
 			[].concat( doctors, people ).forEach( code => {
 				const fullText = clinic.fullShortCode( code );
-				ul.append( _li( code, 'people', `${code} <small>- ${fullText}</small>`)); 
+				ul.append( _li( code, 'person', `${code} <small>- ${fullText}</small>`)); 
 			});
 			
 			// processes 

@@ -1,4 +1,4 @@
-(function( bj ){
+(function( bj, clinic ){
 
 	'use strict';	
 	
@@ -17,37 +17,6 @@
 	loading.innerHTML = '<div class="spinner"></div><div class="spinner-message">Loading...</div>';
 	document.body.appendChild(loading);
 	setTimeout(() => initClinicApp(), 500 );
-	
-	/*
-	Name space for React App
-	React JS componenets are built into this space	
-	*/
-	const clinic = bj.namespace('clinic');
-
-	clinic.fullShortCode = ( shortcode ) => {
-		let full = shortcode; // "Nurse" doesn't need expanding on
-		switch( shortcode ){
-			case 'Arr': full = "Arrived"; break;
-			case 'Fin': full = "Finish"; break;
-			case "DNA" : full = "Did Not Attend"; break;
-			
-			case "unassigned" : full = "Not assigned"; break;
-			
-			case "MM" : full = "Mr Michael Morgan"; break;
-			case "AB" : full = "Dr Amit Baum"; break;
-			case "AG" : full = "Dr Angela Glasby"; break;
-			case "RB" : full = "Dr Robin Baum"; break;
-			case "CW" : full = "Dr Coral Woodhouse"; break; 
-			
-			case "Img" : full = "Imaging"; break;
-			case "VisAcu" : full = "Visual Acuity"; break;
-			case "Orth" : full = "Orthoptics"; break;
-			case "Fields" : full = "Visual Fields"; break;
-			case "Ref" : full = "Refraction"; break;
-			
-		}
-		return full; 
-	}; 
 	
 	/**
 	* Initalise Clinic Manager SPA
@@ -121,4 +90,4 @@
 		clinic.app( document.querySelector('table.oe-clinic-list tbody'), patientsJSON );
 	};
 	
-})( bluejay ); 
+})( bluejay, bluejay.namespace('clinic')); 

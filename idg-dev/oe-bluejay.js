@@ -93,7 +93,7 @@ const bluejay = (function () {
 	'use strict';
 	/**
 	* Generator to create unique ids 
-	* Used as Keys and in DOM data-bjk 
+	* Used as Keys and in DOM data-bjc 
 	*/
 	function* IdGenerator(){
 		let id = 10;
@@ -114,7 +114,7 @@ const bluejay = (function () {
 	*/ 
 	function Collection(){
 		this.map = new Map();
-		this.dataAttr =  'data-oebjk';
+		this.dataAttr =  'data-bjc';
 	}
 	
 	/**
@@ -199,6 +199,14 @@ const bluejay = (function () {
 	*/
 	Collection.prototype.has = function( key ){
 		return this.map.has( key );
+	};
+	
+	/**
+	* Remove to allow GC
+	* @returns {Boolean}
+	*/
+	Collection.prototype.delete = function( key ){
+		return this.map.delete( key );
 	};
 	
 	// API
@@ -406,12 +414,27 @@ const bluejay = (function () {
 	/**
 	* <div> with className, this is so common made it easier
 	* @param {String} className
+	* @param {DOMString} html
 	* @returns {Element} <div>
 	*/
-	const div = ( className ) => {
+	const div = ( className, html = false ) => {
 		const div = document.createElement('div');
 		div.className = className;
+		if( html ) div.innerHTML = html;
 		return div;
+	};
+	
+	/**
+	* param {String} domElement
+	* @param {String} className
+	* @param {DOMString} html
+	* @returns {Element} new DOM
+	*/
+	const dom = ( domElement, className, html = false ) => {
+		const el = document.createElement( domElement );
+		el.className = className;
+		if( html ) div.innerHTML = html;
+		return el;
 	};
 	
 	/**
@@ -458,7 +481,7 @@ const bluejay = (function () {
 	* @param {String} displayType - "block","flex",'table-row',etc
 	*/
 	const show = ( el, displayType = '') => {
-		if(el === null) return;
+		if( el === null ) return;
 		el.style.display = displayType;
 	};
 	
@@ -477,8 +500,20 @@ const bluejay = (function () {
 	* @param {DOM Element} el
 	*/
 	const hide = ( el ) => {
-		if(el === null) return;
+		if( el === null ) return;
 		el.style.display = "none";
+	};
+	
+	/**
+	* clearContents
+	* some discussion over this, this 'seems' a good approach and is faster than innerHTML
+	* however, might have problems with <SVG> nodes. May need a removeChild() approach.
+	* @param {DOM Element} el
+	*/
+	const clearContent = ( parentNode ) => {
+		if( parentNode.firstChild ){ 
+			parentNode.textContent = null;	
+		}
 	};
 	
 	/**
@@ -639,10 +674,12 @@ const bluejay = (function () {
 	bj.extend('wrap', wrap );
 	bj.extend('unwrap', unwrap );
 	bj.extend('div', div);
+	bj.extend('dom', dom);
 	bj.extend('remove', remove );
 	bj.extend('show', show );
 	bj.extend('reshow', reshow );
 	bj.extend('hide', hide );
+	bj.extend('empty', clearContent );
 	bj.extend('xhr', xhr );
 	bj.extend('getToken', token );
 	bj.extend('loadJS', loadJS );
@@ -6816,6 +6853,8 @@ Updated to Vanilla JS for IDG
 	
 	bj.addModule('pathStepsPopup');	
 	
+	return; 
+	
 	const selector = '.oe-pathstep-btn:not(.no-popup)';
 	
 	let activePathBtn = false;
@@ -7068,7 +7107,7 @@ Updated to Vanilla JS for IDG
 	bj.userDown( selector, userClick );
 	bj.userEnter( selector, userHover );
 	bj.userLeave( selector, userOut );
-	bj.userDown( '.oe-pathstep-popup .close-icon-btn .oe-i', hide );
+	
 		
 })( bluejay ); 
 (function (uiApp) {
@@ -11199,7 +11238,7 @@ Updated to Vanilla JS for IDG
 	  
 
 })( bluejay ); 
-(function( bj ){
+(function( bj, clinic ){
 
 	'use strict';	
 	
@@ -11218,37 +11257,6 @@ Updated to Vanilla JS for IDG
 	loading.innerHTML = '<div class="spinner"></div><div class="spinner-message">Loading...</div>';
 	document.body.appendChild(loading);
 	setTimeout(() => initClinicApp(), 500 );
-	
-	/*
-	Name space for React App
-	React JS componenets are built into this space	
-	*/
-	const clinic = bj.namespace('clinic');
-
-	clinic.fullShortCode = ( shortcode ) => {
-		let full = shortcode; // "Nurse" doesn't need expanding on
-		switch( shortcode ){
-			case 'Arr': full = "Arrived"; break;
-			case 'Fin': full = "Finish"; break;
-			case "DNA" : full = "Did Not Attend"; break;
-			
-			case "unassigned" : full = "Not assigned"; break;
-			
-			case "MM" : full = "Mr Michael Morgan"; break;
-			case "AB" : full = "Dr Amit Baum"; break;
-			case "AG" : full = "Dr Angela Glasby"; break;
-			case "RB" : full = "Dr Robin Baum"; break;
-			case "CW" : full = "Dr Coral Woodhouse"; break; 
-			
-			case "Img" : full = "Imaging"; break;
-			case "VisAcu" : full = "Visual Acuity"; break;
-			case "Orth" : full = "Orthoptics"; break;
-			case "Fields" : full = "Visual Fields"; break;
-			case "Ref" : full = "Refraction"; break;
-			
-		}
-		return full; 
-	}; 
 	
 	/**
 	* Initalise Clinic Manager SPA
@@ -11322,8 +11330,8 @@ Updated to Vanilla JS for IDG
 		clinic.app( document.querySelector('table.oe-clinic-list tbody'), patientsJSON );
 	};
 	
-})( bluejay ); 
-(function( bj, clinic ){
+})( bluejay, bluejay.namespace('clinic')); 
+(function( bj, clinic, gui ){
 
 	'use strict';	
 	
@@ -11403,9 +11411,8 @@ Updated to Vanilla JS for IDG
 		const hideAdder = () => {
 			adderAllBtn.classList.replace('close', 'open');
 			adder.hide();
-		}
+		};
 		
-	
 		/**
 		* Event delegation
 		*/
@@ -11431,11 +11438,18 @@ Updated to Vanilla JS for IDG
 		bj.userDown('.js-idg-clinic-btn-filter', ( ev ) => {
 			model.filter = ev.target.dataset.filter;
 			hideAdder();
+			gui.pathStepPopup.remove();
+			
 		});
 		
 		//  + icon specific for patient (<tr>)
 		bj.userDown('.js-idg-clinic-icon-add', ( ev ) => {
-			adder.showSingle( ev.target.dataset.patient );
+			const id = ev.target.dataset.patient;
+			adder.showSingle( 
+				id, 
+				patients.get( id ).getTime(),
+				patients.get( id ).getLastname()
+			);
 		});
 		
 		//  + icon for ALL patients in header
@@ -11504,7 +11518,7 @@ Updated to Vanilla JS for IDG
 	// add to namespace
 	clinic.app = app;			
 
-})( bluejay, bluejay.namespace('clinic')); 
+})( bluejay, bluejay.namespace('clinic'), bluejay.namespace('gui')); 
 (function( bj, clinic ){
 
 	'use strict';	
@@ -11515,7 +11529,8 @@ Updated to Vanilla JS for IDG
 	const adder = ( json ) => {
 		
 		const div = bj.div('oe-clinic-adder');
-		const patients = bj.div('patients'); 
+		const patients = bj.div('patients');
+		const singlePatient = bj.div('single-patient'); 
 		const arrived = new Map();
 		const later = new Map();
 		const selectedPatients = new Set(); 
@@ -11587,6 +11602,14 @@ Updated to Vanilla JS for IDG
 		patients.addEventListener('change', updateSelectPatients );
 		
 		/**
+		* CSS Animation touch
+		*/
+		const fadein = () => {
+			if( div.classList.contains('fadein')) div.classList.remove('fadein');
+			div.classList.add('fadein');
+		};
+		
+		/**
 		* API patient arrived, need to update my lists
 		* @param {String} id - patient key
 		*/
@@ -11603,29 +11626,29 @@ Updated to Vanilla JS for IDG
 		* API: Show ALL patients
 		*/
 		const showAll = () => {
-			patients.style.display = "";
-			div.style.display = "";
+			bj.show( patients );
+			bj.hide( singlePatient );
 			updateSelectPatients(); // reset the selected list
+			fadein();
 		};
 		
 		/**
 		* API: Show for specific patient
 		* specific patient 
 		*/
-		const showSingle = ( id ) => {
-			patients.style.display = "none";
-			div.style.display = "";
+		const showSingle = ( id, time, surname ) => {
+			bj.hide( patients );
+			singlePatient.innerHTML = `${time} - ${surname}`;
+			bj.show( singlePatient );
 			selectedPatients.clear();
 			selectedPatients.add( id );
+			fadein();
 		};
 		
 		/**
 		* API: Hide adder
 		*/
-		const hide = () => {
-			patients.style.display = "none";
-			div.style.display = "none";
-		};
+		const hide = () => div.classList.remove('fadein');
 		
 		/**
 		* Init Adder and build staic DOM elements	
@@ -11653,6 +11676,7 @@ Updated to Vanilla JS for IDG
 			Update actions are static, build once
 			*/
 			const updates = bj.div('update-actions');
+			updates.append( singlePatient );
 			
 			const doctors = ['MM', 'AB', 'AG', 'RB', 'CW'].sort();
 			const people = ['Nurse'];
@@ -11689,7 +11713,7 @@ Updated to Vanilla JS for IDG
 			// people
 			[].concat( doctors, people ).forEach( code => {
 				const fullText = clinic.fullShortCode( code );
-				ul.append( _li( code, 'people', `${code} <small>- ${fullText}</small>`)); 
+				ul.append( _li( code, 'person', `${code} <small>- ${fullText}</small>`)); 
 			});
 			
 			// processes 
@@ -11755,7 +11779,7 @@ Updated to Vanilla JS for IDG
 			// find the next row booked time
 			tableRows.every( tr  => {
 				if( tr.dataset.timestamp > now ){
-					top = ( tr.getBoundingClientRect().top - 4 ) + 'px';
+					top = ( tr.getBoundingClientRect().top - 9 ) + 'px';
 					return false; // found it.
 				} else {
 					return true; // keep looking
@@ -11767,8 +11791,8 @@ Updated to Vanilla JS for IDG
 			div.textContent = bj.clock24( new Date( now ));
 		};
 		
-		// check and update every second.
-		setInterval( updateClock, 1000 );
+		// check and update every half second
+		setInterval( updateClock, 500 );
 	};
 	
 	// make component available to Clinic SPA	
@@ -11892,6 +11916,9 @@ Updated to Vanilla JS for IDG
 		const getAssigned = () => model.assigned;
 		const setAssigned = ( val ) => model.assigned = val;
 		
+		const getTime = () => model.time;
+		const getLastname = () => model.lastname;
+		
 		/*
 		WaitDuration is based on the Arrival time and rendered based on 
 		patient state, when patient arrives start the clock
@@ -11907,7 +11934,7 @@ Updated to Vanilla JS for IDG
 			pathway.className = `pathway ${model.status}`;
 			addIcon.innerHTML = model.status == "complete" ? 
 				"" : 
-				`<i class="oe-i plus-circle small pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
+				`<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
 			
 			waitDuration.render( model.status );
 		};
@@ -11947,7 +11974,8 @@ Updated to Vanilla JS for IDG
 			if( step.type == "arrive" ) waitDuration.arrived( step.timestamp, model.status );
 			if( step.type == "finish" ) waitDuration.finished( step.timestamp );
 			// build pathStep
-			gui.pathStep( step, pathway, (step.type == "arrive"));
+			step.info = bj.clock24(  new Date ( step.timestamp ));
+			gui.pathStep( step, pathway );
 		};
 		
 		/**
@@ -11976,7 +12004,7 @@ Updated to Vanilla JS for IDG
 		const onComplete = () => {
 			addPathStep({
 				shortcode: 'Fin',
-				timestamp: Date.now(),
+				timestamp: Date.now(), 
 				status: 'done',
 				type: 'finish',
 			});
@@ -12010,6 +12038,8 @@ Updated to Vanilla JS for IDG
 			// patient state 
 			model.status = props.status; 
 			model.assigned = props.assigned;
+			model.time = props.time;
+			model.lastname = props.lastname;
 			
 			// build pathway steps
 			props.pathway.forEach( step => addPathStep( step ));
@@ -12040,7 +12070,7 @@ Updated to Vanilla JS for IDG
 		/* 
 		API
 		*/
-		return { onArrived, onDNA, onComplete, render, getAssigned, setAssigned, addPathStep };
+		return { onArrived, onDNA, onComplete, render, getAssigned, setAssigned, getTime, getLastname, addPathStep };
 	};
 	
 	// make component available to Clinic SPA	
@@ -12126,6 +12156,38 @@ Updated to Vanilla JS for IDG
 	clinic.patientQuickView = patientQuickView;		
 
 })( bluejay, bluejay.namespace('clinic')); 
+(function( bj ){
+
+	'use strict';	
+	
+
+	bj.namespace('clinic').fullShortCode = ( shortcode ) => {
+		let full = shortcode; // "Nurse" doesn't need expanding on
+		switch( shortcode ){
+			case 'Arr': full = "Arrived"; break;
+			case 'Fin': full = "Finish"; break;
+			case "DNA" : full = "Did Not Attend"; break;
+			
+			case "unassigned" : full = "Not assigned"; break;
+			
+			case "MM" : full = "Mr Michael Morgan"; break;
+			case "AB" : full = "Dr Amit Baum"; break;
+			case "AG" : full = "Dr Angela Glasby"; break;
+			case "RB" : full = "Dr Robin Baum"; break;
+			case "CW" : full = "Dr Coral Woodhouse"; break; 
+			
+			case "Img" : full = "Imaging"; break;
+			case "VisAcu" : full = "Visual Acuity"; break;
+			case "Orth" : full = "Orthoptics"; break;
+			case "Fields" : full = "Visual Fields"; break;
+			case "Ref" : full = "Refraction"; break;
+			
+		}
+		return full; 
+	}; 
+	
+		
+})( bluejay ); 
 (function( bj, clinic ){
 
 	'use strict';	
@@ -12371,39 +12433,372 @@ Updated to Vanilla JS for IDG
 	
 	bj.addModule('gui.pathStep');	
 	
-	const pathStep = ( step, pathway, prepend = false ) => {
+	/**
+	* Manage all pathSteps
+	* Note, for this to work PathSteps must be added through JS (not PHP)
+	*/
+	const pathSteps = () => {
+		
+		const selector = 'oe-pathstep-btn';
+		const collection = new bj.Collection();
+		
 		/*
-		DOM
-		span.oe-pathstep-btn -|- span.step
-		                      |- span.time 	
+		Methods	
 		*/
-		const css = ['oe-pathstep-btn'];
-		if( step.status === 'done') css.push('green');
-		if( step.status === 'active') css.push('orange');
+		const _events= () => ({
+			userDown(){
+				gui.pathStepPopup.full( this );
+			}, 
+			userOver(){
+				gui.pathStepPopup.quick( this );
+			}, 
+			userOut(){
+				gui.pathStepPopup.hide();
+			}
+		});
 		
-		// type - person or process? 
-		if(  step.type === 'person' ) css.push('person');
+		const _render = () => ({
+			/**
+			* Update the DOM CSS
+			*/
+			render(){
+				const css = [ selector ];
+				css.push( this.status );
+				css.push( this.type );
+				this.span.className = css.join(' ');
+			}
+		});
 		
-		// use 'invisible' to maintain layout:
-		const cssTime = step.status == 'next' ? 'time invisible' : 'time';	
-		const time = bj.clock24( new Date( step.timestamp ));
-	
-		const span = document.createElement('span');
-		span.className = css.join(' ');
-		span.innerHTML = `<span class="step">${step.shortcode}</span><span class="${cssTime}">${time}</span>`;
-	
-		if( prepend ){
-			pathway.prepend( span );
-		} else {
-			pathway.appendChild( span );
-		}
+		const _setType = () => ({
+			/**
+			* @param {String} type - e.g. arrive, finish, process, person, config
+			*/
+			setType( type ){
+				this.type = type;
+				this.render();
+			}
+		});
 		
+		const _setStatus = () => ({
+			/**
+			* @param {String} status - next is default
+			*/
+			setStatus( status ){
+				this.status = status;
+				this.render();
+			}, 
+			
+			// pathStepPopup actions need to change the status
+			changeStatus( status ){
+				this.setStatus( status );
+				gui.pathStepPopup.full( this );
+			}
+		});
+		
+		
+		const _addInfo = () => ({
+			/** 
+			* Not all steps have info (e.g. PSDs), but generally it's a time
+			*/
+			addInfo( infoText ){
+				// might not have the required DOM
+				if( this.info === undefined ){
+					const info = document.createElement('span');
+					info.className = "info";
+					this.info = info;
+					this.span.append( this.info );
+				}
+				
+				// set info text 
+				this.info.textContent = infoText;
+			
+				if( this.status == 'next' ){
+					this.info.classList.add('invisible'); // need the DOM to keep the step height consistent
+				} else {
+					this.info.classList.remove('invisible');
+				}
+			}
+		});
+		
+		const _remove = () => ({
+			remove(){
+				this.span.remove();
+				collection.delete( this.key );
+			}
+		});
+		
+		/**
+		* @Class
+		* @param {Object} me - initialise
+		* @returns {*} new PathStep
+		*/
+		const createPathStep = ( newPS ) => {
+			return Object.assign( 
+				newPS, 
+				{ type:null },
+				{ setKey( k ){ this.key = k; }},
+				_render(),
+				_setStatus(),
+				_setType(),
+				_addInfo(), 
+				_events(), 
+				_remove()
+			);
+		};
+		
+		const getPathStep = ( target ) => {
+			const key = collection.getKey( target );
+			return collection.get( key );
+		};
+		
+		/*
+		Event delegation for PathSteps
+		*/
+		bj.userLeave(`.${selector}`, ev => getPathStep( ev.target ).userOut());
+		bj.userEnter(`.${selector}`,  ev => getPathStep( ev.target ).userOver());
+		bj.userDown(`.${selector}`, ev => getPathStep( ev.target ).userDown());
+
+		/**
+		* API - add new PathStep to DOM
+		* @param {Object} step properties
+		* @param {DOM parentNode} pathway 
+		*/
+		const addPathStep = ({ shortcode, status, type, info }, pathway ) => {
+			
+			// new DOM element
+			const span = document.createElement('span');
+			span.className = selector;
+			span.innerHTML = `<span class="step">${shortcode}</span>`;
+			
+			// create new PathStep
+			const ps = createPathStep({ shortcode, status, type, span });
+			
+			// setup PathStep
+			ps.setStatus( status );
+			ps.setType( type );
+			
+			// PSD may or may not have extra info
+			if( info ) ps.addInfo( info );
+		
+			// update DOM
+			if( shortcode === "Arr") {
+				pathway.prepend( span ); // put Arrived at the start of pathway
+			} else {
+				pathway.append( span );
+			}
+		
+			// update collection 	
+			ps.setKey( collection.add( ps, span ));
+		};
+		
+		// API
+		return addPathStep; 
 	};
 	
-	// make available to Bluejay
-	gui.pathStep = pathStep;
+	// universal GUI. Clinic Manager, Worklists (PSDs), Orders Exam Element
+	gui.pathStep = pathSteps();
 		
 })( bluejay, bluejay.namespace('gui')); 
+(function( bj, gui, clinic ){
+
+	'use strict';	
+	
+	bj.addModule('gui.pathStep');	
+	
+	/**
+	* PathStep Popup
+	*/
+	const pathStepPopup = () => {
+		
+		const popup = bj.div('oe-pathstep-popup');
+		let removeTimerID = null; 
+		let lockedOpen = false; 
+		let pathStep = null;
+
+		/**
+		* close/expand icon
+		* @param {Boolean} full (view) 
+		* @returns {Element}
+		*/
+		const closeBtn = ( full ) => {
+			const div = bj.div('close-icon-btn');
+			if( full ){
+				div.innerHTML = '<i class="oe-i remove-circle medium-icon"></i>';
+			} else {
+				div.innerHTML = '<i class="oe-i expand small-icon"></i>';
+			}
+			return div;
+		};
+		
+		/**
+		* Title, updates the <h3> title, always present
+		* @param {String} shortcode 
+		* @returns {Element}
+		*/
+		const setTitle = ( shortcode ) => {
+			const h3 = bj.dom('h3', 'title');
+			h3.textContent = clinic.fullShortCode( shortcode );
+			return h3; 
+		};
+		
+		/**
+		* Step-status
+		* @param {String} status 
+		* @returns {Element}
+		*/
+		const setStatus = ( status ) => {
+			const div = bj.div('step-status');
+			div.className = `step-status ${status}`;
+			div.textContent = status;
+			return div;
+		};
+		
+		/**
+		* Button actions - generic for testing through the pathStep states
+		* @param {String} status 
+		* @returns {Element}
+		*/
+		const userActions = ( status ) => {
+			const div = bj.div('step-actions');
+			const btn = ( text, color, action ) => `<button class="${color} hint js-idg-ps-popup-btn" data-action="${action}">${text}</button>`;
+			
+			let domString = [];
+			
+			switch( status ){
+				case 'next': domString = [ btn('Activate', 'green', 'active'), btn('Remove', 'red', 'remove')];
+				break;
+				case 'active': domString = [ btn('Complete', 'green', 'complete'), btn('Cancel', 'red', 'remove')];
+				break;
+			}
+			
+			div.innerHTML = domString.join('');
+			return div; 
+		};
+			
+		/**
+		* Render
+		* @params {String} shortcode - PathStep shortcode e.g. "Arr", etc
+		* @params {String} status - 'active', 'todo', 'done'
+		* @params {String} type - 'process', 'person'
+		* @params {Element} span - DOM Element for PathStep
+		* @params {Boolean} full - full view (or the quickview)
+ 		*/
+		const render = ( shortcode, status, type, span, full ) => {
+			clearTimeout( removeTimerID );
+			
+			// clear all children and reset the CSS
+			bj.empty( popup );
+			
+			popup.classList.remove('arrow-t', 'arrow-b');
+			
+			// build Nodes
+			popup.append( closeBtn( full ));
+			popup.append( setTitle( shortcode ));
+			
+			if( full ) popup.append( userActions( status ));
+			popup.append( setStatus( status ));
+
+			/*
+			Position popup next to PathStep (span)
+			*/
+			const rect = span.getBoundingClientRect();
+			
+			// anchor popup to the right side of the step
+			popup.style.left = ( rect.right - 360 ) + 'px'; 
+			
+			// work out vertical orientation, below half way down, flip.
+			const winH = bj.getWinH();
+			const verticalGap = 2; 
+			
+			if( rect.bottom < (winH * 0.7)){
+				popup.style.top = rect.bottom + verticalGap + 'px';
+				popup.style.bottom = 'auto';
+				popup.classList.add('arrow-t');
+			} else {
+				popup.style.top = 'auto';
+				popup.style.bottom = ( winH - rect.top ) + verticalGap + 'px';
+				popup.classList.add('arrow-b');
+			}
+			
+			// update DOM
+			document.body.append( popup );
+		};
+		
+		/**
+		* Remove and reset 
+		* this is also called by Clinic if a filter change happens
+		*/
+		const removeReset = () => {
+			pathStep = null;
+			lockedOpen = false;
+			window.removeEventListener('scroll', removeReset, { capture:true, once:true });
+			// delay the removal to stop the flicker
+			removeTimerID = setTimeout(() => popup.remove(), 50 );
+		};
+		
+		/*
+		Event delegation
+		*/
+		bj.userDown('.oe-pathstep-popup .close-icon-btn .oe-i', removeReset );
+		bj.userDown('.oe-pathstep-popup .js-idg-ps-popup-btn', ( ev ) => {
+			const userRequest = ev.target.dataset.action;
+			console.log('btn', userRequest);
+			switch( userRequest ){
+				case 'remove':
+					pathStep.remove();
+					removeReset();
+				break;
+			}
+
+		});
+	
+		/**
+		* User Clicks (click on same step to close)
+		* @params {PathStep} ps - 
+		*/
+		const full = ( ps ) => {
+			if( ps === pathStep ){
+				removeReset();
+			} else {
+				pathStep = ps;
+				lockedOpen = true;
+				render(
+					ps.shortcode,  
+					ps.status, 
+					ps.type, 
+					ps.span, 
+					true 
+				);
+				window.addEventListener('scroll', removeReset, { capture:true, once:true });
+			}
+		};
+		
+		/**
+		* User Over - Quickview
+		* @params {PathStep} - deconstruct Object
+		*/
+		const quick = ({ shortcode, status, type, span }) => {
+			if( lockedOpen ) return; 
+			render( shortcode, status, type, span, false );
+		};
+		
+		/**
+		* User Out
+		* @params {PathStep} - deconstruct Object
+		*/
+		const hide = () => {
+			if( lockedOpen ) return; 
+			removeReset();
+		};
+	    
+	    // API 
+	    return { full, quick, hide, remove:removeReset };
+	};
+	
+	// singleton. Clinic Manager, Worklists (PSDs), Orders Exam Element
+	gui.pathStepPopup = pathStepPopup();
+		
+})( bluejay, bluejay.namespace('gui'), bluejay.namespace('clinic')); 
 /*
 Add Select Search insert Popup (v2)
 Updated to Vanilla JS for IDG

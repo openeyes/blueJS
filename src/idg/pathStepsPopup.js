@@ -4,6 +4,8 @@
 	
 	bj.addModule('pathStepsPopup');	
 	
+	return; 
+	
 	const selector = '.oe-pathstep-btn:not(.no-popup)';
 	
 	let activePathBtn = false;
@@ -256,6 +258,6 @@
 	bj.userDown( selector, userClick );
 	bj.userEnter( selector, userHover );
 	bj.userLeave( selector, userOut );
-	bj.userDown( '.oe-pathstep-popup .close-icon-btn .oe-i', hide );
+	
 		
 })( bluejay ); 

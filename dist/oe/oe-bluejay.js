@@ -93,7 +93,7 @@ const bluejay = (function () {
 	'use strict';
 	/**
 	* Generator to create unique ids 
-	* Used as Keys and in DOM data-bjk 
+	* Used as Keys and in DOM data-bjc 
 	*/
 	function* IdGenerator(){
 		let id = 10;
@@ -114,7 +114,7 @@ const bluejay = (function () {
 	*/ 
 	function Collection(){
 		this.map = new Map();
-		this.dataAttr =  'data-oebjk';
+		this.dataAttr =  'data-bjc';
 	}
 	
 	/**
@@ -199,6 +199,14 @@ const bluejay = (function () {
 	*/
 	Collection.prototype.has = function( key ){
 		return this.map.has( key );
+	};
+	
+	/**
+	* Remove to allow GC
+	* @returns {Boolean}
+	*/
+	Collection.prototype.delete = function( key ){
+		return this.map.delete( key );
 	};
 	
 	// API
@@ -406,12 +414,27 @@ const bluejay = (function () {
 	/**
 	* <div> with className, this is so common made it easier
 	* @param {String} className
+	* @param {DOMString} html
 	* @returns {Element} <div>
 	*/
-	const div = ( className ) => {
+	const div = ( className, html = false ) => {
 		const div = document.createElement('div');
 		div.className = className;
+		if( html ) div.innerHTML = html;
 		return div;
+	};
+	
+	/**
+	* param {String} domElement
+	* @param {String} className
+	* @param {DOMString} html
+	* @returns {Element} new DOM
+	*/
+	const dom = ( domElement, className, html = false ) => {
+		const el = document.createElement( domElement );
+		el.className = className;
+		if( html ) div.innerHTML = html;
+		return el;
 	};
 	
 	/**
@@ -458,7 +481,7 @@ const bluejay = (function () {
 	* @param {String} displayType - "block","flex",'table-row',etc
 	*/
 	const show = ( el, displayType = '') => {
-		if(el === null) return;
+		if( el === null ) return;
 		el.style.display = displayType;
 	};
 	
@@ -477,8 +500,20 @@ const bluejay = (function () {
 	* @param {DOM Element} el
 	*/
 	const hide = ( el ) => {
-		if(el === null) return;
+		if( el === null ) return;
 		el.style.display = "none";
+	};
+	
+	/**
+	* clearContents
+	* some discussion over this, this 'seems' a good approach and is faster than innerHTML
+	* however, might have problems with <SVG> nodes. May need a removeChild() approach.
+	* @param {DOM Element} el
+	*/
+	const clearContent = ( parentNode ) => {
+		if( parentNode.firstChild ){ 
+			parentNode.textContent = null;	
+		}
 	};
 	
 	/**
@@ -639,10 +674,12 @@ const bluejay = (function () {
 	bj.extend('wrap', wrap );
 	bj.extend('unwrap', unwrap );
 	bj.extend('div', div);
+	bj.extend('dom', dom);
 	bj.extend('remove', remove );
 	bj.extend('show', show );
 	bj.extend('reshow', reshow );
 	bj.extend('hide', hide );
+	bj.extend('empty', clearContent );
 	bj.extend('xhr', xhr );
 	bj.extend('getToken', token );
 	bj.extend('loadJS', loadJS );

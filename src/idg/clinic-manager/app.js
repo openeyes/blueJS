@@ -1,4 +1,4 @@
-(function( bj, clinic ){
+(function( bj, clinic, gui ){
 
 	'use strict';	
 	
@@ -78,9 +78,8 @@
 		const hideAdder = () => {
 			adderAllBtn.classList.replace('close', 'open');
 			adder.hide();
-		}
+		};
 		
-	
 		/**
 		* Event delegation
 		*/
@@ -106,11 +105,18 @@
 		bj.userDown('.js-idg-clinic-btn-filter', ( ev ) => {
 			model.filter = ev.target.dataset.filter;
 			hideAdder();
+			gui.pathStepPopup.remove();
+			
 		});
 		
 		//  + icon specific for patient (<tr>)
 		bj.userDown('.js-idg-clinic-icon-add', ( ev ) => {
-			adder.showSingle( ev.target.dataset.patient );
+			const id = ev.target.dataset.patient;
+			adder.showSingle( 
+				id, 
+				patients.get( id ).getTime(),
+				patients.get( id ).getLastname()
+			);
 		});
 		
 		//  + icon for ALL patients in header
@@ -179,4 +185,4 @@
 	// add to namespace
 	clinic.app = app;			
 
-})( bluejay, bluejay.namespace('clinic')); 
+})( bluejay, bluejay.namespace('clinic'), bluejay.namespace('gui')); 

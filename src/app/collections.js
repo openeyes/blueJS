@@ -7,7 +7,7 @@
 	'use strict';
 	/**
 	* Generator to create unique ids 
-	* Used as Keys and in DOM data-bjk 
+	* Used as Keys and in DOM data-bjc 
 	*/
 	function* IdGenerator(){
 		let id = 10;
@@ -28,7 +28,7 @@
 	*/ 
 	function Collection(){
 		this.map = new Map();
-		this.dataAttr =  'data-oebjk';
+		this.dataAttr =  'data-bjc';
 	}
 	
 	/**
@@ -113,6 +113,14 @@
 	*/
 	Collection.prototype.has = function( key ){
 		return this.map.has( key );
+	};
+	
+	/**
+	* Remove to allow GC
+	* @returns {Boolean}
+	*/
+	Collection.prototype.delete = function( key ){
+		return this.map.delete( key );
 	};
 	
 	// API

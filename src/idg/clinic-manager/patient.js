@@ -46,6 +46,9 @@
 		const getAssigned = () => model.assigned;
 		const setAssigned = ( val ) => model.assigned = val;
 		
+		const getTime = () => model.time;
+		const getLastname = () => model.lastname;
+		
 		/*
 		WaitDuration is based on the Arrival time and rendered based on 
 		patient state, when patient arrives start the clock
@@ -61,7 +64,7 @@
 			pathway.className = `pathway ${model.status}`;
 			addIcon.innerHTML = model.status == "complete" ? 
 				"" : 
-				`<i class="oe-i plus-circle small pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
+				`<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
 			
 			waitDuration.render( model.status );
 		};
@@ -101,7 +104,8 @@
 			if( step.type == "arrive" ) waitDuration.arrived( step.timestamp, model.status );
 			if( step.type == "finish" ) waitDuration.finished( step.timestamp );
 			// build pathStep
-			gui.pathStep( step, pathway, (step.type == "arrive"));
+			step.info = bj.clock24(  new Date ( step.timestamp ));
+			gui.pathStep( step, pathway );
 		};
 		
 		/**
@@ -130,7 +134,7 @@
 		const onComplete = () => {
 			addPathStep({
 				shortcode: 'Fin',
-				timestamp: Date.now(),
+				timestamp: Date.now(), 
 				status: 'done',
 				type: 'finish',
 			});
@@ -164,6 +168,8 @@
 			// patient state 
 			model.status = props.status; 
 			model.assigned = props.assigned;
+			model.time = props.time;
+			model.lastname = props.lastname;
 			
 			// build pathway steps
 			props.pathway.forEach( step => addPathStep( step ));
@@ -194,7 +200,7 @@
 		/* 
 		API
 		*/
-		return { onArrived, onDNA, onComplete, render, getAssigned, setAssigned, addPathStep };
+		return { onArrived, onDNA, onComplete, render, getAssigned, setAssigned, getTime, getLastname, addPathStep };
 	};
 	
 	// make component available to Clinic SPA	

@@ -29,7 +29,7 @@
 			// find the next row booked time
 			tableRows.every( tr  => {
 				if( tr.dataset.timestamp > now ){
-					top = ( tr.getBoundingClientRect().top - 4 ) + 'px';
+					top = ( tr.getBoundingClientRect().top - 9 ) + 'px';
 					return false; // found it.
 				} else {
 					return true; // keep looking
@@ -41,8 +41,8 @@
 			div.textContent = bj.clock24( new Date( now ));
 		};
 		
-		// check and update every second.
-		setInterval( updateClock, 1000 );
+		// check and update every half second
+		setInterval( updateClock, 500 );
 	};
 	
 	// make component available to Clinic SPA	
