@@ -173,11 +173,13 @@
 			/*
 			assignment options
 			*/
+			const nsPathStep = bj.namespace('pathstep'); 
+			
 			let row = _row('Assign to');
 			let ul = _ul('btn-list');
 			
 			['unassigned'].concat( doctors ).forEach( code => {
-				ul.append( _li( code, 'assign', clinic.fullShortCode( code ))); 
+				ul.append( _li( code, 'assign', nsPathStep.fullShortCode( code ))); 
 			});
 			
 			row.append( ul );
@@ -191,13 +193,13 @@
 			
 			// people
 			[].concat( doctors, people ).forEach( code => {
-				const fullText = clinic.fullShortCode( code );
+				const fullText = nsPathStep.fullShortCode( code );
 				ul.append( _li( code, 'person', `${code} <small>- ${fullText}</small>`)); 
 			});
 			
 			// processes 
 			process.forEach( code => {
-				const fullText = clinic.fullShortCode( code );
+				const fullText = nsPathStep.fullShortCode( code );
 				ul.append( _li( code, 'process', `${code} <small>- ${fullText}</small>`)); 
 			});
 			

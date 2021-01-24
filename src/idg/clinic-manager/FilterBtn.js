@@ -22,7 +22,8 @@
 		(() => {
 			const name = props.name;
 			// check if it's short code
-			const fullName = clinic.fullShortCode( name ) == name ? false : clinic.fullShortCode( name );
+			const fullShortCode = bj.namespace('pathstep').fullShortCode( name );
+			const fullName = fullShortCode == name ? false : fullShortCode;
 			
 			const div = bj.div('filter');
 			let html = `<div class="name">${name}</div>`;

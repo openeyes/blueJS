@@ -10,16 +10,15 @@
 	if( document.getElementById('js-clinic-manager') === null ) return;
 	
 	/*
-	Fake a loading delay, gives the impression it's doing something important
-	and shows how to do the loader.
+	Fake a small loading delay, gives the impression it's doing something important
+	and demonstrates how to do the loader...
 	*/
-	const loading = bj.div('oe-popup-wrap');
-	loading.innerHTML = '<div class="spinner"></div><div class="spinner-message">Loading...</div>';
-	document.body.appendChild(loading);
+	const loading = bj.div('oe-popup-wrap', '<div class="spinner"></div><div class="spinner-message">Loading...</div>');
+	document.body.append( loading );
 	setTimeout(() => initClinicApp(), 500 );
 	
 	/**
-	* Initalise Clinic Manager SPA
+	* Init the Clinic Manager SPA
 	* Broadcast to all listeners that React is now available to use for building elements
 	*/
 	const initClinicApp = () => {
@@ -27,18 +26,17 @@
 		
 		/*
 		To make the IDG UX prototype easier to test an initial state JSON is provided by PHP.
-		The demo all times are set in RELATIVE minutes, update all JSON times to full timestamps
+		The demo times are set in RELATIVE minutes, which are updated to full timestamps
 		*/
 		const patientsJSON = JSON.parse( phpClinicDemoJSON );
 		patientsJSON.forEach(( patient, i ) => {
-			/*
-			Add extra Patient React info here
-			*/
+			
+			// Unique ID for each patient
 			patient.uid = bj.getToken(); 
 		
 			/*
 			As times are relative to 'now', make sure appointments 
-			always appeared scheduled on whole 5 minutes 
+			always appeared scheduled on whole 5 minutes: 
 			*/
 			const appointment = new Date( Date.now() + ( patient.booked * 60000 )); 
 			const offsetFive = appointment.getMinutes() % 5; 
@@ -65,29 +63,24 @@
 			});
 		});
 		
-		/* 
-		OK, ready to run this app!
-		*/
-		loading.remove();
-		
 		/*
-		Only tableRows in <tbody> need managing, 
-		may as well build the rest of the DOM immediately	
+		Only <tr> in <tbody> need managing, may as well build the rest of the DOM immediately	
 		*/
-		const table = document.createElement('table');
-		table.className = "oe-clinic-list";
+		const table = bj.dom('table', 'oe-clinic-list');
 		table.innerHTML = Mustache.render([
 			'<thead><tr>{{#th}}<th>{{.}}</th>{{/th}}</tr></thead>',
 			'<tbody></tbody>'
 		].join(''), {
 			"th": ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', '', 'Pathway', 'Assigned', 'Mins', '']
 		});
+		
 		document.getElementById('js-clinic-manager').appendChild( table );
 		
-		/*
-		Init the Clinic App	
+		/* 
+		OK, ready to run this app, lets go!
 		*/
-		clinic.app( document.querySelector('table.oe-clinic-list tbody'), patientsJSON );
+		loading.remove();
+		clinic.app( table.querySelector('tbody'), patientsJSON );
 	};
 	
 })( bluejay, bluejay.namespace('clinic')); 

@@ -28,10 +28,8 @@
 	 * @return {Object} (namespace)
 	 */
 	const appNameSpace = ( name ) => {
-		if( !namespace.has(name) ){
-			namespace.set( name, {} );
-		}
-		return namespace.get(name);	
+		if( !namespace.has( name )) namespace.set( name, {} );
+		return namespace.get( name );	
 	};
 	
 	// Extend API

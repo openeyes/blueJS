@@ -18,7 +18,7 @@
 		*/
 		const _events= () => ({
 			userDown(){
-				gui.pathStepPopup.full( this );
+				gui.pathStepPopup.full( this, false );
 			}, 
 			userOver(){
 				gui.pathStepPopup.quick( this );
@@ -40,17 +40,14 @@
 			}
 		});
 		
-		const _setType = () => ({
+		const _setters = () => ({
 			/**
 			* @param {String} type - e.g. arrive, finish, process, person, config
 			*/
 			setType( type ){
 				this.type = type;
 				this.render();
-			}
-		});
-		
-		const _setStatus = () => ({
+			},
 			/**
 			* @param {String} status - next is default
 			*/
@@ -58,11 +55,19 @@
 				this.status = status;
 				this.render();
 			}, 
-			
-			// pathStepPopup actions need to change the status
-			changeStatus( status ){
-				this.setStatus( status );
-				gui.pathStepPopup.full( this );
+			/**
+			* pathStepPopup move pathStep on to next state
+			* @param {String} status - next is default
+			*/
+			nextState(){
+				let newStatus;
+				switch( this.status ){
+					case 'config': newStatus = 'todo'; break;
+					case 'todo': newStatus = 'active'; break;
+					case 'active': newStatus = 'done'; break;
+				}
+				this.setStatus( newStatus );
+				gui.pathStepPopup.full( this, true );
 			}
 		});
 		
@@ -83,7 +88,7 @@
 				// set info text 
 				this.info.textContent = infoText;
 			
-				if( this.status == 'next' ){
+				if( this.status == 'todo' ){
 					this.info.classList.add('invisible'); // need the DOM to keep the step height consistent
 				} else {
 					this.info.classList.remove('invisible');
@@ -109,8 +114,7 @@
 				{ type:null },
 				{ setKey( k ){ this.key = k; }},
 				_render(),
-				_setStatus(),
-				_setType(),
+				_setters(),
 				_addInfo(), 
 				_events(), 
 				_remove()
@@ -137,19 +141,17 @@
 		const addPathStep = ({ shortcode, status, type, info }, pathway ) => {
 			
 			// new DOM element
-			const span = document.createElement('span');
-			span.className = selector;
-			span.innerHTML = `<span class="step">${shortcode}</span>`;
-			
-			// create new PathStep
+			const span = bj.dom('span', selector, `<span class="step">${shortcode}</span>`);
+						
+			// create new PathStep & set up
 			const ps = createPathStep({ shortcode, status, type, span });
-			
-			// setup PathStep
 			ps.setStatus( status );
 			ps.setType( type );
-			
-			// PSD may or may not have extra info
+	
 			if( info ) ps.addInfo( info );
+			
+			// update collection 	
+			ps.setKey( collection.add( ps, span ));
 		
 			// update DOM
 			if( shortcode === "Arr") {
@@ -157,9 +159,6 @@
 			} else {
 				pathway.append( span );
 			}
-		
-			// update collection 	
-			ps.setKey( collection.add( ps, span ));
 		};
 		
 		// API

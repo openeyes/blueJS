@@ -51,7 +51,7 @@
 	const dom = ( domElement, className, html = false ) => {
 		const el = document.createElement( domElement );
 		el.className = className;
-		if( html ) div.innerHTML = html;
+		if( html ) el.innerHTML = html;
 		return el;
 	};
 	

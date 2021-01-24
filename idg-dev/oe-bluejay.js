@@ -433,7 +433,7 @@ const bluejay = (function () {
 	const dom = ( domElement, className, html = false ) => {
 		const el = document.createElement( domElement );
 		el.className = className;
-		if( html ) div.innerHTML = html;
+		if( html ) el.innerHTML = html;
 		return el;
 	};
 	
@@ -718,10 +718,8 @@ const bluejay = (function () {
 	 * @return {Object} (namespace)
 	 */
 	const appNameSpace = ( name ) => {
-		if( !namespace.has(name) ){
-			namespace.set( name, {} );
-		}
-		return namespace.get(name);	
+		if( !namespace.has( name )) namespace.set( name, {} );
+		return namespace.get( name );	
 	};
 	
 	// Extend API
@@ -11250,16 +11248,15 @@ Updated to Vanilla JS for IDG
 	if( document.getElementById('js-clinic-manager') === null ) return;
 	
 	/*
-	Fake a loading delay, gives the impression it's doing something important
-	and shows how to do the loader.
+	Fake a small loading delay, gives the impression it's doing something important
+	and demonstrates how to do the loader...
 	*/
-	const loading = bj.div('oe-popup-wrap');
-	loading.innerHTML = '<div class="spinner"></div><div class="spinner-message">Loading...</div>';
-	document.body.appendChild(loading);
+	const loading = bj.div('oe-popup-wrap', '<div class="spinner"></div><div class="spinner-message">Loading...</div>');
+	document.body.append( loading );
 	setTimeout(() => initClinicApp(), 500 );
 	
 	/**
-	* Initalise Clinic Manager SPA
+	* Init the Clinic Manager SPA
 	* Broadcast to all listeners that React is now available to use for building elements
 	*/
 	const initClinicApp = () => {
@@ -11267,18 +11264,17 @@ Updated to Vanilla JS for IDG
 		
 		/*
 		To make the IDG UX prototype easier to test an initial state JSON is provided by PHP.
-		The demo all times are set in RELATIVE minutes, update all JSON times to full timestamps
+		The demo times are set in RELATIVE minutes, which are updated to full timestamps
 		*/
 		const patientsJSON = JSON.parse( phpClinicDemoJSON );
 		patientsJSON.forEach(( patient, i ) => {
-			/*
-			Add extra Patient React info here
-			*/
+			
+			// Unique ID for each patient
 			patient.uid = bj.getToken(); 
 		
 			/*
 			As times are relative to 'now', make sure appointments 
-			always appeared scheduled on whole 5 minutes 
+			always appeared scheduled on whole 5 minutes: 
 			*/
 			const appointment = new Date( Date.now() + ( patient.booked * 60000 )); 
 			const offsetFive = appointment.getMinutes() % 5; 
@@ -11305,32 +11301,28 @@ Updated to Vanilla JS for IDG
 			});
 		});
 		
-		/* 
-		OK, ready to run this app!
-		*/
-		loading.remove();
-		
 		/*
-		Only tableRows in <tbody> need managing, 
-		may as well build the rest of the DOM immediately	
+		Only <tr> in <tbody> need managing, may as well build the rest of the DOM immediately	
 		*/
-		const table = document.createElement('table');
-		table.className = "oe-clinic-list";
+		const table = bj.dom('table', 'oe-clinic-list');
 		table.innerHTML = Mustache.render([
 			'<thead><tr>{{#th}}<th>{{.}}</th>{{/th}}</tr></thead>',
 			'<tbody></tbody>'
 		].join(''), {
 			"th": ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', '', 'Pathway', 'Assigned', 'Mins', '']
 		});
+		
 		document.getElementById('js-clinic-manager').appendChild( table );
 		
-		/*
-		Init the Clinic App	
+		/* 
+		OK, ready to run this app, lets go!
 		*/
-		clinic.app( document.querySelector('table.oe-clinic-list tbody'), patientsJSON );
+		loading.remove();
+		clinic.app( table.querySelector('tbody'), patientsJSON );
 	};
 	
 })( bluejay, bluejay.namespace('clinic')); 
+
 (function( bj, clinic, gui ){
 
 	'use strict';	
@@ -11369,8 +11361,8 @@ Updated to Vanilla JS for IDG
 			});
 			
 			// update <tbody>
-			tbody.innerHTML = "";
-			tbody.appendChild( fragment );
+			bj.empty( tbody );
+			tbody.append( fragment );
 		};
 		
 		/**
@@ -11401,7 +11393,7 @@ Updated to Vanilla JS for IDG
 					patient.addPathStep({
 						shortcode: code,
 						timestamp: Date.now(),
-						status: 'next',
+						status: 'todo',
 						type,
 					});
 				}
@@ -11501,8 +11493,7 @@ Updated to Vanilla JS for IDG
 			
 			// add in + all adder button to header
 			const li = document.createElement('li');
-			adderAllBtn = document.createElement('button');
-			adderAllBtn.className = "adder open";
+			adderAllBtn = bj.dom('button', "adder open");
 			li.append( adderAllBtn );
 			ul.append( li );
 
@@ -11694,11 +11685,13 @@ Updated to Vanilla JS for IDG
 			/*
 			assignment options
 			*/
+			const nsPathStep = bj.namespace('pathstep'); 
+			
 			let row = _row('Assign to');
 			let ul = _ul('btn-list');
 			
 			['unassigned'].concat( doctors ).forEach( code => {
-				ul.append( _li( code, 'assign', clinic.fullShortCode( code ))); 
+				ul.append( _li( code, 'assign', nsPathStep.fullShortCode( code ))); 
 			});
 			
 			row.append( ul );
@@ -11712,13 +11705,13 @@ Updated to Vanilla JS for IDG
 			
 			// people
 			[].concat( doctors, people ).forEach( code => {
-				const fullText = clinic.fullShortCode( code );
+				const fullText = nsPathStep.fullShortCode( code );
 				ul.append( _li( code, 'person', `${code} <small>- ${fullText}</small>`)); 
 			});
 			
 			// processes 
 			process.forEach( code => {
-				const fullText = clinic.fullShortCode( code );
+				const fullText = nsPathStep.fullShortCode( code );
 				ul.append( _li( code, 'process', `${code} <small>- ${fullText}</small>`)); 
 			});
 			
@@ -11824,7 +11817,8 @@ Updated to Vanilla JS for IDG
 		(() => {
 			const name = props.name;
 			// check if it's short code
-			const fullName = clinic.fullShortCode( name ) == name ? false : clinic.fullShortCode( name );
+			const fullShortCode = bj.namespace('pathstep').fullShortCode( name );
+			const fullName = fullShortCode == name ? false : fullShortCode;
 			
 			const div = bj.div('filter');
 			let html = `<div class="name">${name}</div>`;
@@ -11943,7 +11937,7 @@ Updated to Vanilla JS for IDG
 		* VIEW: patient assignment
 		*/
 		const changeAssignment = () => {
-			const fullText = clinic.fullShortCode( model.assigned );
+			const fullText = bj.namespace('pathstep').fullShortCode( model.assigned );
 			assigned.innerHTML = model.assigned == "unassigned" ?  
 				`<small class="fade">${fullText}</small>` : 
 				`<div>${fullText}</div>`;
@@ -12156,38 +12150,6 @@ Updated to Vanilla JS for IDG
 	clinic.patientQuickView = patientQuickView;		
 
 })( bluejay, bluejay.namespace('clinic')); 
-(function( bj ){
-
-	'use strict';	
-	
-
-	bj.namespace('clinic').fullShortCode = ( shortcode ) => {
-		let full = shortcode; // "Nurse" doesn't need expanding on
-		switch( shortcode ){
-			case 'Arr': full = "Arrived"; break;
-			case 'Fin': full = "Finish"; break;
-			case "DNA" : full = "Did Not Attend"; break;
-			
-			case "unassigned" : full = "Not assigned"; break;
-			
-			case "MM" : full = "Mr Michael Morgan"; break;
-			case "AB" : full = "Dr Amit Baum"; break;
-			case "AG" : full = "Dr Angela Glasby"; break;
-			case "RB" : full = "Dr Robin Baum"; break;
-			case "CW" : full = "Dr Coral Woodhouse"; break; 
-			
-			case "Img" : full = "Imaging"; break;
-			case "VisAcu" : full = "Visual Acuity"; break;
-			case "Orth" : full = "Orthoptics"; break;
-			case "Fields" : full = "Visual Fields"; break;
-			case "Ref" : full = "Refraction"; break;
-			
-		}
-		return full; 
-	}; 
-	
-		
-})( bluejay ); 
 (function( bj, clinic ){
 
 	'use strict';	
@@ -12427,6 +12389,44 @@ Updated to Vanilla JS for IDG
 		
 
 })( bluejay ); 
+(function( bj ){
+
+	'use strict';	
+	
+	/*
+	Centeralise, in the "pathstep" namespace, a method to get the 
+	full text for shortcodes...	
+	*/
+	bj.namespace('pathstep').fullShortCode = ( shortcode ) => {
+		
+		let full = shortcode; // e.g "Nurse" doesn't need expanding on
+	
+		switch( shortcode ){
+			case 'Arr': full = "Arrived"; break;
+			case 'Fin': full = "Finish"; break;
+			case "DNA" : full = "Did Not Attend"; break;
+			case "unassigned" : full = "Not assigned"; break;
+
+			case "MM" : full = "Mr Michael Morgan"; break;
+			case "AB" : full = "Dr Amit Baum"; break;
+			case "AG" : full = "Dr Angela Glasby"; break;
+			case "RB" : full = "Dr Robin Baum"; break;
+			case "CW" : full = "Dr Coral Woodhouse"; break; 
+			
+			case "Img" : full = "Imaging"; break;
+			case "VisAcu" : full = "Visual Acuity"; break;
+			case "Orth" : full = "Orthoptics"; break;
+			case "Fields" : full = "Visual Fields"; break;
+			case "Ref" : full = "Refraction"; break;
+			
+			case "PSD" : full = "Patient Specific Directive"; break;
+			case "PGD" : full = "Patient Group Directive"; break;
+		}
+		
+		return full; 
+	}; 
+		
+})( bluejay ); 
 (function( bj, gui ){
 
 	'use strict';	
@@ -12447,7 +12447,7 @@ Updated to Vanilla JS for IDG
 		*/
 		const _events= () => ({
 			userDown(){
-				gui.pathStepPopup.full( this );
+				gui.pathStepPopup.full( this, false );
 			}, 
 			userOver(){
 				gui.pathStepPopup.quick( this );
@@ -12469,17 +12469,14 @@ Updated to Vanilla JS for IDG
 			}
 		});
 		
-		const _setType = () => ({
+		const _setters = () => ({
 			/**
 			* @param {String} type - e.g. arrive, finish, process, person, config
 			*/
 			setType( type ){
 				this.type = type;
 				this.render();
-			}
-		});
-		
-		const _setStatus = () => ({
+			},
 			/**
 			* @param {String} status - next is default
 			*/
@@ -12487,11 +12484,19 @@ Updated to Vanilla JS for IDG
 				this.status = status;
 				this.render();
 			}, 
-			
-			// pathStepPopup actions need to change the status
-			changeStatus( status ){
-				this.setStatus( status );
-				gui.pathStepPopup.full( this );
+			/**
+			* pathStepPopup move pathStep on to next state
+			* @param {String} status - next is default
+			*/
+			nextState(){
+				let newStatus;
+				switch( this.status ){
+					case 'config': newStatus = 'todo'; break;
+					case 'todo': newStatus = 'active'; break;
+					case 'active': newStatus = 'done'; break;
+				}
+				this.setStatus( newStatus );
+				gui.pathStepPopup.full( this, true );
 			}
 		});
 		
@@ -12512,7 +12517,7 @@ Updated to Vanilla JS for IDG
 				// set info text 
 				this.info.textContent = infoText;
 			
-				if( this.status == 'next' ){
+				if( this.status == 'todo' ){
 					this.info.classList.add('invisible'); // need the DOM to keep the step height consistent
 				} else {
 					this.info.classList.remove('invisible');
@@ -12538,8 +12543,7 @@ Updated to Vanilla JS for IDG
 				{ type:null },
 				{ setKey( k ){ this.key = k; }},
 				_render(),
-				_setStatus(),
-				_setType(),
+				_setters(),
 				_addInfo(), 
 				_events(), 
 				_remove()
@@ -12566,19 +12570,17 @@ Updated to Vanilla JS for IDG
 		const addPathStep = ({ shortcode, status, type, info }, pathway ) => {
 			
 			// new DOM element
-			const span = document.createElement('span');
-			span.className = selector;
-			span.innerHTML = `<span class="step">${shortcode}</span>`;
-			
-			// create new PathStep
+			const span = bj.dom('span', selector, `<span class="step">${shortcode}</span>`);
+						
+			// create new PathStep & set up
 			const ps = createPathStep({ shortcode, status, type, span });
-			
-			// setup PathStep
 			ps.setStatus( status );
 			ps.setType( type );
-			
-			// PSD may or may not have extra info
+	
 			if( info ) ps.addInfo( info );
+			
+			// update collection 	
+			ps.setKey( collection.add( ps, span ));
 		
 			// update DOM
 			if( shortcode === "Arr") {
@@ -12586,9 +12588,6 @@ Updated to Vanilla JS for IDG
 			} else {
 				pathway.append( span );
 			}
-		
-			// update collection 	
-			ps.setKey( collection.add( ps, span ));
 		};
 		
 		// API
@@ -12614,19 +12613,18 @@ Updated to Vanilla JS for IDG
 		let removeTimerID = null; 
 		let lockedOpen = false; 
 		let pathStep = null;
+		let pathStepKey = null; // see loadContent
 
 		/**
-		* close/expand icon
+		* close/expand icon (provide a user hint that it can be expanded )
 		* @param {Boolean} full (view) 
 		* @returns {Element}
 		*/
 		const closeBtn = ( full ) => {
 			const div = bj.div('close-icon-btn');
-			if( full ){
-				div.innerHTML = '<i class="oe-i remove-circle medium-icon"></i>';
-			} else {
-				div.innerHTML = '<i class="oe-i expand small-icon"></i>';
-			}
+			div.innerHTML = full ? 
+				'<i class="oe-i remove-circle medium-icon"></i>' :
+				'<i class="oe-i expand small-icon"></i>';
 			return div;
 		};
 		
@@ -12637,7 +12635,7 @@ Updated to Vanilla JS for IDG
 		*/
 		const setTitle = ( shortcode ) => {
 			const h3 = bj.dom('h3', 'title');
-			h3.textContent = clinic.fullShortCode( shortcode );
+			h3.textContent = bj.namespace('pathstep').fullShortCode( shortcode );
 			return h3; 
 		};
 		
@@ -12646,10 +12644,43 @@ Updated to Vanilla JS for IDG
 		* @param {String} status 
 		* @returns {Element}
 		*/
-		const setStatus = ( status ) => {
-			const div = bj.div('step-status');
-			div.className = `step-status ${status}`;
-			div.textContent = status;
+		const setStatus = ( status, type ) => {
+			const div = bj.div(`step-status ${status}`);
+			switch( status ){
+				case 'todo': div.textContent = "Waiting to be done"; break; 
+				case 'active': div.textContent = "Currently active"; break; 
+				case 'config': div.textContent = "Requires configuration"; break; 
+				case 'done': div.textContent = "Completed"; break; 
+				default: div.textContent = status;
+			}
+			
+			// special types
+			if( type == "arrive") div.textContent = 'Arrived';
+			if( type == "finish") div.textContent = 'Patient has left';
+			
+			return div;
+		};
+		
+		/**
+		* Load content, loading this from the server
+		* @params {String} shortcode - PathStep shortcode e.g. "Arr", etc
+		* @params {String} status - 'todo', 'active', 'etc'...
+		* @params {Boolean} full - full view (or the quickview)
+		* @returns {Element}
+		*/
+		const loadContent = ( shortcode, status, full ) => {
+			const div = bj.div('step-content');
+			/*
+			Async.
+			Use the pathStepKey for the token check
+			*/
+			const phpCode = `${shortcode}-${status}`.toLowerCase();
+			bj.xhr(`/idg-php/load/pathstep/popup-content.php?full=${full}&code=${phpCode}`, pathStepKey )
+				.then( xreq => {
+					if( pathStepKey != xreq.token ) return;
+					div.innerHTML = xreq.html;
+				})
+				.catch( e => console.log('PHP failed to load', e ));
 			return div;
 		};
 		
@@ -12665,9 +12696,9 @@ Updated to Vanilla JS for IDG
 			let domString = [];
 			
 			switch( status ){
-				case 'next': domString = [ btn('Activate', 'green', 'active'), btn('Remove', 'red', 'remove')];
+				case 'todo': domString = [ btn('Activate', 'green', 'next'), btn('Remove', 'red', 'remove')];
 				break;
-				case 'active': domString = [ btn('Complete', 'green', 'complete'), btn('Cancel', 'red', 'remove')];
+				case 'active': domString = [ btn('Complete', 'green', 'next'), btn('Cancel', 'red', 'remove')];
 				break;
 			}
 			
@@ -12688,35 +12719,37 @@ Updated to Vanilla JS for IDG
 			
 			// clear all children and reset the CSS
 			bj.empty( popup );
-			
 			popup.classList.remove('arrow-t', 'arrow-b');
 			
-			// build Nodes
+			// build node tree:
 			popup.append( closeBtn( full ));
 			popup.append( setTitle( shortcode ));
+			popup.append( loadContent( shortcode, status, full ));
 			
+			// actions can only be used if the popup is locked open (full) state
 			if( full ) popup.append( userActions( status ));
-			popup.append( setStatus( status ));
-
+			
+			popup.append( setStatus( status, type ));
+			
 			/*
-			Position popup next to PathStep (span)
+			Position popup to PathStep (span)
+			Anchor popup to the right side of the step
+			Work out vertical orientation, if below half way down, flip it.
 			*/
-			const rect = span.getBoundingClientRect();
-			
-			// anchor popup to the right side of the step
-			popup.style.left = ( rect.right - 360 ) + 'px'; 
-			
-			// work out vertical orientation, below half way down, flip.
 			const winH = bj.getWinH();
-			const verticalGap = 2; 
+			const cssWidth = 380; // match CSS width
+			const rect = span.getBoundingClientRect();
+			const slightGap = 2; // so it doesn't get too tight
+			
+			popup.style.left = ( rect.right - cssWidth ) + 'px'; 
 			
 			if( rect.bottom < (winH * 0.7)){
-				popup.style.top = rect.bottom + verticalGap + 'px';
+				popup.style.top = rect.bottom + slightGap + 'px';
 				popup.style.bottom = 'auto';
 				popup.classList.add('arrow-t');
 			} else {
 				popup.style.top = 'auto';
-				popup.style.bottom = ( winH - rect.top ) + verticalGap + 'px';
+				popup.style.bottom = ( winH - rect.top ) + slightGap + 'px';
 				popup.classList.add('arrow-b');
 			}
 			
@@ -12732,35 +12765,23 @@ Updated to Vanilla JS for IDG
 			pathStep = null;
 			lockedOpen = false;
 			window.removeEventListener('scroll', removeReset, { capture:true, once:true });
-			// delay the removal to stop the flicker
+			
+			// There is a flicker if you 'scrub' along a pathway, delay removal to stop this
 			removeTimerID = setTimeout(() => popup.remove(), 50 );
 		};
-		
-		/*
-		Event delegation
-		*/
-		bj.userDown('.oe-pathstep-popup .close-icon-btn .oe-i', removeReset );
-		bj.userDown('.oe-pathstep-popup .js-idg-ps-popup-btn', ( ev ) => {
-			const userRequest = ev.target.dataset.action;
-			console.log('btn', userRequest);
-			switch( userRequest ){
-				case 'remove':
-					pathStep.remove();
-					removeReset();
-				break;
-			}
 
-		});
-	
 		/**
 		* User Clicks (click on same step to close)
-		* @params {PathStep} ps - 
+		* @params {PathStep} ps 
+		* @params {Boolean} userChangedStatus:
+		* Use clicks on a button, in this popup, pathstep needs to update state and re-render!
 		*/
-		const full = ( ps ) => {
-			if( ps === pathStep ){
+		const full = ( ps, userChangedStatus = false ) => {
+			if( ps === pathStep && userChangedStatus == false ){
 				removeReset();
 			} else {
 				pathStep = ps;
+				pathStepKey = ps.key; 
 				lockedOpen = true;
 				render(
 					ps.shortcode,  
@@ -12769,16 +12790,18 @@ Updated to Vanilla JS for IDG
 					ps.span, 
 					true 
 				);
+				
 				window.addEventListener('scroll', removeReset, { capture:true, once:true });
 			}
 		};
 		
 		/**
 		* User Over - Quickview
-		* @params {PathStep} - deconstruct Object
+		* @params {PathStep} ps
 		*/
-		const quick = ({ shortcode, status, type, span }) => {
+		const quick = ({ key, shortcode, status, type, span }) => {
 			if( lockedOpen ) return; 
+			pathStepKey = key; 
 			render( shortcode, status, type, span, false );
 		};
 		
@@ -12790,6 +12813,24 @@ Updated to Vanilla JS for IDG
 			if( lockedOpen ) return; 
 			removeReset();
 		};
+		
+		/*
+		Event delegation
+		*/
+		// close icon btn in popup
+		bj.userDown('.oe-pathstep-popup .close-icon-btn .oe-i', removeReset );
+		
+		// btn actions within popup. these are generic on IDG for demos
+		bj.userDown('.oe-pathstep-popup .js-idg-ps-popup-btn', ( ev ) => {
+			const userRequest = ev.target.dataset.action;
+			if( userRequest == 'remove'){
+				pathStep.remove();
+				removeReset();
+			}
+			if( userRequest == 'next'){
+				pathStep.nextState();
+			}
+		});
 	    
 	    // API 
 	    return { full, quick, hide, remove:removeReset };

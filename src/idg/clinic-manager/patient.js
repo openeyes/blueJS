@@ -73,7 +73,7 @@
 		* VIEW: patient assignment
 		*/
 		const changeAssignment = () => {
-			const fullText = clinic.fullShortCode( model.assigned );
+			const fullText = bj.namespace('pathstep').fullShortCode( model.assigned );
 			assigned.innerHTML = model.assigned == "unassigned" ?  
 				`<small class="fade">${fullText}</small>` : 
 				`<div>${fullText}</div>`;

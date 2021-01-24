@@ -433,7 +433,7 @@ const bluejay = (function () {
 	const dom = ( domElement, className, html = false ) => {
 		const el = document.createElement( domElement );
 		el.className = className;
-		if( html ) div.innerHTML = html;
+		if( html ) el.innerHTML = html;
 		return el;
 	};
 	
@@ -718,10 +718,8 @@ const bluejay = (function () {
 	 * @return {Object} (namespace)
 	 */
 	const appNameSpace = ( name ) => {
-		if( !namespace.has(name) ){
-			namespace.set( name, {} );
-		}
-		return namespace.get(name);	
+		if( !namespace.has( name )) namespace.set( name, {} );
+		return namespace.get( name );	
 	};
 	
 	// Extend API

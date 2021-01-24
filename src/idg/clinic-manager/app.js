@@ -36,8 +36,8 @@
 			});
 			
 			// update <tbody>
-			tbody.innerHTML = "";
-			tbody.appendChild( fragment );
+			bj.empty( tbody );
+			tbody.append( fragment );
 		};
 		
 		/**
@@ -68,7 +68,7 @@
 					patient.addPathStep({
 						shortcode: code,
 						timestamp: Date.now(),
-						status: 'next',
+						status: 'todo',
 						type,
 					});
 				}
@@ -168,8 +168,7 @@
 			
 			// add in + all adder button to header
 			const li = document.createElement('li');
-			adderAllBtn = document.createElement('button');
-			adderAllBtn.className = "adder open";
+			adderAllBtn = bj.dom('button', "adder open");
 			li.append( adderAllBtn );
 			ul.append( li );
 
