@@ -120,7 +120,7 @@
 		});
 		
 		//  + icon for ALL patients in header
-		bj.userDown('.oe-clinic-filter button.adder', ( ev ) => {
+		bj.userDown('.oe-clinic-filter button.add-to-all', ( ev ) => {
 			if( adderAllBtn.classList.contains('open')){
 				adderAllBtn.classList.replace('open', 'close');
 				adder.showAll();
@@ -168,7 +168,7 @@
 			
 			// add in + all adder button to header
 			const li = document.createElement('li');
-			adderAllBtn = bj.dom('button', "adder open");
+			adderAllBtn = bj.dom('button', "add-to-all open");
 			li.append( adderAllBtn );
 			ul.append( li );
 

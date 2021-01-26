@@ -104,7 +104,7 @@
 			if( step.type == "arrive" ) waitDuration.arrived( step.timestamp, model.status );
 			if( step.type == "finish" ) waitDuration.finished( step.timestamp );
 			// build pathStep
-			step.info = bj.clock24(  new Date ( step.timestamp ));
+			step.info = "clock";
 			gui.pathStep( step, pathway );
 		};
 		

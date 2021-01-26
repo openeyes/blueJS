@@ -96,7 +96,9 @@
 			let domString = [];
 			
 			switch( status ){
-				case 'todo': domString = [ btn('Activate', 'green', 'next'), btn('Remove', 'red', 'remove')];
+				case 'config': domString = [ btn('Configure', 'blue', 'next'), btn('Remove', 'red', 'remove')];
+				break;
+				case 'todo': domString = [ btn('Activate', 'blue', 'next'), btn('Remove', 'red', 'remove')];
 				break;
 				case 'active': domString = [ btn('Complete', 'green', 'next'), btn('Cancel', 'red', 'remove')];
 				break;

@@ -37,6 +37,7 @@
 				css.push( this.status );
 				css.push( this.type );
 				this.span.className = css.join(' ');
+				this.updateInfo();
 			}
 		});
 		
@@ -72,26 +73,34 @@
 		});
 		
 		
-		const _addInfo = () => ({
+		const _setInfo = () => ({
 			/** 
-			* Not all steps have info (e.g. PSDs), but generally it's a time
+			* @params {String} - custom string or "clock" or false,
+			* If it's false don't added it to the DOM as it increase height
+			* "clock" - show a clock for each state change
 			*/
-			addInfo( infoText ){
-				// might not have the required DOM
-				if( this.info === undefined ){
-					const info = document.createElement('span');
-					info.className = "info";
-					this.info = info;
-					this.span.append( this.info );
-				}
+			setInfo( info ){
+				this.info = info;
 				
-				// set info text 
-				this.info.textContent = infoText;
+				if( this.info ){
+					const el = bj.dom('span','info');
+					this.span.append( el );
+					this.iSpan = el;
+					this.render();
+				} 
+			}, 
 			
-				if( this.status == 'todo' ){
-					this.info.classList.add('invisible'); // need the DOM to keep the step height consistent
+			updateInfo(){
+				if( !this.info  ) return; 
+				
+				this.iSpan.textContent = this.info === "clock" ? 
+					bj.clock24(  new Date ( Date.now() )):
+					this.info;
+				
+				if( this.status == 'todo' || this.status == 'config' ){
+					this.iSpan.classList.add('invisible'); // need the DOM to keep the step height consistent
 				} else {
-					this.info.classList.remove('invisible');
+					this.iSpan.classList.remove('invisible');
 				}
 			}
 		});
@@ -115,7 +124,7 @@
 				{ setKey( k ){ this.key = k; }},
 				_render(),
 				_setters(),
-				_addInfo(), 
+				_setInfo(), 
 				_events(), 
 				_remove()
 			);
@@ -144,11 +153,16 @@
 			const span = bj.dom('span', selector, `<span class="step">${shortcode}</span>`);
 						
 			// create new PathStep & set up
-			const ps = createPathStep({ shortcode, status, type, span });
+			const ps = createPathStep({ shortcode, span });
 			ps.setStatus( status );
 			ps.setType( type );
-	
-			if( info ) ps.addInfo( info );
+			
+			/*
+			Adding info to a pathstep will increase the button height.
+			For PSDs and for pathSteps in Orders elements the info isn't needed and is "false"
+			It can be a custom String, but mostly it's shows the time ("clock")
+			*/
+			ps.setInfo( info );
 			
 			// update collection 	
 			ps.setKey( collection.add( ps, span ));

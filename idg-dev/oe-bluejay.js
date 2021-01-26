@@ -10047,59 +10047,6 @@ Updated to Vanilla JS for IDG
 	bj.userDown('.js-event-date-change > .rewind', changeEventDate ); 	
 			
 })( bluejay ); 
-(function( bj ) {
-
-	'use strict';
-	
-	/*
-	IDG DEMO of adding pathSteps to pathway in Orders element
-	*/
-	
-	const pathwayDemo = document.getElementById('js-idg-demo-orders-pathway');
-	if( pathwayDemo === null) return;
-	
-	
-	const addPathStep = ( ev ) => {
-		const stepName = ev.target.dataset.idgDemo;
-		const span = document.createElement('span');
-		span.className = "oe-pathstep-btn process";
-		span.innerHTML = `<span class="step">${ stepName }</span><span class="time invisible">Todo</span>`;
-		pathwayDemo.appendChild( span );
-	};
-	
-	const showPopup = ( ev ) => {
-		
-		// position popup on button
-		const rect = ev.target.getBoundingClientRect();
-
-		const template = [
-			'<div class="close-icon-btn"></div>',	
-			'{{#pathSteps}}',
-			'<span class="oe-pathstep-btn no-popup process" data-idg-demo="{{.}}">',
-			'<span class="step">{{.}}</span><span class="time invisible">Todo</span>',
-			'</span>',
-			'{{/pathSteps}}',
-		].join('');
-		
-		const div = bj.div('oe-pathstep-adder');
-		div.innerHTML = Mustache.render( template, {
-			pathSteps: ['Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort(), // copied from Clinic Manager
-		});
-		
-		div.style.bottom = ( bj.getWinH() - rect.bottom ) + 'px';
-		div.style.right = ( bj.getWinW() - rect.right ) + 'px';
-		
-		document.body.appendChild( div );
-		
-		// close icon
-		div.querySelector('.close-icon-btn').addEventListener( 'mousedown', () => div.remove(), { once: true });
-	};
-	
-		
-	bj.userDown('button#js-idg-demo-orders-btn-adder', showPopup );
-	bj.userDown('.oe-pathstep-adder > .oe-pathstep-btn', addPathStep );
-			
-})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';
@@ -11445,7 +11392,7 @@ Updated to Vanilla JS for IDG
 		});
 		
 		//  + icon for ALL patients in header
-		bj.userDown('.oe-clinic-filter button.adder', ( ev ) => {
+		bj.userDown('.oe-clinic-filter button.add-to-all', ( ev ) => {
 			if( adderAllBtn.classList.contains('open')){
 				adderAllBtn.classList.replace('open', 'close');
 				adder.showAll();
@@ -11493,7 +11440,7 @@ Updated to Vanilla JS for IDG
 			
 			// add in + all adder button to header
 			const li = document.createElement('li');
-			adderAllBtn = bj.dom('button', "adder open");
+			adderAllBtn = bj.dom('button', "add-to-all open");
 			li.append( adderAllBtn );
 			ul.append( li );
 
@@ -11968,7 +11915,7 @@ Updated to Vanilla JS for IDG
 			if( step.type == "arrive" ) waitDuration.arrived( step.timestamp, model.status );
 			if( step.type == "finish" ) waitDuration.finished( step.timestamp );
 			// build pathStep
-			step.info = bj.clock24(  new Date ( step.timestamp ));
+			step.info = "clock";
 			gui.pathStep( step, pathway );
 		};
 		
@@ -12466,6 +12413,7 @@ Updated to Vanilla JS for IDG
 				css.push( this.status );
 				css.push( this.type );
 				this.span.className = css.join(' ');
+				this.updateInfo();
 			}
 		});
 		
@@ -12501,26 +12449,34 @@ Updated to Vanilla JS for IDG
 		});
 		
 		
-		const _addInfo = () => ({
+		const _setInfo = () => ({
 			/** 
-			* Not all steps have info (e.g. PSDs), but generally it's a time
+			* @params {String} - custom string or "clock" or false,
+			* If it's false don't added it to the DOM as it increase height
+			* "clock" - show a clock for each state change
 			*/
-			addInfo( infoText ){
-				// might not have the required DOM
-				if( this.info === undefined ){
-					const info = document.createElement('span');
-					info.className = "info";
-					this.info = info;
-					this.span.append( this.info );
-				}
+			setInfo( info ){
+				this.info = info;
 				
-				// set info text 
-				this.info.textContent = infoText;
+				if( this.info ){
+					const el = bj.dom('span','info');
+					this.span.append( el );
+					this.iSpan = el;
+					this.render();
+				} 
+			}, 
 			
-				if( this.status == 'todo' ){
-					this.info.classList.add('invisible'); // need the DOM to keep the step height consistent
+			updateInfo(){
+				if( !this.info  ) return; 
+				
+				this.iSpan.textContent = this.info === "clock" ? 
+					bj.clock24(  new Date ( Date.now() )):
+					this.info;
+				
+				if( this.status == 'todo' || this.status == 'config' ){
+					this.iSpan.classList.add('invisible'); // need the DOM to keep the step height consistent
 				} else {
-					this.info.classList.remove('invisible');
+					this.iSpan.classList.remove('invisible');
 				}
 			}
 		});
@@ -12544,7 +12500,7 @@ Updated to Vanilla JS for IDG
 				{ setKey( k ){ this.key = k; }},
 				_render(),
 				_setters(),
-				_addInfo(), 
+				_setInfo(), 
 				_events(), 
 				_remove()
 			);
@@ -12573,11 +12529,16 @@ Updated to Vanilla JS for IDG
 			const span = bj.dom('span', selector, `<span class="step">${shortcode}</span>`);
 						
 			// create new PathStep & set up
-			const ps = createPathStep({ shortcode, status, type, span });
+			const ps = createPathStep({ shortcode, span });
 			ps.setStatus( status );
 			ps.setType( type );
-	
-			if( info ) ps.addInfo( info );
+			
+			/*
+			Adding info to a pathstep will increase the button height.
+			For PSDs and for pathSteps in Orders elements the info isn't needed and is "false"
+			It can be a custom String, but mostly it's shows the time ("clock")
+			*/
+			ps.setInfo( info );
 			
 			// update collection 	
 			ps.setKey( collection.add( ps, span ));
@@ -12696,7 +12657,9 @@ Updated to Vanilla JS for IDG
 			let domString = [];
 			
 			switch( status ){
-				case 'todo': domString = [ btn('Activate', 'green', 'next'), btn('Remove', 'red', 'remove')];
+				case 'config': domString = [ btn('Configure', 'blue', 'next'), btn('Remove', 'red', 'remove')];
+				break;
+				case 'todo': domString = [ btn('Activate', 'blue', 'next'), btn('Remove', 'red', 'remove')];
 				break;
 				case 'active': domString = [ btn('Complete', 'green', 'next'), btn('Cancel', 'red', 'remove')];
 				break;
