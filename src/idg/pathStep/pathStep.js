@@ -94,7 +94,7 @@
 				if( !this.info  ) return; 
 				
 				this.iSpan.textContent = this.info === "clock" ? 
-					bj.clock24(  new Date ( Date.now() )):
+					bj.clock24( new Date( Date.now())):
 					this.info;
 				
 				if( this.status == 'todo' || this.status == 'config' ){

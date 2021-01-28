@@ -11,25 +11,31 @@
 	*/
 	const mapElems = [
 		{ // Nav, shortcuts
-			btn: '#js-nav-shortcuts-btn',
-			wrapper: '#js-nav-shortcuts',
+			btn: 'js-nav-shortcuts-btn',
+			wrapper: 'js-nav-shortcuts',
 			contentID: 'js-nav-shortcuts-subnav',
 		}, 
 		{ // Nav, (was worklist button)
-			btn: '#js-nav-patientgroups-btn',
-			wrapper: '#js-patientgroups-panel-wrapper',
+			btn: 'js-nav-patientgroups-btn',
+			wrapper: 'js-patientgroups-panel-wrapper',
 			contentID: 'js-patientgroups-panel',
 		},
 		{ // Print Event options
-			btn: '#js-header-print-dropdown-btn',
-			wrapper: '#js-header-print-dropdown',
+			btn: 'js-header-print-dropdown-btn',
+			wrapper: 'js-header-print-dropdown',
 			contentID: 'js-header-print-subnav',
 		},
 		{ // Fancy new Event sidebar filter (IDG)
-			btn: '#js-sidebar-filter-btn',
-			wrapper: '#js-sidebar-filter',
+			btn: 'js-sidebar-filter-btn',
+			wrapper: 'js-sidebar-filter',
 			contentID: 'js-sidebar-filter-options',
 		},
+		// Sync, in header (Worklist)
+		{
+			btn: 'js-sync-btn',
+			wrapper: 'js-sync-data',
+			contentID: 'js-sync-options',
+		}
 	];
 
 	
@@ -55,7 +61,7 @@
 			if( this.open ) return;
 			this.open = true;
 			this.btn.classList.add( cssActive );
-			bj.show(this.content, 'block');
+			bj.show( this.content, 'block');
 		}	
 	});
 	
@@ -85,7 +91,7 @@
 	*/
 	mapElems.forEach(( item ) => {
 		
-		const btn = document.querySelector( item.btn );
+		const btn = document.getElementById( item.btn );
 		
 		if( btn !== null ){
 
@@ -93,11 +99,11 @@
 				btn: btn,
 				content: document.getElementById( item.contentID ),
 				open: false, 
-			});	
-			
-			bj.userDown( item.btn, () => obj.change());			
-			bj.userEnter( item.btn, () => obj.show());
-			bj.userLeave( item.wrapper, () => obj.hide());
+			});
+		
+			bj.userDown(`#${item.btn}`, () => obj.change());			
+			bj.userEnter(`#${item.btn}`, () => obj.show());
+			bj.userLeave(`#${item.wrapper}`, () => obj.hide());
 		}	
 	});
 		

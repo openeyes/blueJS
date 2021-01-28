@@ -67,7 +67,7 @@
 				} else {
 					patient.addPathStep({
 						shortcode: code,
-						timestamp: Date.now(),
+						timestamp: false,
 						status: 'todo',
 						type,
 					});

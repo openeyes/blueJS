@@ -6845,269 +6845,6 @@ Updated to Vanilla JS for IDG
 	uiApp.userDown('.js-idg-demo-popup-json', showPopup);
 			
 })(bluejay); 
-(function( bj ){
-
-	'use strict';	
-	
-	bj.addModule('pathStepsPopup');	
-	
-	return; 
-	
-	const selector = '.oe-pathstep-btn:not(.no-popup)';
-	
-	let activePathBtn = false;
-	
-	/**
-	Build DOM popup template and insert in DOM.
-	2 view modes: quick and full
-	*/
-	const div = document.createElement('div');
-	div.style.display = "none";
-	div.className = "oe-pathstep-popup";
-	div.innerHTML = [	'<div class="close-icon-btn"><i class="oe-i remove-circle medium"></i></div>',
-						'<h3 class="title"></h3>',
-						'<div class="popup-overflow"><div class="data-group">',
-						'<table class="data-table"><tbody>',
-						'</tbody></table>',
-						'</div></div>',
-						'<div class="step-actions">',
-						'<button class="green hint">Administer</button><button class="red hint">Remove PSD</button>',
-						'</div>',
-						'<div class="step-status"></div>',].join('');
-	// add to DOM					
-	document.body.appendChild( div );
-	
-	/**
-	Set up references to the required DOM elements
-	*/
-	const popup = {
-		title: div.querySelector('.title'),
-		closeBtn: div.querySelector('.close-icon-btn .oe-i'),
-		status: div.querySelector('.step-status'),
-		tbody: div.querySelector('.data-table tbody'),
-		actions: div.querySelector('.step-actions'),
-		detailRows: null,
-		locked:false, // user clicks to lock open (or touch)
-	};
-	
-	/**
-	* EyeLat icons DOM
-	* @param {String} eye - R, L or B
-	* @returns {DOMString}
-	*/
-	const eyeLatIcons = (eye) => {
-		let r,l = "NA";
-		if(eye == "R" || eye == "B") r = "R";
-		if(eye == "L" || eye == "B") l = "L";
-		return `<span class="oe-eye-lat-icons"><i class="oe-i laterality ${r} small"></i><i class="oe-i laterality ${l} small"></i></span>`;
-	};
-	
-	/**
-	* OE icon DOM
-	* @param {String} i - icon type
-	* @returns {DOMString}
-	*/
-	const icon = i => `<i class="oe-i ${i} small"></i>`;
-	
-	/**
-	* Set popup status message and colour
-	* @param {String} status - "done", etc
-	*/
-	const setStatus = (state) => {
-		const css = 'step-status';
-		let msg = 'No status set';
-		let color = "default";
-		
-		switch( state ){
-			case "done":
-				msg = 'PSD: Completed at 11:40';
-				color = 'green';
-			break;
-			case "todo":
-				msg = 'PSD: Waiting to start';
-				color = 'default';
-			break;
-			case "progress":
-				msg = 'PSD: In progress';
-				color = 'orange';		
-			break;
-			case "problem":
-				msg = 'Issue with PSD';
-				color = 'red';
-			break;
-		}
-		
-		popup.status.textContent = msg;
-		popup.status.className = [css,color].join(' ');
-	};
-	
-	/**
-	* create <td>'s for Directive <tr>
-	* @param {Array} - JSON data array
-	* @returns {Array} - DOMStrings to insert
-	*/
-	const directiveDOM = (arr) => {
-		return [ eyeLatIcons(arr[0]), arr[1], arr[2] ];
-	};
-	
-	/**
-	* create <td>'s for Step <tr>
-	* @param {Array} - JSON data array
-	* @returns {Array} - DOMStrings to insert
-	*/
-	const stepDOM = (arr) => {
-		// waiting only has 1... add the rest
-		if(arr.length == 1) arr = arr.concat(['<em class="fade">to do</em>','']);
-		return [ icon(arr[0]), arr[1], arr[2] ];
-	};
-
-	/**
-	* Build TR for PSD table
-	* @param {String} i - icon type
-	* @param {DocFragment} fragment - append to this
-	* @param {String} trClass - class to add to the <tr>
-	* @returns {DOMString}
-	*/
-	const buildTableRow = (data, fragment, trClass=false) => {
-		let tr = document.createElement('tr');
-		if(trClass) tr.className = trClass;
-		
-		data.forEach((item) => {
-			let td = document.createElement('td');
-			td.innerHTML = item;
-			tr.appendChild(td);	
-		});
-		
-		fragment.appendChild(tr);
-	};
-	
-	
-	/**
-	* build and insert PSD table data into popup
-	* @param {Array} - JSON data
-	*/
-	const buildPSDTable = (psd) => {
-		let fragment = document.createDocumentFragment();
-		/*
-		A PSD could have many 'parts'
-		each part has a Directive and then Steps to administer the Directive
-		*/
-		psd.forEach((part) => {
-			// PSD Directive 
-			buildTableRow( directiveDOM(part.directive), fragment );
-			
-			// Directive could have 1 or n step states to complete
-			// this shows what steps have been "administered"!
-			part.steps.forEach(step => {
-				buildTableRow( stepDOM(step), fragment, 'administer-details');
-			});
-		});
-		
-		// clear previous data and add new data
-		popup.tbody.innerHTML = "";		
-		popup.tbody.appendChild(fragment);
-		
-		// store a reference to the all the 'administered' <tr> data
-		popup.detailRows = bj.nodeArray(div.querySelectorAll('.administer-details'));	
-	};
-	
-	/**
-	* update popup DOM
-	*/
-	const updatePopup = () => { 
-		
-		let json = JSON.parse(activePathBtn.dataset.step);
-		popup.title.textContent = json.title;
-		buildPSDTable(json.psd);
-		setStatus(json.status);
-	};
-	
-	/**
-	* Change popup display for Quick or Full states
-	* @param {Boolean} full? 
-	*/
-	const fullDisplay = (full) => {
-		let block = full ? 'block' : 'none';
-		let tableRow = full ? 'table-row' : 'none';
-		popup.title.style.display = block;
-		popup.closeBtn.style.display = block;
-		popup.actions.style.display = ""; // default back to CSS
-		popup.detailRows.forEach( tr => tr.style.display = tableRow);
-	};
-	
-	
-	const hide = () => {
-		popup.locked = false;
-		div.style.display = "none";	
-	};
-	
-	/**
-	* show and position popup
-	* @param {Number} top
-	* @param {Number} left 
-	* @param {Number} offsetY - this lines up the close btn with mouse position
-	*/
-	const show = (top,left,offsetY=0) => {
-		let divWidth = 360;
-		div.style.top = top + offsetY + "px";
-		div.style.left = left - divWidth + "px";
-		div.style.display = "block";
-	};
-	
-	
-	
-	
-	/**
-	* Callback for 'Click'
-	* @param {event} event
-	*/
-	const userClick = (ev) => {
-		if(ev.target !== activePathBtn){
-			activePathBtn = ev.target;
-			updatePopup();
-		}
-		fullDisplay(true);
-		popup.locked = true;
-		// position & show
-		let rect = activePathBtn.getBoundingClientRect();
-		show(rect.top, rect.right, -5);
-		
-		// hide if user scrolls
-		window.addEventListener('scroll', hide, {capture:true, once:true});
-	};
-	
-	/**
-	* Callback for 'Hover'
-	* @param {event} event
-	*/
-	const userHover = (ev) => {
-		if(popup.locked) return;
-		activePathBtn = ev.target;
-		updatePopup();
-		fullDisplay(false);
-		// position & show
-		let rect = activePathBtn.getBoundingClientRect();
-		show(rect.bottom, rect.right);
-	};
-	
-	/**
-	* Callback for 'Exit'
-	* @param {event} event
-	*/
-	const userOut = (ev) => {
-		if(popup.locked) return;
-		hide();
-	};
-
-	/*
-	Events 
-	*/
-	bj.userDown( selector, userClick );
-	bj.userEnter( selector, userHover );
-	bj.userLeave( selector, userOut );
-	
-		
-})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';	
@@ -8946,6 +8683,50 @@ Updated to Vanilla JS for IDG
 	  
 
 })( bluejay ); 
+(function( bj ) {
+
+	'use strict';	
+	
+	bj.addModule('syncData');	
+	
+	if( document.getElementById('js-sync-data') == null ) return;
+	
+	/**
+	Sync widget for use on screens that needs auto-refreshing
+	e.g. Worklists and Clinic Manager
+	For Opening it using the general-ui pattern
+	*/
+	
+	const syncBtn = document.querySelector('.sync-data .sync-btn');
+	const syncTime = document.querySelector('.sync-data .last-sync');
+	const syncInterval = document.querySelector('.sync-data .sync-interval');
+	let timerID = null;
+	
+	const setSyncTime = () => syncTime.textContent = bj.clock24( new Date( Date.now()));
+
+	const setSyncInterval = ( mins ) => {
+		clearInterval( timerID );
+		if( mins ){
+			const suffix = mins > 1 ? 'mins' : 'min';
+			syncInterval.textContent = `${mins} ${suffix}`;
+			timerID = setInterval(() => setSyncTime(), mins * 60000 );
+			setSyncTime();
+			syncBtn.classList.add('on');
+		} else {
+			syncInterval.textContent = 'Sync OFF';
+			syncBtn.classList.remove('on');
+		}	
+	};
+	
+	// default is always 1 minute
+	setSyncInterval( 1 );
+		
+	bj.userClick('.sync-options button', ( ev ) => {
+		setSyncInterval( parseInt( ev.target.dataset.sync, 10));
+	});
+
+
+})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';	
@@ -10047,6 +9828,60 @@ Updated to Vanilla JS for IDG
 	bj.userDown('.js-event-date-change > .rewind', changeEventDate ); 	
 			
 })( bluejay ); 
+(function( bj ){
+
+	'use strict';
+	
+	if( document.querySelector('.login.multisite') === null ) return;
+	
+	/*
+	Quick little demo of the Multi-site login	
+	*/
+	
+	let loginStep = 1;
+	
+	const institution = document.querySelector('.login-institution');
+	const site = document.querySelector('.login-site');
+	const loginSteps = document.querySelector('.login-steps');
+	const stepOptions = document.querySelector('ul.step-options');
+	
+	const userLogin = bj.div('user');
+	userLogin.innerHTML = '<input type="text" placeholder="Username"><input type="password" placeholder="Password"><button class="green hint" id="js-login">Login</button>';
+	
+	const showLoginStep = ( step, text='' ) => {
+		switch( step ){
+			case 1:
+				institution.innerHTML = '<small>Please select institution</small>';
+				site.textContent = '';
+				stepOptions.innerHTML = Mustache.render('{{#options}}<li>{{.}}</li>{{/options}}', {
+					options: ['Bolton','Cardiff and Vale University','East Kent Hospitals University','Guy\'s and St Thomas\'']	
+				});	
+			break;
+			case 2:
+				institution.innerHTML = `${text}<i class="oe-i remove-circle small-icon pad-left"></i>`;
+				site.innerHTML = '<small>Please select site</small>';
+				stepOptions.innerHTML = Mustache.render('{{#options}}<li>{{.}}</li>{{/options}}', {
+					options: ['Kings site','Queens site','Another site']	
+				});	
+			break;
+			case 3:
+				site.innerHTML = `${text}<i class="oe-i remove-circle small-icon pad-left"></i>`;
+				loginSteps.parentNode.insertBefore( userLogin, loginSteps.nextSibling);
+				loginSteps.remove();	
+			break;
+		}
+	}	
+	
+	// init
+	showLoginStep( loginStep );
+	
+	// demo click through
+	bj.userDown('.step-options li', ( ev ) => {
+		const li = ev.target;
+		showLoginStep( ++loginStep, li.textContent );
+	});
+				
+})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';
@@ -10754,217 +10589,6 @@ Updated to Vanilla JS for IDG
 		const rEl = React.createElement;
 		const react = bj.namespace('react');
 
-		class PopupFields extends React.Component {
-			
-			constructor( props ){
-				super( props );
-				
-				// no need for state (at least, as I currently understand React JS ;)
-				
-				this.setTitle = this.setTitle.bind( this );
-				this.content = this.content.bind( this );
-				this.stepActions = this.stepActions.bind( this );
-				this.stepStatus = this.stepStatus.bind( this );
-			}
-			
-			/**
-			* Title, convert shortcode into full title
-			* @params {*} this.props.step
-			* @returns {ReactElement}
-			*/
-			setTitle( step ){
-				const title = react.fullShortCode( step.shortcode );
-				const time = ( step.status == 'next' ) ? "Configure" : bj.clock24( new Date( step.timestamp ));
-				return rEl('h3', null, `Configure - Visual Fields` ); 
-			}
-			
-			/**
-			* Demo some content example for popup
-			*/
-			content(){
-				return (
-					rEl('div', { className: 'popup-overflow' }, 
-						rEl('div', { className: 'data-group' }, 
-							rEl('table', null, 
-								rEl('tbody', null, 
-									rEl('tr', null, 
-										rEl('th', null, 'Eye:'),
-										rEl('td', null, 
-											rEl('fieldset', null, 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'checkbox', name:'eye' }, null), 
-													rEl('i', { className: 'oe-i laterality R medium' }, null)
-												), 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'checkbox', name:'eye' }, null), 
-													rEl('i', { className: 'oe-i laterality L medium' }, null)
-												)
-											)
-										)
-									),
-									rEl('tr', null, 
-										rEl('th', null, 'Test type:'), 
-										rEl('td', null, 
-											rEl('fieldset', null, 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'radio', name:'fieldtest' }, null), 
-													rEl('span', null, '10-2')
-												), 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'radio', name:'fieldtest' }, null), 
-													rEl('span', null, '24-2')
-												), 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'radio', name:'fieldtest' }, null), 
-													rEl('span', null, '30-2')
-												)
-											)
-										)
-									),
-									rEl('tr', null, 
-										rEl('th', null, 'Esterman:'), 
-										rEl('td', null, 
-											rEl('fieldset', null, 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'checkbox', name:'fieldtest' }, null), 
-													rEl('span', null, 'Esterman')
-												)
-											)
-										)
-									),
-									rEl('tr', null, 
-										rEl('th', null, 'STA:'), 
-										rEl('td', null, 
-											rEl('fieldset', null, 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'radio', name:'sta' }, null), 
-													rEl('span', null, 'Standard')
-												), 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'radio', name:'sta' }, null), 
-													rEl('span', null, 'Fast')
-												)
-											)
-										)
-									)
-								)
-							)								
-						)
-					)
-				);
-			}
-			
-			//<label class="inline highlight"><input value="R" name="a-eye-sides" type="checkbox" checked=""> <i class="oe-i laterality R medium"></i></label>
-			
-			
-			
-			
-			/**
-			* <button> actions for the popup, 
-			* available actions depend on step status
-			* @params {*} this.props.step
-			* @returns {ReactElement}
-			*/
-			stepActions( step ){
-				
-				if( step.status != 'active' && step.status != 'next') return null; 
-				
-				const btn = ( css, btnTxt, newStatus ) => {
-					return rEl( 'button', { 
-						className: css,
-						onClick: this.props.onActions
-					}, btnTxt );
-				};
-				
-				if( step.status == 'active' ){
-					return (
-						rEl('div', { className: 'step-actions' }, 
-							btn('green hint', 'Complete', 'done' ),
-							btn('red hint', 'Remove', 'remove' )
-						)	
-					);
-				}
-				
-				if( step.status == 'next' ){
-					return (
-						rEl('div', { className: 'step-actions' }, 
-							btn('blue hint', 'Request Test', 'active' ),
-							btn('red hint', 'Cancel Test', 'remove' )
-						)	
-					);
-				}
-				
-									
-			}
-			
-			/**
-			* show the steps status with CSS 
-			* @params {*} this.props.step
-			* @returns {ReactElement}
-			*/
-			stepStatus( step ){
-				let css = 'step-status'; 
-				if( step.status == 'done' ) css += ' green';
-				if( step.status == 'active' ) css += ' orange';
-				return rEl('div', { className: css }, step.status );
-			}
-			
-			
-			/**
-			* Render
-			*/
-			render(){ 
-				// Build and position the popup	
-				const step = this.props.step; 
-
-				// set up a default standard step.
-				return (
-					rEl('div', {
-							className: 'oe-pathstep-popup a-t-l',
-							style: {
-								top: step.rect.bottom,
-								left: step.rect.left,
-							}
-						},
-						rEl('div', { 
-							className: 'close-icon-btn', 
-							onClick: this.props.onActions,
-							dangerouslySetInnerHTML: { __html : '<i class="oe-i remove-circle medium"></i>'}
-						}),
-						
-						this.setTitle( step ),
-						this.content( step ),
-						this.stepActions( step ),
-						this.stepStatus( step )
-					)
-				);
-					
-			}
-		}
-		
-		// make component available	
-		react.PopupFields = PopupFields;			
-	};
-	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
-
-})( bluejay ); 
-(function( bj ){
-
-	'use strict';	
-	
-	/**
-	* React Component 
-	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-		const react = bj.namespace('react');
-
 		class PopupImage extends React.Component {
 			
 			constructor( props ){
@@ -11339,7 +10963,7 @@ Updated to Vanilla JS for IDG
 				} else {
 					patient.addPathStep({
 						shortcode: code,
-						timestamp: Date.now(),
+						timestamp: false,
 						status: 'todo',
 						type,
 					});
@@ -11915,7 +11539,7 @@ Updated to Vanilla JS for IDG
 			if( step.type == "arrive" ) waitDuration.arrived( step.timestamp, model.status );
 			if( step.type == "finish" ) waitDuration.finished( step.timestamp );
 			// build pathStep
-			step.info = "clock";
+			step.info = step.timestamp == false ? "clock" : bj.clock24( new Date ( step.timestamp ));
 			gui.pathStep( step, pathway );
 		};
 		
@@ -12244,25 +11868,31 @@ Updated to Vanilla JS for IDG
 	*/
 	const mapElems = [
 		{ // Nav, shortcuts
-			btn: '#js-nav-shortcuts-btn',
-			wrapper: '#js-nav-shortcuts',
+			btn: 'js-nav-shortcuts-btn',
+			wrapper: 'js-nav-shortcuts',
 			contentID: 'js-nav-shortcuts-subnav',
 		}, 
 		{ // Nav, (was worklist button)
-			btn: '#js-nav-patientgroups-btn',
-			wrapper: '#js-patientgroups-panel-wrapper',
+			btn: 'js-nav-patientgroups-btn',
+			wrapper: 'js-patientgroups-panel-wrapper',
 			contentID: 'js-patientgroups-panel',
 		},
 		{ // Print Event options
-			btn: '#js-header-print-dropdown-btn',
-			wrapper: '#js-header-print-dropdown',
+			btn: 'js-header-print-dropdown-btn',
+			wrapper: 'js-header-print-dropdown',
 			contentID: 'js-header-print-subnav',
 		},
 		{ // Fancy new Event sidebar filter (IDG)
-			btn: '#js-sidebar-filter-btn',
-			wrapper: '#js-sidebar-filter',
+			btn: 'js-sidebar-filter-btn',
+			wrapper: 'js-sidebar-filter',
 			contentID: 'js-sidebar-filter-options',
 		},
+		// Sync, in header (Worklist)
+		{
+			btn: 'js-sync-btn',
+			wrapper: 'js-sync-data',
+			contentID: 'js-sync-options',
+		}
 	];
 
 	
@@ -12288,7 +11918,7 @@ Updated to Vanilla JS for IDG
 			if( this.open ) return;
 			this.open = true;
 			this.btn.classList.add( cssActive );
-			bj.show(this.content, 'block');
+			bj.show( this.content, 'block');
 		}	
 	});
 	
@@ -12318,7 +11948,7 @@ Updated to Vanilla JS for IDG
 	*/
 	mapElems.forEach(( item ) => {
 		
-		const btn = document.querySelector( item.btn );
+		const btn = document.getElementById( item.btn );
 		
 		if( btn !== null ){
 
@@ -12326,11 +11956,11 @@ Updated to Vanilla JS for IDG
 				btn: btn,
 				content: document.getElementById( item.contentID ),
 				open: false, 
-			});	
-			
-			bj.userDown( item.btn, () => obj.change());			
-			bj.userEnter( item.btn, () => obj.show());
-			bj.userLeave( item.wrapper, () => obj.hide());
+			});
+		
+			bj.userDown(`#${item.btn}`, () => obj.change());			
+			bj.userEnter(`#${item.btn}`, () => obj.show());
+			bj.userLeave(`#${item.wrapper}`, () => obj.hide());
 		}	
 	});
 		
@@ -12470,7 +12100,7 @@ Updated to Vanilla JS for IDG
 				if( !this.info  ) return; 
 				
 				this.iSpan.textContent = this.info === "clock" ? 
-					bj.clock24(  new Date ( Date.now() )):
+					bj.clock24( new Date( Date.now())):
 					this.info;
 				
 				if( this.status == 'todo' || this.status == 'config' ){
