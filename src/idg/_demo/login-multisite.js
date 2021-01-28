@@ -40,7 +40,7 @@
 				loginSteps.remove();	
 			break;
 		}
-	}	
+	};	
 	
 	// init
 	showLoginStep( loginStep );
