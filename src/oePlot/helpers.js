@@ -1,47 +1,35 @@
-(function( oePlotly, bj ) {
+(function( bj, oePlot ) {
 	
 	'use strict';
 	
 	/**
 	* Build DIV
-	* @param {String} id
-	* @param {String} height (80vh)
-	* @param {String} min-height (500px)
-	* @returns {Element}
+	* @param {String} hook - CSS hook for plot (just in case it's needed)
+	* @returns {Element} <div>;
 	*/
-	oePlotly.buildDiv = ( id, height, minHeight, width=false ) => {
-		const div = document.createElement('div');
-		/*
-		ID is just a regular string (Template type)
-		*/
-		let divID = id.toLowerCase();
-		divID = divID.trim();
-		divID = divID.replace(' ','-');
-		// build <div>
-		div.id = `oePlotly-${divID}`;
-		div.style.height = height;
-		div.style.minHeight = minHeight;
-		
-		if( width ){
-			// sometimes need this to force plotly to layout it's SVG container at the right width
-			div.style.width = width;
-		}
-		
-		
+	oePlot.buildDiv = ( hook, width=false ) => {
+		const div = bj.div('oeplot-wrap');
+		div.classList.add( hook.toLowerCase());
+		// force plotly to layout it's SVG container at the right width?
+		if( width ) div.style.width = width;
 		return div;
 	};
 	
 	/**
-	* For use in layout templates
-	* Helper to work out first and last dates
+	* Helper to work out first and last dates.
+	* There is (was?) a bug in Plot.ly (known!) to do with the Navigator range
+	* this helps fix that that issue, but it seems fixed in latest version 
 	* @returns {Object} 
 	*/
-	oePlotly.fullDateRange = () => ({
+	oePlot.fullDateRange = () => ({
 		all:[], 
+		// pass in array of dates
 		add( xArr ){
 			this.all = this.all.concat( xArr );
 			this.all.sort();
 		}, 
+		// used in the layout e.g: rangeSlider: helpers.dateRange.firstLast()
+		// used on the xaxis e.g. range: helpers.dateRange.firstLast(),
 		firstLast(){
 			// watch out for null values
 			let noNulls = this.all.filter(( i ) => i !== null );
@@ -54,7 +42,7 @@
 	* @param {Element} Plot DOM element
 	* @param {String} eye side
 	*/ 
-	oePlotly.addClickEvent = ( div, eye ) => {
+	oePlot.addClickEvent = ( div, eye ) => {
 		div.on('plotly_click', function( data ){
 			const point = data.points[0];
 			// pass back the JSON data relavant to the data clicked
@@ -66,8 +54,8 @@
 				y: point.y 
 			};
 					
-		    bj.customEvent('oePlotlyClick', obj );
-		    bj.log('"oePlotlyClick" Event data: ' + JSON.stringify( obj ));
+		    bj.customEvent('oePlotClick', obj );
+		    bj.log('"oePlotClick" Event data: ' + JSON.stringify( obj ));
 		});
 	};
 	
@@ -76,8 +64,8 @@
 	* @param {Element} Plot DOM element
 	* @param {String} eye side
 	*/
-	oePlotly.addHoverEvent = ( div, eye ) => {
-		bj.log('"oePlotlyHover" ('+eye+') Event available (click point to see data structure)');
+	oePlot.addHoverEvent = ( div, eye ) => {
+		bj.log('"oePlotHover" ('+eye+') Event available (click point to see data structure)');
 		
 		div.on('plotly_hover', function( data ){
 			const point = data.points[0];
@@ -90,7 +78,7 @@
 				y: point.y 
 			};
 					
-		    bj.customEvent('oePlotlyHover', obj );
+		    bj.customEvent('oePlotHover', obj );
 		});
 	};
 	
@@ -102,10 +90,10 @@
 	* @params {Object} args
 	* @returns {Object} 'line'
 	*/
-	oePlotly.dataLine = ( args ) => {
+	oePlot.dataLine = ( args ) => {
 		let line = {};
 		if( args.color )	line.color = args.color;
-		if( args.dashed )	line = Object.assign( line, oePlotly.dashedLine());
+		if( args.dashed )	line = Object.assign( line, oePlot.dashedLine());
 		return line;
 	};
 	
@@ -113,7 +101,7 @@
 	* return settings for dashed "line" style in data
 	* @returns {Object}
 	*/
-	oePlotly.dashedLine = () => {
+	oePlot.dashedLine = () => {
 		return {
 			dash: "2px,2px",
 			width: 2,
@@ -125,21 +113,25 @@
 	* @param {String} Event type: "Drugs", etc 
 	* @returns {Object}
 	*/
-	oePlotly.markerFor = ( type ) => {
+	oePlot.markerFor = ( type ) => {
 		const marker = {};
 		
 		switch( type){
+			case 'managment':
+				marker.symbol = "square";
+				marker.size = 9;
+			break;
 			case 'image':
 				marker.symbol = "triangle-down";
-				marker.size = 10;
+				marker.size = 11;
 			break;
 			case 'drug':
 				marker.symbol = "diamond";
-				marker.size = 8;
+				marker.size = 9;
 			break;
 			case 'injection':
 				marker.symbol = "star-diamond";
-				marker.size = 9;
+				marker.size = 10;
 			break; 
 		}
 		
@@ -153,13 +145,15 @@
 	* @param {String} color - if data is styling itself
 	* @returns {Object}
 	*/
-	oePlotly.eventStyle = ( type, color=false ) => {
+	oePlot.eventStyle = ( type, color=false ) => {
 		const style = {
-			marker: oePlotly.markerFor( type )
+			marker: oePlot.markerFor( type )
 		};
 		
 		switch( type ){
+			case 'managment':
 			case 'image':
+			case 'injection':
 				style.mode = "markers";
 			break;
 			case 'drug':
@@ -167,9 +161,6 @@
 				style.line = {
 					width: 3,
 				};
-			break;
-			case 'injection':
-				style.mode = "markers";
 			break; 
 		}
 		
@@ -187,7 +178,7 @@
 	* @param {Boolean} dark  
 	* @returns {Object}
 	*/
-	oePlotly.buttonStyling = ( dark ) => ({
+	oePlot.buttonStyling = ( dark ) => ({
 		font: {
 			color: dark ? '#ccc' : '#666',
 		},
@@ -202,7 +193,7 @@
 	* Add Plotly dropdown to layouta
 	* @param {Objec} layout
 	*/
-	oePlotly.addDropDown = ( layout ) => {
+	oePlot.addDropDown = ( layout ) => {
 	
 		let buttons = [];
 			
@@ -217,7 +208,7 @@
 			// 'args' is an 
 			args: [ {}, {
 			    title: 'some new title', // updates the title
-			    colorway: oePlotly.getColorSeries( "default", true )
+			    colorway: oePlot.getColorSeries( "default", true )
 			}],
 			//args2: layout,
 			label: 'Options Title'						
@@ -230,7 +221,7 @@
 			x: 0,
 			y: 0.35,
 			buttons: buttons, // add buttons to menu
- 		}, oePlotly.buttonStyling() );
+ 		}, oePlot.buttonStyling() );
  		
 		
 		// could be multiple menus
@@ -238,4 +229,4 @@
 	};
 
 	
-})( oePlotly, bluejay );
+})( bluejay, bluejay.namespace('oePlot'));

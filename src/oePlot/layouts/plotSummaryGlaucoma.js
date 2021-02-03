@@ -1,11 +1,11 @@
-(function ( bj ) {
+(function( bj, oePlot ){
 
 	'use strict';
 	
 	const oesTemplateType = "Glaucoma";
 	
 	// oe CSS theme!
-	const darkTheme = oePlotly.isDarkTheme();
+	const darkTheme = oePlot.isDarkTheme();
 	
 	/**
 	* Plotly parameters
@@ -16,11 +16,11 @@
 	/**
 	* Helpers
 	*/
-	const dateRange = oePlotly.fullDateRange();
-	const userSelecterUnits = oePlotly.selectableUnits();
+	const dateRange = oePlot.fullDateRange();
+	const userSelecterUnits = oePlot.selectableUnits();
 	
 	// add API:
-	const highlightPoint = oePlotly.highlighPoint( myPlotly, darkTheme );
+	const highlightPoint = oePlot.highlighPoint( myPlotly, darkTheme );
 	
 	/**
 	* Build data trace format for Glaucoma
@@ -56,7 +56,7 @@
 			hovertemplate: '%{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
-			line: oePlotly.dashedLine(),
+			line: oePlot.dashedLine(),
 		};
 		
 		myPlotly.get( eyeSide ).get('data').set( eyeJSON.VFI.name, VFI);
@@ -113,7 +113,7 @@
 					hovertemplate: template,
 					type: 'scatter',
 					showlegend: false,
-				}, oePlotly.eventStyle(  event.event ));
+				}, oePlot.eventStyle(  event.event ));
 			
 			myPlotly.get( eyeSide ).get('data').set( event.name, newEvent);
 			dateRange.add( event.x );
@@ -156,7 +156,7 @@
 		
 		const eyeSide = setup.eyeSide;
 		
-		const layout = oePlotly.getLayout({
+		const layout = oePlot.getLayout({
 			darkTheme, // dark? 
 			legend: {
 				traceorder: "reversed",
@@ -180,7 +180,7 @@
 			}
 		});
 			
-		const div = oePlotly.buildDiv(`${oesTemplateType}-${eyeSide}`, '80vh', '850px');
+		const div = oePlot.buildDiv(`${oesTemplateType}-${eyeSide}`, '80vh', '850px');
 		document.querySelector( setup.parentDOM ).appendChild( div );
 	
 		// store details
@@ -191,8 +191,8 @@
 		plotlyReacts( eyeSide );
 	
 		// add events
-		oePlotly.addClickEvent( div, eyeSide );
-		oePlotly.addHoverEvent( div, eyeSide );
+		oePlot.addClickEvent( div, eyeSide );
+		oePlot.addHoverEvent( div, eyeSide );
 		
 		// bluejay custom event (user changes layout ratio)
 		document.addEventListener('oesLayoutChange', () => {
@@ -208,10 +208,10 @@
 	const init = ( json = null ) => {
 		
 		if(json === null){
-			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			bj.log(`[oePlot] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
 			return false;
 		} else {
-			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+			bj.log(`[oePlot] - building Plot.ly ${oesTemplateType}`);
 		}
 
 		// for all subplot rows
@@ -254,7 +254,7 @@
 		*/
 		
 		// x1
-		const x1 = oePlotly.getAxis({
+		const x1 = oePlot.getAxis({
 			type:'x',
 			numTicks: 10,
 			useDates: true, 
@@ -265,7 +265,7 @@
 		
 		
 		// y0 - offscale 
-		const y0 = oePlotly.getAxis({
+		const y0 = oePlot.getAxis({
 			type:'y',
 			domain: domainRow[0], 
 			useCategories: {
@@ -276,7 +276,7 @@
 		}, darkTheme );
 		
 		// y2 - IOP
-		const y2 = oePlotly.getAxis({
+		const y2 = oePlot.getAxis({
 			type:'y',
 			domain: domainRow[2],
 			title: 'IOP', 
@@ -285,7 +285,7 @@
 		}, darkTheme );
 		
 		// y3 - Drugs
-		const y3 = oePlotly.getAxis({
+		const y3 = oePlot.getAxis({
 			type:'y',
 			domain: domainRow[3],
 			useCategories: {
@@ -296,7 +296,7 @@
 		}, darkTheme );
 		
 		// y4 - VFI
-		const y4 = oePlotly.getAxis({
+		const y4 = oePlot.getAxis({
 			type:'y',
 			domain: domainRow[1],
 			title: 'VFI',
@@ -347,7 +347,7 @@
 		but allow it to update the related marker
 		*/
 		
-		bj.log('[oePlotly] - method: highlightPoint()');
+		bj.log('[oePlot] - method: highlightPoint()');
 		
 		return { highlightPoint: highlightPoint };
 	};
@@ -358,4 +358,4 @@
 	bj.extend('plotSummaryGlaucoma', init);	
 	
 	
-})( bluejay ); 
+})( bluejay, bluejay.namespace('oePlot')); 

@@ -1,8 +1,8 @@
-(function( oePlotly ) {
+(function( oePlot ) {
 	
 	'use strict';
 	
-	oePlotly.selectableUnits = () => {
+	oePlot.selectableUnits = () => {
 		/*
 		Either Right and Left Eye layouts
 		Or just one eye.
@@ -53,31 +53,28 @@
 		const buildDropDown = ( options ) => {
 			// Mustache template
 			const template = [
-				'VA Scale ',
+				'<div class="plot-tool">',
+				'<label>VA Scale</label>',
 				'<select>',
 				'{{#options}}',
 				'<option>{{.}}</option>',
 				'{{/options}}',
-				'</select>'
+				'</select>', 
+				'</div>'
 			].join('');
 		
 			// build layout DOM
 			const div = document.createElement('div');
-			div.className = 'oesplotly-options'; // newblue provides styling for this class (but not positioning)
+			div.className = 'oeplot-toolbar'; // newblue provides styling for this class (but not positioning)
 			div.innerHTML = Mustache.render( template, { 'options' : options });
-			div.style.position = 'absolute';
-			div.style.top = '1px';
-			div.style.left = '50%';
-			div.style.transform = 'translateX( -50% )';
-			div.style.zIndex = 1;
 			
 			/*
 			I think this is only used in OESscape so dump in 'oes-v2'
 			note: if dropdown is for a single layout maybe use Plotly internal dropdown? 
 			*/
-			const oesV2 = document.querySelector('.oes-v2');
-			oesV2.style.position = 'relative';
-			oesV2.appendChild( div );
+			const oesParent = document.querySelector('.oeplot');
+			oesParent.classList.add('with-toolbar');
+			oesParent.append( div );
 			
 			
 			/*
@@ -148,7 +145,7 @@
 				}
 				
 				// build axes array
-				axes.push( oePlotly.getAxis( newAxis, dark ));
+				axes.push( oePlot.getAxis( newAxis, dark ));
 			});
 	
 			// now build dropdown
@@ -167,4 +164,4 @@
 	};
 	
 		
-})( oePlotly );
+})( bluejay.namespace('oePlot'));

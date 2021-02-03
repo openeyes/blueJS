@@ -1,4 +1,4 @@
-(function( oePlotly ) {
+(function( oePlot ) {
 	
 	'use strict';
 	
@@ -8,7 +8,7 @@
 	* @param {Array} values_y
 	* @returns {Object} - {[x],[y]}
 	*/
-	oePlotly.findRegression = function(values_x, values_y){
+	oePlot.findRegression = function(values_x, values_y){
 		// Find Line By Least Squares
 	    let sum_x = 0,
 	    	sum_y = 0,
@@ -60,4 +60,4 @@
 	    return {x: result_values_x, y: result_values_y};
 	};
 
-})( oePlotly );
+})( bluejay.namespace('oePlot'));

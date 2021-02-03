@@ -859,16 +859,23 @@ const bluejay = (function () {
 
 })( bluejay );
 /**
-* Using "oePlotly" as namespace
-* @namespace
+* oePlot - a "black box" to correctly and consistently display
+* all plot.ly charts. All required data for a chart is passed
+* in to the appropriate blueJS template (in agreed JSON format) and 
+* oePlotly will style and theme it correctly for plot.ly
+* 
+* This replaces a previous, simpler oePlotly helper in "newblue" 
+* see: newblue/plotlyJS/oePlotly_v1.js
+*
+* https://plot.ly/javascript/reference/
+* @namespace "oeplot"
 * Note: this approach completely replaces the old "oePlotly" layout helper
 */
-const oePlotly = (function ( bj ) {
+(function( bj, oePlot ){
 
 	'use strict';
 	
 	bj.log('Plot.ly version: ' + Plotly.version );
-	bj.log('oePlotly - Plot.ly builder available');
 	
 	const colours = {
 		dark: {
@@ -878,7 +885,7 @@ const oePlotly = (function ( bj ) {
 			red: '#ea2b34',
 			greenSeries: ['#65d235', '#A5D712','#02B546'],
 			redSeries: ['#ea2b34','#F64A2D','#C92845'],
-			yellowSeries: ['#FAD94B','#E8B131','#F1F555'], // BEO
+			yellowSeries: ['#FAD94B','#E8B131','#F1F555'], // BEO (Both Eyes Open)
 			standard: ['#1451b3', '#175ece', '#1a69e5'],
 			varied:  ['#0a83ea', '#18949f', '#781cea','#3f0aea'],
 			dual: ['#1472DE','#2E4259'],
@@ -902,9 +909,7 @@ const oePlotly = (function ( bj ) {
 	* @param {Boolean} dark 
 	* @returns {Array} of colour series
 	*/
-	const getBlue = ( dark ) => {
-		return dark ? colours.dark.blue : colours.light.blue ;
-	};
+	oePlot.getBlue = ( dark ) => dark ? colours.dark.blue : colours.light.blue;
 	
 	/**
 	* Get color series
@@ -912,7 +917,7 @@ const oePlotly = (function ( bj ) {
 	* @param {Boolean} darkTheme 
 	* @returns {Array} of colour series
 	*/
-	const getColorSeries = ( colorName, darkTheme ) => {
+	oePlot.getColorSeries = ( colorName, darkTheme ) => {
 		let colorWay = null;
 		const dark = colours.dark;
 		const light = colours.light; 
@@ -949,7 +954,7 @@ const oePlotly = (function ( bj ) {
 	* @param {Boolean} dark
 	* @returns {String} colour for request element (or "pink" if fails)
 	*/
-	const getColor = ( colour, dark ) => {
+	oePlot.getColor = ( colour, dark ) => {
 		switch( colour ){
 			case 'highlight': return dark ? colours.dark.highlight : colours.light.highlight; 
 			case 'rightEye': return dark ? colours.dark.green : colours.light.green;
@@ -962,9 +967,9 @@ const oePlotly = (function ( bj ) {
 	
 	/**
 	* Temporary support added for IDG Glaucoma Visual Fields Demo which is still
-	* using oePlotly directly (until I have time to rebuild it!) 
+	* using oePlot directly (until I have time to rebuild it!) 
 	*/ 
-	const getColorFor = ( color, dark ) => getColor( color, dark );
+	oePlot.getColorFor = ( color, dark ) => getColor( color, dark );
 	
 	
 	/**
@@ -972,22 +977,12 @@ const oePlotly = (function ( bj ) {
 	* layout may be used in "pro" area (such as patient popup)
 	* @returns {Boolean}
 	*/
-	const isDarkTheme = () => {
-		return window.oeThemeMode === "dark" ? true : false;	
-	};
+	oePlot.isDarkTheme = () => window.oeThemeMode === "dark" ? true : false;
 	
-	// public 
-	return {
-		isDarkTheme,
-		getBlue,
-		getColorSeries, 
-		getColor, 
-		getColorFor
-	};
 
-})( bluejay );
+})( bluejay, bluejay.namespace('oePlot'));
 
-(function( oePlotly ) {
+(function( oePlot ) {
 	
 	'use strict';
 	
@@ -997,7 +992,7 @@ const oePlotly = (function ( bj ) {
 	* @param {Array} values_y
 	* @returns {Object} - {[x],[y]}
 	*/
-	oePlotly.findRegression = function(values_x, values_y){
+	oePlot.findRegression = function(values_x, values_y){
 		// Find Line By Least Squares
 	    let sum_x = 0,
 	    	sum_y = 0,
@@ -1049,8 +1044,8 @@ const oePlotly = (function ( bj ) {
 	    return {x: result_values_x, y: result_values_y};
 	};
 
-})( oePlotly );
-(function( oePlotly ) {
+})( bluejay.namespace('oePlot'));
+(function( oePlot ) {
 	
 	'use strict';
 	
@@ -1077,7 +1072,7 @@ const oePlotly = (function ( bj ) {
 	}
 	
 	*/
-	oePlotly.getAxis = function( options, dark ){ 
+	oePlot.getAxis = function( options, dark ){ 
 		
 		// default 
 		let axis = {
@@ -1156,11 +1151,21 @@ const oePlotly = (function ( bj ) {
 		// categories (assuming this will only be used for yAxis)
 		if(options.useCategories){
 			let arr = options.useCategories.categoryarray;
+			
 			axis.type = "category";
-			// categories on yaxis start at 0, add a blank to push up
-			axis.categoryarray = [' '].concat( arr );
-			// show all categories?
-			if( options.useCategories.showAll ) axis.range = [0, arr.length + 1];
+			axis.categoryarray = arr;
+			/*
+			Category range. Each category is assigned a serial number from zero in the order it appears
+			Using the "range" options I can "pad" the axis out or have fit the plot exactly
+			*/
+			if( options.useCategories.rangeFit ){
+				switch( options.useCategories.rangeFit ){
+					case "exact":		axis.range = [ 0, arr.length-1 ]; break;
+					case "pad":			axis.range = [ -1, arr.length ]; break; 
+					case "padTop":		axis.range = [ 0, arr.length ]; break;
+					case "padBottom":	axis.range = [ -1, arr.length-1 ]; break; 
+				}
+			}
 		}
 
 		// spikes
@@ -1175,8 +1180,8 @@ const oePlotly = (function ( bj ) {
 	};
 	
 	
-})( oePlotly );
-(function( oePlotly ) {
+})( bluejay.namespace('oePlot'));
+(function( oePlot ) {
 	
 	'use strict';
 	
@@ -1187,7 +1192,7 @@ const oePlotly = (function ( bj ) {
 	*
 	Options:
 	{
-		darkTheme: "dark",  	// Required {Boolean} oePlotly Theme  
+		darkTheme: "dark",  	// Required {Boolean} oePlot Theme  
 		legend: false, 			// Optional {Boolean || Object} customise any of the defaults
 		colors: 'varied', 		// Optional {String} varied" or "twoPosNeg" or "rightEye" (defaults to "blues")
 		plotTitle: false, 		// Optional {String}
@@ -1200,14 +1205,14 @@ const oePlotly = (function ( bj ) {
 		dateRangeButtons: false // Optional {Boolean}
 	}
 	*/
-	oePlotly.getLayout = function( options ){
+	oePlot.getLayout = function( options ){
 		// set up layout colours based on OE theme settings: "dark" or "light"
 		const dark = options.darkTheme;
 		
 		// build the Plotly layout obj
-		let layout = {
+		const layout = {
 			isDark: dark, // store OE dark theme in layout
-			hovermode:'closest', // get single point rather than all of them
+			hovermode:'closest', // "x" | "y" | "closest" | false | "x unified" | "y unified"
 			autosize:true, // onResize change chart size
 			margin: {
 				l:50, // 80 default, if Y axis has a title this will need more
@@ -1233,10 +1238,10 @@ const oePlotly = (function ( bj ) {
 			// default set up for hoverlabels
 			hoverlabel: {
 				bgcolor: dark ? "#003" : '#fff',
-				bordercolor: dark ? '#003' : '#00f',
+				bordercolor: dark ? '#009' : '#00f',
 				font: {
 					size: 11, // override base font
-					color: oePlotly.getBlue( dark ),
+					color: oePlot.getBlue( dark ),
 				}
 			},
 		};
@@ -1245,9 +1250,9 @@ const oePlotly = (function ( bj ) {
 		Colour theme	
 		*/ 
 		if( options.colors ){
-			layout.colorway = oePlotly.getColorSeries( options.colors, dark );			
+			layout.colorway = oePlot.getColorSeries( options.colors, dark );			
 		} else {
-			layout.colorway = oePlotly.getColorSeries( "default", dark );
+			layout.colorway = oePlot.getColorSeries( "default", dark );
 		}
 		
 		/*
@@ -1344,7 +1349,7 @@ const oePlotly = (function ( bj ) {
 			      x1: my.x,
 			      y1: height,
 			      line: {
-			        color: oePlotly.getBlue( dark ),
+			        color: oePlot.getBlue( dark ),
 			        width: 0.5,
 					//dash:"3px,4px,1px,4px,3px,1px",
 			      }
@@ -1358,7 +1363,7 @@ const oePlotly = (function ( bj ) {
 				   textangle: 90,
 				   align: "left",
 				   font: {
-					   color: oePlotly.getBlue( dark )
+					   color: oePlot.getBlue( dark )
 				   },
 				   borderpad: 2,
 				   x: my.x,
@@ -1395,7 +1400,7 @@ const oePlotly = (function ( bj ) {
 			      x1: 1,
 			      y1: my.y,
 			      line: {
-			        color: oePlotly.getBlue( dark ),
+			        color: oePlot.getBlue( dark ),
 			        width: 2,
 			        dash:"3px,12px",
 			      }
@@ -1407,7 +1412,7 @@ const oePlotly = (function ( bj ) {
 				   text: my.name,
 				   align: "left",
 				   font: {
-					   color: oePlotly.getBlue( dark )
+					   color: oePlot.getBlue( dark )
 				   },
 				   borderpad: 2,
 				   xref: "paper",
@@ -1505,7 +1510,7 @@ const oePlotly = (function ( bj ) {
 					step: "month",
 					count: 6, // 1 = year, 2 = 2 years
 				}]
-			}, oePlotly.buttonStyling( dark ) );
+			}, oePlot.buttonStyling( dark ) );
 		}
 		
 		// ok, all done
@@ -1513,51 +1518,39 @@ const oePlotly = (function ( bj ) {
 	};
 	
 	
-})( oePlotly );
-(function( oePlotly, bj ) {
+})( bluejay.namespace('oePlot'));
+(function( bj, oePlot ) {
 	
 	'use strict';
 	
 	/**
 	* Build DIV
-	* @param {String} id
-	* @param {String} height (80vh)
-	* @param {String} min-height (500px)
-	* @returns {Element}
+	* @param {String} hook - CSS hook for plot (just in case it's needed)
+	* @returns {Element} <div>;
 	*/
-	oePlotly.buildDiv = ( id, height, minHeight, width=false ) => {
-		const div = document.createElement('div');
-		/*
-		ID is just a regular string (Template type)
-		*/
-		let divID = id.toLowerCase();
-		divID = divID.trim();
-		divID = divID.replace(' ','-');
-		// build <div>
-		div.id = `oePlotly-${divID}`;
-		div.style.height = height;
-		div.style.minHeight = minHeight;
-		
-		if( width ){
-			// sometimes need this to force plotly to layout it's SVG container at the right width
-			div.style.width = width;
-		}
-		
-		
+	oePlot.buildDiv = ( hook, width=false ) => {
+		const div = bj.div('oeplot-wrap');
+		div.classList.add( hook.toLowerCase());
+		// force plotly to layout it's SVG container at the right width?
+		if( width ) div.style.width = width;
 		return div;
 	};
 	
 	/**
-	* For use in layout templates
-	* Helper to work out first and last dates
+	* Helper to work out first and last dates.
+	* There is (was?) a bug in Plot.ly (known!) to do with the Navigator range
+	* this helps fix that that issue, but it seems fixed in latest version 
 	* @returns {Object} 
 	*/
-	oePlotly.fullDateRange = () => ({
+	oePlot.fullDateRange = () => ({
 		all:[], 
+		// pass in array of dates
 		add( xArr ){
 			this.all = this.all.concat( xArr );
 			this.all.sort();
 		}, 
+		// used in the layout e.g: rangeSlider: helpers.dateRange.firstLast()
+		// used on the xaxis e.g. range: helpers.dateRange.firstLast(),
 		firstLast(){
 			// watch out for null values
 			let noNulls = this.all.filter(( i ) => i !== null );
@@ -1570,7 +1563,7 @@ const oePlotly = (function ( bj ) {
 	* @param {Element} Plot DOM element
 	* @param {String} eye side
 	*/ 
-	oePlotly.addClickEvent = ( div, eye ) => {
+	oePlot.addClickEvent = ( div, eye ) => {
 		div.on('plotly_click', (function( data ){
 			const point = data.points[0];
 			// pass back the JSON data relavant to the data clicked
@@ -1582,8 +1575,8 @@ const oePlotly = (function ( bj ) {
 				y: point.y 
 			};
 					
-		    bj.customEvent('oePlotlyClick', obj );
-		    bj.log('"oePlotlyClick" Event data: ' + JSON.stringify( obj ));
+		    bj.customEvent('oePlotClick', obj );
+		    bj.log('"oePlotClick" Event data: ' + JSON.stringify( obj ));
 		}));
 	};
 	
@@ -1592,8 +1585,8 @@ const oePlotly = (function ( bj ) {
 	* @param {Element} Plot DOM element
 	* @param {String} eye side
 	*/
-	oePlotly.addHoverEvent = ( div, eye ) => {
-		bj.log('"oePlotlyHover" ('+eye+') Event available (click point to see data structure)');
+	oePlot.addHoverEvent = ( div, eye ) => {
+		bj.log('"oePlotHover" ('+eye+') Event available (click point to see data structure)');
 		
 		div.on('plotly_hover', (function( data ){
 			const point = data.points[0];
@@ -1606,7 +1599,7 @@ const oePlotly = (function ( bj ) {
 				y: point.y 
 			};
 					
-		    bj.customEvent('oePlotlyHover', obj );
+		    bj.customEvent('oePlotHover', obj );
 		}));
 	};
 	
@@ -1618,10 +1611,10 @@ const oePlotly = (function ( bj ) {
 	* @params {Object} args
 	* @returns {Object} 'line'
 	*/
-	oePlotly.dataLine = ( args ) => {
+	oePlot.dataLine = ( args ) => {
 		let line = {};
 		if( args.color )	line.color = args.color;
-		if( args.dashed )	line = Object.assign( line, oePlotly.dashedLine());
+		if( args.dashed )	line = Object.assign( line, oePlot.dashedLine());
 		return line;
 	};
 	
@@ -1629,7 +1622,7 @@ const oePlotly = (function ( bj ) {
 	* return settings for dashed "line" style in data
 	* @returns {Object}
 	*/
-	oePlotly.dashedLine = () => {
+	oePlot.dashedLine = () => {
 		return {
 			dash: "2px,2px",
 			width: 2,
@@ -1641,21 +1634,25 @@ const oePlotly = (function ( bj ) {
 	* @param {String} Event type: "Drugs", etc 
 	* @returns {Object}
 	*/
-	oePlotly.markerFor = ( type ) => {
+	oePlot.markerFor = ( type ) => {
 		const marker = {};
 		
 		switch( type){
+			case 'managment':
+				marker.symbol = "square";
+				marker.size = 9;
+			break;
 			case 'image':
 				marker.symbol = "triangle-down";
-				marker.size = 10;
+				marker.size = 11;
 			break;
 			case 'drug':
 				marker.symbol = "diamond";
-				marker.size = 8;
+				marker.size = 9;
 			break;
 			case 'injection':
 				marker.symbol = "star-diamond";
-				marker.size = 9;
+				marker.size = 10;
 			break; 
 		}
 		
@@ -1669,13 +1666,15 @@ const oePlotly = (function ( bj ) {
 	* @param {String} color - if data is styling itself
 	* @returns {Object}
 	*/
-	oePlotly.eventStyle = ( type, color=false ) => {
+	oePlot.eventStyle = ( type, color=false ) => {
 		const style = {
-			marker: oePlotly.markerFor( type )
+			marker: oePlot.markerFor( type )
 		};
 		
 		switch( type ){
+			case 'managment':
 			case 'image':
+			case 'injection':
 				style.mode = "markers";
 			break;
 			case 'drug':
@@ -1683,9 +1682,6 @@ const oePlotly = (function ( bj ) {
 				style.line = {
 					width: 3,
 				};
-			break;
-			case 'injection':
-				style.mode = "markers";
 			break; 
 		}
 		
@@ -1703,7 +1699,7 @@ const oePlotly = (function ( bj ) {
 	* @param {Boolean} dark  
 	* @returns {Object}
 	*/
-	oePlotly.buttonStyling = ( dark ) => ({
+	oePlot.buttonStyling = ( dark ) => ({
 		font: {
 			color: dark ? '#ccc' : '#666',
 		},
@@ -1718,7 +1714,7 @@ const oePlotly = (function ( bj ) {
 	* Add Plotly dropdown to layouta
 	* @param {Objec} layout
 	*/
-	oePlotly.addDropDown = ( layout ) => {
+	oePlot.addDropDown = ( layout ) => {
 	
 		let buttons = [];
 			
@@ -1733,7 +1729,7 @@ const oePlotly = (function ( bj ) {
 			// 'args' is an 
 			args: [ {}, {
 			    title: 'some new title', // updates the title
-			    colorway: oePlotly.getColorSeries( "default", true )
+			    colorway: oePlot.getColorSeries( "default", true )
 			}],
 			//args2: layout,
 			label: 'Options Title'						
@@ -1746,7 +1742,7 @@ const oePlotly = (function ( bj ) {
 			x: 0,
 			y: 0.35,
 			buttons: buttons, // add buttons to menu
- 		}, oePlotly.buttonStyling() );
+ 		}, oePlot.buttonStyling() );
  		
 		
 		// could be multiple menus
@@ -1754,15 +1750,15 @@ const oePlotly = (function ( bj ) {
 	};
 
 	
-})( oePlotly, bluejay );
-(function( oePlotly ) {
+})( bluejay, bluejay.namespace('oePlot'));
+(function( oePlot ) {
 	
 	'use strict';
 	
 	/**
 	* Init with template layout properties
 	*/
-	oePlotly.highlighPoint = ( myPlotly, darkTheme ) => {
+	oePlot.highlighPoint = ( myPlotly, darkTheme ) => {
 		
 		/**
 		* External API 
@@ -1776,7 +1772,7 @@ const oePlotly = (function ( bj ) {
 			let objPath = flattenedObj.split('.');
 			
 			if(objPath.length != 2){
-				bj.log('oePlotly - for highlightPoint to work it needs EyeSide & Date JSON name e.g. "leftEye.OCT" ');
+				bj.log('oePlot - for highlightPoint to work it needs EyeSide & Date JSON name e.g. "leftEye.OCT" ');
 				return;
 			}
 			
@@ -1802,16 +1798,16 @@ const oePlotly = (function ( bj ) {
 			2) set specific marker colour to blue
 			3) relayout	
 			*/
-			let eyeColor = oePlotly.getColor( eyeSide, darkTheme );
+			let eyeColor = oePlot.getColor( eyeSide, darkTheme );
 			let markerColors = [];
 			for( let i=0; i < traceData.x.length; i++ ){
 				markerColors.push( eyeColor );
 			}
 			// set specific marker to blue
-			markerColors[ indexPoint ] = oePlotly.getColor( 'highlight', darkTheme );
+			markerColors[ indexPoint ] = oePlot.getColor( 'highlight', darkTheme );
 			
 			// get marker style for event type 
-			let markerObj = oePlotly.markerFor( traceData.oeEventType ); // added on creation of trace
+			let markerObj = oePlot.markerFor( traceData.oeEventType ); // added on creation of trace
 			// add colors
 			markerObj.color = markerColors;
 			
@@ -1822,12 +1818,12 @@ const oePlotly = (function ( bj ) {
 		};
 	};
 	
-})( oePlotly );
-(function( oePlotly ) {
+})( bluejay.namespace('oePlot'));
+(function( oePlot ) {
 	
 	'use strict';
 	
-	oePlotly.selectableUnits = () => {
+	oePlot.selectableUnits = () => {
 		/*
 		Either Right and Left Eye layouts
 		Or just one eye.
@@ -1878,31 +1874,28 @@ const oePlotly = (function ( bj ) {
 		const buildDropDown = ( options ) => {
 			// Mustache template
 			const template = [
-				'VA Scale ',
+				'<div class="plot-tool">',
+				'<label>VA Scale</label>',
 				'<select>',
 				'{{#options}}',
 				'<option>{{.}}</option>',
 				'{{/options}}',
-				'</select>'
+				'</select>', 
+				'</div>'
 			].join('');
 		
 			// build layout DOM
 			const div = document.createElement('div');
-			div.className = 'oesplotly-options'; // newblue provides styling for this class (but not positioning)
+			div.className = 'oeplot-toolbar'; // newblue provides styling for this class (but not positioning)
 			div.innerHTML = Mustache.render( template, { 'options' : options });
-			div.style.position = 'absolute';
-			div.style.top = '1px';
-			div.style.left = '50%';
-			div.style.transform = 'translateX( -50% )';
-			div.style.zIndex = 1;
 			
 			/*
 			I think this is only used in OESscape so dump in 'oes-v2'
 			note: if dropdown is for a single layout maybe use Plotly internal dropdown? 
 			*/
-			const oesV2 = document.querySelector('.oes-v2');
-			oesV2.style.position = 'relative';
-			oesV2.appendChild( div );
+			const oesParent = document.querySelector('.oeplot');
+			oesParent.classList.add('with-toolbar');
+			oesParent.append( div );
 			
 			
 			/*
@@ -1973,7 +1966,7 @@ const oePlotly = (function ( bj ) {
 				}
 				
 				// build axes array
-				axes.push( oePlotly.getAxis( newAxis, dark ));
+				axes.push( oePlot.getAxis( newAxis, dark ));
 			});
 	
 			// now build dropdown
@@ -1992,8 +1985,138 @@ const oePlotly = (function ( bj ) {
 	};
 	
 		
-})( oePlotly );
-(function ( bj ) {
+})( bluejay.namespace('oePlot'));
+(function( bj, oePlot ) {
+	
+	'use strict';
+	
+	oePlot.tools = () => {
+		
+		const darkTheme = oePlot.isDarkTheme();  // which CSS theme is running?
+		const toolbar = bj.div('oeplot-toolbar');
+		let callback;
+	
+		const updatePlot = ( renderCallback ) => {
+			callback = renderCallback;
+		}
+	
+		/**
+		* showToolbar (update DOM)
+		* In OES the toolbar is fullwidth and fixed, requires "with-toolbar"
+		* to add margin-bottom to not cover the plots
+		*/
+		const showToolbar = () => {
+			const parent = document.querySelector('.oeplot');
+			parent.classList.add('with-toolbar');
+			parent.append( toolbar ); // reflow!
+		};
+		
+		
+		/**
+		* Build <select> for user to choose units
+		* @param {Array} options { key, option }
+		* @param {String} prefix
+		*/
+		const showSelectableUnitsDropdown = ( options, prefix ) => {
+			// Mustache template
+			const template = [
+				'<label>{{prefix}}</label>',
+				'<select>',
+				'{{#options}}',
+				'<option value="{{key}}" {{#selected}}selected{{/selected}}>{{option}}</option>',
+				'{{/options}}',
+				'</select>'
+			].join('');
+			
+
+			// build layout DOM
+			const div = bj.div('plot-tool');
+			div.innerHTML = Mustache.render( template, { options, prefix });
+			toolbar.append( div );
+			
+			/*
+			Set <select> option and listen for changes
+			*/
+			div.querySelector('select').addEventListener('change',  ( ev ) => {
+				// update current selected
+				const select = ev.target;
+				selectableUnits.activeKey = select.options[ select.selectedIndex ].value
+				callback('leftEye');
+				callback('rightEye');
+			}, { capture: true });
+		};
+		
+		const selectableUnits = {
+			traces: new Map(),
+			axes: new Map(),
+			activeKey: null,
+
+			addAxes({ axisDefaults, yaxes:json, prefix }){
+				const userOptions = [];
+				
+				for (const [ key, unit ] of Object.entries( json )) {
+					
+					if( unit.makeDefault ) this.activeKey = key;
+					let axis; 
+					
+					userOptions.push({ key, option: unit.option, selected: unit.makeDefault }); // build options for <select> user dropdown
+					
+					axisDefaults.title = `${prefix} - ${unit.option}`;
+					
+					// based on the unit range type build axis, 
+					// it's either numerical or categorical
+					if( typeof unit.range[0] === 'number'){
+						
+						axis = oePlot.getAxis( Object.assign({}, axisDefaults, {
+							range: unit.range.reverse(), 	// e.g. [n1, n2];
+							axisType: "linear", 			// set the axis.type explicitly here
+						}), darkTheme); 
+						
+					} else {
+						// category axis
+						axis = oePlot.getAxis( Object.assign({}, axisDefaults, {
+							useCategories: {
+								showAll: true, 
+								categoryarray: unit.range.reverse()
+							}
+						}), darkTheme); 
+					}
+					
+					// add the axis to unit axes
+					this.axes.set( key, axis );
+				}
+				
+				// provide user access to change the selectedable units
+				showSelectableUnitsDropdown( userOptions, prefix );
+			}, 
+			
+			addTrace( eye, key, trace ){
+				if( !this.traces.has( eye )) this.traces.set( eye, new Map());
+				this.traces.get( eye ).set( key, trace );
+			}, 
+			
+			getTrace( eye, key ){
+				return this.traces.get( eye ).get( this.activeKey );
+			},
+			getAxis( key ){
+				return this.axes.get( this.activeKey );
+			}			
+		};
+	
+		/*
+		API
+		*/
+		return {
+			updatePlot,
+			showToolbar,
+			selectableUnits,
+		};
+	};
+
+	
+		
+})( bluejay, bluejay.namespace('oePlot'));
+(function( bj, oePlot ){
 
 	'use strict';
 	
@@ -2042,7 +2165,7 @@ const oePlotly = (function ( bj ) {
 			hovertemplate: '%{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
-			line: oePlotly.dataLine({
+			line: oePlot.dataLine({
 				color: getColour()
 			}),
 		};
@@ -2057,7 +2180,7 @@ const oePlotly = (function ( bj ) {
 			hovertemplate: 'CRT: %{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
-			line: oePlotly.dataLine({
+			line: oePlot.dataLine({
 				color: getColour(),
 				dashed: true,
 			}),
@@ -2074,7 +2197,7 @@ const oePlotly = (function ( bj ) {
 			hovertemplate: '%{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
-			line: oePlotly.dataLine({
+			line: oePlot.dataLine({
 				color: getColour()
 			}),
 		};
@@ -2120,7 +2243,7 @@ const oePlotly = (function ( bj ) {
 	*/
 	const plotlyInitCombined = ( axes ) => {
 
-		const layout = oePlotly.getLayout({
+		const layout = oePlot.getLayout({
 			darkTheme, // dark?
 			legend: {
 				yanchor:'top',
@@ -2136,7 +2259,7 @@ const oePlotly = (function ( bj ) {
 		For the popup I couldn't get plotly to resize to available width
 		without adding a specific width!	
 		*/
-		const div = oePlotly.buildDiv(`${oesTemplateType}`, '415px', '415px', '1020px'); // 1020px best guess based on 1280px layout
+		const div = oePlot.buildDiv(`${oesTemplateType}`, '415px', '415px', '1020px'); // 1020px best guess based on 1280px layout
 		document.getElementById('patient-popup-oeplolty').appendChild( div );
 		
 		/**
@@ -2149,8 +2272,8 @@ const oePlotly = (function ( bj ) {
 		plotlyReacts();
 		
 		// set up click through
-		oePlotly.addClickEvent( div, '?' );
-		oePlotly.addHoverEvent( div, '?' );
+		oePlot.addClickEvent( div, '?' );
+		oePlot.addHoverEvent( div, '?' );
 		
 		// bluejay custom event (user changes layout)
 		document.addEventListener('oesLayoutChange', () => {
@@ -2165,11 +2288,14 @@ const oePlotly = (function ( bj ) {
 	*/
 	const init = ( json = null ) => {
 		
+		return;
+		
+		
 		if(json === null){
-			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			bj.log(`[oePlot] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
 			return false;
 		} else {
-			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+			bj.log(`[oePlot] - building Plot.ly ${oesTemplateType}`);
 		}
 		
 		// for all subplot rows
@@ -2185,14 +2311,14 @@ const oePlotly = (function ( bj ) {
 		if( json.rightEye ){
 			myPlotly.set('rightEye', new Map());
 			buildDataTraces( json.rightEye, 'rightEye',
-				oePlotly.getColorSeries('rightEyeSeries', darkTheme)
+				oePlot.getColorSeries('rightEyeSeries', darkTheme)
 			);
 		}
 		
 		if( json.leftEye ){
 			myPlotly.set('leftEye', new Map());
 			buildDataTraces( json.leftEye, 'leftEye', 
-				oePlotly.getColorSeries('leftEyeSeries', darkTheme)
+				oePlot.getColorSeries('leftEyeSeries', darkTheme)
 			);
 		}
 		
@@ -2202,7 +2328,7 @@ const oePlotly = (function ( bj ) {
 		*/
 		
 		// x1
-		const x1 = oePlotly.getAxis({
+		const x1 = oePlot.getAxis({
 			type:'x',
 			numTicks: 10,
 			useDates: true,
@@ -2211,7 +2337,7 @@ const oePlotly = (function ( bj ) {
 		}, darkTheme );
 		
 		// y0 - offscale 
-		const y0 = oePlotly.getAxis({
+		const y0 = oePlot.getAxis({
 			type:'y',
 			domain: domainRow[0], 
 			useCategories: {
@@ -2222,7 +2348,7 @@ const oePlotly = (function ( bj ) {
 		}, darkTheme );
 		
 		// y1 - CRT
-		const y1 = oePlotly.getAxis({
+		const y1 = oePlot.getAxis({
 			type:'y',
 			domain: domainRow[1],
 			title: 'CRT', 
@@ -2231,7 +2357,7 @@ const oePlotly = (function ( bj ) {
 		}, darkTheme );
 		
 		// y2 - VA
-		const y2 = oePlotly.getAxis({
+		const y2 = oePlot.getAxis({
 			type:'y',
 			domain: domainRow[1], 
 			title: 'VA',
@@ -2256,15 +2382,15 @@ const oePlotly = (function ( bj ) {
 	*/
 	bj.extend('plotPatientPopup', init);	
 		
-})( bluejay ); 
-(function ( bj ) {
+})( bluejay, bluejay.namespace('oePlot')); 
+(function( bj, oePlot ){
 
 	'use strict';
 	
 	const oesTemplateType = "Bar Chart";
 	
 	// oe CSS theme!
-	const darkTheme = oePlotly.isDarkTheme();
+	const darkTheme = oePlot.isDarkTheme();
 
 	/**
 	* Build data trace format for Glaucoma
@@ -2302,7 +2428,7 @@ const oePlotly = (function ( bj ) {
 	*/
 	const plotlyInit = ( setup ) => {
 		
-		const layout = oePlotly.getLayout({
+		const layout = oePlot.getLayout({
 			darkTheme, // dark? 
 			plotTitle: setup.title,
 			xaxis: setup.xaxis,
@@ -2329,10 +2455,10 @@ const oePlotly = (function ( bj ) {
 	const init = ( json = null ) => {
 		
 		if(json === null){
-			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			bj.log(`[oePlot] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
 			return false;
 		} else {
-			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+			bj.log(`[oePlot] - building Plot.ly ${oesTemplateType}`);
 		}
 
 		/**
@@ -2346,13 +2472,13 @@ const oePlotly = (function ( bj ) {
 		*/
 		
 		// x1
-		const x1 = oePlotly.getAxis({
+		const x1 = oePlot.getAxis({
 			type:'x',
 			numTicks: 20,
 		}, darkTheme );
 		
 		// y1
-		const y1 = oePlotly.getAxis({
+		const y1 = oePlot.getAxis({
 			type:'y', 
 			numTicks: 20,
 		}, darkTheme );
@@ -2388,15 +2514,15 @@ const oePlotly = (function ( bj ) {
 	bj.extend('plotBarChart', init);	
 	
 		
-})( bluejay ); 
-(function ( bj ) {
+})( bluejay, bluejay.namespace('oePlot')); 
+(function ( bj, oePlot ) {
 
 	'use strict';
 	
 	const oesTemplateType = "Bar Percent Complete";
 	
 	// oe CSS theme!
-	const darkTheme = oePlotly.isDarkTheme();
+	const darkTheme = oePlot.isDarkTheme();
 
 	/**
 	* Build data trace format for Glaucoma
@@ -2436,7 +2562,7 @@ const oePlotly = (function ( bj ) {
 	*/
 	const plotlyInit = ( setup ) => {
 		
-		const layout = oePlotly.getLayout({
+		const layout = oePlot.getLayout({
 			darkTheme, // dark? 
 			colors: 'posNeg',
 			xaxis: setup.xaxis,
@@ -2463,10 +2589,10 @@ const oePlotly = (function ( bj ) {
 	const init = ( json = null ) => {
 		
 		if(json === null){
-			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			bj.log(`[oePlot] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
 			return false;
 		} else {
-			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+			bj.log(`[oePlot] - building Plot.ly ${oesTemplateType}`);
 		}
 
 		/**
@@ -2480,14 +2606,14 @@ const oePlotly = (function ( bj ) {
 		*/
 		
 		// x1
-		const x1 = oePlotly.getAxis({
+		const x1 = oePlot.getAxis({
 			type:'x',
 			numTicks: 20,
 		}, darkTheme );
 		
 		
 		// y1
-		const y1 = oePlotly.getAxis({
+		const y1 = oePlot.getAxis({
 			type:'y', 
 			range: [0, 100],
 			numTicks: 20,
@@ -2512,15 +2638,15 @@ const oePlotly = (function ( bj ) {
 	bj.extend('plotBarPercentComplete', init);	
 	
 		
-})( bluejay ); 
-(function ( bj ) {
+})( bluejay, bluejay.namespace('oePlot')); 
+(function ( bj, oePlot ) {
 
 	'use strict';
 	
 	const oesTemplateType = "Combined Medical Retina"; // used in ID for div
 	
 	// oe CSS theme!
-	const darkTheme = oePlotly.isDarkTheme();
+	const darkTheme = oePlot.isDarkTheme();
 	
 	/**
 	* Plotly parameters
@@ -2531,8 +2657,8 @@ const oePlotly = (function ( bj ) {
 	/**
 	* Helpers
 	*/
-	const dateRange = oePlotly.fullDateRange();
-	const userSelecterUnits = oePlotly.selectableUnits();
+	const dateRange = oePlot.fullDateRange();
+	const userSelecterUnits = oePlot.selectableUnits();
 	
 	
 	/**
@@ -2568,7 +2694,7 @@ const oePlotly = (function ( bj ) {
 			hovertemplate: '%{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
-			line: oePlotly.dataLine({
+			line: oePlot.dataLine({
 				color: getColour()
 			}),
 		};
@@ -2584,7 +2710,7 @@ const oePlotly = (function ( bj ) {
 			hovertemplate: 'CRT: %{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
-			line: oePlotly.dataLine({
+			line: oePlot.dataLine({
 				color: getColour(),
 				dashed: true,
 			}),
@@ -2609,7 +2735,7 @@ const oePlotly = (function ( bj ) {
 				hovertemplate: unit.name + ': %{y}<br>%{x}',
 				type: 'scatter',
 				mode: 'lines+markers',
-				line: oePlotly.dataLine({
+				line: oePlot.dataLine({
 					color: vaColorTrace
 				}),
 			});
@@ -2666,7 +2792,7 @@ const oePlotly = (function ( bj ) {
 	*/
 	const plotlyInitCombined = ( axes ) => {
 
-		const layout = oePlotly.getLayout({
+		const layout = oePlot.getLayout({
 			darkTheme, // dark?
 			legend: {
 				yanchor:'top',
@@ -2681,7 +2807,7 @@ const oePlotly = (function ( bj ) {
 		});
 		
 		
-		const div = oePlotly.buildDiv(`${oesTemplateType}`, '80vh', '650px');
+		const div = oePlot.buildDiv(`${oesTemplateType}`, '80vh', '650px');
 		document.querySelector( '.oes-left-side' ).appendChild( div );
 		
 		/**
@@ -2694,8 +2820,8 @@ const oePlotly = (function ( bj ) {
 		plotlyReacts();
 		
 		// set up click through
-		oePlotly.addClickEvent( div, '?' );
-		oePlotly.addHoverEvent( div, '?' );
+		oePlot.addClickEvent( div, '?' );
+		oePlot.addHoverEvent( div, '?' );
 		
 		// bluejay custom event (user changes layout)
 		document.addEventListener('oesLayoutChange', () => {
@@ -2711,10 +2837,10 @@ const oePlotly = (function ( bj ) {
 	const init = ( json = null ) => {
 		
 		if(json === null){
-			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			bj.log(`[oePlot] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
 			return false;
 		} else {
-			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+			bj.log(`[oePlot] - building Plot.ly ${oesTemplateType}`);
 		}
 		
 		// for all subplot rows
@@ -2745,21 +2871,21 @@ const oePlotly = (function ( bj ) {
 		if( json.rightEye ){
 			myPlotly.set('rightEye', new Map());
 			buildDataTraces( json.rightEye, 'rightEye',
-				oePlotly.getColorSeries('rightEyeSeries', darkTheme)
+				oePlot.getColorSeries('rightEyeSeries', darkTheme)
 			);
 		}
 		
 		if( json.leftEye ){
 			myPlotly.set('leftEye', new Map());
 			buildDataTraces( json.leftEye, 'leftEye', 
-				oePlotly.getColorSeries('leftEyeSeries', darkTheme)
+				oePlot.getColorSeries('leftEyeSeries', darkTheme)
 			);
 		}
 		
 		if( json.BEO ){
 			myPlotly.set('BEO', new Map());
 			buildDataTraces( json.BEO, 'BEO', 
-				oePlotly.getColorSeries('BEOSeries', darkTheme)
+				oePlot.getColorSeries('BEOSeries', darkTheme)
 			);
 		}
 
@@ -2768,7 +2894,7 @@ const oePlotly = (function ( bj ) {
 		*/
 		
 		// x1
-		const x1 = oePlotly.getAxis({
+		const x1 = oePlot.getAxis({
 			type:'x',
 			numTicks: 10,
 			useDates: true,
@@ -2778,7 +2904,7 @@ const oePlotly = (function ( bj ) {
 		}, darkTheme );
 		
 		// y0 - offscale 
-		const y0 = oePlotly.getAxis({
+		const y0 = oePlot.getAxis({
 			type:'y',
 			domain: domainRow[0], 
 			useCategories: {
@@ -2789,7 +2915,7 @@ const oePlotly = (function ( bj ) {
 		}, darkTheme );
 		
 		// y1 - CRT
-		const y1 = oePlotly.getAxis({
+		const y1 = oePlot.getAxis({
 			type:'y',
 			domain: domainRow[1],
 			title: 'CRT', 
@@ -2816,15 +2942,15 @@ const oePlotly = (function ( bj ) {
 	*/
 	bj.extend('plotCombinedMedRet', init);	
 		
-})( bluejay ); 
-(function ( bj ) {
+})( bluejay, bluejay.namespace('oePlot')); 
+(function ( bj, oePlot ) {
 
 	'use strict';
 	
 	const oesTemplateType = "Combined Medical Retina"; // used in ID for div
 	
 	// oe CSS theme!
-	const darkTheme = oePlotly.isDarkTheme();
+	const darkTheme = oePlot.isDarkTheme();
 	
 	/**
 	* Plotly parameters
@@ -2867,7 +2993,7 @@ const oePlotly = (function ( bj ) {
 			type: 'scatter',
 			mode: 'lines+markers',
 			yaxis:'y2',
-			line: oePlotly.dataLine({
+			line: oePlot.dataLine({
 				color: getColour()
 			}),
 			error_y: {
@@ -2886,7 +3012,7 @@ const oePlotly = (function ( bj ) {
 			name: 'CRT',		
 			hovertemplate: 'Mean ± SD<br>CRT: %{y}<br>(N: %{x})',
 			type: 'scatter',
-			line: oePlotly.dataLine({
+			line: oePlot.dataLine({
 				color: getColour(),
 				dashed: true,
 			}),
@@ -2947,7 +3073,7 @@ const oePlotly = (function ( bj ) {
 	*/
 	const plotlyInit = ( setup ) => {
 		
-		const layout = oePlotly.getLayout({
+		const layout = oePlot.getLayout({
 			darkTheme, // dark? 
 			legend: true,
 			xaxis: setup.xaxis,
@@ -2984,10 +3110,10 @@ const oePlotly = (function ( bj ) {
 	const init = ( json = null ) => {
 		
 		if(json === null){
-			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			bj.log(`[oePlot] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
 			return false;
 		} else {
-			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+			bj.log(`[oePlot] - building Plot.ly ${oesTemplateType}`);
 		}
 		
 		// for all subplot rows
@@ -3004,14 +3130,14 @@ const oePlotly = (function ( bj ) {
 		if( json.rightEye ){
 			myPlotly.set('rightEye', new Map());
 			buildDataTraces( json.rightEye, 'rightEye',
-				oePlotly.getColorSeries('rightEyeSeries', darkTheme)
+				oePlot.getColorSeries('rightEyeSeries', darkTheme)
 			);
 		}
 		
 		if( json.leftEye ){
 			myPlotly.set('leftEye', new Map());
 			buildDataTraces( json.leftEye, 'leftEye', 
-				oePlotly.getColorSeries('leftEyeSeries', darkTheme)
+				oePlot.getColorSeries('leftEyeSeries', darkTheme)
 			);
 		}
 
@@ -3020,7 +3146,7 @@ const oePlotly = (function ( bj ) {
 		*/
 		
 		// x1
-		const x1 = oePlotly.getAxis({
+		const x1 = oePlot.getAxis({
 			type:'x',
 			numTicks: 10,
 			spikes: true,
@@ -3029,7 +3155,7 @@ const oePlotly = (function ( bj ) {
 
 		
 		// y1 - CRT
-		const y1 = oePlotly.getAxis({
+		const y1 = oePlot.getAxis({
 			type:'y',
 			title: 'CRT', 
 			range: json.yaxis.CRT, // hard coded range
@@ -3037,7 +3163,7 @@ const oePlotly = (function ( bj ) {
 		}, darkTheme );
 		
 		// y2 - VA (logMar or whatever is passed in)
-		const y2 = oePlotly.getAxis({
+		const y2 = oePlot.getAxis({
 			type:'y',
 			title: 'VA', 
 			range: json.yaxis.VA, // hard coded range
@@ -3063,15 +3189,15 @@ const oePlotly = (function ( bj ) {
 	*/
 	bj.extend('plotCombinedOutcomesWithErrors', init);	
 		
-})( bluejay ); 
-(function ( bj ) {
+})( bluejay, bluejay.namespace('oePlot')); 
+(function ( bj, oePlot ) {
 
 	'use strict';
 	
 	const oesTemplateType = "Outcomes with Error bars";
 	
 	// oe CSS theme!
-	const darkTheme = oePlotly.isDarkTheme();
+	const darkTheme = oePlot.isDarkTheme();
 
 	/**
 	* Build data trace format for Glaucoma
@@ -3123,7 +3249,7 @@ const oePlotly = (function ( bj ) {
 	*/
 	const plotlyInit = ( setup ) => {
 		
-		const layout = oePlotly.getLayout({
+		const layout = oePlot.getLayout({
 			darkTheme, // dark? 
 			colors: 'varied',
 			legend: true,
@@ -3149,10 +3275,10 @@ const oePlotly = (function ( bj ) {
 	const init = ( json = null ) => {
 		
 		if(json === null){
-			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			bj.log(`[oePlot] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
 			return false;
 		} else {
-			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+			bj.log(`[oePlot] - building Plot.ly ${oesTemplateType}`);
 		}
 
 		/**
@@ -3166,7 +3292,7 @@ const oePlotly = (function ( bj ) {
 		*/
 		
 		// x1
-		const x1 = oePlotly.getAxis({
+		const x1 = oePlot.getAxis({
 			type:'x',
 			title: 'Weeks',
 			numTicks: 20,
@@ -3175,7 +3301,7 @@ const oePlotly = (function ( bj ) {
 		
 		
 		// y1
-		const y1 = oePlotly.getAxis({
+		const y1 = oePlot.getAxis({
 			type:'y', 
 			title: 'VA (change) from baseline (LogMAR)',
 			range: [70, 110],
@@ -3183,7 +3309,7 @@ const oePlotly = (function ( bj ) {
 		}, darkTheme );
 		
 		// y2
-		const y2 = oePlotly.getAxis({
+		const y2 = oePlot.getAxis({
 			type:'y', 
 			title: 'IOP (mm Hg))',
 			rightSide: 'y1',
@@ -3209,15 +3335,15 @@ const oePlotly = (function ( bj ) {
 	bj.extend('plotOutcomesWithErrors', init);	
 	
 		
-})( bluejay ); 
-(function ( bj ) {
+})( bluejay, bluejay.namespace('oePlot')); 
+(function( bj, oePlot ){
 
 	'use strict';
 	
 	const oesTemplateType = "Glaucoma";
 	
 	// oe CSS theme!
-	const darkTheme = oePlotly.isDarkTheme();
+	const darkTheme = oePlot.isDarkTheme();
 	
 	/**
 	* Plotly parameters
@@ -3228,11 +3354,11 @@ const oePlotly = (function ( bj ) {
 	/**
 	* Helpers
 	*/
-	const dateRange = oePlotly.fullDateRange();
-	const userSelecterUnits = oePlotly.selectableUnits();
+	const dateRange = oePlot.fullDateRange();
+	const userSelecterUnits = oePlot.selectableUnits();
 	
 	// add API:
-	const highlightPoint = oePlotly.highlighPoint( myPlotly, darkTheme );
+	const highlightPoint = oePlot.highlighPoint( myPlotly, darkTheme );
 	
 	/**
 	* Build data trace format for Glaucoma
@@ -3268,7 +3394,7 @@ const oePlotly = (function ( bj ) {
 			hovertemplate: '%{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
-			line: oePlotly.dashedLine(),
+			line: oePlot.dashedLine(),
 		};
 		
 		myPlotly.get( eyeSide ).get('data').set( eyeJSON.VFI.name, VFI);
@@ -3325,7 +3451,7 @@ const oePlotly = (function ( bj ) {
 					hovertemplate: template,
 					type: 'scatter',
 					showlegend: false,
-				}, oePlotly.eventStyle(  event.event ));
+				}, oePlot.eventStyle(  event.event ));
 			
 			myPlotly.get( eyeSide ).get('data').set( event.name, newEvent);
 			dateRange.add( event.x );
@@ -3368,7 +3494,7 @@ const oePlotly = (function ( bj ) {
 		
 		const eyeSide = setup.eyeSide;
 		
-		const layout = oePlotly.getLayout({
+		const layout = oePlot.getLayout({
 			darkTheme, // dark? 
 			legend: {
 				traceorder: "reversed",
@@ -3392,7 +3518,7 @@ const oePlotly = (function ( bj ) {
 			}
 		});
 			
-		const div = oePlotly.buildDiv(`${oesTemplateType}-${eyeSide}`, '80vh', '850px');
+		const div = oePlot.buildDiv(`${oesTemplateType}-${eyeSide}`, '80vh', '850px');
 		document.querySelector( setup.parentDOM ).appendChild( div );
 	
 		// store details
@@ -3403,8 +3529,8 @@ const oePlotly = (function ( bj ) {
 		plotlyReacts( eyeSide );
 	
 		// add events
-		oePlotly.addClickEvent( div, eyeSide );
-		oePlotly.addHoverEvent( div, eyeSide );
+		oePlot.addClickEvent( div, eyeSide );
+		oePlot.addHoverEvent( div, eyeSide );
 		
 		// bluejay custom event (user changes layout ratio)
 		document.addEventListener('oesLayoutChange', () => {
@@ -3420,10 +3546,10 @@ const oePlotly = (function ( bj ) {
 	const init = ( json = null ) => {
 		
 		if(json === null){
-			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			bj.log(`[oePlot] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
 			return false;
 		} else {
-			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+			bj.log(`[oePlot] - building Plot.ly ${oesTemplateType}`);
 		}
 
 		// for all subplot rows
@@ -3466,7 +3592,7 @@ const oePlotly = (function ( bj ) {
 		*/
 		
 		// x1
-		const x1 = oePlotly.getAxis({
+		const x1 = oePlot.getAxis({
 			type:'x',
 			numTicks: 10,
 			useDates: true, 
@@ -3477,7 +3603,7 @@ const oePlotly = (function ( bj ) {
 		
 		
 		// y0 - offscale 
-		const y0 = oePlotly.getAxis({
+		const y0 = oePlot.getAxis({
 			type:'y',
 			domain: domainRow[0], 
 			useCategories: {
@@ -3488,7 +3614,7 @@ const oePlotly = (function ( bj ) {
 		}, darkTheme );
 		
 		// y2 - IOP
-		const y2 = oePlotly.getAxis({
+		const y2 = oePlot.getAxis({
 			type:'y',
 			domain: domainRow[2],
 			title: 'IOP', 
@@ -3497,7 +3623,7 @@ const oePlotly = (function ( bj ) {
 		}, darkTheme );
 		
 		// y3 - Drugs
-		const y3 = oePlotly.getAxis({
+		const y3 = oePlot.getAxis({
 			type:'y',
 			domain: domainRow[3],
 			useCategories: {
@@ -3508,7 +3634,7 @@ const oePlotly = (function ( bj ) {
 		}, darkTheme );
 		
 		// y4 - VFI
-		const y4 = oePlotly.getAxis({
+		const y4 = oePlot.getAxis({
 			type:'y',
 			domain: domainRow[1],
 			title: 'VFI',
@@ -3559,7 +3685,7 @@ const oePlotly = (function ( bj ) {
 		but allow it to update the related marker
 		*/
 		
-		bj.log('[oePlotly] - method: highlightPoint()');
+		bj.log('[oePlot] - method: highlightPoint()');
 		
 		return { highlightPoint: highlightPoint };
 	};
@@ -3570,43 +3696,47 @@ const oePlotly = (function ( bj ) {
 	bj.extend('plotSummaryGlaucoma', init);	
 	
 	
-})( bluejay ); 
-(function ( bj ) {
+})( bluejay, bluejay.namespace('oePlot')); 
+(function( bj, oePlot ){
 
 	'use strict';
 	
-	const oesTemplateType = "Medical Retina";
-	
-	// oe CSS theme!
-	const darkTheme = oePlotly.isDarkTheme();
-	
 	/**
-	* Plotly parameters
-	* Map top level parameters for each plot (R & L)
+	* OES Medical Retina R/L template
+	* Sub-plot layout
+	* |- Events: Injection, Images (OCT), Managment (Inj Mgmt & Clinical Mgmt)
+	* |- CRT & VA (VA has multiple units)
+	* |- Offscale: CF, HM, PL, NPL
+	* |- [Navigator] 
+	*
+	* Domain allocation for layout: (note: 0 - 1, 0 is the bottom)
+	* Using subploting within plot.ly - Navigator outside this
 	*/
-	const myPlotly = new Map();	
+	const domainRow = [
+		[0.75, 1], 		// Events
+		[0.15, 0.68],	// CRT & VA
+		[0, 0.15],		// Offscale
+	];
 	
 	/**
-	* Helpers
+	* Template globals, helpers added on init() to save memory
 	*/
-	const dateRange = oePlotly.fullDateRange();
-	const userSelecterUnits = oePlotly.selectableUnits();
+	const oesTemplateType = "OES Medical Retina";
+	const darkTheme = oePlot.isDarkTheme();  // which CSS theme is running?
+	const myPlotly = new Map();	 // Plotly: Abstraction of required top level parameters for each plot (R & L)
+	const helpers = {}; // see init();
+	let tools; 
 	
 	
 	/**
-	* Build data trace format for Glaucoma
+	* Build data traces for Plotly
+	* traces are stored in myPlotly Map.
 	* @param {JSON} eyeJSON data
 	* @param {String} eyeSide - 'leftEye' or 'rightEye'
-	* @returns {Array} for Plol.ly data
 	*/
 	const buildDataTraces = ( eyeJSON, eyeSide  ) => {
 		
-		/**
-		* store data traces with own keys
-		* traces can then be accessed by their JSON name
-		*/
-		myPlotly.get( eyeSide ).set('data', new Map());
-		
+		// VA offscale: CF, HM, PL, NPL
 		const VA_offScale = {
 			x: eyeJSON.VA.offScale.x,
 			y: eyeJSON.VA.offScale.y,
@@ -3616,9 +3746,6 @@ const oePlotly = (function ( bj ) {
 			mode: 'lines+markers',
 		};
 		
-		myPlotly.get( eyeSide ).get('data').set( eyeJSON.VA.offScale.name, VA_offScale);
-		dateRange.add( eyeJSON.VA.offScale.x );
-		
 		const CRT = {
 			x: eyeJSON.CRT.x,
 			y: eyeJSON.CRT.y,
@@ -3627,55 +3754,68 @@ const oePlotly = (function ( bj ) {
 			hovertemplate: 'CRT: %{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
-			line: oePlotly.dashedLine(),
+			line: oePlot.dashedLine(),
 		};
-		
-		myPlotly.get( eyeSide ).get('data').set( eyeJSON.CRT.name, CRT);
-		dateRange.add( eyeJSON.CRT.x );
-		
+	
 		/**
-		* User selectable VA data traces
+		VA data traces can be changed by the User, e.g. Snellen Metre, logMAR, etc
+		the trace AND it's axis layout need to be stored together. This is what
+		userSelectedUnits handles.
 		*/
-		Object.values( eyeJSON.VA.units ).forEach(( unit, index ) => {
-			
-			userSelecterUnits.addTrace( eyeSide, {
-				x: unit.x,
-				y: unit.y,
-				name: unit.name,	
+		
+		for (const [ key, trace ] of Object.entries( eyeJSON.VA.units )){
+			tools.selectableUnits.addTrace( eyeSide, key, {
+				x: trace.x,
+				y: trace.y,
+				name: trace.name,	
 				yaxis: 'y3',	
-				hovertemplate: unit.name + ': %{y}<br>%{x}',
+				hovertemplate: trace.name + ': %{y}<br>%{x}',
 				type: 'scatter',
 				mode: 'lines+markers',
 			});
-			
-			// only need to check one of these dates
-			if( !index ) dateRange.add( unit.x );
+		}
+		
+		Object.values( eyeJSON.VA.units ).forEach(( trace, index ) => {
+			tools.selectableUnits.addTrace( eyeSide, {
+				x: trace.x,
+				y: trace.y,
+				name: trace.name,	
+				yaxis: 'y3',	
+				hovertemplate: trace.name + ': %{y}<br>%{x}',
+				type: 'scatter',
+				mode: 'lines+markers',
+			});
 		});
 		
-		myPlotly.get( eyeSide ).get('data').set( 'VA', userSelecterUnits.selectedTrace( eyeSide ));
+		/**
+		Store data traces in myPlotly
+		*/
+		myPlotly.set( eyeSide, new Map());
+		myPlotly.get( eyeSide ).set('data', new Map());
+		myPlotly.get( eyeSide ).get('data').set( VA_offScale.name, VA_offScale );
+		myPlotly.get( eyeSide ).get('data').set( CRT.name, CRT );
+		myPlotly.get( eyeSide ).get('data').set('VA', tools.selectableUnits.getTrace( eyeSide ));
 		
 		/**
-		Build Events data for right eye
+		Event data are all individual traces
+		all the Y values are are the SAME, so that are shown on a line
+		extra data for the popup can be passed in with customdata
 		*/
-		// loop through array...
 		Object.values( eyeJSON.events ).forEach(( event ) => {
 			
-			let template = event.customdata ? '%{y}<br>%{customdata}<br>%{x}' : '%{y}<br>%{x}';
-			
-			let newEvent = Object.assign({
+			const newEvent = Object.assign({
 					oeEventType: event.event, // store event type
 					x: event.x, 
 					y: event.y, 
 					customdata: event.customdata,
 					name: event.name, 
 					yaxis: 'y4',
-					hovertemplate: template,
+					hovertemplate: event.customdata ? '%{y}<br>%{customdata}<br>%{x}' : '%{y}<br>%{x}',
 					type: 'scatter',
 					showlegend: false,
-				}, oePlotly.eventStyle(  event.event ));
+				}, oePlot.eventStyle(  event.event ));
 			
-			myPlotly.get( eyeSide ).get('data').set( event.name, newEvent);
-			dateRange.add( event.x );
+			myPlotly.get( eyeSide ).get('data').set( newEvent.name, newEvent);
 		});
 	};
 	
@@ -3691,13 +3831,14 @@ const oePlotly = (function ( bj ) {
 		/*
 		Update user selected units for VA
 		*/
-		eyePlot.get('data').set('VA', userSelecterUnits.selectedTrace( eyeSide ));
-		eyePlot.get('layout').yaxis3 = Object.assign({}, userSelecterUnits.selectedAxis());
+		eyePlot.get('data').set('VA', tools.selectableUnits.getTrace( eyeSide ));
+		eyePlot.get('layout').yaxis3 = Object.assign({}, tools.selectableUnits.getAxis());
 		
 		// get Data Array of all traces
 		const data = Array.from( eyePlot.get('data').values());
-
+		
 		// build new (or rebuild)
+
 		Plotly.react(
 			eyePlot.get('div'), 
 			data, 
@@ -3714,23 +3855,25 @@ const oePlotly = (function ( bj ) {
 		
 		const eyeSide = setup.eyeSide;
 		
-		const layout = oePlotly.getLayout({
+		const layout = oePlot.getLayout({
 			darkTheme, // dark?
 			legend: {
 				yanchor:'bottom',
-				y:0.82,
+				y: domainRow[1][1],
 			},
 			colors: setup.colors,
 			plotTitle: setup.title,
 			xaxis: setup.xaxis,
 			yaxes: setup.yaxes,
-			subplot: 3,		// offScale, VA, IOP, meds 
-			rangeSlider: dateRange.firstLast(),
+			subplot: domainRow.length, // num of sub-plots 
+			rangeSlider: true, 
 			dateRangeButtons: true,
-			
 		});
 			
-		const div = oePlotly.buildDiv(`${oesTemplateType}-${eyeSide}`, '80vh', '650px');
+		/*
+		Need a wrapper to help with the CSS layout
+		*/		
+		const div = oePlot.buildDiv(`oes-${eyeSide}`);
 		document.querySelector( setup.parentDOM ).appendChild( div );
 		
 		// store details
@@ -3741,8 +3884,8 @@ const oePlotly = (function ( bj ) {
 		plotlyReacts( eyeSide );
 		
 		// set up click through
-		oePlotly.addClickEvent( div, setup.eye );
-		oePlotly.addHoverEvent( div, eyeSide );
+		oePlot.addClickEvent( div, setup.eye );
+		oePlot.addHoverEvent( div, eyeSide );
 		
 		// bluejay custom event (user changes layout)
 		document.addEventListener('oesLayoutChange', () => {
@@ -3755,103 +3898,96 @@ const oePlotly = (function ( bj ) {
 	* init - called from the PHP page that needs it
 	* @param {JSON} json - PHP supplies the data for charts
 	*/
-	const init = ( json = null ) => {
+	const init = ( json  ) => {
+		if( json === null ) throw new Error('[oePlot] Sorry, no JSON data!');
+		bj.log(`[oePlot] - building Plot.ly ${oesTemplateType}`);
 		
-		if(json === null){
-			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
-			return false;
-		} else {
-			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
-		}
+		/**
+		* oePlot tools
+		* this allows the user to access extra chart functionality
+		* tools will add a fixed toolbar DOM to the page
+		*/
+		tools = oePlot.tools();
+		tools.updatePlot( plotlyReacts );
+		//tools.addHoverModeOptions();
 		
-
-		// for all subplot rows
-		const domainRow = [
-			[0, 0.15],
-			[0.2, 0.82],
-			[0.88, 1],
-		];
-		
-		// user selectable units for VA units:
-		userSelecterUnits.init({
-			darkTheme,
-			plotlyUpdate: plotlyReacts,
+		/*
+		* VA has dynamic axis based, e.g. SnellenMetre, LogMAR, etc
+		* builtd all the axes required for each.
+		*/
+		tools.selectableUnits.addAxes({
 			axisDefaults: {
 				type:'y',
-				rightSide: 'y2',
+				rightSide: 'y2', // CRT & VA plot 
 				domain: domainRow[1],
-				title: 'VA',  // prefix for title
 				spikes: true,
 			}, 
-			unitRanges: Object.values( json.yaxis.unitRanges ),
+			yaxes: json.yaxis.VA,
+			prefix: 'VA',
 		});
-
+		
+		tools.showToolbar();
+		
+		// set Y3 to the "makeDefault" unit. User can change this
+		const y3 = tools.selectableUnits.getAxis();
+		
 
 		/**
-		* Data 
+		* Traces - build data traces from JSON 
 		*/
-	
+		
 		if( json.rightEye ){
-			myPlotly.set('rightEye', new Map());
 			buildDataTraces( json.rightEye, 'rightEye' );
 		}
 		
 		if( json.leftEye ){
-			myPlotly.set('leftEye', new Map());
 			buildDataTraces( json.leftEye, 'leftEye' );
 		}
-
+	
 		/**
-		* Axes templates 
+		* Axes 
 		*/
 		
-		// x1
-		const x1 = oePlotly.getAxis({
+		// x1 - Timeline
+		const x1 = oePlot.getAxis({
 			type:'x',
 			numTicks: 10,
 			useDates: true,
-			range: dateRange.firstLast(), 
 			spikes: true,
 			noMirrorLines: true,
 		}, darkTheme );
 		
-		// y0 - offscale 
-		const y0 = oePlotly.getAxis({
+		// y1 - offscale 
+		const y1 = oePlot.getAxis({
 			type:'y',
-			domain: domainRow[0], 
+			domain: domainRow[2], 
 			useCategories: {
-				showAll: true, 
-				categoryarray: json.yaxis.offScale.reverse()
+				categoryarray: json.yaxis.offScale,
+				rangeFit: "padTop", // "exact", etc
 			},
 			spikes: true,
 		}, darkTheme );
 		
-		// y1 - CRT
-		const y1 = oePlotly.getAxis({
+		// y2 - CRT
+		const y2 = oePlot.getAxis({
 			type:'y',
 			domain: domainRow[1],
 			title: 'CRT', 
-			range: [200, 650], // hard coded range
+			range: json.yaxis.CRT, 
 			spikes: true,
 		}, darkTheme );
 		
 
-		// y3 - Events
-		const y3 = oePlotly.getAxis({
+		// y4 - Events
+		const y4 = oePlot.getAxis({
 			type:'y',
-			domain: domainRow[2],
+			domain: domainRow[0],
 			useCategories: {
-				showAll: true, 
-				categoryarray: json.eventTypes.reverse()
+				categoryarray: json.allEvents,
+				rangeFit: "pad", // "exact", etc
 			},
 			spikes: true,
 		}, darkTheme );
-		
-		/*
-		* Dynamic axis
-		* VA axis depends on selected unit state
-		*/
-		const y2 = userSelecterUnits.selectedAxis();
 		
 		/**
 		* Layout & Build  - Eyes
@@ -3863,7 +3999,7 @@ const oePlotly = (function ( bj ) {
 				eyeSide: "rightEye",
 				colors: "rightEyeSeries",
 				xaxis: x1, 
-				yaxes: [ y0, y1, y2, y3 ],
+				yaxes: [ y1, y2, y3, y4 ],
 				parentDOM: '.oes-left-side',
 			});	
 		} 
@@ -3875,18 +4011,19 @@ const oePlotly = (function ( bj ) {
 				eyeSide: "leftEye",
 				colors: "leftEyeSeries",
 				xaxis: x1, 
-				yaxes: [ y0, y1, y2, y3 ],
+				yaxes: [ y1, y2, y3, y4 ],
 				parentDOM: '.oes-right-side',
 			});			
 		}
+
 	};
 	
 	/**
 	* Extend API ... PHP will call with json when DOM is loaded
 	*/
-	bj.extend('plotSummaryMedicalRetina', init);	
+	bj.extend('plotSummaryMedicalRetina', init );	
 		
-})( bluejay ); 
+})( bluejay, bluejay.namespace('oePlot')); 
 (function (uiApp) {
 
 	'use strict';
@@ -9851,7 +9988,7 @@ Updated to Vanilla JS for IDG
 	const showLoginStep = ( step, text='' ) => {
 		switch( step ){
 			case 1:
-				institution.innerHTML = '<small>Please select institution</small>';
+				institution.innerHTML = '<small>Please select an institution</small>';
 				site.textContent = '';
 				stepOptions.innerHTML = Mustache.render('{{#options}}<li>{{.}}</li>{{/options}}', {
 					options: ['Bolton','Cardiff and Vale University','East Kent Hospitals University','Guy\'s and St Thomas\'']	
@@ -9859,7 +9996,7 @@ Updated to Vanilla JS for IDG
 			break;
 			case 2:
 				institution.innerHTML = `${text}<i class="oe-i remove-circle small-icon pad-left"></i>`;
-				site.innerHTML = '<small>Please select site</small>';
+				site.innerHTML = '<small>Please select a site</small>';
 				stepOptions.innerHTML = Mustache.render('{{#options}}<li>{{.}}</li>{{/options}}', {
 					options: ['Kings site','Queens site','Another site']	
 				});	
@@ -9909,7 +10046,7 @@ Updated to Vanilla JS for IDG
 			'<div class="info">',
 			'You have been logged out for security reasons. Please login to continue',
 			'</div>',
-			'<div class="flex-c"><button class="row">Or exit to homepage</button></div>',
+			'<div class="flex-c"><a href="/v3/login-multisite" class="button">Or exit to homepage</a></div>',
 			'</div>',
 			'</div>'].join('');
 			
@@ -12237,73 +12374,25 @@ Updated to Vanilla JS for IDG
 			return h3; 
 		};
 		
-		/**
-		* Step-status
-		* @param {String} status 
-		* @returns {Element}
-		*/
-		const setStatus = ( status, type ) => {
-			const div = bj.div(`step-status ${status}`);
-			switch( status ){
-				case 'todo': div.textContent = "Waiting to be done"; break; 
-				case 'active': div.textContent = "Currently active"; break; 
-				case 'config': div.textContent = "Requires configuration"; break; 
-				case 'done': div.textContent = "Completed"; break; 
-				default: div.textContent = status;
-			}
-			
-			// special types
-			if( type == "arrive") div.textContent = 'Arrived';
-			if( type == "finish") div.textContent = 'Patient has left';
-			
-			return div;
-		};
 		
 		/**
 		* Load content, loading this from the server
 		* @params {String} shortcode - PathStep shortcode e.g. "Arr", etc
 		* @params {String} status - 'todo', 'active', 'etc'...
 		* @params {Boolean} full - full view (or the quickview)
-		* @returns {Element}
 		*/
 		const loadContent = ( shortcode, status, full ) => {
-			const div = bj.div('step-content');
 			/*
 			Async.
 			Use the pathStepKey for the token check
 			*/
 			const phpCode = `${shortcode}-${status}`.toLowerCase();
-			bj.xhr(`/idg-php/load/pathstep/popup-content.php?full=${full}&code=${phpCode}`, pathStepKey )
+			bj.xhr(`/idg-php/load/pathstep/_ps.php?full=${full}&code=${phpCode}`, pathStepKey )
 				.then( xreq => {
 					if( pathStepKey != xreq.token ) return;
-					div.innerHTML = xreq.html;
+					popup.insertAdjacentHTML('beforeend', xreq.html );
 				})
 				.catch( e => console.log('PHP failed to load', e ));
-			return div;
-		};
-		
-		/**
-		* Button actions - generic for testing through the pathStep states
-		* @param {String} status 
-		* @returns {Element}
-		*/
-		const userActions = ( status ) => {
-			const div = bj.div('step-actions');
-			const btn = ( text, color, action ) => `<button class="${color} hint js-idg-ps-popup-btn" data-action="${action}">${text}</button>`;
-			
-			let domString = [];
-			
-			switch( status ){
-				case 'config': domString = [ btn('Configure', 'blue', 'next'), btn('Remove', 'red', 'remove')];
-				break;
-				case 'todo': domString = [ btn('Activate', 'blue', 'next'), btn('Remove', 'red', 'remove')];
-				break;
-				case 'active': domString = [ btn('Complete', 'green', 'next'), btn('Cancel', 'red', 'remove')];
-				break;
-			}
-			
-			div.innerHTML = domString.join('');
-			return div; 
 		};
 			
 		/**
@@ -12324,12 +12413,8 @@ Updated to Vanilla JS for IDG
 			// build node tree:
 			popup.append( closeBtn( full ));
 			popup.append( setTitle( shortcode ));
-			popup.append( loadContent( shortcode, status, full ));
 			
-			// actions can only be used if the popup is locked open (full) state
-			if( full ) popup.append( userActions( status ));
-			
-			popup.append( setStatus( status, type ));
+			loadContent( shortcode, status, full );
 			
 			/*
 			Position popup to PathStep (span)
@@ -12364,8 +12449,6 @@ Updated to Vanilla JS for IDG
 		const removeReset = () => {
 			pathStep = null;
 			lockedOpen = false;
-			window.removeEventListener('scroll', removeReset, { capture:true, once:true });
-			
 			// There is a flicker if you 'scrub' along a pathway, delay removal to stop this
 			removeTimerID = setTimeout(() => popup.remove(), 50 );
 		};
@@ -12390,8 +12473,6 @@ Updated to Vanilla JS for IDG
 					ps.span, 
 					true 
 				);
-				
-				window.addEventListener('scroll', removeReset, { capture:true, once:true });
 			}
 		};
 		

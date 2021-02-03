@@ -25,7 +25,7 @@
 			'<div class="info">',
 			'You have been logged out for security reasons. Please login to continue',
 			'</div>',
-			'<div class="flex-c"><button class="row">Or exit to homepage</button></div>',
+			'<div class="flex-c"><a href="/v3/login-multisite" class="button">Or exit to homepage</a></div>',
 			'</div>',
 			'</div>'].join('');
 			

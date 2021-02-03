@@ -39,73 +39,25 @@
 			return h3; 
 		};
 		
-		/**
-		* Step-status
-		* @param {String} status 
-		* @returns {Element}
-		*/
-		const setStatus = ( status, type ) => {
-			const div = bj.div(`step-status ${status}`);
-			switch( status ){
-				case 'todo': div.textContent = "Waiting to be done"; break; 
-				case 'active': div.textContent = "Currently active"; break; 
-				case 'config': div.textContent = "Requires configuration"; break; 
-				case 'done': div.textContent = "Completed"; break; 
-				default: div.textContent = status;
-			}
-			
-			// special types
-			if( type == "arrive") div.textContent = 'Arrived';
-			if( type == "finish") div.textContent = 'Patient has left';
-			
-			return div;
-		};
 		
 		/**
 		* Load content, loading this from the server
 		* @params {String} shortcode - PathStep shortcode e.g. "Arr", etc
 		* @params {String} status - 'todo', 'active', 'etc'...
 		* @params {Boolean} full - full view (or the quickview)
-		* @returns {Element}
 		*/
 		const loadContent = ( shortcode, status, full ) => {
-			const div = bj.div('step-content');
 			/*
 			Async.
 			Use the pathStepKey for the token check
 			*/
 			const phpCode = `${shortcode}-${status}`.toLowerCase();
-			bj.xhr(`/idg-php/load/pathstep/popup-content.php?full=${full}&code=${phpCode}`, pathStepKey )
+			bj.xhr(`/idg-php/load/pathstep/_ps.php?full=${full}&code=${phpCode}`, pathStepKey )
 				.then( xreq => {
 					if( pathStepKey != xreq.token ) return;
-					div.innerHTML = xreq.html;
+					popup.insertAdjacentHTML('beforeend', xreq.html );
 				})
 				.catch( e => console.log('PHP failed to load', e ));
-			return div;
-		};
-		
-		/**
-		* Button actions - generic for testing through the pathStep states
-		* @param {String} status 
-		* @returns {Element}
-		*/
-		const userActions = ( status ) => {
-			const div = bj.div('step-actions');
-			const btn = ( text, color, action ) => `<button class="${color} hint js-idg-ps-popup-btn" data-action="${action}">${text}</button>`;
-			
-			let domString = [];
-			
-			switch( status ){
-				case 'config': domString = [ btn('Configure', 'blue', 'next'), btn('Remove', 'red', 'remove')];
-				break;
-				case 'todo': domString = [ btn('Activate', 'blue', 'next'), btn('Remove', 'red', 'remove')];
-				break;
-				case 'active': domString = [ btn('Complete', 'green', 'next'), btn('Cancel', 'red', 'remove')];
-				break;
-			}
-			
-			div.innerHTML = domString.join('');
-			return div; 
 		};
 			
 		/**
@@ -126,12 +78,8 @@
 			// build node tree:
 			popup.append( closeBtn( full ));
 			popup.append( setTitle( shortcode ));
-			popup.append( loadContent( shortcode, status, full ));
 			
-			// actions can only be used if the popup is locked open (full) state
-			if( full ) popup.append( userActions( status ));
-			
-			popup.append( setStatus( status, type ));
+			loadContent( shortcode, status, full );
 			
 			/*
 			Position popup to PathStep (span)
@@ -166,8 +114,6 @@
 		const removeReset = () => {
 			pathStep = null;
 			lockedOpen = false;
-			window.removeEventListener('scroll', removeReset, { capture:true, once:true });
-			
 			// There is a flicker if you 'scrub' along a pathway, delay removal to stop this
 			removeTimerID = setTimeout(() => popup.remove(), 50 );
 		};
@@ -192,8 +138,6 @@
 					ps.span, 
 					true 
 				);
-				
-				window.addEventListener('scroll', removeReset, { capture:true, once:true });
 			}
 		};
 		

@@ -1,14 +1,21 @@
 /**
-* Using "oePlotly" as namespace
-* @namespace
+* oePlot - a "black box" to correctly and consistently display
+* all plot.ly charts. All required data for a chart is passed
+* in to the appropriate blueJS template (in agreed JSON format) and 
+* oePlotly will style and theme it correctly for plot.ly
+* 
+* This replaces a previous, simpler oePlotly helper in "newblue" 
+* see: newblue/plotlyJS/oePlotly_v1.js
+*
+* https://plot.ly/javascript/reference/
+* @namespace "oeplot"
 * Note: this approach completely replaces the old "oePlotly" layout helper
 */
-const oePlotly = (function ( bj ) {
+(function( bj, oePlot ){
 
 	'use strict';
 	
 	bj.log('Plot.ly version: ' + Plotly.version );
-	bj.log('oePlotly - Plot.ly builder available');
 	
 	const colours = {
 		dark: {
@@ -18,7 +25,7 @@ const oePlotly = (function ( bj ) {
 			red: '#ea2b34',
 			greenSeries: ['#65d235', '#A5D712','#02B546'],
 			redSeries: ['#ea2b34','#F64A2D','#C92845'],
-			yellowSeries: ['#FAD94B','#E8B131','#F1F555'], // BEO
+			yellowSeries: ['#FAD94B','#E8B131','#F1F555'], // BEO (Both Eyes Open)
 			standard: ['#1451b3', '#175ece', '#1a69e5'],
 			varied:  ['#0a83ea', '#18949f', '#781cea','#3f0aea'],
 			dual: ['#1472DE','#2E4259'],
@@ -42,9 +49,7 @@ const oePlotly = (function ( bj ) {
 	* @param {Boolean} dark 
 	* @returns {Array} of colour series
 	*/
-	const getBlue = ( dark ) => {
-		return dark ? colours.dark.blue : colours.light.blue ;
-	};
+	oePlot.getBlue = ( dark ) => dark ? colours.dark.blue : colours.light.blue;
 	
 	/**
 	* Get color series
@@ -52,7 +57,7 @@ const oePlotly = (function ( bj ) {
 	* @param {Boolean} darkTheme 
 	* @returns {Array} of colour series
 	*/
-	const getColorSeries = ( colorName, darkTheme ) => {
+	oePlot.getColorSeries = ( colorName, darkTheme ) => {
 		let colorWay = null;
 		const dark = colours.dark;
 		const light = colours.light; 
@@ -89,7 +94,7 @@ const oePlotly = (function ( bj ) {
 	* @param {Boolean} dark
 	* @returns {String} colour for request element (or "pink" if fails)
 	*/
-	const getColor = ( colour, dark ) => {
+	oePlot.getColor = ( colour, dark ) => {
 		switch( colour ){
 			case 'highlight': return dark ? colours.dark.highlight : colours.light.highlight; 
 			case 'rightEye': return dark ? colours.dark.green : colours.light.green;
@@ -102,9 +107,9 @@ const oePlotly = (function ( bj ) {
 	
 	/**
 	* Temporary support added for IDG Glaucoma Visual Fields Demo which is still
-	* using oePlotly directly (until I have time to rebuild it!) 
+	* using oePlot directly (until I have time to rebuild it!) 
 	*/ 
-	const getColorFor = ( color, dark ) => getColor( color, dark );
+	oePlot.getColorFor = ( color, dark ) => getColor( color, dark );
 	
 	
 	/**
@@ -112,17 +117,7 @@ const oePlotly = (function ( bj ) {
 	* layout may be used in "pro" area (such as patient popup)
 	* @returns {Boolean}
 	*/
-	const isDarkTheme = () => {
-		return window.oeThemeMode === "dark" ? true : false;	
-	};
+	oePlot.isDarkTheme = () => window.oeThemeMode === "dark" ? true : false;
 	
-	// public 
-	return {
-		isDarkTheme,
-		getBlue,
-		getColorSeries, 
-		getColor, 
-		getColorFor
-	};
 
-})( bluejay );
+})( bluejay, bluejay.namespace('oePlot'));

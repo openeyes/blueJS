@@ -1,11 +1,11 @@
-(function ( bj ) {
+(function ( bj, oePlot ) {
 
 	'use strict';
 	
 	const oesTemplateType = "Combined Medical Retina"; // used in ID for div
 	
 	// oe CSS theme!
-	const darkTheme = oePlotly.isDarkTheme();
+	const darkTheme = oePlot.isDarkTheme();
 	
 	/**
 	* Plotly parameters
@@ -48,7 +48,7 @@
 			type: 'scatter',
 			mode: 'lines+markers',
 			yaxis:'y2',
-			line: oePlotly.dataLine({
+			line: oePlot.dataLine({
 				color: getColour()
 			}),
 			error_y: {
@@ -67,7 +67,7 @@
 			name: 'CRT',		
 			hovertemplate: 'Mean ± SD<br>CRT: %{y}<br>(N: %{x})',
 			type: 'scatter',
-			line: oePlotly.dataLine({
+			line: oePlot.dataLine({
 				color: getColour(),
 				dashed: true,
 			}),
@@ -128,7 +128,7 @@
 	*/
 	const plotlyInit = ( setup ) => {
 		
-		const layout = oePlotly.getLayout({
+		const layout = oePlot.getLayout({
 			darkTheme, // dark? 
 			legend: true,
 			xaxis: setup.xaxis,
@@ -165,10 +165,10 @@
 	const init = ( json = null ) => {
 		
 		if(json === null){
-			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			bj.log(`[oePlot] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
 			return false;
 		} else {
-			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+			bj.log(`[oePlot] - building Plot.ly ${oesTemplateType}`);
 		}
 		
 		// for all subplot rows
@@ -185,14 +185,14 @@
 		if( json.rightEye ){
 			myPlotly.set('rightEye', new Map());
 			buildDataTraces( json.rightEye, 'rightEye',
-				oePlotly.getColorSeries('rightEyeSeries', darkTheme)
+				oePlot.getColorSeries('rightEyeSeries', darkTheme)
 			);
 		}
 		
 		if( json.leftEye ){
 			myPlotly.set('leftEye', new Map());
 			buildDataTraces( json.leftEye, 'leftEye', 
-				oePlotly.getColorSeries('leftEyeSeries', darkTheme)
+				oePlot.getColorSeries('leftEyeSeries', darkTheme)
 			);
 		}
 
@@ -201,7 +201,7 @@
 		*/
 		
 		// x1
-		const x1 = oePlotly.getAxis({
+		const x1 = oePlot.getAxis({
 			type:'x',
 			numTicks: 10,
 			spikes: true,
@@ -210,7 +210,7 @@
 
 		
 		// y1 - CRT
-		const y1 = oePlotly.getAxis({
+		const y1 = oePlot.getAxis({
 			type:'y',
 			title: 'CRT', 
 			range: json.yaxis.CRT, // hard coded range
@@ -218,7 +218,7 @@
 		}, darkTheme );
 		
 		// y2 - VA (logMar or whatever is passed in)
-		const y2 = oePlotly.getAxis({
+		const y2 = oePlot.getAxis({
 			type:'y',
 			title: 'VA', 
 			range: json.yaxis.VA, // hard coded range
@@ -244,4 +244,4 @@
 	*/
 	bj.extend('plotCombinedOutcomesWithErrors', init);	
 		
-})( bluejay ); 
+})( bluejay, bluejay.namespace('oePlot')); 

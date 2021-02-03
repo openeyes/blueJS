@@ -1,4 +1,4 @@
-(function( oePlotly ) {
+(function( oePlot ) {
 	
 	'use strict';
 	
@@ -25,7 +25,7 @@
 	}
 	
 	*/
-	oePlotly.getAxis = function( options, dark ){ 
+	oePlot.getAxis = function( options, dark ){ 
 		
 		// default 
 		let axis = {
@@ -104,11 +104,21 @@
 		// categories (assuming this will only be used for yAxis)
 		if(options.useCategories){
 			let arr = options.useCategories.categoryarray;
+			
 			axis.type = "category";
-			// categories on yaxis start at 0, add a blank to push up
-			axis.categoryarray = [' '].concat( arr );
-			// show all categories?
-			if( options.useCategories.showAll ) axis.range = [0, arr.length + 1];
+			axis.categoryarray = arr;
+			/*
+			Category range. Each category is assigned a serial number from zero in the order it appears
+			Using the "range" options I can "pad" the axis out or have fit the plot exactly
+			*/
+			if( options.useCategories.rangeFit ){
+				switch( options.useCategories.rangeFit ){
+					case "exact":		axis.range = [ 0, arr.length-1 ]; break;
+					case "pad":			axis.range = [ -1, arr.length ]; break; 
+					case "padTop":		axis.range = [ 0, arr.length ]; break;
+					case "padBottom":	axis.range = [ -1, arr.length-1 ]; break; 
+				}
+			}
 		}
 
 		// spikes
@@ -123,4 +133,4 @@
 	};
 	
 	
-})( oePlotly );
+})( bluejay.namespace('oePlot'));

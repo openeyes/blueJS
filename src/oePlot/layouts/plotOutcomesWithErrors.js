@@ -1,11 +1,11 @@
-(function ( bj ) {
+(function ( bj, oePlot ) {
 
 	'use strict';
 	
 	const oesTemplateType = "Outcomes with Error bars";
 	
 	// oe CSS theme!
-	const darkTheme = oePlotly.isDarkTheme();
+	const darkTheme = oePlot.isDarkTheme();
 
 	/**
 	* Build data trace format for Glaucoma
@@ -57,7 +57,7 @@
 	*/
 	const plotlyInit = ( setup ) => {
 		
-		const layout = oePlotly.getLayout({
+		const layout = oePlot.getLayout({
 			darkTheme, // dark? 
 			colors: 'varied',
 			legend: true,
@@ -83,10 +83,10 @@
 	const init = ( json = null ) => {
 		
 		if(json === null){
-			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			bj.log(`[oePlot] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
 			return false;
 		} else {
-			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+			bj.log(`[oePlot] - building Plot.ly ${oesTemplateType}`);
 		}
 
 		/**
@@ -100,7 +100,7 @@
 		*/
 		
 		// x1
-		const x1 = oePlotly.getAxis({
+		const x1 = oePlot.getAxis({
 			type:'x',
 			title: 'Weeks',
 			numTicks: 20,
@@ -109,7 +109,7 @@
 		
 		
 		// y1
-		const y1 = oePlotly.getAxis({
+		const y1 = oePlot.getAxis({
 			type:'y', 
 			title: 'VA (change) from baseline (LogMAR)',
 			range: [70, 110],
@@ -117,7 +117,7 @@
 		}, darkTheme );
 		
 		// y2
-		const y2 = oePlotly.getAxis({
+		const y2 = oePlot.getAxis({
 			type:'y', 
 			title: 'IOP (mm Hg))',
 			rightSide: 'y1',
@@ -143,4 +143,4 @@
 	bj.extend('plotOutcomesWithErrors', init);	
 	
 		
-})( bluejay ); 
+})( bluejay, bluejay.namespace('oePlot')); 

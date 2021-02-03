@@ -21,7 +21,7 @@
 	const showLoginStep = ( step, text='' ) => {
 		switch( step ){
 			case 1:
-				institution.innerHTML = '<small>Please select institution</small>';
+				institution.innerHTML = '<small>Please select an institution</small>';
 				site.textContent = '';
 				stepOptions.innerHTML = Mustache.render('{{#options}}<li>{{.}}</li>{{/options}}', {
 					options: ['Bolton','Cardiff and Vale University','East Kent Hospitals University','Guy\'s and St Thomas\'']	
@@ -29,7 +29,7 @@
 			break;
 			case 2:
 				institution.innerHTML = `${text}<i class="oe-i remove-circle small-icon pad-left"></i>`;
-				site.innerHTML = '<small>Please select site</small>';
+				site.innerHTML = '<small>Please select a site</small>';
 				stepOptions.innerHTML = Mustache.render('{{#options}}<li>{{.}}</li>{{/options}}', {
 					options: ['Kings site','Queens site','Another site']	
 				});	

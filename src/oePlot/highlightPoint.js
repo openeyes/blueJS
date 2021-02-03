@@ -1,11 +1,11 @@
-(function( oePlotly ) {
+(function( oePlot ) {
 	
 	'use strict';
 	
 	/**
 	* Init with template layout properties
 	*/
-	oePlotly.highlighPoint = ( myPlotly, darkTheme ) => {
+	oePlot.highlighPoint = ( myPlotly, darkTheme ) => {
 		
 		/**
 		* External API 
@@ -19,7 +19,7 @@
 			let objPath = flattenedObj.split('.');
 			
 			if(objPath.length != 2){
-				bj.log('oePlotly - for highlightPoint to work it needs EyeSide & Date JSON name e.g. "leftEye.OCT" ');
+				bj.log('oePlot - for highlightPoint to work it needs EyeSide & Date JSON name e.g. "leftEye.OCT" ');
 				return;
 			}
 			
@@ -45,16 +45,16 @@
 			2) set specific marker colour to blue
 			3) relayout	
 			*/
-			let eyeColor = oePlotly.getColor( eyeSide, darkTheme );
+			let eyeColor = oePlot.getColor( eyeSide, darkTheme );
 			let markerColors = [];
 			for( let i=0; i < traceData.x.length; i++ ){
 				markerColors.push( eyeColor );
 			}
 			// set specific marker to blue
-			markerColors[ indexPoint ] = oePlotly.getColor( 'highlight', darkTheme );
+			markerColors[ indexPoint ] = oePlot.getColor( 'highlight', darkTheme );
 			
 			// get marker style for event type 
-			let markerObj = oePlotly.markerFor( traceData.oeEventType ); // added on creation of trace
+			let markerObj = oePlot.markerFor( traceData.oeEventType ); // added on creation of trace
 			// add colors
 			markerObj.color = markerColors;
 			
@@ -65,4 +65,4 @@
 		};
 	};
 	
-})( oePlotly );
+})( bluejay.namespace('oePlot'));

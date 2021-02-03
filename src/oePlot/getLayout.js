@@ -1,4 +1,4 @@
-(function( oePlotly ) {
+(function( oePlot ) {
 	
 	'use strict';
 	
@@ -9,7 +9,7 @@
 	*
 	Options:
 	{
-		darkTheme: "dark",  	// Required {Boolean} oePlotly Theme  
+		darkTheme: "dark",  	// Required {Boolean} oePlot Theme  
 		legend: false, 			// Optional {Boolean || Object} customise any of the defaults
 		colors: 'varied', 		// Optional {String} varied" or "twoPosNeg" or "rightEye" (defaults to "blues")
 		plotTitle: false, 		// Optional {String}
@@ -22,14 +22,14 @@
 		dateRangeButtons: false // Optional {Boolean}
 	}
 	*/
-	oePlotly.getLayout = function( options ){
+	oePlot.getLayout = function( options ){
 		// set up layout colours based on OE theme settings: "dark" or "light"
 		const dark = options.darkTheme;
 		
 		// build the Plotly layout obj
-		let layout = {
+		const layout = {
 			isDark: dark, // store OE dark theme in layout
-			hovermode:'closest', // get single point rather than all of them
+			hovermode:'closest', // "x" | "y" | "closest" | false | "x unified" | "y unified"
 			autosize:true, // onResize change chart size
 			margin: {
 				l:50, // 80 default, if Y axis has a title this will need more
@@ -55,10 +55,10 @@
 			// default set up for hoverlabels
 			hoverlabel: {
 				bgcolor: dark ? "#003" : '#fff',
-				bordercolor: dark ? '#003' : '#00f',
+				bordercolor: dark ? '#009' : '#00f',
 				font: {
 					size: 11, // override base font
-					color: oePlotly.getBlue( dark ),
+					color: oePlot.getBlue( dark ),
 				}
 			},
 		};
@@ -67,9 +67,9 @@
 		Colour theme	
 		*/ 
 		if( options.colors ){
-			layout.colorway = oePlotly.getColorSeries( options.colors, dark );			
+			layout.colorway = oePlot.getColorSeries( options.colors, dark );			
 		} else {
-			layout.colorway = oePlotly.getColorSeries( "default", dark );
+			layout.colorway = oePlot.getColorSeries( "default", dark );
 		}
 		
 		/*
@@ -166,7 +166,7 @@
 			      x1: my.x,
 			      y1: height,
 			      line: {
-			        color: oePlotly.getBlue( dark ),
+			        color: oePlot.getBlue( dark ),
 			        width: 0.5,
 					//dash:"3px,4px,1px,4px,3px,1px",
 			      }
@@ -180,7 +180,7 @@
 				   textangle: 90,
 				   align: "left",
 				   font: {
-					   color: oePlotly.getBlue( dark )
+					   color: oePlot.getBlue( dark )
 				   },
 				   borderpad: 2,
 				   x: my.x,
@@ -217,7 +217,7 @@
 			      x1: 1,
 			      y1: my.y,
 			      line: {
-			        color: oePlotly.getBlue( dark ),
+			        color: oePlot.getBlue( dark ),
 			        width: 2,
 			        dash:"3px,12px",
 			      }
@@ -229,7 +229,7 @@
 				   text: my.name,
 				   align: "left",
 				   font: {
-					   color: oePlotly.getBlue( dark )
+					   color: oePlot.getBlue( dark )
 				   },
 				   borderpad: 2,
 				   xref: "paper",
@@ -327,7 +327,7 @@
 					step: "month",
 					count: 6, // 1 = year, 2 = 2 years
 				}]
-			}, oePlotly.buttonStyling( dark ) );
+			}, oePlot.buttonStyling( dark ) );
 		}
 		
 		// ok, all done
@@ -335,4 +335,4 @@
 	};
 	
 	
-})( oePlotly );
+})( bluejay.namespace('oePlot'));

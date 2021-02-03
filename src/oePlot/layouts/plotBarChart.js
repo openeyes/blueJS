@@ -1,11 +1,11 @@
-(function ( bj ) {
+(function( bj, oePlot ){
 
 	'use strict';
 	
-	const oesTemplateType = "Bar Percent Complete";
+	const oesTemplateType = "Bar Chart";
 	
 	// oe CSS theme!
-	const darkTheme = oePlotly.isDarkTheme();
+	const darkTheme = oePlot.isDarkTheme();
 
 	/**
 	* Build data trace format for Glaucoma
@@ -13,29 +13,27 @@
 	* @returns {Array} for Plol.ly data
 	*/
 	const dataTraces = ( json ) => {
-		
-		let percentIncomplete = json.percentComplete.map( p => 100 - p );
-		
-		const complete = {
-			x: json.xAxis,
-			y: json.percentComplete,
-			name: '',		
-			hovertemplate: 'Complete<br>%{y}%',
-			type: 'bar'
-		};
-		
-		const incomplete = {
-			x: json.xAxis,
-			y: percentIncomplete,
-			name: '',		
-			hovertemplate: 'Incomplete<br>%{y}%',
-			type: 'bar'
-		};
 	
+		const trace = {
+			y: json.data.y,
+			name: json.data.name,		
+			type: 'bar'
+		};
+		
+		// optional settings
+		
+		if( json.data.x ){
+			trace.x = json.data.x;
+		}
+		
+		if( json.data.hovertemplate ){
+			trace.hovertemplate = json.data.hovertemplate;
+		}
+		
 		/*
 		Data trace array
 		*/
-		return [ complete, incomplete ];			
+		return [ trace ];			
 	};
 
 	
@@ -45,9 +43,9 @@
 	*/
 	const plotlyInit = ( setup ) => {
 		
-		const layout = oePlotly.getLayout({
+		const layout = oePlot.getLayout({
 			darkTheme, // dark? 
-			colors: 'posNeg',
+			plotTitle: setup.title,
 			xaxis: setup.xaxis,
 			yaxes: setup.yaxes,
 		});
@@ -72,10 +70,10 @@
 	const init = ( json = null ) => {
 		
 		if(json === null){
-			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			bj.log(`[oePlot] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
 			return false;
 		} else {
-			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+			bj.log(`[oePlot] - building Plot.ly ${oesTemplateType}`);
 		}
 
 		/**
@@ -89,25 +87,35 @@
 		*/
 		
 		// x1
-		const x1 = oePlotly.getAxis({
+		const x1 = oePlot.getAxis({
 			type:'x',
 			numTicks: 20,
 		}, darkTheme );
 		
-		
 		// y1
-		const y1 = oePlotly.getAxis({
+		const y1 = oePlot.getAxis({
 			type:'y', 
-			range: [0, 100],
 			numTicks: 20,
 		}, darkTheme );
+		
+		// optional
+		if( json.title.xaxis ){
+			x1.title = json.title.xaxis;
+		}
+		
+		if( json.title.yaxis ){
+			y1.title = json.title.yaxis;
+		}
+		
 		
 		/**
 		* Layout & Build - Eyes
 		*/	
+		console.log( json );
 		
 		plotlyInit({
 			div: document.querySelector( json.dom ),
+			title: json.title.plot,
 			data,
 			xaxis: x1, 
 			yaxes: [ y1 ],
@@ -118,7 +126,7 @@
 	/**
 	* Extend API ... PHP will call with json when DOM is loaded
 	*/
-	bj.extend('plotBarPercentComplete', init);	
+	bj.extend('plotBarChart', init);	
 	
 		
-})( bluejay ); 
+})( bluejay, bluejay.namespace('oePlot')); 

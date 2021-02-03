@@ -15,10 +15,10 @@ const baseModules = [
 	'./src/app/*.js',				// other app parts, then modules... 
 ];
 
-const oePlotly = [
-	'./src/oePlotly/_oePlotly.js',	// oePlotly moved from newblue
-	'./src/oePlotly/*.js',		
-	'./src/oePlotly/layouts/*.js',
+const oePlot = [
+	'./src/oePlot/_oePlot.js',		
+	'./src/oePlot/*.js',		
+	'./src/oePlot/layouts/*.js',
 ]
 
 const productionModules = [
@@ -38,12 +38,12 @@ const portalModules = [
 const paths = {
 	// builds: for OpenEyes
 	js: {	
-		input: baseModules.concat( oePlotly, productionModules, bjReady ), // Ready state loaded last 
+		input: baseModules.concat( oePlot, productionModules, bjReady ), // Ready state loaded last 
 		output:	'./dist/oe/',
 	},
 	// builds: for IDG
 	idgDev: {
-		input: baseModules.concat( oePlotly, productionModules, idgModules, bjReady ),
+		input: baseModules.concat( oePlot, productionModules, idgModules, bjReady ),
 		output:	'./idg-dev/',
 	}, 
 	// oe Portal

@@ -1,11 +1,11 @@
-(function ( bj ) {
+(function ( bj, oePlot ) {
 
 	'use strict';
 	
 	const oesTemplateType = "Combined Medical Retina"; // used in ID for div
 	
 	// oe CSS theme!
-	const darkTheme = oePlotly.isDarkTheme();
+	const darkTheme = oePlot.isDarkTheme();
 	
 	/**
 	* Plotly parameters
@@ -16,8 +16,8 @@
 	/**
 	* Helpers
 	*/
-	const dateRange = oePlotly.fullDateRange();
-	const userSelecterUnits = oePlotly.selectableUnits();
+	const dateRange = oePlot.fullDateRange();
+	const userSelecterUnits = oePlot.selectableUnits();
 	
 	
 	/**
@@ -53,7 +53,7 @@
 			hovertemplate: '%{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
-			line: oePlotly.dataLine({
+			line: oePlot.dataLine({
 				color: getColour()
 			}),
 		};
@@ -69,7 +69,7 @@
 			hovertemplate: 'CRT: %{y}<br>%{x}',
 			type: 'scatter',
 			mode: 'lines+markers',
-			line: oePlotly.dataLine({
+			line: oePlot.dataLine({
 				color: getColour(),
 				dashed: true,
 			}),
@@ -94,7 +94,7 @@
 				hovertemplate: unit.name + ': %{y}<br>%{x}',
 				type: 'scatter',
 				mode: 'lines+markers',
-				line: oePlotly.dataLine({
+				line: oePlot.dataLine({
 					color: vaColorTrace
 				}),
 			});
@@ -151,7 +151,7 @@
 	*/
 	const plotlyInitCombined = ( axes ) => {
 
-		const layout = oePlotly.getLayout({
+		const layout = oePlot.getLayout({
 			darkTheme, // dark?
 			legend: {
 				yanchor:'top',
@@ -166,7 +166,7 @@
 		});
 		
 		
-		const div = oePlotly.buildDiv(`${oesTemplateType}`, '80vh', '650px');
+		const div = oePlot.buildDiv(`${oesTemplateType}`, '80vh', '650px');
 		document.querySelector( '.oes-left-side' ).appendChild( div );
 		
 		/**
@@ -179,8 +179,8 @@
 		plotlyReacts();
 		
 		// set up click through
-		oePlotly.addClickEvent( div, '?' );
-		oePlotly.addHoverEvent( div, '?' );
+		oePlot.addClickEvent( div, '?' );
+		oePlot.addHoverEvent( div, '?' );
 		
 		// bluejay custom event (user changes layout)
 		document.addEventListener('oesLayoutChange', () => {
@@ -196,10 +196,10 @@
 	const init = ( json = null ) => {
 		
 		if(json === null){
-			bj.log(`[oePlotly] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
+			bj.log(`[oePlot] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
 			return false;
 		} else {
-			bj.log(`[oePlotly] - building Plot.ly ${oesTemplateType}`);
+			bj.log(`[oePlot] - building Plot.ly ${oesTemplateType}`);
 		}
 		
 		// for all subplot rows
@@ -230,21 +230,21 @@
 		if( json.rightEye ){
 			myPlotly.set('rightEye', new Map());
 			buildDataTraces( json.rightEye, 'rightEye',
-				oePlotly.getColorSeries('rightEyeSeries', darkTheme)
+				oePlot.getColorSeries('rightEyeSeries', darkTheme)
 			);
 		}
 		
 		if( json.leftEye ){
 			myPlotly.set('leftEye', new Map());
 			buildDataTraces( json.leftEye, 'leftEye', 
-				oePlotly.getColorSeries('leftEyeSeries', darkTheme)
+				oePlot.getColorSeries('leftEyeSeries', darkTheme)
 			);
 		}
 		
 		if( json.BEO ){
 			myPlotly.set('BEO', new Map());
 			buildDataTraces( json.BEO, 'BEO', 
-				oePlotly.getColorSeries('BEOSeries', darkTheme)
+				oePlot.getColorSeries('BEOSeries', darkTheme)
 			);
 		}
 
@@ -253,7 +253,7 @@
 		*/
 		
 		// x1
-		const x1 = oePlotly.getAxis({
+		const x1 = oePlot.getAxis({
 			type:'x',
 			numTicks: 10,
 			useDates: true,
@@ -263,7 +263,7 @@
 		}, darkTheme );
 		
 		// y0 - offscale 
-		const y0 = oePlotly.getAxis({
+		const y0 = oePlot.getAxis({
 			type:'y',
 			domain: domainRow[0], 
 			useCategories: {
@@ -274,7 +274,7 @@
 		}, darkTheme );
 		
 		// y1 - CRT
-		const y1 = oePlotly.getAxis({
+		const y1 = oePlot.getAxis({
 			type:'y',
 			domain: domainRow[1],
 			title: 'CRT', 
@@ -301,4 +301,4 @@
 	*/
 	bj.extend('plotCombinedMedRet', init);	
 		
-})( bluejay ); 
+})( bluejay, bluejay.namespace('oePlot')); 
