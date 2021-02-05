@@ -17,6 +17,17 @@
 	
 	bj.log('Plot.ly version: ' + Plotly.version );
 	
+	/**
+	* oePlot styles plotly based on OE theme mode
+	* However, I can not just style based on this, as oePlot might
+	* be used in "pro" area (such as patient popup)
+	* @returns {Boolean}
+	*/
+	oePlot.isDarkTheme = () => window.oeThemeMode === "dark" ? true : false;	
+	
+	/**
+	* Theme colours
+	*/
 	const colours = {
 		dark: {
 			blue:'#63d7d6',
@@ -110,14 +121,6 @@
 	* using oePlot directly (until I have time to rebuild it!) 
 	*/ 
 	oePlot.getColorFor = ( color, dark ) => getColor( color, dark );
-	
-	
-	/**
-	* Can not just set layout to dark theme bases on oeTheme setting
-	* layout may be used in "pro" area (such as patient popup)
-	* @returns {Boolean}
-	*/
-	oePlot.isDarkTheme = () => window.oeThemeMode === "dark" ? true : false;
 	
 
 })( bluejay, bluejay.namespace('oePlot'));

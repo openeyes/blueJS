@@ -13,21 +13,20 @@
 	* Domain allocation for layout: (note: 0 - 1, 0 is the bottom)
 	* Using subploting within plot.ly - Navigator outside this
 	*/
-	const domainRow = [
-		[0.75, 1], 		// Events
-		[0.15, 0.68],	// CRT & VA
+	const domainLayout = [
+		[0.7, 1], 		// Events
+		[0.15, 0.64],	// CRT & VA
 		[0, 0.15],		// Offscale
 	];
 	
-	/**
-	* Template globals, helpers added on init() to save memory
-	*/
-	const oesTemplateType = "OES Medical Retina";
-	const darkTheme = oePlot.isDarkTheme();  // which CSS theme is running?
-	const myPlotly = new Map();	 // Plotly: Abstraction of required top level parameters for each plot (R & L)
-	const helpers = {}; // see init();
-	let tools; 
+	// Plotly: hold all parameters for each plot (R & L)
+	const myPlotly = new Map();	
 	
+	// save the JSON, need this for when the user switches themes 
+	let oePlotJSON = null; 
+	
+	// tools
+	let tools = null; 
 	
 	/**
 	* Build data traces for Plotly
@@ -63,7 +62,6 @@
 		the trace AND it's axis layout need to be stored together. This is what
 		userSelectedUnits handles.
 		*/
-		
 		for (const [ key, trace ] of Object.entries( eyeJSON.VA.units )){
 			tools.selectableUnits.addTrace( eyeSide, key, {
 				x: trace.x,
@@ -75,18 +73,6 @@
 				mode: 'lines+markers',
 			});
 		}
-		
-		Object.values( eyeJSON.VA.units ).forEach(( trace, index ) => {
-			tools.selectableUnits.addTrace( eyeSide, {
-				x: trace.x,
-				y: trace.y,
-				name: trace.name,	
-				yaxis: 'y3',	
-				hovertemplate: trace.name + ': %{y}<br>%{x}',
-				type: 'scatter',
-				mode: 'lines+markers',
-			});
-		});
 		
 		/**
 		Store data traces in myPlotly
@@ -122,24 +108,28 @@
 	
 	/**
 	* React to user request to change VA scale 
-	* (note: used as a callback by selectableUnits)
+	* (note: used as callback from 'tools')
 	* @param {String} which eye side?
 	*/
 	const plotlyReacts = ( eyeSide ) => {
+		
 		// get the eyePlot for the eye side
-		let eyePlot = myPlotly.get( eyeSide );
+		let eyePlot = myPlotly.get( eyeSide ); 
 		
-		/*
-		Update user selected units for VA
-		*/
+		// Check the user selected units for VA
 		eyePlot.get('data').set('VA', tools.selectableUnits.getTrace( eyeSide ));
-		eyePlot.get('layout').yaxis3 = Object.assign({}, tools.selectableUnits.getAxis());
+		eyePlot.get('layout').yaxis3 = tools.selectableUnits.getAxis();
 		
-		// get Data Array of all traces
+		// Check for hoverMode setting
+		eyePlot.get('layout').hovermode = tools.hoverMode.getMode();
+
+		// Data Array of ALL traces
 		const data = Array.from( eyePlot.get('data').values());
 		
-		// build new (or rebuild)
-
+		/**
+		* Plot.ly!
+		* Build new (or rebuild) have to use react()
+		*/
 		Plotly.react(
 			eyePlot.get('div'), 
 			data, 
@@ -149,33 +139,39 @@
 	};
 	
 	/**
-	* build layout and initialise Plotly 
-	* @param {Object} setup
+	* After init - build layout and initialise Plotly 
+	* @param {Object} setup - deconstructed
 	*/
-	const plotlyInit = ( setup ) => {
+	const plotlyInit = ({ title, eyeSide, colors, xaxis, yaxes, parentDOM }) => {
+		/*
+		Ensure parentDOM is empty (theme switch re-build issue otherwise!)
+		*/
+		const parent = document.querySelector( parentDOM );
+		bj.empty( parent );
 		
-		const eyeSide = setup.eyeSide;
+		// Need a wrapper to help with the CSS layout		
+		const div = oePlot.buildDiv(`oes-${eyeSide}`);
+		parent.append( div );
 		
+		/*
+		Build layout
+		*/
 		const layout = oePlot.getLayout({
-			darkTheme, // dark?
+			darkTheme: oePlot.isDarkTheme(), // link to CSS theme
 			legend: {
 				yanchor:'bottom',
-				y: domainRow[1][1],
+				y: domainLayout[1][1], // position relative to subplots
 			},
-			colors: setup.colors,
-			plotTitle: setup.title,
-			xaxis: setup.xaxis,
-			yaxes: setup.yaxes,
-			subplot: domainRow.length, // num of sub-plots 
+			colors,
+			plotTitle: title,
+			xaxis,
+			yaxes,
+			subplot: domainLayout.length, // num of sub-plots 
 			rangeSlider: true, 
 			dateRangeButtons: true,
 		});
-			
-		/*
-		Need a wrapper to help with the CSS layout
-		*/		
-		const div = oePlot.buildDiv(`oes-${eyeSide}`);
-		document.querySelector( setup.parentDOM ).appendChild( div );
+	
+		console.log( layout );
 		
 		// store details
 		myPlotly.get( eyeSide ).set('div', div);
@@ -185,10 +181,13 @@
 		plotlyReacts( eyeSide );
 		
 		// set up click through
-		oePlot.addClickEvent( div, setup.eye );
-		oePlot.addHoverEvent( div, eyeSide );
+		//oePlot.addClickEvent( div, setup.eye );
+		//oePlot.addHoverEvent( div, eyeSide );
 		
-		// bluejay custom event (user changes layout)
+		/* 
+		bluejay custom event
+		User changes layout arrangement (top split view, etc)
+		*/
 		document.addEventListener('oesLayoutChange', () => {
 			Plotly.relayout( div, layout );
 		});	
@@ -201,38 +200,53 @@
 	*/
 	const init = ( json  ) => {
 		if( json === null ) throw new Error('[oePlot] Sorry, no JSON data!');
-		bj.log(`[oePlot] - building Plot.ly ${oesTemplateType}`);
+		bj.log(`[oePlot] - OES Medical Retina`);
+		
+		/**
+		* Store JSON data
+		* When a users changes themes EVERYTHING needs rebuilding
+		* the only way (I think) to do this is to re-initialise
+		*/
+		oePlotJSON = oePlotJSON || json; 
+		myPlotly.clear();
 		
 		/**
 		* oePlot tools
-		* this allows the user to access extra chart functionality
-		* tools will add a fixed toolbar DOM to the page
+		* Allows the user to access extra chart functionality
+		* tools will add a fixed toolbar DOM to the page.
+		*
+		* Tools are not effected by a theme switch, CSS will 
+		* re-style them, but the traces and axes need updating
 		*/
-		tools = oePlot.tools();
-		tools.updatePlot( plotlyReacts );
-		//tools.addHoverModeOptions();
-		
-		/*
-		* VA has dynamic axis based, e.g. SnellenMetre, LogMAR, etc
-		* builtd all the axes required for each.
-		*/
-		tools.selectableUnits.addAxes({
-			axisDefaults: {
-				type:'y',
-				rightSide: 'y2', // CRT & VA plot 
-				domain: domainRow[1],
-				spikes: true,
-			}, 
-			yaxes: json.yaxis.VA,
-			prefix: 'VA',
-		});
-		
-		tools.showToolbar();
-		
-		// set Y3 to the "makeDefault" unit. User can change this
-		const y3 = tools.selectableUnits.getAxis();
-		
-
+		if( tools == null ){
+			tools = oePlot.tools();
+			tools.plot.setReacts( plotlyReacts, ['rightEye', 'leftEye']);
+			tools.hoverMode.add(); // user hoverMode options for labels
+			
+			// VA has dynamic axis based, e.g. SnellenMetre, LogMAR, etc
+			tools.selectableUnits.addAxes({
+				axisDefaults: {
+					type:'y',
+					rightSide: 'y2', // CRT & VA plot 
+					domain: domainLayout[1],
+					spikes: true,
+				}, 
+				yaxes: json.yaxis.VA,
+				prefix: 'VA',
+			});
+			
+			// check for tabular data:
+			if( json.tabularDataID ){
+				tools.tabularData.add( json.tabularDataID );
+			}
+			
+			tools.showToolbar(); // update DOM
+		} else {
+			// rebuilding...
+			tools.selectableUnits.clearTraces();
+			tools.selectableUnits.updateAxesColors();
+		}
+	
 		/**
 		* Traces - build data traces from JSON 
 		*/
@@ -249,6 +263,9 @@
 		* Axes 
 		*/
 		
+		// set Y3 to the "makeDefault" unit. User can change this with the "tools"
+		const y3 = tools.selectableUnits.getAxis();
+		
 		// x1 - Timeline
 		const x1 = oePlot.getAxis({
 			type:'x',
@@ -256,42 +273,41 @@
 			useDates: true,
 			spikes: true,
 			noMirrorLines: true,
-		}, darkTheme );
+		}, oePlot.isDarkTheme());
 		
 		// y1 - offscale 
 		const y1 = oePlot.getAxis({
 			type:'y',
-			domain: domainRow[2], 
+			domain: domainLayout[2], 
 			useCategories: {
 				categoryarray: json.yaxis.offScale,
 				rangeFit: "padTop", // "exact", etc
 			},
 			spikes: true,
-		}, darkTheme );
+		}, oePlot.isDarkTheme());
 		
 		// y2 - CRT
 		const y2 = oePlot.getAxis({
 			type:'y',
-			domain: domainRow[1],
+			domain: domainLayout[1],
 			title: 'CRT', 
 			range: json.yaxis.CRT, 
 			spikes: true,
-		}, darkTheme );
+		}, oePlot.isDarkTheme());
 		
-
 		// y4 - Events
 		const y4 = oePlot.getAxis({
 			type:'y',
-			domain: domainRow[0],
+			domain: domainLayout[0],
 			useCategories: {
 				categoryarray: json.allEvents,
 				rangeFit: "pad", // "exact", etc
 			},
 			spikes: true,
-		}, darkTheme );
+		}, oePlot.isDarkTheme());
 		
 		/**
-		* Layout & Build  - Eyes
+		* Layout & Initiate
 		*/	
 		if( myPlotly.has('rightEye') ){
 			
@@ -316,12 +332,22 @@
 				parentDOM: '.oes-right-side',
 			});			
 		}
-
 	};
 	
 	/**
-	* Extend API ... PHP will call with json when DOM is loaded
+	* OE Theme change
+	* Users changes the theme, re-initialise with the stored JSON
+	*/
+	document.addEventListener('oeThemeChange', () => {
+		// give the browser time to adjust the CSS
+		setTimeout( init( oePlotJSON ), 100 ); 
+	});
+	
+	/**
+	* Extend blueJS
+	* PHP will call this directly with JSON when DOM is loaded
 	*/
 	bj.extend('plotSummaryMedicalRetina', init );	
+	
 		
 })( bluejay, bluejay.namespace('oePlot')); 

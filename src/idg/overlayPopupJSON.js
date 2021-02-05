@@ -27,7 +27,7 @@
 				div.className = "oe-popup-wrap";
 				div.innerHTML = xreq.html;
 				// reflow DOM
-				document.body.appendChild( div );
+				document.body.append( div );
 				
 				// need this in case PHP errors and doesn't build the close btn DOM
 				let closeBtn = div.querySelector('.close-icon-btn');

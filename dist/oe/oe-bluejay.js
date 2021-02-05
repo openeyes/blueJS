@@ -877,6 +877,17 @@ const bluejay = (function () {
 	
 	bj.log('Plot.ly version: ' + Plotly.version );
 	
+	/**
+	* oePlot styles plotly based on OE theme mode
+	* However, I can not just style based on this, as oePlot might
+	* be used in "pro" area (such as patient popup)
+	* @returns {Boolean}
+	*/
+	oePlot.isDarkTheme = () => window.oeThemeMode === "dark" ? true : false;	
+	
+	/**
+	* Theme colours
+	*/
 	const colours = {
 		dark: {
 			blue:'#63d7d6',
@@ -971,17 +982,176 @@ const bluejay = (function () {
 	*/ 
 	oePlot.getColorFor = ( color, dark ) => getColor( color, dark );
 	
-	
-	/**
-	* Can not just set layout to dark theme bases on oeTheme setting
-	* layout may be used in "pro" area (such as patient popup)
-	* @returns {Boolean}
-	*/
-	oePlot.isDarkTheme = () => window.oeThemeMode === "dark" ? true : false;
-	
 
 })( bluejay, bluejay.namespace('oePlot'));
 
+(function( oePlot ) {
+	
+	'use strict';
+	
+	oePlot.selectableUnits = () => {
+		/*
+		Either Right and Left Eye layouts
+		Or just one eye.
+		*/
+		const traces = new Map();
+		const axes = [];
+		let updatePlotly;
+		let selectedTraceIndex = 0;
+		
+		/**
+		* Data traces are built first in templates
+		* @param {String} eye - 'right' or 'left'
+		* @param {Object} trace
+		*/
+		const addTrace = ( eye, trace ) => {
+			if( traces.has( eye )){
+				traces.get( eye ).push( trace );
+			} else {
+				traces.set( eye, [ trace ]);
+			}
+		};
+		
+		const getTrace = ( eye ) => {
+			return traces.get( eye )[ selectedTraceIndex ];
+		};
+		
+		const getAxis = () => {
+			return axes[ selectedTraceIndex ];
+		};
+		
+		
+		/**
+		* Controller for <select> changes
+		* @param {Event} ev
+		*/
+		const handleUserChange = ( ev ) => {
+			// update current selected
+			selectedTraceIndex = ev.target.selectedIndex;	
+			for (const eyeSide of traces.keys()) {
+				updatePlotly( eyeSide );
+			}
+		};
+
+		/**
+		* Build <select> for user to choose units
+		* @param {Array} options
+		*/
+		const buildDropDown = ( options ) => {
+			// Mustache template
+			const template = [
+				'<div class="plot-tool">',
+				'<label>VA Scale</label>',
+				'<select>',
+				'{{#options}}',
+				'<option>{{.}}</option>',
+				'{{/options}}',
+				'</select>', 
+				'</div>'
+			].join('');
+		
+			// build layout DOM
+			const div = document.createElement('div');
+			div.className = 'oeplot-toolbar'; // newblue provides styling for this class (but not positioning)
+			div.innerHTML = Mustache.render( template, { 'options' : options });
+			
+			/*
+			I think this is only used in OESscape so dump in 'oes-v2'
+			note: if dropdown is for a single layout maybe use Plotly internal dropdown? 
+			*/
+			const oesParent = document.querySelector('.oeplot');
+			oesParent.classList.add('with-toolbar');
+			oesParent.append( div );
+			
+			
+			/*
+			Set <select> option and listen for changes
+			*/
+			let select = div.querySelector('select');
+			select.options[ selectedTraceIndex ].selected = true;
+			select.addEventListener('change', handleUserChange, false);
+		};
+		
+		
+		/**
+		* init 
+		* @param {Object} options e.g.
+		* {
+			plotlyUpdate: callback,
+			axisDefaults: {
+				type:'y',
+				domain: [0.1, 0.46],
+				title: 'VA', 
+				spikes: true,
+			}, 
+			unitRanges: Object.values( json.yaxis.unitRanges )),
+			dark
+		}
+		*/
+		const init = ( options ) => {
+			
+			// callback for updating Plotly
+			updatePlotly = options.plotlyUpdate; 
+
+			const dark = options.darkTheme;
+			const axisDefault = options.axisDefaults;
+			const title = axisDefault.title;
+			const userOptions = [];
+			
+			/*
+			loop through all unit ranges, build axes and options for <select>
+			*/
+			options.unitRanges.forEach(( unit, index ) => {
+				// default units?
+				if( unit.makeDefault ) selectedTraceIndex = index;
+				
+				// build options for <select> dropdown
+				userOptions.push( unit.option );
+				
+				/*
+				Build all the different Axes for the data traces	
+				*/
+				let newAxis;
+				axisDefault.title = `${title} - ${unit.option}`;
+				
+				// the unit range will either be numerical or categories
+				if( typeof unit.range[0] === 'number'){
+					// numerical axis
+					newAxis = Object.assign({}, axisDefault, {
+						range: unit.range.reverse(), // e.g. [n1, n2];
+						axisType: "linear", // set the axis.type explicitly here
+					});
+				} else {
+					// category axis
+					newAxis = Object.assign({}, axisDefault, {
+						useCategories: {
+							showAll: true, 
+							categoryarray: unit.range.reverse()
+						}
+					});
+				}
+				
+				// build axes array
+				axes.push( oePlot.getAxis( newAxis, dark ));
+			});
+	
+			// now build dropdown
+			buildDropDown( userOptions );	
+		};
+		
+		/*
+		public
+		*/
+		return {
+			init,
+			addTrace, 
+			selectedTrace: getTrace,
+			selectedAxis: getAxis,
+		};
+	};
+	
+		
+})( bluejay.namespace('oePlot'));
 (function( oePlot ) {
 	
 	'use strict';
@@ -1049,6 +1219,10 @@ const bluejay = (function () {
 	
 	'use strict';
 	
+	// tools need to use these colour helpers:
+	oePlot.axisGridColor = ( dark ) => dark ? '#292929' : '#e6e6e6';
+	oePlot.axisTickColor = ( dark ) => dark ? '#666' : '#ccc';
+	
 	/**
 	* Build an axis object 
 	* @param {Object} options - optional options for Axis
@@ -1070,8 +1244,9 @@ const bluejay = (function () {
 		spikes: false, 			// Optional {Boolean}
 		noMirrorLines: false	// Optional {Boolean}
 	}
-	
 	*/
+	
+	
 	oePlot.getAxis = function( options, dark ){ 
 		
 		// default 
@@ -1079,12 +1254,12 @@ const bluejay = (function () {
 			linecolor: dark ? '#666' : '#999', // axis line colour
 			linewidth:1,
 			showgrid: true,
-			gridcolor: dark ? '#292929' : '#e6e6e6',
+			gridcolor: oePlot.axisGridColor( dark ),
 			tickmode: "auto",
 			nticks: 20, // number of ticks
 			ticks: "outside",
 			ticklen: 3, // px
-			tickcolor: dark ? '#666' : '#ccc',
+			tickcolor: oePlot.axisTickColor( dark ),
 			automargin: true, //  long tick labels automatically grow the figure margins.
 			mirror: true, //  ( true | "ticks" | false | "all" | "allticks" )
 			connectgaps: false, // this allows for 'null' value gaps! 
@@ -1819,187 +1994,31 @@ const bluejay = (function () {
 	};
 	
 })( bluejay.namespace('oePlot'));
-(function( oePlot ) {
-	
-	'use strict';
-	
-	oePlot.selectableUnits = () => {
-		/*
-		Either Right and Left Eye layouts
-		Or just one eye.
-		*/
-		const traces = new Map();
-		const axes = [];
-		let updatePlotly;
-		let selectedTraceIndex = 0;
-		
-		/**
-		* Data traces are built first in templates
-		* @param {String} eye - 'right' or 'left'
-		* @param {Object} trace
-		*/
-		const addTrace = ( eye, trace ) => {
-			if( traces.has( eye )){
-				traces.get( eye ).push( trace );
-			} else {
-				traces.set( eye, [ trace ]);
-			}
-		};
-		
-		const getTrace = ( eye ) => {
-			return traces.get( eye )[ selectedTraceIndex ];
-		};
-		
-		const getAxis = () => {
-			return axes[ selectedTraceIndex ];
-		};
-		
-		
-		/**
-		* Controller for <select> changes
-		* @param {Event} ev
-		*/
-		const handleUserChange = ( ev ) => {
-			// update current selected
-			selectedTraceIndex = ev.target.selectedIndex;	
-			for (const eyeSide of traces.keys()) {
-				updatePlotly( eyeSide );
-			}
-		};
-
-		/**
-		* Build <select> for user to choose units
-		* @param {Array} options
-		*/
-		const buildDropDown = ( options ) => {
-			// Mustache template
-			const template = [
-				'<div class="plot-tool">',
-				'<label>VA Scale</label>',
-				'<select>',
-				'{{#options}}',
-				'<option>{{.}}</option>',
-				'{{/options}}',
-				'</select>', 
-				'</div>'
-			].join('');
-		
-			// build layout DOM
-			const div = document.createElement('div');
-			div.className = 'oeplot-toolbar'; // newblue provides styling for this class (but not positioning)
-			div.innerHTML = Mustache.render( template, { 'options' : options });
-			
-			/*
-			I think this is only used in OESscape so dump in 'oes-v2'
-			note: if dropdown is for a single layout maybe use Plotly internal dropdown? 
-			*/
-			const oesParent = document.querySelector('.oeplot');
-			oesParent.classList.add('with-toolbar');
-			oesParent.append( div );
-			
-			
-			/*
-			Set <select> option and listen for changes
-			*/
-			let select = div.querySelector('select');
-			select.options[ selectedTraceIndex ].selected = true;
-			select.addEventListener('change', handleUserChange, false);
-		};
-		
-		
-		/**
-		* init 
-		* @param {Object} options e.g.
-		* {
-			plotlyUpdate: callback,
-			axisDefaults: {
-				type:'y',
-				domain: [0.1, 0.46],
-				title: 'VA', 
-				spikes: true,
-			}, 
-			unitRanges: Object.values( json.yaxis.unitRanges )),
-			dark
-		}
-		*/
-		const init = ( options ) => {
-			
-			// callback for updating Plotly
-			updatePlotly = options.plotlyUpdate; 
-
-			const dark = options.darkTheme;
-			const axisDefault = options.axisDefaults;
-			const title = axisDefault.title;
-			const userOptions = [];
-			
-			/*
-			loop through all unit ranges, build axes and options for <select>
-			*/
-			options.unitRanges.forEach(( unit, index ) => {
-				// default units?
-				if( unit.makeDefault ) selectedTraceIndex = index;
-				
-				// build options for <select> dropdown
-				userOptions.push( unit.option );
-				
-				/*
-				Build all the different Axes for the data traces	
-				*/
-				let newAxis;
-				axisDefault.title = `${title} - ${unit.option}`;
-				
-				// the unit range will either be numerical or categories
-				if( typeof unit.range[0] === 'number'){
-					// numerical axis
-					newAxis = Object.assign({}, axisDefault, {
-						range: unit.range.reverse(), // e.g. [n1, n2];
-						axisType: "linear", // set the axis.type explicitly here
-					});
-				} else {
-					// category axis
-					newAxis = Object.assign({}, axisDefault, {
-						useCategories: {
-							showAll: true, 
-							categoryarray: unit.range.reverse()
-						}
-					});
-				}
-				
-				// build axes array
-				axes.push( oePlot.getAxis( newAxis, dark ));
-			});
-	
-			// now build dropdown
-			buildDropDown( userOptions );	
-		};
-		
-		/*
-		public
-		*/
-		return {
-			init,
-			addTrace, 
-			selectedTrace: getTrace,
-			selectedAxis: getAxis,
-		};
-	};
-	
-		
-})( bluejay.namespace('oePlot'));
 (function( bj, oePlot ) {
 	
 	'use strict';
 	
 	oePlot.tools = () => {
 		
-		const darkTheme = oePlot.isDarkTheme();  // which CSS theme is running?
 		const toolbar = bj.div('oeplot-toolbar');
-		let callback;
 	
-		const updatePlot = ( renderCallback ) => {
-			callback = renderCallback;
-		}
-	
+		/**
+		* Update the associated oePlot
+		* User changes to the tools require a re-rendering of the plot
+		* There may be 2 plots. e.g. "rightEye", "leftEye".
+		*/
+		const plot = {
+			_render: null, 
+			_plots: null,
+			setReacts( plotlyReacts, names = false ){
+				this._render = plotlyReacts;
+				this._plots = names;
+			},
+			update(){
+				this._plots.forEach( plot => this._render( plot ));
+			}
+		};	
+		
 		/**
 		* showToolbar (update DOM)
 		* In OES the toolbar is fullwidth and fixed, requires "with-toolbar"
@@ -2011,95 +2030,217 @@ const bluejay = (function () {
 			parent.append( toolbar ); // reflow!
 		};
 		
-		
 		/**
-		* Build <select> for user to choose units
-		* @param {Array} options { key, option }
-		* @param {String} prefix
+		* Tabular data is provide by the PHP. It adds a <table> hidden
+		* in the DOM. It's ID is passed into oePlot with the JSON
+		* Here it's moved into a proper popup
 		*/
-		const showSelectableUnitsDropdown = ( options, prefix ) => {
-			// Mustache template
-			const template = [
-				'<label>{{prefix}}</label>',
-				'<select>',
-				'{{#options}}',
-				'<option value="{{key}}" {{#selected}}selected{{/selected}}>{{option}}</option>',
-				'{{/options}}',
-				'</select>'
-			].join('');
-			
-
-			// build layout DOM
-			const div = bj.div('plot-tool');
-			div.innerHTML = Mustache.render( template, { options, prefix });
-			toolbar.append( div );
-			
-			/*
-			Set <select> option and listen for changes
+		const tabularData = {
+			_popup: null,
+			/**
+			* Move the <table> into popup DOM and build a button in the toolbar
+			* @param {String} tableID
 			*/
-			div.querySelector('select').addEventListener('change',  ( ev ) => {
-				// update current selected
-				const select = ev.target;
-				selectableUnits.activeKey = select.options[ select.selectedIndex ].value
-				callback('leftEye');
-				callback('rightEye');
-			}, { capture: true });
+			add( tableID ){
+				const popup = bj.div('oe-popup-wrap');
+				this._popup = popup;
+				
+				popup.innerHTML = [
+					'<div class="oe-popup">',
+					'<div class="title">Tabular Data of plots</div>',
+					'<div class="close-icon-btn"><i class="oe-i remove-circle pro-theme"></i></div>',
+					'<div class="oe-popup-content max"></div>',
+					'</div>',
+				].join('');
+				
+				const table = document.getElementById( tableID );
+				popup.querySelector('.oe-popup-content').append( table ); // move <table> out of DOM and into the popup:
+				bj.show( table );	
+				
+				// add a button to the toolbar
+				const div = bj.div('plot-tool');
+				const button = document.createElement('button');
+				button.textContent = "View tabular data of plots";
+				div.append( button );
+				
+				button.addEventListener('click', ( ev ) => {
+					ev.preventDefault();
+					ev.stopPropagation();
+					this.show(); // all it can do it show. popup-wrap covers it
+ 				}, { capture: true });
+				
+				// add to the toolbar
+				toolbar.append( div );
+			}, 
+			show(){
+				document.body.append( this._popup );
+				this._popup.querySelector('.close-icon-btn').addEventListener("mousedown", ( ev ) => {
+					ev.stopPropagation();
+					this.hide();
+				}, {once:true} );
+			}, 
+			hide(){
+				this._popup.remove();
+			}
 		};
 		
+		/**
+		* Expose the plotly API for hoverMode options
+		* Allows users to choose, but defaults to DA preferred option
+		*/
+		const hoverMode = {
+			_mode: 'closest', // 'closest', // "x" | "y" | "closest" | false | "x unified" | "y unified"
+			getMode(){
+				return this._mode;	
+			},
+			add(){
+				const div = bj.div('plot-tool');
+				div.innerHTML = Mustache.render([
+					'<label>Labels</label>',
+					'<select>{{#options}}',
+					'<option value="{{key}}" {{#selected}}selected{{/selected}}>{{option}}</option>',
+					'{{/options}}</select>'
+				].join(''), {
+					options: [
+						{ key: 'closest', option: 'Single', selected: true },
+						{ key: 'x', option: 'Closest', selected: false },
+						{ key: 'x unified', option: 'Grouped', selected: false },
+					],
+				});
+				
+				div.querySelector('select').addEventListener('change',  ( ev ) => {
+					const select = ev.target;
+					this._mode = select.options[ select.selectedIndex ].value;
+					plot.update();
+				}, { capture: true });
+				
+				// add to the toolbar
+				toolbar.append( div );
+			}
+		};
+		
+		/**
+		* User selectable units
+		* Need to store the traces and the axies to update plotly
+		*/
 		const selectableUnits = {
 			traces: new Map(),
 			axes: new Map(),
-			activeKey: null,
+			activeKey: null, // store the current activeKey
+			
+			/**
+			Getters
+			Traces will depend on the eye side
+			Axis is the same for each eye side
+			*/
+			getTrace( eye, key ){
+				return this.traces.get( eye ).get( this.activeKey );
+			},
+			getAxis( key ){
+				return this.axes.get( this.activeKey );
+			},
+			
+			/**
+			* Setters
+			*
+			* addTrace, the trace object is built in the template
+			* @param {String} eye - e.g. "rightEye" or "leftEye"
+			* @param {String} key - the array 'key' from the JSON
+			* @param {Object} trace - plotly trace object
+			*/
+			addTrace( eye, key, trace ){
+				if( !this.traces.has( eye )) this.traces.set( eye, new Map());
+				this.traces.get( eye ).set( key, trace );
+			}, 
 
+			/**
+			* addAxes (same for both eye side)
+			* @param {Object} deconstructed:
+			* - axisDefaults are the defaults needed
+			* - yaxes: the JSON from PHP
+			* - prefix: e.g. "VA"
+			*/
 			addAxes({ axisDefaults, yaxes:json, prefix }){
-				const userOptions = [];
+				// store the user options for the dropdown UI
+				const selectOptions = [];
 				
-				for (const [ key, unit ] of Object.entries( json )) {
+				// loop through the JSON
+				for( const [ key, unit ] of Object.entries( json )){
 					
+					// default unit?
 					if( unit.makeDefault ) this.activeKey = key;
-					let axis; 
 					
-					userOptions.push({ key, option: unit.option, selected: unit.makeDefault }); // build options for <select> user dropdown
-					
+					// axis title
 					axisDefaults.title = `${prefix} - ${unit.option}`;
 					
-					// based on the unit range type build axis, 
-					// it's either numerical or categorical
+					// based on the unit range type build axis:
+					let axis; 
 					if( typeof unit.range[0] === 'number'){
-						
+						// number range
 						axis = oePlot.getAxis( Object.assign({}, axisDefaults, {
-							range: unit.range.reverse(), 	// e.g. [n1, n2];
+							range: unit.range, 	// e.g. [n1, n2];
 							axisType: "linear", 			// set the axis.type explicitly here
-						}), darkTheme); 
+						}), oePlot.isDarkTheme()); 
 						
 					} else {
 						// category axis
 						axis = oePlot.getAxis( Object.assign({}, axisDefaults, {
 							useCategories: {
 								showAll: true, 
-								categoryarray: unit.range.reverse()
+								categoryarray: unit.range
 							}
-						}), darkTheme); 
+						}), oePlot.isDarkTheme()); 
 					}
 					
 					// add the axis to unit axes
 					this.axes.set( key, axis );
+					// add to user options
+					selectOptions.push({ key, option: unit.option, selected: unit.makeDefault });
 				}
 				
-				// provide user access to change the selectedable units
-				showSelectableUnitsDropdown( userOptions, prefix );
+				this.buildDropDown( selectOptions, prefix );
 			}, 
 			
-			addTrace( eye, key, trace ){
-				if( !this.traces.has( eye )) this.traces.set( eye, new Map());
-				this.traces.get( eye ).set( key, trace );
+			/**
+			* Build <select> for user to choose units
+			* @param {Array} options { key, option }
+			* @param {String} prefix
+			*/
+			buildDropDown( options, prefix ){
+				const div = bj.div('plot-tool');
+				div.innerHTML = Mustache.render([
+					'<label>{{prefix}}</label>',
+					'<select>{{#options}}',
+					'<option value="{{key}}" {{#selected}}selected{{/selected}}>{{option}}</option>',
+					'{{/options}}</select>'
+				].join(''), { options, prefix });
+				
+				div.querySelector('select').addEventListener('change',  ( ev ) => {
+					const select = ev.target;
+					this.activeKey = select.options[ select.selectedIndex ].value;
+					plot.update();
+				}, { capture: true });
+				
+				// add to the toolbar
+				toolbar.append( div );
 			}, 
 			
-			getTrace( eye, key ){
-				return this.traces.get( eye ).get( this.activeKey );
+			/**
+			* If there is a theme change these colours in the Axes need changing
+			*/
+			updateAxesColors(){
+				const axesIterator = this.axes.values();
+				for( const axis of axesIterator ){
+					axis.gridcolor = oePlot.axisGridColor( oePlot.isDarkTheme());
+					axis.tickcolor = oePlot.axisTickColor( oePlot.isDarkTheme());
+				}
 			},
-			getAxis( key ){
-				return this.axes.get( this.activeKey );
+			
+			/**
+			* If there is a theme change traces are rebuilt
+			*/
+			clearTraces(){
+				this.traces.clear();
 			}			
 		};
 	
@@ -2107,9 +2248,11 @@ const bluejay = (function () {
 		API
 		*/
 		return {
-			updatePlot,
-			showToolbar,
+			plot,
+			tabularData,
+			hoverMode,
 			selectableUnits,
+			showToolbar,
 		};
 	};
 
@@ -3712,21 +3855,20 @@ const bluejay = (function () {
 	* Domain allocation for layout: (note: 0 - 1, 0 is the bottom)
 	* Using subploting within plot.ly - Navigator outside this
 	*/
-	const domainRow = [
-		[0.75, 1], 		// Events
-		[0.15, 0.68],	// CRT & VA
+	const domainLayout = [
+		[0.7, 1], 		// Events
+		[0.15, 0.64],	// CRT & VA
 		[0, 0.15],		// Offscale
 	];
 	
-	/**
-	* Template globals, helpers added on init() to save memory
-	*/
-	const oesTemplateType = "OES Medical Retina";
-	const darkTheme = oePlot.isDarkTheme();  // which CSS theme is running?
-	const myPlotly = new Map();	 // Plotly: Abstraction of required top level parameters for each plot (R & L)
-	const helpers = {}; // see init();
-	let tools; 
+	// Plotly: hold all parameters for each plot (R & L)
+	const myPlotly = new Map();	
 	
+	// save the JSON, need this for when the user switches themes 
+	let oePlotJSON = null; 
+	
+	// tools
+	let tools = null; 
 	
 	/**
 	* Build data traces for Plotly
@@ -3762,7 +3904,6 @@ const bluejay = (function () {
 		the trace AND it's axis layout need to be stored together. This is what
 		userSelectedUnits handles.
 		*/
-		
 		for (const [ key, trace ] of Object.entries( eyeJSON.VA.units )){
 			tools.selectableUnits.addTrace( eyeSide, key, {
 				x: trace.x,
@@ -3774,18 +3915,6 @@ const bluejay = (function () {
 				mode: 'lines+markers',
 			});
 		}
-		
-		Object.values( eyeJSON.VA.units ).forEach(( trace, index ) => {
-			tools.selectableUnits.addTrace( eyeSide, {
-				x: trace.x,
-				y: trace.y,
-				name: trace.name,	
-				yaxis: 'y3',	
-				hovertemplate: trace.name + ': %{y}<br>%{x}',
-				type: 'scatter',
-				mode: 'lines+markers',
-			});
-		});
 		
 		/**
 		Store data traces in myPlotly
@@ -3821,24 +3950,28 @@ const bluejay = (function () {
 	
 	/**
 	* React to user request to change VA scale 
-	* (note: used as a callback by selectableUnits)
+	* (note: used as callback from 'tools')
 	* @param {String} which eye side?
 	*/
 	const plotlyReacts = ( eyeSide ) => {
+		
 		// get the eyePlot for the eye side
-		let eyePlot = myPlotly.get( eyeSide );
+		let eyePlot = myPlotly.get( eyeSide ); 
 		
-		/*
-		Update user selected units for VA
-		*/
+		// Check the user selected units for VA
 		eyePlot.get('data').set('VA', tools.selectableUnits.getTrace( eyeSide ));
-		eyePlot.get('layout').yaxis3 = Object.assign({}, tools.selectableUnits.getAxis());
+		eyePlot.get('layout').yaxis3 = tools.selectableUnits.getAxis();
 		
-		// get Data Array of all traces
+		// Check for hoverMode setting
+		eyePlot.get('layout').hovermode = tools.hoverMode.getMode();
+
+		// Data Array of ALL traces
 		const data = Array.from( eyePlot.get('data').values());
 		
-		// build new (or rebuild)
-
+		/**
+		* Plot.ly!
+		* Build new (or rebuild) have to use react()
+		*/
 		Plotly.react(
 			eyePlot.get('div'), 
 			data, 
@@ -3848,33 +3981,39 @@ const bluejay = (function () {
 	};
 	
 	/**
-	* build layout and initialise Plotly 
-	* @param {Object} setup
+	* After init - build layout and initialise Plotly 
+	* @param {Object} setup - deconstructed
 	*/
-	const plotlyInit = ( setup ) => {
+	const plotlyInit = ({ title, eyeSide, colors, xaxis, yaxes, parentDOM }) => {
+		/*
+		Ensure parentDOM is empty (theme switch re-build issue otherwise!)
+		*/
+		const parent = document.querySelector( parentDOM );
+		bj.empty( parent );
 		
-		const eyeSide = setup.eyeSide;
+		// Need a wrapper to help with the CSS layout		
+		const div = oePlot.buildDiv(`oes-${eyeSide}`);
+		parent.append( div );
 		
+		/*
+		Build layout
+		*/
 		const layout = oePlot.getLayout({
-			darkTheme, // dark?
+			darkTheme: oePlot.isDarkTheme(), // link to CSS theme
 			legend: {
 				yanchor:'bottom',
-				y: domainRow[1][1],
+				y: domainLayout[1][1], // position relative to subplots
 			},
-			colors: setup.colors,
-			plotTitle: setup.title,
-			xaxis: setup.xaxis,
-			yaxes: setup.yaxes,
-			subplot: domainRow.length, // num of sub-plots 
+			colors,
+			plotTitle: title,
+			xaxis,
+			yaxes,
+			subplot: domainLayout.length, // num of sub-plots 
 			rangeSlider: true, 
 			dateRangeButtons: true,
 		});
-			
-		/*
-		Need a wrapper to help with the CSS layout
-		*/		
-		const div = oePlot.buildDiv(`oes-${eyeSide}`);
-		document.querySelector( setup.parentDOM ).appendChild( div );
+	
+		console.log( layout );
 		
 		// store details
 		myPlotly.get( eyeSide ).set('div', div);
@@ -3884,10 +4023,13 @@ const bluejay = (function () {
 		plotlyReacts( eyeSide );
 		
 		// set up click through
-		oePlot.addClickEvent( div, setup.eye );
-		oePlot.addHoverEvent( div, eyeSide );
+		//oePlot.addClickEvent( div, setup.eye );
+		//oePlot.addHoverEvent( div, eyeSide );
 		
-		// bluejay custom event (user changes layout)
+		/* 
+		bluejay custom event
+		User changes layout arrangement (top split view, etc)
+		*/
 		document.addEventListener('oesLayoutChange', () => {
 			Plotly.relayout( div, layout );
 		});	
@@ -3900,38 +4042,53 @@ const bluejay = (function () {
 	*/
 	const init = ( json  ) => {
 		if( json === null ) throw new Error('[oePlot] Sorry, no JSON data!');
-		bj.log(`[oePlot] - building Plot.ly ${oesTemplateType}`);
+		bj.log(`[oePlot] - OES Medical Retina`);
+		
+		/**
+		* Store JSON data
+		* When a users changes themes EVERYTHING needs rebuilding
+		* the only way (I think) to do this is to re-initialise
+		*/
+		oePlotJSON = oePlotJSON || json; 
+		myPlotly.clear();
 		
 		/**
 		* oePlot tools
-		* this allows the user to access extra chart functionality
-		* tools will add a fixed toolbar DOM to the page
+		* Allows the user to access extra chart functionality
+		* tools will add a fixed toolbar DOM to the page.
+		*
+		* Tools are not effected by a theme switch, CSS will 
+		* re-style them, but the traces and axes need updating
 		*/
-		tools = oePlot.tools();
-		tools.updatePlot( plotlyReacts );
-		//tools.addHoverModeOptions();
-		
-		/*
-		* VA has dynamic axis based, e.g. SnellenMetre, LogMAR, etc
-		* builtd all the axes required for each.
-		*/
-		tools.selectableUnits.addAxes({
-			axisDefaults: {
-				type:'y',
-				rightSide: 'y2', // CRT & VA plot 
-				domain: domainRow[1],
-				spikes: true,
-			}, 
-			yaxes: json.yaxis.VA,
-			prefix: 'VA',
-		});
-		
-		tools.showToolbar();
-		
-		// set Y3 to the "makeDefault" unit. User can change this
-		const y3 = tools.selectableUnits.getAxis();
-		
-
+		if( tools == null ){
+			tools = oePlot.tools();
+			tools.plot.setReacts( plotlyReacts, ['rightEye', 'leftEye']);
+			tools.hoverMode.add(); // user hoverMode options for labels
+			
+			// VA has dynamic axis based, e.g. SnellenMetre, LogMAR, etc
+			tools.selectableUnits.addAxes({
+				axisDefaults: {
+					type:'y',
+					rightSide: 'y2', // CRT & VA plot 
+					domain: domainLayout[1],
+					spikes: true,
+				}, 
+				yaxes: json.yaxis.VA,
+				prefix: 'VA',
+			});
+			
+			// check for tabular data:
+			if( json.tabularDataID ){
+				tools.tabularData.add( json.tabularDataID );
+			}
+			
+			tools.showToolbar(); // update DOM
+		} else {
+			// rebuilding...
+			tools.selectableUnits.clearTraces();
+			tools.selectableUnits.updateAxesColors();
+		}
+	
 		/**
 		* Traces - build data traces from JSON 
 		*/
@@ -3948,6 +4105,9 @@ const bluejay = (function () {
 		* Axes 
 		*/
 		
+		// set Y3 to the "makeDefault" unit. User can change this with the "tools"
+		const y3 = tools.selectableUnits.getAxis();
+		
 		// x1 - Timeline
 		const x1 = oePlot.getAxis({
 			type:'x',
@@ -3955,42 +4115,41 @@ const bluejay = (function () {
 			useDates: true,
 			spikes: true,
 			noMirrorLines: true,
-		}, darkTheme );
+		}, oePlot.isDarkTheme());
 		
 		// y1 - offscale 
 		const y1 = oePlot.getAxis({
 			type:'y',
-			domain: domainRow[2], 
+			domain: domainLayout[2], 
 			useCategories: {
 				categoryarray: json.yaxis.offScale,
 				rangeFit: "padTop", // "exact", etc
 			},
 			spikes: true,
-		}, darkTheme );
+		}, oePlot.isDarkTheme());
 		
 		// y2 - CRT
 		const y2 = oePlot.getAxis({
 			type:'y',
-			domain: domainRow[1],
+			domain: domainLayout[1],
 			title: 'CRT', 
 			range: json.yaxis.CRT, 
 			spikes: true,
-		}, darkTheme );
+		}, oePlot.isDarkTheme());
 		
-
 		// y4 - Events
 		const y4 = oePlot.getAxis({
 			type:'y',
-			domain: domainRow[0],
+			domain: domainLayout[0],
 			useCategories: {
 				categoryarray: json.allEvents,
 				rangeFit: "pad", // "exact", etc
 			},
 			spikes: true,
-		}, darkTheme );
+		}, oePlot.isDarkTheme());
 		
 		/**
-		* Layout & Build  - Eyes
+		* Layout & Initiate
 		*/	
 		if( myPlotly.has('rightEye') ){
 			
@@ -4015,13 +4174,23 @@ const bluejay = (function () {
 				parentDOM: '.oes-right-side',
 			});			
 		}
-
 	};
 	
 	/**
-	* Extend API ... PHP will call with json when DOM is loaded
+	* OE Theme change
+	* Users changes the theme, re-initialise with the stored JSON
+	*/
+	document.addEventListener('oeThemeChange', () => {
+		// give the browser time to adjust the CSS
+		setTimeout( init( oePlotJSON ), 100 ); 
+	});
+	
+	/**
+	* Extend blueJS
+	* PHP will call this directly with JSON when DOM is loaded
 	*/
 	bj.extend('plotSummaryMedicalRetina', init );	
+	
 		
 })( bluejay, bluejay.namespace('oePlot')); 
 /**

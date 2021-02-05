@@ -2,6 +2,10 @@
 	
 	'use strict';
 	
+	// tools need to use these colour helpers:
+	oePlot.axisGridColor = ( dark ) => dark ? '#292929' : '#e6e6e6';
+	oePlot.axisTickColor = ( dark ) => dark ? '#666' : '#ccc';
+	
 	/**
 	* Build an axis object 
 	* @param {Object} options - optional options for Axis
@@ -23,8 +27,9 @@
 		spikes: false, 			// Optional {Boolean}
 		noMirrorLines: false	// Optional {Boolean}
 	}
-	
 	*/
+	
+	
 	oePlot.getAxis = function( options, dark ){ 
 		
 		// default 
@@ -32,12 +37,12 @@
 			linecolor: dark ? '#666' : '#999', // axis line colour
 			linewidth:1,
 			showgrid: true,
-			gridcolor: dark ? '#292929' : '#e6e6e6',
+			gridcolor: oePlot.axisGridColor( dark ),
 			tickmode: "auto",
 			nticks: 20, // number of ticks
 			ticks: "outside",
 			ticklen: 3, // px
-			tickcolor: dark ? '#666' : '#ccc',
+			tickcolor: oePlot.axisTickColor( dark ),
 			automargin: true, //  long tick labels automatically grow the figure margins.
 			mirror: true, //  ( true | "ticks" | false | "all" | "allticks" )
 			connectgaps: false, // this allows for 'null' value gaps! 
