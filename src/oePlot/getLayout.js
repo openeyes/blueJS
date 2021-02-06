@@ -61,6 +61,9 @@
 					color: oePlot.getBlue( dark ),
 				}
 			},
+		    // Shapes and Annotations added through layoutAnnotations
+			shapes: [],
+			annotations: []
 		};
 	
 		/*
@@ -138,111 +141,6 @@
 				columns: 1,
 				pattern: 'independent',
 			};
-		}
-		
-		/*
-		Shapes and Annotations
-		*/
-		layout.shapes = [];
-		layout.annotations = [];
-		
-		/*
-		Vertical marker line
-		{array} = [{x:x, y:1, name:"name"}]
-		*/
-		if( options.vLineLabel ){
-			
-			// vLineLabel must be an array of objects
-			const verticals = options.vLineLabel.x;
-			const height = options.vLineLabel.h;
-		
-			const line = ( my, index ) => {
-				return {
-			      type: 'line',
-			      layer: 'above', // or "below"
-			      yref: 'paper', // this means y & y0 are ratios of area (paper)
-			      x0: my.x,
-			      y0: 0,
-			      x1: my.x,
-			      y1: height,
-			      line: {
-			        color: oePlot.getBlue( dark ),
-			        width: 0.5,
-					//dash:"3px,4px,1px,4px,3px,1px",
-			      }
-			    };
-			}; 
-			
-			const annotate = ( my, index ) => {
-				return {
-				   showarrow: false,
-				   text: my.name,
-				   textangle: 90,
-				   align: "left",
-				   font: {
-					   color: oePlot.getBlue( dark )
-				   },
-				   borderpad: 2,
-				   x: my.x,
-				   xshift: 8, // shift over so label isnt' on line? 
-				   yref: "paper", // this means y is ratio of area (paper)
-				   y: height 
-			    };
-			}; 
-			
-			// Add verticals
-			layout.shapes = layout.shapes.concat( verticals.map( line ));
-		    layout.annotations = layout.annotations.concat( verticals.map( annotate ));
-		}
-		
-		/*
-		Horizontal marker line
-		{array} = [{ axis:'y3', y:15, name: "Target IOP"}]
-		*/
-		if( options.hLineLabel ){
-			
-			// hLineLabel must be an array of objects
-			const horizontals = options.hLineLabel.y;
-			const axis = options.hLineLabel.axis;
-			
-			// expecting an array of objects here
-			const line = ( my, index ) => {
-				return {
-			      type: 'line',
-			      layer: 'below', // or "below"
-			      xref: "paper", // this means x & x0 are ratios of area (paper)
-			      yref: axis, // assign to a yaxis
-			      x0: 0,
-			      y0: my.y,
-			      x1: 1,
-			      y1: my.y,
-			      line: {
-			        color: oePlot.getBlue( dark ),
-			        width: 2,
-			        dash:"3px,12px",
-			      }
-			    };
-			}; 
-			const annotate = ( my, index ) => {
-				return {
-				   showarrow: false,
-				   text: my.name,
-				   align: "left",
-				   font: {
-					   color: oePlot.getBlue( dark )
-				   },
-				   borderpad: 2,
-				   xref: "paper",
-				   x:0,
-				   yshift: 8, // shift over so label isnt' too close to the axis 
-				   yref: axis, // this means y is ratio of area (paper)
-				   y: my.y 
-			    };
-			}; 
-			
-			// Add horizontals
-			layout.shapes = layout.shapes.concat( horizontals.map( line ));
-		    layout.annotations = layout.annotations.concat( horizontals.map( annotate ));
 		}
 		
 		/*

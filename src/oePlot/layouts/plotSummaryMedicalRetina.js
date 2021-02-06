@@ -2,6 +2,10 @@
 
 	'use strict';
 	
+	// required DOM elements:
+	if( document.querySelector('.oes-right-side') == null ) return;
+	if( document.querySelector('.oes-left-side') == null ) return;
+	
 	/**
 	* OES Medical Retina R/L template
 	* Sub-plot layout
@@ -14,16 +18,13 @@
 	* Using subploting within plot.ly - Navigator outside this
 	*/
 	const domainLayout = [
-		[0.7, 1], 		// Events
-		[0.15, 0.64],	// CRT & VA
-		[0, 0.15],		// Offscale
+		[0.7, 1], 		// Events		y4
+		[0.15, 0.64],	// CRT | VA		y2 | y3 
+		[0, 0.15],		// Offscale		y1 (y) 
 	];
 	
 	// Plotly: hold all parameters for each plot (R & L)
 	const myPlotly = new Map();	
-	
-	// save the JSON, need this for when the user switches themes 
-	let oePlotJSON = null; 
 	
 	// tools
 	let tools = null; 
@@ -41,7 +42,8 @@
 			x: eyeJSON.VA.offScale.x,
 			y: eyeJSON.VA.offScale.y,
 			name: eyeJSON.VA.offScale.name,		
-			hovertemplate: '%{y}<br>%{x}',
+			hovertemplate: '%{y}<br>%{x}<extra></extra>', // "<extra>" - is the "extra" box that shows trace name 
+			yaxis: 'y', //  default is "y", not "y1"!! ... "y2" would refer to `layout.yaxis2`
 			type: 'scatter',
 			mode: 'lines+markers',
 		};
@@ -51,7 +53,7 @@
 			y: eyeJSON.CRT.y,
 			name: eyeJSON.CRT.name,	
 			yaxis: 'y2',	
-			hovertemplate: 'CRT: %{y}<br>%{x}',
+			hovertemplate: 'CRT: %{y}<br>%{x}<extra></extra>',
 			type: 'scatter',
 			mode: 'lines+markers',
 			line: oePlot.dashedLine(),
@@ -68,7 +70,7 @@
 				y: trace.y,
 				name: trace.name,	
 				yaxis: 'y3',	
-				hovertemplate: trace.name + ': %{y}<br>%{x}',
+				hovertemplate: trace.name + ': %{y}<br>%{x}<extra></extra>',
 				type: 'scatter',
 				mode: 'lines+markers',
 			});
@@ -97,7 +99,7 @@
 					customdata: event.customdata,
 					name: event.name, 
 					yaxis: 'y4',
-					hovertemplate: event.customdata ? '%{y}<br>%{customdata}<br>%{x}' : '%{y}<br>%{x}',
+					hovertemplate: event.customdata ? '%{y}<br>%{customdata}<br>%{x}<extra></extra>' : '%{y}<br>%{x}<extra></extra>',
 					type: 'scatter',
 					showlegend: false,
 				}, oePlot.eventStyle(  event.event ));
@@ -108,7 +110,7 @@
 	
 	/**
 	* React to user request to change VA scale 
-	* (note: used as callback from 'tools')
+	* @callback: Tools will update this
 	* @param {String} which eye side?
 	*/
 	const plotlyReacts = ( eyeSide ) => {
@@ -116,23 +118,20 @@
 		// get the eyePlot for the eye side
 		let eyePlot = myPlotly.get( eyeSide ); 
 		
-		// Check the user selected units for VA
+		// Check the user selected units for VA and update the correct axis
 		eyePlot.get('data').set('VA', tools.selectableUnits.getTrace( eyeSide ));
 		eyePlot.get('layout').yaxis3 = tools.selectableUnits.getAxis();
 		
-		// Check for hoverMode setting
+		// Check hoverMode setting
 		eyePlot.get('layout').hovermode = tools.hoverMode.getMode();
 
-		// Data Array of ALL traces
-		const data = Array.from( eyePlot.get('data').values());
-		
 		/**
 		* Plot.ly!
 		* Build new (or rebuild) have to use react()
 		*/
 		Plotly.react(
 			eyePlot.get('div'), 
-			data, 
+			Array.from( eyePlot.get('data').values()), // Data Array of ALL traces
 			eyePlot.get('layout'), 
 			{ displayModeBar: false, responsive: true }
 		);
@@ -170,8 +169,6 @@
 			rangeSlider: true, 
 			dateRangeButtons: true,
 		});
-	
-		console.log( layout );
 		
 		// store details
 		myPlotly.get( eyeSide ).set('div', div);
@@ -179,10 +176,6 @@
 		
 		// build
 		plotlyReacts( eyeSide );
-		
-		// set up click through
-		//oePlot.addClickEvent( div, setup.eye );
-		//oePlot.addHoverEvent( div, eyeSide );
 		
 		/* 
 		bluejay custom event
@@ -193,21 +186,20 @@
 		});	
 	}; 
 	
-	
 	/**
-	* init - called from the PHP page that needs it
+	* init
+	* @callback: from the PHP page that needs it
 	* @param {JSON} json - PHP supplies the data for charts
+	* @param {Boolean} isThemeChange - user event requires a rebuild
 	*/
-	const init = ( json  ) => {
+	const init = ( json, isThemeChange = false ) => {
 		if( json === null ) throw new Error('[oePlot] Sorry, no JSON data!');
 		bj.log(`[oePlot] - OES Medical Retina`);
 		
 		/**
-		* Store JSON data
 		* When a users changes themes EVERYTHING needs rebuilding
 		* the only way (I think) to do this is to re-initialise
 		*/
-		oePlotJSON = oePlotJSON || json; 
 		myPlotly.clear();
 		
 		/**
@@ -229,6 +221,7 @@
 					type:'y',
 					rightSide: 'y2', // CRT & VA plot 
 					domain: domainLayout[1],
+					title: 'VA',
 					spikes: true,
 				}, 
 				yaxes: json.yaxis.VA,
@@ -263,6 +256,7 @@
 		* Axes 
 		*/
 		
+		// VA
 		// set Y3 to the "makeDefault" unit. User can change this with the "tools"
 		const y3 = tools.selectableUnits.getAxis();
 		
@@ -309,8 +303,8 @@
 		/**
 		* Layout & Initiate
 		*/	
+		
 		if( myPlotly.has('rightEye') ){
-			
 			plotlyInit({
 				title: "Right Eye",
 				eyeSide: "rightEye",
@@ -322,7 +316,6 @@
 		} 
 		
 		if( myPlotly.has('leftEye') ){
-			
 			plotlyInit({
 				title: "Left Eye",
 				eyeSide: "leftEye",
@@ -332,17 +325,39 @@
 				parentDOM: '.oes-right-side',
 			});			
 		}
+		
+		/**
+		* OE Theme change
+		* Users changes the theme, re-initialise with the stored JSON
+		* note: once!
+		*/
+		document.addEventListener('oeThemeChange', () => {
+			// give the browser time to adjust the CSS
+			setTimeout( () => init( json, true ), 100 ); 
+		}, { once: true });
+		
+		/**
+		* First init... 
+		*/	
+		if( isThemeChange == false ){
+		
+			bj.log('[oePlot] Click and Hover Events available (click point to see data structure)');
+			
+			['rightEye', 'leftEye'].forEach( eyeSide => {
+				const div = myPlotly.get( eyeSide ).get('div');
+				oePlot.addClickEvent( div, eyeSide );
+				oePlot.addHoverEvent( div, eyeSide );
+			});
+			
+			/* 
+			API, allow external JS to be able to highlight a specific marker
+			*/
+			// return { highlightPoint: oePlot.highlightPoint( myPlotly )};
+		}
+
+		
 	};
-	
-	/**
-	* OE Theme change
-	* Users changes the theme, re-initialise with the stored JSON
-	*/
-	document.addEventListener('oeThemeChange', () => {
-		// give the browser time to adjust the CSS
-		setTimeout( init( oePlotJSON ), 100 ); 
-	});
-	
+
 	/**
 	* Extend blueJS
 	* PHP will call this directly with JSON when DOM is loaded

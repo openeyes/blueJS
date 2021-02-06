@@ -65,8 +65,6 @@
 	* @param {String} eye side
 	*/
 	oePlot.addHoverEvent = ( div, eye ) => {
-		bj.log('"oePlotHover" ('+eye+') Event available (click point to see data structure)');
-		
 		div.on('plotly_hover', function( data ){
 			const point = data.points[0];
 			// pass back the JSON data relavant to the data clicked
@@ -183,7 +181,7 @@
 			color: dark ? '#ccc' : '#666',
 		},
 		bgcolor: dark ? 'rgb(30,46,66)' : 'rgb(255,255,255)', 
-		activecolor: dark ? 'rgb(7,69,152)' : 'rgb(205,205,255)',
+		activecolor: dark ? 'rgb(7,69,152)' : 'rgb(225,225,225)',
 		bordercolor: dark ? 'rgb(10,26,36))' : 'rgb(255,255,255)',
 		borderwidth: 2,
 	}); 

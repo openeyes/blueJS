@@ -1256,7 +1256,7 @@ const bluejay = (function () {
 			showgrid: true,
 			gridcolor: oePlot.axisGridColor( dark ),
 			tickmode: "auto",
-			nticks: 20, // number of ticks
+			nticks: 10, // max. # of ticks. Actual # of ticks auto to be less than or equal to `nticks`. `tickmode` must be set to "auto".
 			ticks: "outside",
 			ticklen: 3, // px
 			tickcolor: oePlot.axisTickColor( dark ),
@@ -1299,8 +1299,8 @@ const bluejay = (function () {
 		}
 		
 		// set nticks
-		if( options.numTicks ){
-			axis.nticks = options.numTicks;
+		if( options.maxAxisTicks ){
+			axis.nticks = options.maxAxisTicks;
 		}
 		
 		// use Dates? - OE data formatting
@@ -1419,6 +1419,9 @@ const bluejay = (function () {
 					color: oePlot.getBlue( dark ),
 				}
 			},
+		    // Shapes and Annotations added through layoutAnnotations
+			shapes: [],
+			annotations: []
 		};
 	
 		/*
@@ -1496,111 +1499,6 @@ const bluejay = (function () {
 				columns: 1,
 				pattern: 'independent',
 			};
-		}
-		
-		/*
-		Shapes and Annotations
-		*/
-		layout.shapes = [];
-		layout.annotations = [];
-		
-		/*
-		Vertical marker line
-		{array} = [{x:x, y:1, name:"name"}]
-		*/
-		if( options.vLineLabel ){
-			
-			// vLineLabel must be an array of objects
-			const verticals = options.vLineLabel.x;
-			const height = options.vLineLabel.h;
-		
-			const line = ( my, index ) => {
-				return {
-			      type: 'line',
-			      layer: 'above', // or "below"
-			      yref: 'paper', // this means y & y0 are ratios of area (paper)
-			      x0: my.x,
-			      y0: 0,
-			      x1: my.x,
-			      y1: height,
-			      line: {
-			        color: oePlot.getBlue( dark ),
-			        width: 0.5,
-					//dash:"3px,4px,1px,4px,3px,1px",
-			      }
-			    };
-			}; 
-			
-			const annotate = ( my, index ) => {
-				return {
-				   showarrow: false,
-				   text: my.name,
-				   textangle: 90,
-				   align: "left",
-				   font: {
-					   color: oePlot.getBlue( dark )
-				   },
-				   borderpad: 2,
-				   x: my.x,
-				   xshift: 8, // shift over so label isnt' on line? 
-				   yref: "paper", // this means y is ratio of area (paper)
-				   y: height 
-			    };
-			}; 
-			
-			// Add verticals
-			layout.shapes = layout.shapes.concat( verticals.map( line ));
-		    layout.annotations = layout.annotations.concat( verticals.map( annotate ));
-		}
-		
-		/*
-		Horizontal marker line
-		{array} = [{ axis:'y3', y:15, name: "Target IOP"}]
-		*/
-		if( options.hLineLabel ){
-			
-			// hLineLabel must be an array of objects
-			const horizontals = options.hLineLabel.y;
-			const axis = options.hLineLabel.axis;
-			
-			// expecting an array of objects here
-			const line = ( my, index ) => {
-				return {
-			      type: 'line',
-			      layer: 'below', // or "below"
-			      xref: "paper", // this means x & x0 are ratios of area (paper)
-			      yref: axis, // assign to a yaxis
-			      x0: 0,
-			      y0: my.y,
-			      x1: 1,
-			      y1: my.y,
-			      line: {
-			        color: oePlot.getBlue( dark ),
-			        width: 2,
-			        dash:"3px,12px",
-			      }
-			    };
-			}; 
-			const annotate = ( my, index ) => {
-				return {
-				   showarrow: false,
-				   text: my.name,
-				   align: "left",
-				   font: {
-					   color: oePlot.getBlue( dark )
-				   },
-				   borderpad: 2,
-				   xref: "paper",
-				   x:0,
-				   yshift: 8, // shift over so label isnt' too close to the axis 
-				   yref: axis, // this means y is ratio of area (paper)
-				   y: my.y 
-			    };
-			}; 
-			
-			// Add horizontals
-			layout.shapes = layout.shapes.concat( horizontals.map( line ));
-		    layout.annotations = layout.annotations.concat( horizontals.map( annotate ));
 		}
 		
 		/*
@@ -1761,8 +1659,6 @@ const bluejay = (function () {
 	* @param {String} eye side
 	*/
 	oePlot.addHoverEvent = ( div, eye ) => {
-		bj.log('"oePlotHover" ('+eye+') Event available (click point to see data structure)');
-		
 		div.on('plotly_hover', (function( data ){
 			const point = data.points[0];
 			// pass back the JSON data relavant to the data clicked
@@ -1879,7 +1775,7 @@ const bluejay = (function () {
 			color: dark ? '#ccc' : '#666',
 		},
 		bgcolor: dark ? 'rgb(30,46,66)' : 'rgb(255,255,255)', 
-		activecolor: dark ? 'rgb(7,69,152)' : 'rgb(205,205,255)',
+		activecolor: dark ? 'rgb(7,69,152)' : 'rgb(225,225,225)',
 		bordercolor: dark ? 'rgb(10,26,36))' : 'rgb(255,255,255)',
 		borderwidth: 2,
 	}); 
@@ -1931,13 +1827,28 @@ const bluejay = (function () {
 	'use strict';
 	
 	/**
-	* Init with template layout properties
+	* Highlight a point (marker) on a plotly chart.
+	* This allows external JS to change a specific marker to blue
+	* It needs to be externally controlled because of OCT viewing
+	* i.e. the OCT stack will be controlled by another JS module
+	* but as you go through the stack the associated marker on the
+	* plotly chart should be flagged blue.
+	* 
+	* oePlot broadcasts a hover or click event. External JS then 
+	* uses this to highlight the marker. It is returned from an init
+	* in a template. see IDG Glaucoma OCT demo
 	*/
-	oePlot.highlighPoint = ( myPlotly, darkTheme ) => {
+	
+	
+	/**
+	* Initiate with link to oePlot
+	* @param {Map} myPlotly - to target
+	* @returns {Function} for external API use
+	*/
+	oePlot.highlightPoint = ( myPlotly ) => {
 		
 		/**
 		* External API 
-		* (note: used as a callback by selectableUnits)
 		* @param {String} flattened objects e.g 'leftEye.OCT'
 		* @param {Number} index of point
 		*/
@@ -1947,7 +1858,7 @@ const bluejay = (function () {
 			let objPath = flattenedObj.split('.');
 			
 			if(objPath.length != 2){
-				bj.log('oePlot - for highlightPoint to work it needs EyeSide & Date JSON name e.g. "leftEye.OCT" ');
+				bj.log('oePlot - for highlightPoint to work it need side and trace name: "leftEye.OCT" ');
 				return;
 			}
 			
@@ -1957,7 +1868,7 @@ const bluejay = (function () {
 			let i = 0;
 			/*
 			Have to loop through because i need an index ref to the array 
-			passed in when Plotly is built: see plotlyReacts below
+			passed in when Plotly is built
 			*/
 			myPlotly.get( eyeSide ).get('data').forEach((value, key) => {
 				if( key === dataTraceName ){
@@ -1969,17 +1880,17 @@ const bluejay = (function () {
 			
 			/*
 			Need do a bit of work with this.
-			1) create an array of colors for ALL marks in trace in default eye colour
+			1) create an array of colors for ALL markers in trace in default eye colour
 			2) set specific marker colour to blue
-			3) relayout	
+			3) re-layout	
 			*/
-			let eyeColor = oePlot.getColor( eyeSide, darkTheme );
+			let eyeColor = oePlot.getColor( eyeSide, oePlot.isDarkTheme() );
 			let markerColors = [];
 			for( let i=0; i < traceData.x.length; i++ ){
 				markerColors.push( eyeColor );
 			}
 			// set specific marker to blue
-			markerColors[ indexPoint ] = oePlot.getColor( 'highlight', darkTheme );
+			markerColors[ indexPoint ] = oePlot.getColor( 'highlight', oePlot.isDarkTheme() );
 			
 			// get marker style for event type 
 			let markerObj = oePlot.markerFor( traceData.oeEventType ); // added on creation of trace
@@ -1987,10 +1898,122 @@ const bluejay = (function () {
 			markerObj.color = markerColors;
 			
 			/**
-			* Update Plotly 
+			* RESTYLE Plotly directly!!
 			*/
 			Plotly.restyle( myPlotly.get( eyeSide ).get('div'), { 'marker': markerObj }, [ traceIndex ]);	
 		};
+	};
+	
+})( bluejay.namespace('oePlot'));
+(function( oePlot ) {
+	
+	'use strict';
+	
+	/**
+	* Add vertical annotations to plotly
+	* @param {*} layout - plotly layout object
+	* @param {Array} verticals - e.g. [ 'name' => 'SLT', 'x' => '2011-03-12' ]
+	* @param {Number} height - the height of the line (0 to 1)
+	*/ 
+	oePlot.addLayoutVerticals = ( layout, verticals, height ) => {
+		if( !Array.isArray( verticals) ) throw new Error('[oePlot] addLayoutVerticals - must be an Array');
+		
+		/**
+		Map verticals against the templates:	
+		*/
+		const line = ({ x }) => {
+			return {
+		      type: 'line',
+		      layer: 'above', // or "below"
+		      yref: 'paper', // this means y & y0 are ratios of area (paper)
+		      x0: x,
+		      y0: 0,
+		      x1: x,
+		      y1: height,
+		      line: {
+		        color: oePlot.getBlue( oePlot.isDarkTheme()),
+		        width: 0.5,
+				//dash:"3px,4px,1px,4px,3px,1px",
+		      }
+		    };
+		}; 
+		const annotate = ({ name, x }) => {
+			return {
+			   showarrow: false,
+			   text: name,
+			   textangle: 90,
+			   align: "left",
+			   font: {
+				   color: oePlot.getBlue( oePlot.isDarkTheme())
+			   },
+			   borderpad: 2,
+			   x,
+			   xshift: 8, // shift over so label isnt' on line? 
+			   yref: "paper", // this means y is ratio of area (paper)
+			   y: height 
+		    };
+		}; 
+		
+		/**
+		* build layout arrays
+		*/
+		layout.shapes = layout.shapes.concat( verticals.map( line ));
+	    layout.annotations = layout.annotations.concat( verticals.map( annotate ));
+	};
+	
+	
+	/**
+	* Add vertical annotations to plotly
+	* @param {*} layout - plotly layout object
+	* @param {Array} horizontals - e.g. [ 'name' => 'Target IOP', 'y' => 15 ]
+	* @param {String} yaxis - e.g. 'y3'
+	*/ 
+	oePlot.addLayoutHorizontals = ( layout, horizontals, yaxis ) => {
+		if( !Array.isArray( horizontals )) throw new Error('[oePlot] addLayoutVerticals - must be an Array');
+		
+		/**
+		Map horizontals against the templates:	
+		*/
+		// expecting an array of objects here
+		const line = ({ y }) => {
+			return {
+		      type: 'line',
+		      layer: 'below', // or "below"
+		      xref: "paper", // this means x & x0 are ratios of area (paper)
+		      yref: yaxis, // assign to a yaxis
+		      x0: 0,
+		      y0: y,
+		      x1: 1,
+		      y1: y,
+		      line: {
+		        color: oePlot.getBlue( oePlot.isDarkTheme()),
+		        width: 2,
+		        dash:"3px,12px",
+		      }
+		    };
+		}; 
+		const annotate = ({ name, y }) => {
+			return {
+			   showarrow: false,
+			   text: name,
+			   align: "left",
+			   font: {
+				   color: oePlot.getBlue( oePlot.isDarkTheme())
+			   },
+			   borderpad: 2,
+			   xref: "paper",
+			   x:0,
+			   yshift: 8, // shift over so label isnt' too close to the axis 
+			   yref: yaxis, // assign to the yaxis
+			   y: y 
+		    };
+		}; 
+			
+		/**
+		* build layout arrays
+		*/	
+		layout.shapes = layout.shapes.concat( horizontals.map( line ));
+	    layout.annotations = layout.annotations.concat( horizontals.map( annotate ));
 	};
 	
 })( bluejay.namespace('oePlot'));
@@ -3483,146 +3506,148 @@ const bluejay = (function () {
 
 	'use strict';
 	
-	const oesTemplateType = "Glaucoma";
-	
-	// oe CSS theme!
-	const darkTheme = oePlot.isDarkTheme();
+	// required DOM elements:
+	if( document.querySelector('.oes-right-side') == null ) return;
+	if( document.querySelector('.oes-left-side') == null ) return;
 	
 	/**
-	* Plotly parameters
-	* Map top level parameters for each plot (R & L)
+	* OES Glaucoma
+	* Sub-plot layout
+	* |- Events: Injection, Images (OCT), Managment (Inj Mgmt & Clinical Mgmt)
+	* |- CRT & VA (VA has multiple units)
+	* |- Offscale: CF, HM, PL, NPL
+	* |- [Navigator] 
+	*
+	* Domain allocation for layout: (note: 0 - 1, 0 is the bottom)
+	* Using subploting within plot.ly - Navigator outside this
 	*/
+	const domainLayout = [
+		[0.82, 1],		// Events		y5
+		[0.47, 0.77],	// IOP			y4
+		[0.1, 0.42],	// VFI | VA		y2 | y3
+		[0, 0.1],		// Offscale		y1 (y)
+	];
+	
+	// Plotly: hold all parameters for each plot (R & L)
 	const myPlotly = new Map();	
 	
-	/**
-	* Helpers
-	*/
-	const dateRange = oePlot.fullDateRange();
-	const userSelecterUnits = oePlot.selectableUnits();
-	
-	// add API:
-	const highlightPoint = oePlot.highlighPoint( myPlotly, darkTheme );
+	// tools
+	let tools = null; 
 	
 	/**
-	* Build data trace format for Glaucoma
+	* Build data traces for Plotly
+	* traces are stored in myPlotly Map.
 	* @param {JSON} eyeJSON data
 	* @param {String} eyeSide - 'leftEye' or 'rightEye'
-	* @returns {Array} for Plol.ly data
 	*/
 	const buildDataTraces = ( eyeJSON, eyeSide ) => {
-		
-		/**
-		* store data traces with own keys
-		* traces can then be accessed by their JSON name
-		*/
-		myPlotly.get( eyeSide ).set('data', new Map());
-		
+	
+		// VA offscale: CF, HM, PL, NPL
 		const VA_offScale = {
 			x: eyeJSON.VA.offScale.x,
 			y: eyeJSON.VA.offScale.y,
 			name: eyeJSON.VA.offScale.name,		
-			hovertemplate: '%{y}<br>%{x}',
+			hovertemplate: '%{y}<br>%{x}<extra></extra>', // "<extra>" - is the "extra" box that shows trace name
+			yaxis: 'y', //  default is "y", not "y1"!! ... "y2" would refer to `layout.yaxis2`
 			type: 'scatter',
 			mode: 'lines+markers',
 		};
-		
-		myPlotly.get( eyeSide ).get('data').set( eyeJSON.VA.offScale.name, VA_offScale);
-		dateRange.add( eyeJSON.VA.offScale.x );
 		
 		const VFI = {
 			x: eyeJSON.VFI.x,
 			y: eyeJSON.VFI.y,
 			name: eyeJSON.VFI.name,	
-			yaxis: 'y5',	
-			hovertemplate: '%{y}<br>%{x}',
+			yaxis: 'y2',	
+			hovertemplate: '%{y}<br>%{x}<extra></extra>',
 			type: 'scatter',
 			mode: 'lines+markers',
 			line: oePlot.dashedLine(),
 		};
 		
-		myPlotly.get( eyeSide ).get('data').set( eyeJSON.VFI.name, VFI);
-		dateRange.add( eyeJSON.VFI.x );
-		
 		const IOP = {
 			x: eyeJSON.IOP.x,
 			y: eyeJSON.IOP.y,
 			name: eyeJSON.IOP.name,		
-			yaxis: 'y3',
-			hovertemplate: 'IOP: %{y}<br>%{x}',	
+			yaxis: 'y4',
+			hovertemplate: 'IOP: %{y}<br>%{x}<extra></extra>', 	
 			type: 'scatter',
 			mode: 'lines+markers',
 		};
 		
-		myPlotly.get( eyeSide ).get('data').set( eyeJSON.IOP.name, IOP);
-		dateRange.add( eyeJSON.IOP.x );
-		
 		/**
-		* User selectable VA data traces
+		VA data traces can be changed by the User, e.g. Snellen Metre, logMAR, etc
+		the trace AND it's axis layout need to be stored together. This is what
+		userSelectedUnits handles.
 		*/
-		Object.values( eyeJSON.VA.units ).forEach(( unit, index ) => {
-			
-			userSelecterUnits.addTrace( eyeSide, {
-				x: unit.x,
-				y: unit.y,
-				name: unit.name,	
-				yaxis: 'y2',	
-				hovertemplate: unit.name + ': %{y}<br>%{x}',
+		for (const [ key, trace ] of Object.entries( eyeJSON.VA.units )){
+			tools.selectableUnits.addTrace( eyeSide, key, {
+				x: trace.x,
+				y: trace.y,
+				name: trace.name,	
+				yaxis: 'y3',	
+				hovertemplate: trace.name + ': %{y}<br>%{x}<extra></extra>',
 				type: 'scatter',
 				mode: 'lines+markers',
 			});
-			
-			// only need to check one of these dates
-			if( !index ) dateRange.add( unit.x );  
-		});
-		
-		myPlotly.get( eyeSide ).get('data').set( 'VA', userSelecterUnits.selectedTrace( eyeSide ));
+		}
+
+		/**
+		Store data traces in myPlotly
+		*/
+		myPlotly.set( eyeSide, new Map());
+		myPlotly.get( eyeSide ).set('data', new Map());
+		myPlotly.get( eyeSide ).get('data').set( VA_offScale.name, VA_offScale);
+		myPlotly.get( eyeSide ).get('data').set( VFI.name, VFI);
+		myPlotly.get( eyeSide ).get('data').set( IOP.name, IOP);
+		myPlotly.get( eyeSide ).get('data').set( 'VA', tools.selectableUnits.getTrace( eyeSide ));
 		
 		/**
-		* Events
+		Event data are all individual traces
+		all the Y values are are the SAME, so that are shown on a line
+		extra data for the popup can be passed in with customdata
 		*/
 		Object.values( eyeJSON.events ).forEach(( event ) => {
 			
-			let template = event.customdata ? '%{y}<br>%{customdata}<br>%{x}' : '%{y}<br>%{x}';
-			
-			let newEvent = Object.assign({
+			const newEvent = Object.assign({
 					oeEventType: event.event, // store event type
 					x: event.x, 
 					y: event.y, 
 					customdata: event.customdata,
 					name: event.name, 
-					yaxis: 'y4',
-					hovertemplate: template,
+					yaxis: 'y5',
+					hovertemplate: event.customdata ? '%{y}<br>%{customdata}<br>%{x}<extra></extra>' : '%{y}<br>%{x}<extra></extra>',
 					type: 'scatter',
 					showlegend: false,
 				}, oePlot.eventStyle(  event.event ));
 			
-			myPlotly.get( eyeSide ).get('data').set( event.name, newEvent);
-			dateRange.add( event.x );
+			myPlotly.get( eyeSide ).get('data').set( newEvent.name, newEvent);
 		});		
 	};
 		
 	/**
 	* React to user request to change VA scale 
-	* (note: used as a callback by selectableUnits)
+	* @callback: Tools will update this
 	* @param {String} which eye side?
 	*/
 	const plotlyReacts = ( eyeSide ) => {
+		
 		// get the eyePlot for the eye side
 		let eyePlot = myPlotly.get( eyeSide );
 		
-		/*
-		Update user selected units for VA
-		*/
-		eyePlot.get('data').set('VA', userSelecterUnits.selectedTrace( eyeSide ));
-		eyePlot.get('layout').yaxis2 = Object.assign({}, userSelecterUnits.selectedAxis());
+		// Check the user selected units for VA and update the correct axis
+		eyePlot.get('data').set('VA', tools.selectableUnits.getTrace( eyeSide ));
+		eyePlot.get('layout').yaxis3 = tools.selectableUnits.getAxis();
 		
-		// get Data Array of all traces
-		const data = Array.from( eyePlot.get('data').values());
-
-		// build new (or rebuild)
+		// Check hoverMode setting
+		eyePlot.get('layout').hovermode = tools.hoverMode.getMode();
+		
+		/**
+		* Plot.ly!
+		* Build new (or rebuild) have to use react()
+		*/
 		Plotly.react(
 			eyePlot.get('div'), 
-			data, 
+			Array.from( eyePlot.get('data').values()), // Data Array of ALL traces
 			eyePlot.get('layout'), 
 			{ displayModeBar: false, responsive: true }
 		);
@@ -3630,40 +3655,49 @@ const bluejay = (function () {
 	
 	
 	/**
-	* build layout and initialise Plotly 
-	* @param {Object} setup
+	* After init - build layout and initialise Plotly 
+	* @param {Object} setup - deconstructed
 	*/
-	const plotlyInit = ( setup ) => {
+	const plotlyInit = ({ title, eyeSide, colors, xaxis, yaxes, procedures, targetIOP, parentDOM }) => {
+		/*
+		Ensure parentDOM is empty (theme switch re-build issue otherwise!)
+		*/
+		const parent = document.querySelector( parentDOM );
+		bj.empty( parent );
 		
-		const eyeSide = setup.eyeSide;
-		
+		// Need a wrapper to help with the CSS layout		
+		const div = oePlot.buildDiv(`oes-${eyeSide}`);
+		parent.append( div );
+	
+		/*
+		Build layout
+		*/
 		const layout = oePlot.getLayout({
-			darkTheme, // dark? 
+			darkTheme: oePlot.isDarkTheme(), // link to CSS theme
 			legend: {
 				traceorder: "reversed",
 				yanchor:'bottom',
-				y:0.82,
+				y:domainLayout[1][1],
 			},
-			colors: setup.colors,
-			plotTitle: setup.title,
-			xaxis: setup.xaxis,
-			yaxes: setup.yaxes,
-			subplot: 4,		// offScale, VA, IOP, meds 
-			rangeSlider: dateRange.firstLast(),
+			colors,
+			plotTitle: title,
+			xaxis: xaxis,
+			yaxes: yaxes,
+			subplot: domainLayout.length, // num of sub-plots 
+			rangeSlider: true,
 			dateRangeButtons: true,
-			vLineLabel: {
-				x: Object.values( setup.procedures ),
-				h: 0.82,
-			},
-			hLineLabel: {
-				y: Object.values( setup.targetIOP ),
-				axis: 'y3'
-			}
 		});
-			
-		const div = oePlot.buildDiv(`${oesTemplateType}-${eyeSide}`, '80vh', '850px');
-		document.querySelector( setup.parentDOM ).appendChild( div );
-	
+		
+		// e.g vertical lines with labels
+		if( procedures ){
+			oePlot.addLayoutVerticals( layout, Object.values( procedures ), domainLayout[1][1]);
+		}
+		
+		// e.g horizontal lines with labels
+		if( targetIOP ){
+			oePlot.addLayoutHorizontals( layout, Object.values( targetIOP ), 'y4');
+		}
+					
 		// store details
 		myPlotly.get( eyeSide ).set('div', div);
 		myPlotly.get( eyeSide ).set('layout', layout);
@@ -3671,11 +3705,10 @@ const bluejay = (function () {
 		// build
 		plotlyReacts( eyeSide );
 	
-		// add events
-		oePlot.addClickEvent( div, eyeSide );
-		oePlot.addHoverEvent( div, eyeSide );
-		
-		// bluejay custom event (user changes layout ratio)
+		/* 
+		bluejay custom event
+		User changes layout arrangement (top split view, etc)
+		*/
 		document.addEventListener('oesLayoutChange', () => {
 			Plotly.relayout( div, layout );
 		});	
@@ -3685,54 +3718,75 @@ const bluejay = (function () {
 	/**
 	* init - called from the PHP page that needs it
 	* @param {JSON} json - PHP supplies the data for charts
+	* @param {Boolean} isThemeChange - user event requires a rebuild
 	*/
-	const init = ( json = null ) => {
-		
-		if(json === null){
-			bj.log(`[oePlot] - no JSON data provided for Plot.ly ${oesTemplateType} ??`);
-			return false;
-		} else {
-			bj.log(`[oePlot] - building Plot.ly ${oesTemplateType}`);
-		}
-
-		// for all subplot rows
-		const domainRow = [
-			[0, 0.08],
-			[0.1, 0.45],
-			[0.47, 0.82],
-			[0.88, 1],
-		];
-		
-		// user selectable units for VA units:
-		userSelecterUnits.init({
-			darkTheme,
-			plotlyUpdate: plotlyReacts,
-			axisDefaults: {
-				type:'y',
-				domain: domainRow[1],
-				title: 'VA',  // prefix for title
-				spikes: true,
-			}, 
-			unitRanges: Object.values( json.yaxis.unitRanges ),
-		});
+	const init = ( json, isThemeChange = false ) => {
+		if( json === null ) throw new Error('[oePlot] Sorry, no JSON data!');
+		bj.log(`[oePlot] - OES Glaucoma`);
 		
 		/**
-		* Data 
+		* When a users changes themes EVERYTHING needs rebuilding
+		* the only way (I think) to do this is to re-initialise
+		*/
+		myPlotly.clear();
+		
+		/**
+		* oePlot tools
+		* Allows the user to access extra chart functionality
+		* tools will add a fixed toolbar DOM to the page.
+		*
+		* Tools are not effected by a theme switch, CSS will 
+		* re-style them, but the traces and axes need updating
+		*/
+		if( tools == null ){
+			tools = oePlot.tools();
+			tools.plot.setReacts( plotlyReacts, ['rightEye', 'leftEye']);
+			tools.hoverMode.add(); // user hoverMode options for labels
+			
+			// VA has dynamic axis based, e.g. SnellenMetre, LogMAR, etc
+			tools.selectableUnits.addAxes({
+				axisDefaults: {
+					type:'y',
+					rightSide: 'y2',
+					domain: domainLayout[2],
+					title: 'VA',  // prefix for title
+					spikes: true,
+				}, 
+				yaxes: json.yaxis.VA,
+				prefix: 'VA',
+			});
+			
+			// check for tabular data:
+			if( json.tabularDataID ){
+				tools.tabularData.add( json.tabularDataID );
+			}
+			
+			tools.showToolbar(); // update DOM
+		} else {
+			// rebuilding...
+			tools.selectableUnits.clearTraces();
+			tools.selectableUnits.updateAxesColors();
+		}
+		
+		/**
+		* Traces - build data traces from JSON 
 		*/
 		
 		if( json.rightEye ){
-			myPlotly.set('rightEye', new Map());
 			buildDataTraces( json.rightEye, 'rightEye' );
 		}
 		
 		if( json.leftEye ){
-			myPlotly.set('leftEye', new Map());
 			buildDataTraces( json.leftEye, 'leftEye' );
 		}
 	
 		/**
-		* Axes templates 
+		* Axes 
 		*/
+		
+		// VA
+		// set Y3 to the "makeDefault" unit. User can change this with the "tools"
+		const y3 = tools.selectableUnits.getAxis();
 		
 		// x1
 		const x1 = oePlot.getAxis({
@@ -3740,58 +3794,53 @@ const bluejay = (function () {
 			numTicks: 10,
 			useDates: true, 
 			spikes: true,
-			range: dateRange.firstLast(),
 			noMirrorLines: true,
-		}, darkTheme );
+		}, oePlot.isDarkTheme());
 		
 		
-		// y0 - offscale 
-		const y0 = oePlot.getAxis({
+		// offscale y1 ("y")
+		const y1 = oePlot.getAxis({
 			type:'y',
-			domain: domainRow[0], 
+			domain: domainLayout[3], 
 			useCategories: {
-				showAll: true, 
-				categoryarray: json.yaxis.offScale.reverse()
+				categoryarray: json.yaxis.offScale,
+				rangeFit: "padTop", // "exact", etc,
 			},
 			spikes: true,
-		}, darkTheme );
+		}, oePlot.isDarkTheme());
 		
-		// y2 - IOP
+		// VFI
 		const y2 = oePlot.getAxis({
 			type:'y',
-			domain: domainRow[2],
-			title: 'IOP', 
-			range: [0, 75],
+			domain: domainLayout[2],
+			title: 'VFI',
+			range: json.yaxis.VFI,
 			spikes: true,
-		}, darkTheme );
+			maxAxisTicks: 12,
+		}, oePlot.isDarkTheme());
 		
-		// y3 - Drugs
-		const y3 = oePlot.getAxis({
-			type:'y',
-			domain: domainRow[3],
-			useCategories: {
-				showAll: true, 
-				categoryarray: json.eventTypes.reverse()
-			},
-			spikes: true,
-		}, darkTheme );
-		
-		// y4 - VFI
+		// IOP
 		const y4 = oePlot.getAxis({
 			type:'y',
-			domain: domainRow[1],
-			title: 'VFI',
-			range: [-30, 5],
-			rightSide: 'y2',
+			domain: domainLayout[1],
+			title: 'IOP', 
+			range: json.yaxis.IOP,
+			maxAxisTicks: 12,
 			spikes: true,
-		}, darkTheme );
+		}, oePlot.isDarkTheme());
 		
-		/*
-		* Dynamic axis
-		* VA axis depends on selected unit state
-		*/
-		const y1 = userSelecterUnits.selectedAxis();
+		// Events
+		const y5 = oePlot.getAxis({
+			type:'y',
+			domain: domainLayout[0],
+			useCategories: {
+				categoryarray: json.allEvents,
+				rangeFit: "pad", // "exact", etc
+			},
+			spikes: true,
+		}, oePlot.isDarkTheme());
 		
+	
 		/**
 		* Layout & Build - Eyes
 		*/	
@@ -3802,10 +3851,10 @@ const bluejay = (function () {
 				eyeSide: 'rightEye',
 				colors: "rightEyeSeries",
 				xaxis: x1, 
-				yaxes: [ y0, y1, y2, y3, y4 ],
+				yaxes: [ y1, y2, y3, y4, y5 ],
 				procedures: json.rightEye.procedures,
 				targetIOP: json.rightEye.targetIOP,
-				parentDOM: json.rightEye.dom,
+				parentDOM: '.oes-left-side',
 			});
 		} 
 	
@@ -3816,33 +3865,60 @@ const bluejay = (function () {
 				eyeSide: 'leftEye',
 				colors: "leftEyeSeries",
 				xaxis: x1, 
-				yaxes: [ y0, y1, y2, y3, y4 ],
+				yaxes: [ y1, y2, y3, y4, y5 ],
 				procedures: json.leftEye.procedures,
 				targetIOP: json.leftEye.targetIOP,
-				parentDOM: json.leftEye.dom,
+				parentDOM: '.oes-right-side',
 			});
 		}
 		
 		/**
-		API OCT image stack is controlled externally
-		but allow it to update the related marker
+		* OE Theme change
+		* Users changes the theme, re-initialise with the stored JSON
+		* note: once!
 		*/
+		document.addEventListener('oeThemeChange', () => {
+			// give the browser time to adjust the CSS
+			setTimeout(() => init( json, true ), 100 ); 
+		}, { once: true });
 		
-		bj.log('[oePlot] - method: highlightPoint()');
 		
-		return { highlightPoint: highlightPoint };
+		/**
+		* First init... 
+		*/
+		if( isThemeChange == false ){
+			
+			bj.log('[oePlot] Click and Hover Events available (click point to see data structure)');
+			
+			['rightEye', 'leftEye'].forEach( eyeSide => {
+				const div = myPlotly.get( eyeSide ).get('div');
+				oePlot.addClickEvent( div, eyeSide );
+				oePlot.addHoverEvent( div, eyeSide );
+			});
+			
+			/* 
+			API, allow external JS to be able to highlight a specific marker
+			*/
+			return { highlightPoint: oePlot.highlightPoint( myPlotly )};
+		}
 	};
+
 	
 	/**
-	* Extend API ... PHP will call with json when DOM is loaded
+	* Extend blueJS
+	* PHP will call this directly with JSON when DOM is loaded
 	*/
-	bj.extend('plotSummaryGlaucoma', init);	
+	bj.extend('plotSummaryGlaucoma', init );	
 	
 	
 })( bluejay, bluejay.namespace('oePlot')); 
 (function( bj, oePlot ){
 
 	'use strict';
+	
+	// required DOM elements:
+	if( document.querySelector('.oes-right-side') == null ) return;
+	if( document.querySelector('.oes-left-side') == null ) return;
 	
 	/**
 	* OES Medical Retina R/L template
@@ -3856,16 +3932,13 @@ const bluejay = (function () {
 	* Using subploting within plot.ly - Navigator outside this
 	*/
 	const domainLayout = [
-		[0.7, 1], 		// Events
-		[0.15, 0.64],	// CRT & VA
-		[0, 0.15],		// Offscale
+		[0.7, 1], 		// Events		y4
+		[0.15, 0.64],	// CRT | VA		y2 | y3 
+		[0, 0.15],		// Offscale		y1 (y) 
 	];
 	
 	// Plotly: hold all parameters for each plot (R & L)
 	const myPlotly = new Map();	
-	
-	// save the JSON, need this for when the user switches themes 
-	let oePlotJSON = null; 
 	
 	// tools
 	let tools = null; 
@@ -3883,7 +3956,8 @@ const bluejay = (function () {
 			x: eyeJSON.VA.offScale.x,
 			y: eyeJSON.VA.offScale.y,
 			name: eyeJSON.VA.offScale.name,		
-			hovertemplate: '%{y}<br>%{x}',
+			hovertemplate: '%{y}<br>%{x}<extra></extra>', // "<extra>" - is the "extra" box that shows trace name 
+			yaxis: 'y', //  default is "y", not "y1"!! ... "y2" would refer to `layout.yaxis2`
 			type: 'scatter',
 			mode: 'lines+markers',
 		};
@@ -3893,7 +3967,7 @@ const bluejay = (function () {
 			y: eyeJSON.CRT.y,
 			name: eyeJSON.CRT.name,	
 			yaxis: 'y2',	
-			hovertemplate: 'CRT: %{y}<br>%{x}',
+			hovertemplate: 'CRT: %{y}<br>%{x}<extra></extra>',
 			type: 'scatter',
 			mode: 'lines+markers',
 			line: oePlot.dashedLine(),
@@ -3910,7 +3984,7 @@ const bluejay = (function () {
 				y: trace.y,
 				name: trace.name,	
 				yaxis: 'y3',	
-				hovertemplate: trace.name + ': %{y}<br>%{x}',
+				hovertemplate: trace.name + ': %{y}<br>%{x}<extra></extra>',
 				type: 'scatter',
 				mode: 'lines+markers',
 			});
@@ -3939,7 +4013,7 @@ const bluejay = (function () {
 					customdata: event.customdata,
 					name: event.name, 
 					yaxis: 'y4',
-					hovertemplate: event.customdata ? '%{y}<br>%{customdata}<br>%{x}' : '%{y}<br>%{x}',
+					hovertemplate: event.customdata ? '%{y}<br>%{customdata}<br>%{x}<extra></extra>' : '%{y}<br>%{x}<extra></extra>',
 					type: 'scatter',
 					showlegend: false,
 				}, oePlot.eventStyle(  event.event ));
@@ -3950,7 +4024,7 @@ const bluejay = (function () {
 	
 	/**
 	* React to user request to change VA scale 
-	* (note: used as callback from 'tools')
+	* @callback: Tools will update this
 	* @param {String} which eye side?
 	*/
 	const plotlyReacts = ( eyeSide ) => {
@@ -3958,23 +4032,20 @@ const bluejay = (function () {
 		// get the eyePlot for the eye side
 		let eyePlot = myPlotly.get( eyeSide ); 
 		
-		// Check the user selected units for VA
+		// Check the user selected units for VA and update the correct axis
 		eyePlot.get('data').set('VA', tools.selectableUnits.getTrace( eyeSide ));
 		eyePlot.get('layout').yaxis3 = tools.selectableUnits.getAxis();
 		
-		// Check for hoverMode setting
+		// Check hoverMode setting
 		eyePlot.get('layout').hovermode = tools.hoverMode.getMode();
 
-		// Data Array of ALL traces
-		const data = Array.from( eyePlot.get('data').values());
-		
 		/**
 		* Plot.ly!
 		* Build new (or rebuild) have to use react()
 		*/
 		Plotly.react(
 			eyePlot.get('div'), 
-			data, 
+			Array.from( eyePlot.get('data').values()), // Data Array of ALL traces
 			eyePlot.get('layout'), 
 			{ displayModeBar: false, responsive: true }
 		);
@@ -4012,8 +4083,6 @@ const bluejay = (function () {
 			rangeSlider: true, 
 			dateRangeButtons: true,
 		});
-	
-		console.log( layout );
 		
 		// store details
 		myPlotly.get( eyeSide ).set('div', div);
@@ -4021,10 +4090,6 @@ const bluejay = (function () {
 		
 		// build
 		plotlyReacts( eyeSide );
-		
-		// set up click through
-		//oePlot.addClickEvent( div, setup.eye );
-		//oePlot.addHoverEvent( div, eyeSide );
 		
 		/* 
 		bluejay custom event
@@ -4035,21 +4100,20 @@ const bluejay = (function () {
 		});	
 	}; 
 	
-	
 	/**
-	* init - called from the PHP page that needs it
+	* init
+	* @callback: from the PHP page that needs it
 	* @param {JSON} json - PHP supplies the data for charts
+	* @param {Boolean} isThemeChange - user event requires a rebuild
 	*/
-	const init = ( json  ) => {
+	const init = ( json, isThemeChange = false ) => {
 		if( json === null ) throw new Error('[oePlot] Sorry, no JSON data!');
 		bj.log(`[oePlot] - OES Medical Retina`);
 		
 		/**
-		* Store JSON data
 		* When a users changes themes EVERYTHING needs rebuilding
 		* the only way (I think) to do this is to re-initialise
 		*/
-		oePlotJSON = oePlotJSON || json; 
 		myPlotly.clear();
 		
 		/**
@@ -4071,6 +4135,7 @@ const bluejay = (function () {
 					type:'y',
 					rightSide: 'y2', // CRT & VA plot 
 					domain: domainLayout[1],
+					title: 'VA',
 					spikes: true,
 				}, 
 				yaxes: json.yaxis.VA,
@@ -4105,6 +4170,7 @@ const bluejay = (function () {
 		* Axes 
 		*/
 		
+		// VA
 		// set Y3 to the "makeDefault" unit. User can change this with the "tools"
 		const y3 = tools.selectableUnits.getAxis();
 		
@@ -4151,8 +4217,8 @@ const bluejay = (function () {
 		/**
 		* Layout & Initiate
 		*/	
+		
 		if( myPlotly.has('rightEye') ){
-			
 			plotlyInit({
 				title: "Right Eye",
 				eyeSide: "rightEye",
@@ -4164,7 +4230,6 @@ const bluejay = (function () {
 		} 
 		
 		if( myPlotly.has('leftEye') ){
-			
 			plotlyInit({
 				title: "Left Eye",
 				eyeSide: "leftEye",
@@ -4174,17 +4239,39 @@ const bluejay = (function () {
 				parentDOM: '.oes-right-side',
 			});			
 		}
+		
+		/**
+		* OE Theme change
+		* Users changes the theme, re-initialise with the stored JSON
+		* note: once!
+		*/
+		document.addEventListener('oeThemeChange', () => {
+			// give the browser time to adjust the CSS
+			setTimeout( () => init( json, true ), 100 ); 
+		}, { once: true });
+		
+		/**
+		* First init... 
+		*/	
+		if( isThemeChange == false ){
+		
+			bj.log('[oePlot] Click and Hover Events available (click point to see data structure)');
+			
+			['rightEye', 'leftEye'].forEach( eyeSide => {
+				const div = myPlotly.get( eyeSide ).get('div');
+				oePlot.addClickEvent( div, eyeSide );
+				oePlot.addHoverEvent( div, eyeSide );
+			});
+			
+			/* 
+			API, allow external JS to be able to highlight a specific marker
+			*/
+			// return { highlightPoint: oePlot.highlightPoint( myPlotly )};
+		}
+
+		
 	};
-	
-	/**
-	* OE Theme change
-	* Users changes the theme, re-initialise with the stored JSON
-	*/
-	document.addEventListener('oeThemeChange', () => {
-		// give the browser time to adjust the CSS
-		setTimeout( init( oePlotJSON ), 100 ); 
-	});
-	
+
 	/**
 	* Extend blueJS
 	* PHP will call this directly with JSON when DOM is loaded

@@ -39,7 +39,7 @@
 			showgrid: true,
 			gridcolor: oePlot.axisGridColor( dark ),
 			tickmode: "auto",
-			nticks: 20, // number of ticks
+			nticks: 10, // max. # of ticks. Actual # of ticks auto to be less than or equal to `nticks`. `tickmode` must be set to "auto".
 			ticks: "outside",
 			ticklen: 3, // px
 			tickcolor: oePlot.axisTickColor( dark ),
@@ -82,8 +82,8 @@
 		}
 		
 		// set nticks
-		if( options.numTicks ){
-			axis.nticks = options.numTicks;
+		if( options.maxAxisTicks ){
+			axis.nticks = options.maxAxisTicks;
 		}
 		
 		// use Dates? - OE data formatting
