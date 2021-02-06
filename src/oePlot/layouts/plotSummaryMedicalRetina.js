@@ -2,9 +2,8 @@
 
 	'use strict';
 	
-	// required DOM elements:
-	if( document.querySelector('.oes-right-side') == null ) return;
-	if( document.querySelector('.oes-left-side') == null ) return;
+	// oePlot required. Tools needs this
+	if( document.querySelector('.oeplot') == null ) return;
 	
 	/**
 	* OES Medical Retina R/L template
@@ -114,6 +113,7 @@
 	* @param {String} which eye side?
 	*/
 	const plotlyReacts = ( eyeSide ) => {
+		if( !myPlotly.has( eyeSide )) return;
 		
 		// get the eyePlot for the eye side
 		let eyePlot = myPlotly.get( eyeSide ); 
@@ -344,6 +344,7 @@
 			bj.log('[oePlot] Click and Hover Events available (click point to see data structure)');
 			
 			['rightEye', 'leftEye'].forEach( eyeSide => {
+				if( !myPlotly.has( eyeSide )) return;
 				const div = myPlotly.get( eyeSide ).get('div');
 				oePlot.addClickEvent( div, eyeSide );
 				oePlot.addHoverEvent( div, eyeSide );
