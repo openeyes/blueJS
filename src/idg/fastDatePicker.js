@@ -195,7 +195,8 @@
 	* @returns API
 	*/
 	const year = (() => {
-		let div, nodes;
+		let div, nodes, yearList;
+		let slideYears = false;
 		
 		/**
 		* Reset (ready for next date)
@@ -203,6 +204,8 @@
 		const reset = () => {
 			div = null;
 			nodes = null;
+			yearList = null;
+			slideYears = false;
 		};
 
 		/**
@@ -212,23 +215,28 @@
 		const build = ( wrap ) => {
 			const template = [
 				'<div class="century">{{#century}}<div>{{.}}</div>{{/century}}</div>',
-				'<ul class="decade">{{#ten}}<li>{{.}}</li>{{/ten}}</ul>',
-				'<ul class="single">{{#ten}}<li>{{.}}</li>{{/ten}}</ul>',
+				// '<ul class="decade">{{#ten}}<li>{{.}}</li>{{/ten}}</ul>',
+				'<ul class="years">{{#years}}<li>{{.}}</li>{{/years}}</ul>',
 			].join('');
 
-			const ten = Array.from( Array(10).keys() ); // 0 - 9
+			//const ten = Array.from( Array(10).keys() ); // 0 - 9
+			const hundred = Array.from( Array(100).keys() ); // 0 - 99;
+			const years = hundred.map( x => x < 10 ? `0${x}` : x );
 			
 			div = bj.div("year");
-			div.innerHTML = Mustache.render( template, { century: ['19', '20'], ten });
+			div.innerHTML = Mustache.render( template, { century: ['19', '20'], years });
+			
+			yearList = div.querySelector('.years');
 			
 			// store reference to nodelists (should be OK, use Array.from otherwise)
 			nodes = {
 				c: div.querySelector('.century').childNodes, 
-				d: div.querySelector('.decade').childNodes,
-				y: div.querySelector('.single').childNodes,
+				//d: div.querySelector('.decade').childNodes,
+				y: yearList.childNodes,
 			};
 			
-			wrap.appendChild( div );
+			wrap.append( div );
+			
 		};
 		
 		/**
@@ -239,9 +247,11 @@
 			const fullYear =  model.date.getFullYear();
 			return {
 				c: Math.floor( fullYear / 100 ),
-				d: parseFloat( fullYear.toString().charAt(2) ),
-				y: parseFloat( fullYear.toString().charAt(3) )
+				//d: parseFloat( fullYear.toString().charAt(2) ),
+				y: parseFloat( fullYear.toString().substring(2))
 			};
+			
+			
 		};
 		
 		/**
@@ -254,12 +264,22 @@
 			yr.c = yr.c == 20 ? 1 : 0; 
 
 			nodes.c.forEach((n) => n.classList.remove('selected'));
-			nodes.d.forEach((n) => n.classList.remove('selected'));
+			//nodes.d.forEach((n) => n.classList.remove('selected'));
 			nodes.y.forEach((n) => n.classList.remove('selected'));
 		
 			nodes.c[ yr.c ].classList.add('selected');
-			nodes.d[ yr.d ].classList.add('selected');
+			//nodes.d[ yr.d ].classList.add('selected');
 			nodes.y[ yr.y ].classList.add('selected');
+			
+			// and center scrolling years (based on CSS height settings)
+
+			yearList.scrollTo({
+			  top: (yr.y * 38.5) - 95,
+			  left: 0,
+			  behavior: slideYears ? 'smooth' : 'auto' // first time jump to position
+			});
+			
+			slideYears = true;
 		};
 		
 		
@@ -305,7 +325,7 @@
 			
 			// clean up and reset 
 			document.removeEventListener('blur', picker.remove, { capture: true });
-			window.removeEventListener('scroll', picker.remove, { capture:true, once:true });
+			//window.removeEventListener('scroll', picker.remove, { capture:true, once:true });
 			bj.remove( div );
 			div = null;
 			input = null;
@@ -391,7 +411,7 @@
 							
 			// use blur to remove picker
 			document.addEventListener('blur', picker.remove, { capture: true });
-			window.addEventListener('scroll', picker.remove, { capture:true, once:true });
+			//window.addEventListener('scroll', picker.remove, { capture:true, once:true });
 		};
 		
 		/**
@@ -407,7 +427,7 @@
 			ignoreBlurEvent = true;
 			
 			const btnNum = parseFloat( target.textContent );
-			const yr = year.getYearUnits();
+			const yearParts = year.getYearUnits();
 			
 			switch( unit ){
 				case 'month':
@@ -415,19 +435,21 @@
 				break;
 				
 				case 'century': 
-					if( btnNum == yr.c ) return;
+					if( btnNum == yearParts.c ) return;
 					if( btnNum == 19 ){
 						model.changeFullYear( 1999 );
 					} else {
-						model.changeFullYear( 2000 );
+						model.changeFullYear( today.getFullYear() );
 					}
 				break;
+/*
 				case 'decade':
-					let decadeChange = (btnNum - yr.d) * 10;
+					let decadeChange = (btnNum - yearParts.d) * 10;
 					model.changeFullYear( model.date.getFullYear() + decadeChange );
 				break;
+*/
 				case 'year':
-					let yearChange = btnNum - yr.y;
+					let yearChange = btnNum - yearParts.y;
 					model.changeFullYear( model.date.getFullYear() + yearChange );
 				break;
 			}
@@ -483,8 +505,8 @@
 
 	bj.userDown('.fast-date-picker .month > div', ev => picker.changeDate( ev.target, 'month' ));
 	bj.userDown('.fast-date-picker .century > div', ev => picker.changeDate( ev.target, 'century' ));
-	bj.userDown('.fast-date-picker .decade li', ev => picker.changeDate( ev.target, 'decade' ));
-	bj.userDown('.fast-date-picker .single li', ev => picker.changeDate( ev.target, 'year' ));
+	//bj.userDown('.fast-date-picker .decade li', ev => picker.changeDate( ev.target, 'decade' ));
+	bj.userDown('.fast-date-picker .years li', ev => picker.changeDate( ev.target, 'year' ));
 	bj.userDown('.fast-date-picker .date-grid > div', ev => picker.selectDate( ev.target ));
 
 })( bluejay ); 
