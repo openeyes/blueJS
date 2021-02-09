@@ -93,7 +93,7 @@ const bluejay = (function () {
 	'use strict';
 	/**
 	* Generator to create unique ids 
-	* Used as Keys and in DOM data-bjk 
+	* Used as Keys and in DOM data-bjc 
 	*/
 	function* IdGenerator(){
 		let id = 10;
@@ -114,7 +114,7 @@ const bluejay = (function () {
 	*/ 
 	function Collection(){
 		this.map = new Map();
-		this.dataAttr =  'data-oebjk';
+		this.dataAttr =  'data-bjc';
 	}
 	
 	/**
@@ -201,6 +201,14 @@ const bluejay = (function () {
 		return this.map.has( key );
 	};
 	
+	/**
+	* Remove to allow GC
+	* @returns {Boolean}
+	*/
+	Collection.prototype.delete = function( key ){
+		return this.map.delete( key );
+	};
+	
 	// API
 	bj.extend( 'Collection', Collection );	
 
@@ -244,6 +252,7 @@ const bluejay = (function () {
 	const mouseDown = new Map();	
 	const mouseEnter = new Map();	
 	const mouseLeave = new Map();	
+	const click = new Map();
 	const resize = new Set(); // no selectors to match too.
 
 	/**
@@ -254,7 +263,7 @@ const bluejay = (function () {
 	*/
 	const addListener = ( map, selector, cb ) => {
 		
-		if( map.has(selector)){
+		if( map.has( selector )){
 			throw new TypeError('Event Delegation: selector already added : ' + selector); 
 		} 
 		
@@ -286,7 +295,7 @@ const bluejay = (function () {
 		// ignore if document
 		if( target === document ) return false;
 		
-		listeners.forEach( ( cb, key ) => {
+		listeners.forEach(( cb, key ) => {
 			if( target.matches( key )){
 				cb( event );
 			}
@@ -359,11 +368,13 @@ const bluejay = (function () {
 	document.addEventListener('mousedown', handleMouserDown, { capture:true }); 
 	document.addEventListener('mouseleave', handleMouserLeave, { capture:true });
 	document.addEventListener('touchstart', ( e ) => handleTouchStart( e ), { capture:true });
+	document.addEventListener('click', ( e ) => notifyListeners( e, click ), { capture:true });
 
 	// extend App
 	bj.extend('userEnter', ( selector, cb ) => addListener( mouseEnter, selector, cb ));
 	bj.extend('userDown', ( selector, cb ) => addListener( mouseDown, selector, cb ));
 	bj.extend('userLeave', ( selector, cb ) => addListener( mouseLeave, selector, cb ));
+	bj.extend('userClick', ( selector, cb ) => addListener( click, selector, cb ));
 	
 	// window resize, no need for selectors
 	bj.extend('listenForResize', ( cb ) => resize.add( cb ));
@@ -403,12 +414,27 @@ const bluejay = (function () {
 	/**
 	* <div> with className, this is so common made it easier
 	* @param {String} className
+	* @param {DOMString} html
 	* @returns {Element} <div>
 	*/
-	const div = ( className ) => {
+	const div = ( className, html = false ) => {
 		const div = document.createElement('div');
 		div.className = className;
+		if( html ) div.innerHTML = html;
 		return div;
+	};
+	
+	/**
+	* param {String} domElement
+	* @param {String} className
+	* @param {DOMString} html
+	* @returns {Element} new DOM
+	*/
+	const dom = ( domElement, className, html = false ) => {
+		const el = document.createElement( domElement );
+		el.className = className;
+		if( html ) el.innerHTML = html;
+		return el;
 	};
 	
 	/**
@@ -454,8 +480,8 @@ const bluejay = (function () {
 	* @param {DOM Element} el
 	* @param {String} displayType - "block","flex",'table-row',etc
 	*/
-	const show = (el, displayType = '') => {
-		if(el === null) return;
+	const show = ( el, displayType = '') => {
+		if( el === null ) return;
 		el.style.display = displayType;
 	};
 	
@@ -464,7 +490,7 @@ const bluejay = (function () {
 	* re-show a DOM Element - this assumes CSS has set display: "block" || "flex" || "inline-block" (or whatever)
 	* @param {DOM Element} el
 	*/
-	const reshow = (el) => {
+	const reshow = ( el ) => {
 		if(el === null) return;
 		el.style.display = ""; // in which case remove the style display and let the CSS handle it again (thanks Mike)
 	};
@@ -473,9 +499,21 @@ const bluejay = (function () {
 	* Hide a DOM Element ()	
 	* @param {DOM Element} el
 	*/
-	const hide = (el) => {
-		if(el === null) return;
+	const hide = ( el ) => {
+		if( el === null ) return;
 		el.style.display = "none";
+	};
+	
+	/**
+	* clearContents
+	* some discussion over this, this 'seems' a good approach and is faster than innerHTML
+	* however, might have problems with <SVG> nodes. May need a removeChild() approach.
+	* @param {DOM Element} el
+	*/
+	const clearContent = ( parentNode ) => {
+		if( parentNode.firstChild ){ 
+			parentNode.textContent = null;	
+		}
 	};
 	
 	/**
@@ -484,7 +522,7 @@ const bluejay = (function () {
 	* @parent {String} string to match
 	* @returns {HTMLElement} or False
 	*/
-	const getParent = (el, selector) => {
+	const getParent = ( el, selector ) => {
 		while( !el.matches('body')){
 			if( el.matches( selector )){
 				return el; // found it!
@@ -498,21 +536,23 @@ const bluejay = (function () {
 	/**
 	* XMLHttpRequest 
 	* @param {string} url
+	* @param {string} token - returned in Promise for crosschecking
 	* @returns {Promise} resolve(responseText) or reject(errorMsg)
 	*/
-	const xhr = (url) => {
-		bj.log('[XHR] - '+url);
+	const xhr = ( url, token = false ) => {
+		bj.log('[XHR] - ' + url );
 		// wrap XHR in Promise
-		return new Promise((resolve, reject) => {
+		return new Promise(( resolve, reject ) => {
 			let xReq = new XMLHttpRequest();
-			xReq.open("GET", url);
+			xReq.open("GET", url );
 			xReq.onreadystatechange = function(){
 				
 				if(xReq.readyState !== 4) return; // only run if request is fully complete 
 				
 				if(xReq.status >= 200 && xReq.status < 300){
 					bj.log('[XHR] - Success');
-					resolve(xReq.responseText);
+					xReq.token = token;
+					resolve({ html: xReq.responseText, token });
 					// success
 				} else {
 					// failure
@@ -524,6 +564,49 @@ const bluejay = (function () {
 			xReq.send();
 		});
 	};
+	
+	/**
+	* Unique tokens, use a generator to always create unique tokens
+	* token will always return a unique token
+	*/
+	function *UniqueToken(){
+		let id = 1;
+		while( true ){
+			++id;
+			yield `bj${id}`;
+		}
+	}
+	const tokenIterator = UniqueToken();
+	const token = () => tokenIterator.next().value;
+
+	/**
+	* Load JS on request. 
+	* @param {String} url - external JS file
+	* @param {Boolean} crossorigin - used to load CDN JS (... ReactJS for demos)
+	* @returns {Promise} resolve(responseText) or reject(errorMsg)
+	*/
+	const loadJS = ( url, crossorigin=false ) => {
+		bj.log('[JS script] - ' + url );
+		return new Promise(( resolve, reject ) => {
+			const script = document.createElement('script');
+		    script.src = url;
+			if( crossorigin ){
+				script.setAttribute('crossorigin', '');
+			}
+			/*
+			Not bothering with catching errors here at the moment.
+			*/
+			script.onload = () => {
+				setTimeout(() => {
+					bj.log('[JS loaded] - ' + url);
+					resolve();
+				}, 100 ); // delay to allow time to run the JS
+			}; 
+			script.onerror = () => bj.log('[JS ERROR ] - ' + url );
+			document.head.appendChild( script) ;
+		});  
+	};
+
 
 	/**
 	* Get dimensions of hidden DOM element
@@ -549,7 +632,16 @@ const bluejay = (function () {
 		
 		return props;
 	};
-
+	
+	/** 
+	* clock24 - show Date as time (24hr)
+	* @param {Date} - Date
+	* @returns {String} - e.g. '09:03'
+	*/
+	const clock24 = ( date ) => {
+		return date.getHours().toString().padStart(2,'0')  + ':' + date.getMinutes().toString().padStart(2,'0');
+	};
+	
 	/* 
 	* Output messgaes onto UI
 	* useful for touch device testing
@@ -582,13 +674,18 @@ const bluejay = (function () {
 	bj.extend('wrap', wrap );
 	bj.extend('unwrap', unwrap );
 	bj.extend('div', div);
+	bj.extend('dom', dom);
 	bj.extend('remove', remove );
 	bj.extend('show', show );
 	bj.extend('reshow', reshow );
 	bj.extend('hide', hide );
+	bj.extend('empty', clearContent );
 	bj.extend('xhr', xhr );
+	bj.extend('getToken', token );
+	bj.extend('loadJS', loadJS );
 	bj.extend('getHiddenElemSize', getHiddenElemSize );
 	bj.extend('idgReporter', idgMsgReporter );
+	bj.extend('clock24', clock24 );
 	
 })( bluejay );
 /**
@@ -621,10 +718,8 @@ const bluejay = (function () {
 	 * @return {Object} (namespace)
 	 */
 	const appNameSpace = ( name ) => {
-		if( !namespace.has(name) ){
-			namespace.set( name, {} );
-		}
-		return namespace.get(name);	
+		if( !namespace.has( name )) namespace.set( name, {} );
+		return namespace.get( name );	
 	};
 	
 	// Extend API
@@ -1007,7 +1102,7 @@ const bluejay = (function () {
 	/**
 	Init - Logo
 	*/
-	const logoBtn = '#js-openeyes-btn';
+	const logoBtn = '#js-openers-btn';
 	
 	const logo = navSlidePanel({
 		btn: document.querySelector( logoBtn ),
@@ -1023,7 +1118,7 @@ const bluejay = (function () {
 	// Events
 	bj.userDown( logoBtn, () => logo.change());			
 	bj.userEnter( logoBtn, () => logo.show());
-	bj.userLeave('.openeyes-brand', () => logo.hide());
+	bj.userLeave('.brand', () => logo.hide());
 	
 	
 	/**
@@ -1101,7 +1196,7 @@ const bluejay = (function () {
 	'use strict';
 	
 	// no need for any more extensions
-	Object.preventExtensions(bj);
+	Object.preventExtensions( bj );
 	
 	// ready
 	bj.ready();

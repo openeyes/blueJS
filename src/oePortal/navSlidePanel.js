@@ -71,7 +71,7 @@
 	/**
 	Init - Logo
 	*/
-	const logoBtn = '#js-openeyes-btn';
+	const logoBtn = '#js-openers-btn';
 	
 	const logo = navSlidePanel({
 		btn: document.querySelector( logoBtn ),
@@ -87,7 +87,7 @@
 	// Events
 	bj.userDown( logoBtn, () => logo.change());			
 	bj.userEnter( logoBtn, () => logo.show());
-	bj.userLeave('.openeyes-brand', () => logo.hide());
+	bj.userLeave('.brand', () => logo.hide());
 	
 	
 	/**
