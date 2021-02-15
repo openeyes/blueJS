@@ -51,7 +51,7 @@
 			Async.
 			Use the pathStepKey for the token check
 			*/
-			const phpCode = `${shortcode}-${status}`.toLowerCase();
+			const phpCode = `${shortcode}.${status}`.toLowerCase();
 			bj.xhr(`/idg-php/load/pathstep/_ps.php?full=${full}&code=${phpCode}`, pathStepKey )
 				.then( xreq => {
 					if( pathStepKey != xreq.token ) return;
@@ -66,10 +66,13 @@
 		* @params {String} status - 'active', 'todo', 'done'
 		* @params {String} type - 'process', 'person'
 		* @params {Element} span - DOM Element for PathStep
+		* @params {String} idgCode - short code for specific idgContent
 		* @params {Boolean} full - full view (or the quickview)
  		*/
-		const render = ( shortcode, status, type, span, full ) => {
+		const render = ({ shortcode, status, type, span, idgCode }, full ) => {
 			clearTimeout( removeTimerID );
+			
+			const useCode = idgCode ? idgCode : shortcode;
 			
 			// clear all children and reset the CSS
 			bj.empty( popup );
@@ -77,9 +80,9 @@
 			
 			// build node tree:
 			popup.append( closeBtn( full ));
-			popup.append( setTitle( shortcode ));
+			popup.append( setTitle( useCode ));
 			
-			loadContent( shortcode, status, full );
+			loadContent(useCode , status, full );
 			
 			/*
 			Position popup to PathStep (span)
@@ -131,13 +134,7 @@
 				pathStep = ps;
 				pathStepKey = ps.key; 
 				lockedOpen = true;
-				render(
-					ps.shortcode,  
-					ps.status, 
-					ps.type, 
-					ps.span, 
-					true 
-				);
+				render( ps, true );
 			}
 		};
 		
@@ -145,10 +142,10 @@
 		* User Over - Quickview
 		* @params {PathStep} ps
 		*/
-		const quick = ({ key, shortcode, status, type, span }) => {
+		const quick = ( ps ) => {
 			if( lockedOpen ) return; 
-			pathStepKey = key; 
-			render( shortcode, status, type, span, false );
+			pathStepKey = ps.key; 
+			render( ps, false );
 		};
 		
 		/**

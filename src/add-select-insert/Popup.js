@@ -4,7 +4,7 @@
 	
 	const addSelect = uiApp.namespace( 'addSelect' );
 	
-	addSelect.Popup = function(greenBtn){	
+	addSelect.Popup = function( greenBtn ){	
 		
 		let popup = document.querySelector('#' + greenBtn.dataset.popup);
 		

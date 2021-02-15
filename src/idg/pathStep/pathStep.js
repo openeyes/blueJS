@@ -69,7 +69,15 @@
 				}
 				this.setStatus( newStatus );
 				gui.pathStepPopup.full( this, true );
+			}, 
+			/**
+			* IDG specific hack to provide a specific code for demo popups
+			* @param {String} code
+			*/
+			setIdgPopupCode( idgCode ){
+				this.idgCode = idgCode;
 			}
+			
 		});
 		
 		
@@ -147,15 +155,24 @@
 		* @param {Object} step properties
 		* @param {DOM parentNode} pathway 
 		*/
-		const addPathStep = ({ shortcode, status, type, info }, pathway ) => {
+		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, pathway ) => {
 			
 			// new DOM element
-			const span = bj.dom('span', selector, `<span class="step">${shortcode}</span>`);
+			/*
+			Check for specials, e.g. Drug Admin
+			*/
+			const name = shortcode.startsWith('i-') ? 
+				`<span class="step ${shortcode}"></span>` :
+				`<span class="step">${shortcode}</span>`;
+			
+			const span = bj.dom('span', selector, name);
 						
 			// create new PathStep & set up
 			const ps = createPathStep({ shortcode, span });
 			ps.setStatus( status );
 			ps.setType( type );
+			
+			if( idgPopupCode ) ps.setIdgPopupCode( idgPopupCode );
 			
 			/*
 			Adding info to a pathstep will increase the button height.

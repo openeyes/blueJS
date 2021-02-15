@@ -9452,40 +9452,6 @@ Updated to Vanilla JS for IDG
 
 	'use strict';	
 	
-	uiApp.addModule('userPIN');	
-	
-	/*
-	Little PIN entry demo, see:
-	Drugs Administered (User can only use PSD Sets)
-	Clinic steps and Patient actions steps in WS
-	*/
-	
-	const demoInput = (input) => {
-		let pin = input.value;
-		let div = input.parentNode;
-		div.classList.remove('accepted-pin','wrong-pin');
-		
-		if(pin.length === 4){
-			if (pin == '1234'){
-				div.classList.add('accepted-pin');
-			} else {
-				div.classList.add('wrong-pin');
-			} 	
-		}
-	};
-	
-	document.addEventListener('input', (ev) => {
-		if(ev.target.matches('.user-pin-entry')){
-			demoInput(ev.target);
-		}
-	},{capture:true});
-	
-
-})(bluejay); 
-(function (uiApp) {
-
-	'use strict';	
-	
 	uiApp.addModule('vcScratchPad');	
 	
 	const scratchPad = document.querySelector('#oe-vc-scratchpad');
@@ -9825,37 +9791,6 @@ Updated to Vanilla JS for IDG
 	
 	const collection = new bj.Collection();
 	
-	/**
-	This MUST match the array used in PHP.
-	*/
-	const pathways = ['DRSS', 'Cataract', 'Glaucoma', 'Uveitis', 'Lucentis', 'Glaucoma ODTC', 'Laser/YAG', 'General', 'Ocular Motility', 'Oculoplastic', 'Neuro', 'Botox', 'Corneal', 'VR', 'Paediatric Ophthalmology', 'Paediatric Neuro-Ophthalmology'];
-	
-	/**
-	* Get pathway index from Name
-	* @param {String} Pathway
-	* @returns {Number} index
-	*/
-	const getPathywayNum = ( str ) => {
-		let pathIndex = 99; // 99 = None 
-		pathways.forEach(( path, index ) => {
-			if( str == path ) pathIndex = index;
-		});
-		
-		return pathIndex; 
-	};
-	
-	/**
-	* Work out Risk number from CSS icon class
-	* @param {String} classes
-	* @returns {Number} risk
-	*/
-	const riskLevelFromClass = ( cssStr ) => {
-		if( cssStr.includes('green')) return 3;
-		if( cssStr.includes('amber')) return 2;
-		if( cssStr.includes('red')) return 1;
-		return 0;
-	};
-	
 	/** 
 	* update Patient Risk icon
 	* @params {Element} icon
@@ -9877,7 +9812,6 @@ Updated to Vanilla JS for IDG
 		// icons in <tr>
 		iEdit:null, // pencil icon
 		iState:null, // tick / cross
-		iRisk:null, // triangle
 		
 		// Strings
 		fullName: 'JONES, David (Mr)', 
@@ -9887,21 +9821,18 @@ Updated to Vanilla JS for IDG
 		
 		// states
 		riskNum: 0,
-		pathElem: null,
-		pathNum: 99, 
+		_pathway: null, 
 		
 		/**
 		Active / Inactive <tr> state
 		*/
 		active(){
-			this.iEdit.classList.replace('pencil', 'direction-right');
-			this.iEdit.classList.replace('small-icon', 'large');
+			this.iEdit.classList.replace('pencil', 'pencil-blue');
 			this.iEdit.classList.add('selected');	
 			this.tr.classList.add('active');
 		},
 		inactive(){
-			this.iEdit.classList.replace('direction-right', 'pencil');
-			this.iEdit.classList.replace('large', 'small-icon');
+			this.iEdit.classList.replace('pencil-blue', 'pencil');
 			this.iEdit.classList.remove('selected');	
 			this.tr.classList.remove('active');
 		},
@@ -9914,6 +9845,7 @@ Updated to Vanilla JS for IDG
 			this.iState.classList.replace('status-query', 'tick-green');
 			this.iState.classList.replace('cross-red', 'tick-green');
 		},
+		
 		reject(){
 			this.accepted = false;
 			this.iState.classList.replace('status-query', 'cross-red');
@@ -9935,10 +9867,19 @@ Updated to Vanilla JS for IDG
 		*/
 		setRisk( icon ){
 			this.iRisk = icon;
-			this.riskNum = riskLevelFromClass( icon.className );
+			this.riskNum = ['grey', 'red', 'amber', 'green'].findIndex( colour => icon.classList.contains( `triangle-${colour}` ));
 		}, 
 		get risk(){
-			return this.riskNum;
+			let dom = `<i class="oe-i triangle-grey small pad-right"></i><b>Moderate</b>&nbsp;(R2)`;
+			switch( this.riskNum ){
+				case 1: dom = `<i class="oe-i triangle-red small pad-right"></i><b>High</b>&nbsp;(R1)`;
+				break;
+				case 2: dom = `<i class="oe-i triangle-amber small pad-right"></i><b>Moderate</b>&nbsp;(R2)`;
+				break;
+				case 3: dom = `<i class="oe-i triangle-green small pad-right"></i><b>Low</b>&nbsp;(R3)`;
+				break;
+			}
+			return dom;
 		}, 
 		set risk( val ){
 			this.riskNum = parseInt(val, 10);
@@ -9949,17 +9890,13 @@ Updated to Vanilla JS for IDG
 		/**
 		Clinical Pathway
 		*/
-		setPathway( elem ){
-			this.pathElem = elem;
-			this.pathNum = getPathywayNum( elem.textContent );
-		}, 
 		set pathway( val ){
-			this.pathNum = parseInt(val, 10);
-			this.pathElem.textContent = pathways[ this.pathNum ];
+			this._pathway = val;
 		}, 
 		get pathway(){
-			return this.pathNum;
+			return this._pathway;
 		}
+
 	};
 	
 	
@@ -9990,7 +9927,7 @@ Updated to Vanilla JS for IDG
 			patient.nhs = row.querySelector('.nhs-number').textContent.substring(3);
 			
 			patient.setRisk( row.querySelector('[class*="triangle-"]'));
-			patient.setPathway( row.querySelector('.js-pathway') );
+			patient.pathway = ( row.querySelector('.js-pathway').textContent );
 			
 			patient.hasImage = Math.random() >= 0.5; // show randomly a thumbnail attachment
 			
@@ -10010,10 +9947,7 @@ Updated to Vanilla JS for IDG
 	const sidebar = (() => {
 		
 		let activePatient = null;
-	
-		const radioRisks = bj.nodeArray( document.querySelectorAll('#sidebar-patient-risk-settings input')); 
-		const radioPathways = bj.nodeArray( document.querySelectorAll('#sidebar-pathway-settings input'));
-	
+
 		/** 
 		* sidebar UI
 		*/
@@ -10026,13 +9960,18 @@ Updated to Vanilla JS for IDG
 			btn: {
 				overview: document.getElementById('idg-js-sidebar-viewmode-1'),
 				patient: document.getElementById('idg-js-sidebar-viewmode-2'),
-				
 			}, 
 			patient: {
 				fullName: document.getElementById('js-sidebar-patient-fullname'),
 				details: document.getElementById('js-sidebar-patient-details'),
 				group: document.getElementById('js-sidebar-referral-group'),
 				attachment: document.getElementById('js-demo-attachment-image'), 
+				
+				// sidebar uses adder filters but these don't work.
+				// just need to update the filters to show the current selected patient
+				risk: document.getElementById('sidebar-eref-patient-risk'), 
+				pathway: document.getElementById('sidebar-eref-pathway'),
+				tests: document.getElementById('sidebar-eref-tests'),				
 			}	
 		};
 		
@@ -10050,16 +9989,6 @@ Updated to Vanilla JS for IDG
 			}
 		}; 
 		
-		/**
-		* Set Radio for Risk or Pathway
-		* @param {Array} arr
-		* @param {Number} num - radio to 'check'
-		*/
-		const setRadio = ( arr, num ) => {
-			arr.forEach(( radio ) => {
-				radio.checked = ( num == radio.value );
-			});
-		};
 		
 		/** 
 		public API
@@ -10112,18 +10041,22 @@ Updated to Vanilla JS for IDG
 			// inactive last patient?
 			if( activePatient !== null ) activePatient.inactive();
 			
-			ui.patient.fullName.textContent = patient.fullName;
-			ui.patient.details.innerHTML = `<small class="fade">NHS</small> ${patient.nhs}  
-				&nbsp;<small class="fade">Gen</small> ${patient.gender} 
-				&nbsp;<small class="fade">Age</small> ${patient.age}`;
-				
+			ui.patient.fullName.innerHTML = `<span class="highlighter">${patient.fullName}</span>`;
+			ui.patient.details.innerHTML = [
+				`<small class="fade">NHS</small> ${patient.nhs}`,  
+				`&nbsp;<small class="fade">Gen</small> ${patient.gender}`,
+				`&nbsp;<small class="fade">Age</small> ${patient.age}`
+			].join('');
+			
+			// show the <table> row info	
 			ui.patient.group.textContent = patient.group;
 			
+			// show state
+			ui.patient.risk.innerHTML = patient.risk;
+			ui.patient.pathway.innerHTML = `<b>${patient.pathway}</b>`;
+		
 			// hacky demo of attachment
 			ui.patient.attachment.style.display = patient.hasImage ? 'block' : 'none';
-			
-			setRadio( radioRisks, patient.riskNum );
-			setRadio( radioPathways, patient.pathNum );
 			
 			showAsAccepted( patient.accepted ); // ?
 			
@@ -10135,34 +10068,16 @@ Updated to Vanilla JS for IDG
 		* User can step through the patients from the sidebar
 		*/
 		const nextPatient = ( dir ) => {
-			let patientKey;
-			
-			if( dir == "next" ){
-				patientKey  = collection.next( activePatient.myKey );
-			} else {
-				patientKey  = collection.prev( activePatient.myKey );
-			}
-			
+			const patientKey = dir === "next" ?
+				collection.next( activePatient.myKey ):
+				collection.prev( activePatient.myKey );
+				
 			// if a key exists, show the patient data for it
 			if( patientKey ){
 				sidebar.managePatient( collection.get( patientKey ));
 			}
 		};
-		
-		/** 
-		User updates the radio settings in the sidebar
-		*/
-		document.addEventListener('change', ( ev ) => {
-			let input = ev.target; 
-			if( input.name === 'idg-radio-g-patient-risk' ){
-				activePatient.risk = input.value;
-			}	
-			
-			if( input.name === 'idg-radio-g-patient-pathway' ){
-				activePatient.pathway = input.value;
-			}
-		});
-		
+
 		// reveal the public methods
 		return { 
 			change, 
@@ -12390,6 +12305,98 @@ Updated to Vanilla JS for IDG
 		
 
 })( bluejay ); 
+(function( bj ) {
+
+	'use strict';	
+	
+	if( document.querySelector('.openers-menu') === null ) return;
+
+	
+	/**
+	Behaviour for the Logo Panel and the Menu Panel
+	is identical, however the Menu isn't included on 
+	the Login page
+	*/
+
+	const css = {
+		btnActive: 'active',
+		panelShow: 'show'
+	};
+
+	/*
+	Methods	
+	*/
+	const _change = () => ({
+		/**
+		* Callback for 'down'
+		*/
+		change: function(){
+			if(this.open)	this.hide();
+			else			this.show();
+		}
+	});
+	
+	const _show = () => ({
+		/**
+		* Callback for 'enter'
+		*/
+		show:function(){
+			if(this.open) return;
+			this.open = true;
+			this.btn.classList.add( css.btnActive );
+			
+			// panel needs a bit of work
+			//clearTimeout( this.hideTimerID ); 
+			this.panel.classList.add( css.panelShow );
+			this.panel.style.pointerEvents = "auto";
+		}	
+	});
+	
+	const _hide = () => ({
+		/**
+		* Callback for 'leave'
+		*/
+		hide:function(){
+			if(this.open === false) return;
+			this.open = false;
+			this.btn.classList.remove( css.btnActive );
+			this.panel.classList.remove( css.panelShow );
+			this.panel.style.pointerEvents = "none";
+			
+		}
+	});
+	
+	/**
+	* navSlidePanel.
+	* Pattern is the same for Logo and Menu
+	* @param {Object} me - setup object
+	* @returns navSlidePanel instance
+	*/
+	const navSlidePanel = ( me ) => {
+		return Object.assign( me, _change(), _show(), _hide() );
+	};
+	
+	
+	/**
+	Init - Menu
+	*/
+	const menuBtn = '#js-openers-menu-btn';
+	
+	if( document.querySelector( menuBtn ) === null ) return; // login page
+	
+	const menu = navSlidePanel({
+		btn: document.querySelector( menuBtn ),
+		panel: document.querySelector('.menu-info'),
+		open: false,
+	});
+	
+	// Events
+	bj.userDown( menuBtn, () => menu.change());			
+	bj.userEnter( menuBtn, () => menu.show());
+	bj.userLeave('.openers-menu', () => menu.hide());
+	
+
+})( bluejay ); 
 (function( bj ){
 
 	'use strict';	
@@ -12422,6 +12429,15 @@ Updated to Vanilla JS for IDG
 			
 			case "PSD" : full = "Patient Specific Directive"; break;
 			case "PGD" : full = "Patient Group Directive"; break;
+			
+			// icon instead of text
+			case "PSD-A-overview":
+			case "PSD-A" : full = "PSD: Haider Special Mix Set"; break;
+			case "PSD-B-overview":
+			case "PSD-B" : full = "PSD: Pre Op drops"; break;
+			case "PSD-C-overview":
+			case "PSD-C" : full = "PGD: HCA Nightingale"; break;
+			case "PSD-D" : full = "David Haider (Custom)"; break;
 		}
 		
 		return full; 
@@ -12499,7 +12515,15 @@ Updated to Vanilla JS for IDG
 				}
 				this.setStatus( newStatus );
 				gui.pathStepPopup.full( this, true );
+			}, 
+			/**
+			* IDG specific hack to provide a specific code for demo popups
+			* @param {String} code
+			*/
+			setIdgPopupCode( idgCode ){
+				this.idgCode = idgCode;
 			}
+			
 		});
 		
 		
@@ -12577,15 +12601,24 @@ Updated to Vanilla JS for IDG
 		* @param {Object} step properties
 		* @param {DOM parentNode} pathway 
 		*/
-		const addPathStep = ({ shortcode, status, type, info }, pathway ) => {
+		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, pathway ) => {
 			
 			// new DOM element
-			const span = bj.dom('span', selector, `<span class="step">${shortcode}</span>`);
+			/*
+			Check for specials, e.g. Drug Admin
+			*/
+			const name = shortcode.startsWith('i-') ? 
+				`<span class="step ${shortcode}"></span>` :
+				`<span class="step">${shortcode}</span>`;
+			
+			const span = bj.dom('span', selector, name);
 						
 			// create new PathStep & set up
 			const ps = createPathStep({ shortcode, span });
 			ps.setStatus( status );
 			ps.setType( type );
+			
+			if( idgPopupCode ) ps.setIdgPopupCode( idgPopupCode );
 			
 			/*
 			Adding info to a pathstep will increase the button height.
@@ -12666,7 +12699,7 @@ Updated to Vanilla JS for IDG
 			Async.
 			Use the pathStepKey for the token check
 			*/
-			const phpCode = `${shortcode}-${status}`.toLowerCase();
+			const phpCode = `${shortcode}.${status}`.toLowerCase();
 			bj.xhr(`/idg-php/load/pathstep/_ps.php?full=${full}&code=${phpCode}`, pathStepKey )
 				.then( xreq => {
 					if( pathStepKey != xreq.token ) return;
@@ -12681,10 +12714,13 @@ Updated to Vanilla JS for IDG
 		* @params {String} status - 'active', 'todo', 'done'
 		* @params {String} type - 'process', 'person'
 		* @params {Element} span - DOM Element for PathStep
+		* @params {String} idgCode - short code for specific idgContent
 		* @params {Boolean} full - full view (or the quickview)
  		*/
-		const render = ( shortcode, status, type, span, full ) => {
+		const render = ({ shortcode, status, type, span, idgCode }, full ) => {
 			clearTimeout( removeTimerID );
+			
+			const useCode = idgCode ? idgCode : shortcode;
 			
 			// clear all children and reset the CSS
 			bj.empty( popup );
@@ -12692,9 +12728,9 @@ Updated to Vanilla JS for IDG
 			
 			// build node tree:
 			popup.append( closeBtn( full ));
-			popup.append( setTitle( shortcode ));
+			popup.append( setTitle( useCode ));
 			
-			loadContent( shortcode, status, full );
+			loadContent(useCode , status, full );
 			
 			/*
 			Position popup to PathStep (span)
@@ -12746,13 +12782,7 @@ Updated to Vanilla JS for IDG
 				pathStep = ps;
 				pathStepKey = ps.key; 
 				lockedOpen = true;
-				render(
-					ps.shortcode,  
-					ps.status, 
-					ps.type, 
-					ps.span, 
-					true 
-				);
+				render( ps, true );
 			}
 		};
 		
@@ -12760,10 +12790,10 @@ Updated to Vanilla JS for IDG
 		* User Over - Quickview
 		* @params {PathStep} ps
 		*/
-		const quick = ({ key, shortcode, status, type, span }) => {
+		const quick = ( ps ) => {
 			if( lockedOpen ) return; 
-			pathStepKey = key; 
-			render( shortcode, status, type, span, false );
+			pathStepKey = ps.key; 
+			render( ps, false );
 		};
 		
 		/**
@@ -12823,7 +12853,10 @@ Updated to Vanilla JS for IDG
 	Actually there should be a popup controller... but for now:
 	*/
 	addSelect.closeAll = function(){
-		this.all.forEach((popup) => popup.close());
+		this.all.forEach( popup  => {
+			if( popup.close == undefined ) throw 'Every button defined with "js-add-select-btn" needs a popup DOM!';
+			else popup.close();
+		});
 	};
 		
 	/*
@@ -12833,12 +12866,12 @@ Updated to Vanilla JS for IDG
 			/*
 			Find all the green + buttons
 			*/
-			const greenBtns = uiApp.nodeArray(document.querySelectorAll('.js-add-select-btn'));
+			const greenBtns = uiApp.nodeArray( document.querySelectorAll('.js-add-select-btn'));
 			if(greenBtns.length < 1) return;
 			
 			greenBtns.forEach((btn) => {
-				let newPopup = new addSelect.Popup(btn);
-				this.all.push(newPopup);
+				let newPopup = new addSelect.Popup( btn );
+				this.all.push( newPopup );
 			});
 	};
 	
@@ -13188,7 +13221,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	
 	const addSelect = uiApp.namespace( 'addSelect' );
 	
-	addSelect.Popup = function(greenBtn){	
+	addSelect.Popup = function( greenBtn ){	
 		
 		let popup = document.querySelector('#' + greenBtn.dataset.popup);
 		

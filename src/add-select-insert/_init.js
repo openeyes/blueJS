@@ -20,7 +20,10 @@ Updated to Vanilla JS for IDG
 	Actually there should be a popup controller... but for now:
 	*/
 	addSelect.closeAll = function(){
-		this.all.forEach((popup) => popup.close());
+		this.all.forEach( popup  => {
+			if( popup.close == undefined ) throw 'Every button defined with "js-add-select-btn" needs a popup DOM!';
+			else popup.close();
+		});
 	};
 		
 	/*
@@ -30,12 +33,12 @@ Updated to Vanilla JS for IDG
 			/*
 			Find all the green + buttons
 			*/
-			const greenBtns = uiApp.nodeArray(document.querySelectorAll('.js-add-select-btn'));
+			const greenBtns = uiApp.nodeArray( document.querySelectorAll('.js-add-select-btn'));
 			if(greenBtns.length < 1) return;
 			
 			greenBtns.forEach((btn) => {
-				let newPopup = new addSelect.Popup(btn);
-				this.all.push(newPopup);
+				let newPopup = new addSelect.Popup( btn );
+				this.all.push( newPopup );
 			});
 	};
 	

@@ -13,37 +13,6 @@
 	
 	const collection = new bj.Collection();
 	
-	/**
-	This MUST match the array used in PHP.
-	*/
-	const pathways = ['DRSS', 'Cataract', 'Glaucoma', 'Uveitis', 'Lucentis', 'Glaucoma ODTC', 'Laser/YAG', 'General', 'Ocular Motility', 'Oculoplastic', 'Neuro', 'Botox', 'Corneal', 'VR', 'Paediatric Ophthalmology', 'Paediatric Neuro-Ophthalmology'];
-	
-	/**
-	* Get pathway index from Name
-	* @param {String} Pathway
-	* @returns {Number} index
-	*/
-	const getPathywayNum = ( str ) => {
-		let pathIndex = 99; // 99 = None 
-		pathways.forEach(( path, index ) => {
-			if( str == path ) pathIndex = index;
-		});
-		
-		return pathIndex; 
-	};
-	
-	/**
-	* Work out Risk number from CSS icon class
-	* @param {String} classes
-	* @returns {Number} risk
-	*/
-	const riskLevelFromClass = ( cssStr ) => {
-		if( cssStr.includes('green')) return 3;
-		if( cssStr.includes('amber')) return 2;
-		if( cssStr.includes('red')) return 1;
-		return 0;
-	};
-	
 	/** 
 	* update Patient Risk icon
 	* @params {Element} icon
@@ -65,7 +34,6 @@
 		// icons in <tr>
 		iEdit:null, // pencil icon
 		iState:null, // tick / cross
-		iRisk:null, // triangle
 		
 		// Strings
 		fullName: 'JONES, David (Mr)', 
@@ -75,21 +43,18 @@
 		
 		// states
 		riskNum: 0,
-		pathElem: null,
-		pathNum: 99, 
+		_pathway: null, 
 		
 		/**
 		Active / Inactive <tr> state
 		*/
 		active(){
-			this.iEdit.classList.replace('pencil', 'direction-right');
-			this.iEdit.classList.replace('small-icon', 'large');
+			this.iEdit.classList.replace('pencil', 'pencil-blue');
 			this.iEdit.classList.add('selected');	
 			this.tr.classList.add('active');
 		},
 		inactive(){
-			this.iEdit.classList.replace('direction-right', 'pencil');
-			this.iEdit.classList.replace('large', 'small-icon');
+			this.iEdit.classList.replace('pencil-blue', 'pencil');
 			this.iEdit.classList.remove('selected');	
 			this.tr.classList.remove('active');
 		},
@@ -102,6 +67,7 @@
 			this.iState.classList.replace('status-query', 'tick-green');
 			this.iState.classList.replace('cross-red', 'tick-green');
 		},
+		
 		reject(){
 			this.accepted = false;
 			this.iState.classList.replace('status-query', 'cross-red');
@@ -123,10 +89,19 @@
 		*/
 		setRisk( icon ){
 			this.iRisk = icon;
-			this.riskNum = riskLevelFromClass( icon.className );
+			this.riskNum = ['grey', 'red', 'amber', 'green'].findIndex( colour => icon.classList.contains( `triangle-${colour}` ));
 		}, 
 		get risk(){
-			return this.riskNum;
+			let dom = `<i class="oe-i triangle-grey small pad-right"></i><b>Moderate</b>&nbsp;(R2)`;
+			switch( this.riskNum ){
+				case 1: dom = `<i class="oe-i triangle-red small pad-right"></i><b>High</b>&nbsp;(R1)`;
+				break;
+				case 2: dom = `<i class="oe-i triangle-amber small pad-right"></i><b>Moderate</b>&nbsp;(R2)`;
+				break;
+				case 3: dom = `<i class="oe-i triangle-green small pad-right"></i><b>Low</b>&nbsp;(R3)`;
+				break;
+			}
+			return dom;
 		}, 
 		set risk( val ){
 			this.riskNum = parseInt(val, 10);
@@ -137,17 +112,13 @@
 		/**
 		Clinical Pathway
 		*/
-		setPathway( elem ){
-			this.pathElem = elem;
-			this.pathNum = getPathywayNum( elem.textContent );
-		}, 
 		set pathway( val ){
-			this.pathNum = parseInt(val, 10);
-			this.pathElem.textContent = pathways[ this.pathNum ];
+			this._pathway = val;
 		}, 
 		get pathway(){
-			return this.pathNum;
+			return this._pathway;
 		}
+
 	};
 	
 	
@@ -178,7 +149,7 @@
 			patient.nhs = row.querySelector('.nhs-number').textContent.substring(3);
 			
 			patient.setRisk( row.querySelector('[class*="triangle-"]'));
-			patient.setPathway( row.querySelector('.js-pathway') );
+			patient.pathway = ( row.querySelector('.js-pathway').textContent );
 			
 			patient.hasImage = Math.random() >= 0.5; // show randomly a thumbnail attachment
 			
@@ -198,10 +169,7 @@
 	const sidebar = (() => {
 		
 		let activePatient = null;
-	
-		const radioRisks = bj.nodeArray( document.querySelectorAll('#sidebar-patient-risk-settings input')); 
-		const radioPathways = bj.nodeArray( document.querySelectorAll('#sidebar-pathway-settings input'));
-	
+
 		/** 
 		* sidebar UI
 		*/
@@ -214,13 +182,18 @@
 			btn: {
 				overview: document.getElementById('idg-js-sidebar-viewmode-1'),
 				patient: document.getElementById('idg-js-sidebar-viewmode-2'),
-				
 			}, 
 			patient: {
 				fullName: document.getElementById('js-sidebar-patient-fullname'),
 				details: document.getElementById('js-sidebar-patient-details'),
 				group: document.getElementById('js-sidebar-referral-group'),
 				attachment: document.getElementById('js-demo-attachment-image'), 
+				
+				// sidebar uses adder filters but these don't work.
+				// just need to update the filters to show the current selected patient
+				risk: document.getElementById('sidebar-eref-patient-risk'), 
+				pathway: document.getElementById('sidebar-eref-pathway'),
+				tests: document.getElementById('sidebar-eref-tests'),				
 			}	
 		};
 		
@@ -238,16 +211,6 @@
 			}
 		}; 
 		
-		/**
-		* Set Radio for Risk or Pathway
-		* @param {Array} arr
-		* @param {Number} num - radio to 'check'
-		*/
-		const setRadio = ( arr, num ) => {
-			arr.forEach(( radio ) => {
-				radio.checked = ( num == radio.value );
-			});
-		};
 		
 		/** 
 		public API
@@ -300,18 +263,22 @@
 			// inactive last patient?
 			if( activePatient !== null ) activePatient.inactive();
 			
-			ui.patient.fullName.textContent = patient.fullName;
-			ui.patient.details.innerHTML = `<small class="fade">NHS</small> ${patient.nhs}  
-				&nbsp;<small class="fade">Gen</small> ${patient.gender} 
-				&nbsp;<small class="fade">Age</small> ${patient.age}`;
-				
+			ui.patient.fullName.innerHTML = `<span class="highlighter">${patient.fullName}</span>`;
+			ui.patient.details.innerHTML = [
+				`<small class="fade">NHS</small> ${patient.nhs}`,  
+				`&nbsp;<small class="fade">Gen</small> ${patient.gender}`,
+				`&nbsp;<small class="fade">Age</small> ${patient.age}`
+			].join('');
+			
+			// show the <table> row info	
 			ui.patient.group.textContent = patient.group;
 			
+			// show state
+			ui.patient.risk.innerHTML = patient.risk;
+			ui.patient.pathway.innerHTML = `<b>${patient.pathway}</b>`;
+		
 			// hacky demo of attachment
 			ui.patient.attachment.style.display = patient.hasImage ? 'block' : 'none';
-			
-			setRadio( radioRisks, patient.riskNum );
-			setRadio( radioPathways, patient.pathNum );
 			
 			showAsAccepted( patient.accepted ); // ?
 			
@@ -323,34 +290,16 @@
 		* User can step through the patients from the sidebar
 		*/
 		const nextPatient = ( dir ) => {
-			let patientKey;
-			
-			if( dir == "next" ){
-				patientKey  = collection.next( activePatient.myKey );
-			} else {
-				patientKey  = collection.prev( activePatient.myKey );
-			}
-			
+			const patientKey = dir === "next" ?
+				collection.next( activePatient.myKey ):
+				collection.prev( activePatient.myKey );
+				
 			// if a key exists, show the patient data for it
 			if( patientKey ){
 				sidebar.managePatient( collection.get( patientKey ));
 			}
 		};
-		
-		/** 
-		User updates the radio settings in the sidebar
-		*/
-		document.addEventListener('change', ( ev ) => {
-			let input = ev.target; 
-			if( input.name === 'idg-radio-g-patient-risk' ){
-				activePatient.risk = input.value;
-			}	
-			
-			if( input.name === 'idg-radio-g-patient-pathway' ){
-				activePatient.pathway = input.value;
-			}
-		});
-		
+
 		// reveal the public methods
 		return { 
 			change, 
