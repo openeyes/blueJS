@@ -2,6 +2,8 @@
 
 	'use strict';
 	
+
+	
 	if(document.querySelector('#tinymce-letterheader-editor') === null) return;
 	
 	let tinyEditor = null;
