@@ -33,11 +33,11 @@
 			
 			// icon instead of text
 			case "PSD-A-overview":
-			case "PSD-A" : full = "PSD: Haider Special Mix Set"; break;
+			case "PSD-A" : full = "Haider Special Mix Set"; break;
 			case "PSD-B-overview":
-			case "PSD-B" : full = "PSD: Pre Op drops"; break;
+			case "PSD-B" : full = "Pre Op drops"; break;
 			case "PSD-C-overview":
-			case "PSD-C" : full = "PGD: HCA Nightingale"; break;
+			case "PSD-C" : full = "HCA Nightingale (Custom)"; break;
 			case "PSD-D" : full = "David Haider (Custom)"; break;
 		}
 		
