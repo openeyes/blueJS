@@ -136,6 +136,9 @@
 		let rows = Array.from( table.tBodies[0].rows );
 		
 		rows.forEach(( row ) => {
+			
+			if( row.classList.contains('js-locked')) return;
+			
 			// build Patient
 			let patient = Object.create( Patient );
 			patient.tr = row;
