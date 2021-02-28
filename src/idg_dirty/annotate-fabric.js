@@ -17,7 +17,7 @@
 		const lineWidth = annotate.querySelector('.line-width');
 		
 		// to fit in the DOM
-		const canvasMaxWidth = 870;
+		const canvasMaxWidth = annotate.offsetWidth - 160;
 		const canvasElem = document.createElement('canvas');
 		canvasElem.id = 'c1';
 		canvasElem.textContent = "An alternative text describing what your canvas displays. Good accessibilty practice!";
