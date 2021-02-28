@@ -228,11 +228,11 @@
 			// check which button by it's colour
 			if( btn.classList.contains('red') ){
 				// reject
-				showAsAccepted( false );
+				//showAsAccepted( false );
 				activePatient.reject();
 			} else {
 				// re-accept
-				showAsAccepted( true );
+				//showAsAccepted( true );
 				activePatient.accept();
 			}
 		};
@@ -283,7 +283,7 @@
 			// hacky demo of attachment
 			ui.patient.attachment.style.display = patient.hasImage ? 'block' : 'none';
 			
-			showAsAccepted( patient.accepted ); // ?
+			//showAsAccepted( patient.accepted ); // ?
 			
 			patient.active();
 			activePatient = patient;
