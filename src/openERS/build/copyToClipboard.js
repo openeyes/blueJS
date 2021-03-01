@@ -20,30 +20,7 @@
 	all.forEach( ( elem )=>{
 		elem.style.cursor = "copy";	
 	});
-	
-	/**
-	* Copy success!
-	* @param {Element} elem - <span>
-	*/
-	const success = ( elem ) => {
-		
-		let domRect = elem.getBoundingClientRect();
-		let center = domRect.right - (domRect.width/2);
-		let top = domRect.top - 5;
-		let tipHeight = 30;
-		
-		const div = document.createElement( 'div' );
-		div.className = "oe-tooltip fade-out copied";
-		div.innerHTML = 'Copied';
-		div.style.width = '80px'; // overide the newblue CSS
-		div.style.top = ( top - tipHeight )+ 'px';
-		div.style.left = ( center - 40 ) + 'px';
-		
-		document.body.appendChild( div );
-		
-		setTimeout(() => bj.remove( div ) , 2500 ); // CSS fade out takes 2 secs.
-	};
-	
+
 
 	/**
 	* Use the clipboard API (if available)
@@ -59,7 +36,6 @@
 			navigator.clipboard.writeText( elem.textContent )
 				.then(() => {
 					bj.log('[ASYNC] copied text to clipboard');
-					success( elem );
 				})
 				.catch(err => {
 					bj.log('failed to copy text to clipboard');
@@ -76,8 +52,6 @@
 			input.select();
 	
 			document.execCommand("copy");
-			
-			success( elem );
 			
 			// clean up DOM
 			bj.remove( input );
