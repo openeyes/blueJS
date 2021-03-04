@@ -13429,7 +13429,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				institution.innerHTML = '<small>Please select an institution</small>';
 				site.textContent = '';
 				stepOptions.innerHTML = Mustache.render('{{#options}}<li>{{.}}</li>{{/options}}', {
-					options: ['Bolton','Cardiff and Vale University','East Kent Hospitals University','Guy\'s and St Thomas\'']	
+					options: ['Bolton','Cardiff and Vale University','East Kent Hospitals University','Guy\'s and St Thomas\'','Barking, Havering and Redbridge University Hospitals NHS Trust','Barnet, Enfield and Haringey Mental Health NHS Trust','Barnsley Hospital NHS Foundation Trust','Barts Health NHS Trust','Bedford Hospital NHS Trust','BEDFORDSHIRE HOSPITALS NHS FOUNDATION TRUST','Berkshire Healthcare NHS Foundation Trust','Birmingham and Solihull Mental Health NHS Foundation Trust','Birmingham Community Healthcare NHS Foundation Trust','Birmingham Women\'s and Children\'s NHS Foundation Trust','Black Country Healthcare NHS Foundation Trust','Blackpool Teaching Hospitals NHS Foundation Trust','Bolton NHS Foundation Trust','Bradford District NHS Foundation Trust','Bradford Teaching Hospitals NHS Foundation Trust','Bridgewater Community Healthcare NHS Foundation Trust','Brighton and Sussex University Hospitals NHS Trust','Buckinghamshire Healthcare NHS Trust','Burton Hospitals NHS Foundation Trust']	
 				});	
 			break;
 			case 2:
