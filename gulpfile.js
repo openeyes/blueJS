@@ -172,6 +172,7 @@ const watch_ers = ( done ) => {
 Export Tasks
 -----------------------------
 */
+// turned off cleaning for openers because it was wiping IDG file for Mike (see down!)
 exports.openers = series( series( ers_lint, ers_build_idg, ers_build_dist ), watch_ers );
 exports.default = series( oe_clean, series( oe_lint, oe_build_idg, oe_build_dist ), watch_oe );
 
