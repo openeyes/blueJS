@@ -175,8 +175,8 @@
 			muscles = "Frontalis"; 
 			
 			if( y > 118) muscles = "Corrugator";
-			if( y > 139) muscles = "Orbicularis Upper";
-			if( y > 190) muscles = "Orbiulcaris Lower";
+			if( y > 139) muscles = "Orbicularis upper";
+			if( y > 190) muscles = "Orbicularis lower";
 			if( y > 242) muscles = "Zygomaticus";
 			if( y > 310) muscles = "Mentalis";
 			if( y > 375) muscles = "Platysma";
