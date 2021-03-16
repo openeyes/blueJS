@@ -9888,431 +9888,6 @@ Updated to Vanilla JS for IDG
 
 
 })(bluejay); 
-/*
-List Options Constructor
-*/
-(function (uiApp) {
-
-	'use strict';	
-	
-	const addSelect = uiApp.namespace( 'addSelect' );	
-	
-	addSelect.ListOption = function (li, parent){
-		
-		let _selected = li.classList.contains('selected'); // check not setup to be selected:
-		let _dependents = false;
-		let json = JSON.parse(li.dataset.insert);
-		
-		
-		/*
-		Does list have any dependency lists?
-		*/
-		if( json.dependents !== undefined ){
-			// build dependents
-			_dependents = new addSelect.OptionDependents(json.dependents, parent.uniqueId);
-		}
-	
-		/*
-		Methods
-		*/ 
-		this.click = function(){
-			this.toggleState();
-			parent.optionClicked( _selected, this );
-	
-			if(_dependents != false){
-				_dependents.show( _selected );
-			}	
-		};
-		
-		this.toggleState = function() {
-			li.classList.toggle('selected'); 
-			_selected = !_selected;
-		};	
-		
-		this.deselect = function(){
-			if( _selected ){
-				this.toggleState();
-			}
-		};
-		
-		
-		Object.defineProperty(this, 'selected',{
-			get: () => {
-				return _selected;
-			},
-			set: (v) => {
-				_selected = v;
-				if(!v){
-					li.classList.remove('selected');
-				}
-			}
-		});
-		
-		Object.defineProperty(this, 'dependents',{
-			get: () => {
-				return _dependents === false ? false : true; 
-			}
-		});
-		
-		Object.defineProperty(this, 'value',{
-			get: () => {
-				return json.value; 
-			}
-		});
-		
-	
-	
-		/*
-		Events 
-		*/
-		li.addEventListener( "mousedown", this.click.bind( this ) );
-	};
-		
-})(bluejay); 
-/*
-Optional Lists based on List selection
-find group ID: 	"add-to-{uniqueID}-listgroup{n}";
-find list ID: 	"add-to-{uniqueID}-list{n}";
-
-@param dependents: String e.g. "2.1" or "2.1,2.2": 
-*/
-
-(function (uiApp) {
-
-	'use strict';	
-	
-	const addSelect = uiApp.namespace( 'addSelect' );	
-	
-	addSelect.OptionDependents = function( dependents, listId ){
-
-		if(dependents === undefined)  return false;
-		
-		/*
-		List has extra list options	
-		*/
-		const idPrefix = "#add-to-" + listId + "-";
-		let groups = [];
-		
-		/*
-		Can be mulitple list groups.
-		Check string for commas "2.1,2.2" for groups
-		*/
-		dependents.split(',').forEach( group => {
-			
-	
-			let ids = group.split('.'); // could be mutliple list IDs e.g. 2.3.4.5
-			let obj = {};
-			// find group
-			
-			if(ids[0] === 0){
-				console.log('Error: OptionDependents, listGroup = 0 !!',  idPrefix + 'listgroup'+ids[0]);
-			}
-			
-			obj.div = document.querySelector(idPrefix + 'listgroup'+ids[0]); // <div> wrapper for optional lists
-			if(obj.div === null){
-				console.log('obj.div = null!',idPrefix + 'listgroup'+ids[0]);
-			}
-			
-			obj.holder = obj.div.querySelector('.optional-placeholder'); // default placeholder for Optional Lists
-			if(obj.holder === null){
-				console.log('Adder: no placeholder text for optional group');
-			}
-			
-	
-			/*
-			Does it have lists, or show default text?
-			e.g. 2.0
-			*/
-			if( ids[1] == 0 ){
-				obj.showDefaultText = true;
-			} else {
-				obj.showDefaultText = false;
-				/*
-				Not a ZERO... so:
-				Loop through option lists required
-				e.g. 2.4.5 (two lists in group '2')
-				*/
-				obj.lists = [];
-				for(let i=1;i<ids.length;i++ ){
-					let li = document.querySelector(idPrefix + 'list' + ids[i]);
-					if(li === null){
-						console.log('Err: OptionDependents, list? ', idPrefix + 'list' + ids[i]);	
-					} else {
-						obj.lists.push(li);
-					}
-					
-				}
-			}
-			
-			groups.push(obj);
-		});
-	
-		/*
-		Methods
-		*/
-		this.show = function( show ){
-			if(show){
-				/*
-				hide ALL optional lists
-				$('#add-to-'+listId+' .optional-list').hide();
-				*/
-				this.myLists();
-			} else {
-				// unclick
-				this.reset();
-			}
-		};
-	
-		this.hideAllOptionalLists = function(div){
-			let optionalLists = uiApp.nodeArray(div.querySelectorAll('.optional-list'));
-			optionalLists.forEach((list) => {
-				uiApp.hide(list);
-			});
-			
-		};
-	
-		this.myLists = function(){
-			groups.forEach( group => {
-				/*
-				in group hide other lists
-				*/
-				this.hideAllOptionalLists(group.div);
-				
-				if(group.showDefaultText){
-					if(group.holder) uiApp.show(group.holder, 'block');
-				} else {
-					if(group.holder) uiApp.hide(group.holder);
-					// show required Lists
-					group.lists.forEach( list => {
-						uiApp.show(list, 'block');
-					});
-				}
-				
-			});
-		};
-		
-		/*
-		Reset (these!) groups!	
-		*/
-		this.reset = function(){
-			groups.forEach( group => {
-				this.hideAllOptionalLists(group.div);
-				if(group.holder) uiApp.show(group.holder, 'block');
-			});
-		};
-			
-	};
-	
-})(bluejay); 
-(function (uiApp) {
-
-	'use strict';	
-	
-	const addSelect = uiApp.namespace( 'addSelect' );
-	
-	addSelect.OptionsList = function(ul){
-		
-		let json = JSON.parse(ul.dataset.options);
-		
-		/*
-		Types: Single & Multi are the main ones but 
-		added in "inputTemplate" to handle the 
-		list of options to fill the input field
-		*/
-		const template = json.type == 'inputTemplate' ? true : false;
-		const single = json.type == 'single' ? true : false ;				
-		// some assumptions here... 
-		const hasOptions = json.hasExtraOptions === "true" ? true : false;
-		const isOptionalList = json.isOptionalList === "true" ? true : false;
-		
-		this.uniqueId  = ul.dataset.id; // passes in DOM id (unique part) 
-		
-		/*
-		Optional List? 
-		Needs hiding. The List Option it depends on will show
-		it when it's clicked	
-		*/
-		if(isOptionalList) {
-			uiApp.hide(ul.parentNode);
-		}
-		 
-		/*
-		Store all List Options	
-		*/
-		let me = this; // hmmm... this could be better.
-		let options = [];
-		let defaultSelected = [];
-		
-		const listElems = uiApp.nodeArray(ul.querySelectorAll('li'));
-		listElems.forEach((li) => {
-			let liOpt = new addSelect.ListOption(li, this);
-			options.push(liOpt);
-			/*
-			If liOpt is selected AND has dependents
-			Need to activate the list AFTER all the other DOM
-			is set up
-			*/
-			if( liOpt.selected && liOpt.dependents){
-				/*
-				Store and then loop through after
-				others are all done to set up default
-				selected states 
-				*/
-				defaultSelected.push(liOpt);
-			}
-		});
-		
-		/*
-		Methods	
-		*/
-		this.optionClicked = function( selected, listOption ){
-		
-			if(template){
-				// Assume that we have an input field available.
-				let input = ul.previousElementSibling;
-				let template = listOption.value;
-				let selectStart = template.indexOf('{');
-				let selectEnd = template.indexOf('}') + 1;
-				input.value = template;
-				listOption.deselect();
-				// let the events play out
-				setTimeout(() => {
-					input.focus();
-					input.select();
-					input.setSelectionRange(selectStart, selectEnd);
-				}, 50);
-				return;
-			}
-			
-			
-			/*
-			Manage this list. 
-			Multi-select is the default	
-			*/
-			if(selected){
-				if(single){
-					options.forEach( option => {
-						if(option !== listOption) option.deselect();
-					});
-				}
-			} 
-		};
-		
-		
-		this.checkForDefaultSelections = () => {
-			if( defaultSelected.length ){
-				/*
-				This all need 'clicking' to activate
-				the dependent optional lists	
-				*/
-				defaultSelected.forEach( d => {
-					/*
-					To make the click work correctly 
-					de-select the list btn, click will
-					re-select it and activate the dependents 
-					*/
-					d.selected = false;
-					d.click();
-				});
-			}
-		};			
-	};
-		
-})(bluejay); 
-
-(function (uiApp) {
-
-	'use strict';	
-	
-	const addSelect = uiApp.namespace( 'addSelect' );
-	
-	addSelect.Popup = function( greenBtn ){	
-		
-		let popup = document.querySelector('#' + greenBtn.dataset.popup);
-		
-		if( popup == null ) return;
-		
-		let lists = [];
-		const reset = true;
-		const require = false; 
-	
-		/*
-		Using in analytics to build the data filters. Popup
-		needs to anchor to the left. Can not rely to x < n to do this.
-		*/
-		this.anchorLeft = popup.dataset.anchorLeft ? true : false;
-	
-		/*
-		Props
-		*/ 
-		this.btn = greenBtn;  
-		this.popup = popup;
-		this.closeBtn = popup.querySelector('.close-icon-btn');
-	
-		/*
-		Methods
-		*/
-		this.open = function(){
-			this.position();
-			addSelect.closeAll();
-			uiApp.show(popup, 'block');
-			
-			this.closeBtn.addEventListener('mousedown', this.close.bind(this));
-			//window.addEventListener('scroll', this.close.bind(this), {capture:true, once:true});
-		};
-		
-		this.close = function(){
-			popup.style.display = "none";	
-		};
-		
-		this.reset = function(){
-			// reset (to default state)
-		};
-		
-		let addOptions = uiApp.nodeArray(popup.querySelectorAll('.add-options'));
-		addOptions.forEach((option) => {
-			let list = new addSelect.OptionsList(option);
-			list.checkForDefaultSelections();
-			lists.push(list);
-		});
-		
-		//idg.addSelectInsert.btnEvent( this, $popup.children('.close-icon-btn'), this.close );
-		this.btn.addEventListener('mousedown', this.open.bind(this) );		
-	};
-	
-	
-	addSelect.Popup.prototype.position = function(){
-		let rect = this.btn.getBoundingClientRect();	
-		let w = window.innerWidth; // hmmm, this could be better as forces reflow
-		let h = window.innerHeight;
-		let posH = (h - rect.bottom);
-		
-		// check popup doesn't go off the top of the screen 
-		// and don't overlay Logo! or Patient Name
-		if(h - posH < 325){
-			posH = h - 325;
-		}
-		
-		/*
-		Popup can be 'requested' to anchor left.
-		Only used in Analytics (so far)	
-		*/
-		if( this.anchorLeft ){
-			this.popup.style.left = rect.left + 'px';
-		} else {
-			// is popup pushing off the left
-			let leftSideEdge = rect.right - this.popup.getBoundingClientRect().width;
-			let adjustRight =  leftSideEdge < 0 ? leftSideEdge - 25 : 0;
-			this.popup.style.right = (w - rect.right) + adjustRight + 'px' ;
-		}
-		
-		this.popup.style.bottom = posH + 'px';
-
-	};
-	
-		
-})(bluejay); 
-
 (function( bj ){
 
 	'use strict';	
@@ -10982,13 +10557,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			const ul = document.getElementById('js-clinic-filter');
 			[
 				['Show all','all'],
-				['Hide completed','completed'],
-				['MM', 'MM'],
-				['AB', 'AB'],
-				['AG', 'AG'],
-				['RB', 'RB'],
-				['CW', 'CW'],
-				['Not assigned', 'unassigned']
+				['Hide completed','completed']
 			].forEach( btn => {
 				filters.add( clinic.filterBtn({
 					name: btn[0],
@@ -11710,9 +11279,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const svgCircles = () => {
 			let color = 'green';			
-			if( mins > 14 ) color = 'yellow';
-			if( mins > 29 ) color = 'orange';
-			if( mins > 59 ) color = 'red';
+			if( mins > 120 ) color = 'yellow';
+			if( mins > 180 ) color = 'orange';
+			if( mins > 240 ) color = 'red';
 			
 			const r = 6;
 			const d = r * 2;
@@ -11789,6 +11358,431 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	
 
 })( bluejay, bluejay.namespace('clinic') ); 
+/*
+List Options Constructor
+*/
+(function (uiApp) {
+
+	'use strict';	
+	
+	const addSelect = uiApp.namespace( 'addSelect' );	
+	
+	addSelect.ListOption = function (li, parent){
+		
+		let _selected = li.classList.contains('selected'); // check not setup to be selected:
+		let _dependents = false;
+		let json = JSON.parse(li.dataset.insert);
+		
+		
+		/*
+		Does list have any dependency lists?
+		*/
+		if( json.dependents !== undefined ){
+			// build dependents
+			_dependents = new addSelect.OptionDependents(json.dependents, parent.uniqueId);
+		}
+	
+		/*
+		Methods
+		*/ 
+		this.click = function(){
+			this.toggleState();
+			parent.optionClicked( _selected, this );
+	
+			if(_dependents != false){
+				_dependents.show( _selected );
+			}	
+		};
+		
+		this.toggleState = function() {
+			li.classList.toggle('selected'); 
+			_selected = !_selected;
+		};	
+		
+		this.deselect = function(){
+			if( _selected ){
+				this.toggleState();
+			}
+		};
+		
+		
+		Object.defineProperty(this, 'selected',{
+			get: () => {
+				return _selected;
+			},
+			set: (v) => {
+				_selected = v;
+				if(!v){
+					li.classList.remove('selected');
+				}
+			}
+		});
+		
+		Object.defineProperty(this, 'dependents',{
+			get: () => {
+				return _dependents === false ? false : true; 
+			}
+		});
+		
+		Object.defineProperty(this, 'value',{
+			get: () => {
+				return json.value; 
+			}
+		});
+		
+	
+	
+		/*
+		Events 
+		*/
+		li.addEventListener( "mousedown", this.click.bind( this ) );
+	};
+		
+})(bluejay); 
+/*
+Optional Lists based on List selection
+find group ID: 	"add-to-{uniqueID}-listgroup{n}";
+find list ID: 	"add-to-{uniqueID}-list{n}";
+
+@param dependents: String e.g. "2.1" or "2.1,2.2": 
+*/
+
+(function (uiApp) {
+
+	'use strict';	
+	
+	const addSelect = uiApp.namespace( 'addSelect' );	
+	
+	addSelect.OptionDependents = function( dependents, listId ){
+
+		if(dependents === undefined)  return false;
+		
+		/*
+		List has extra list options	
+		*/
+		const idPrefix = "#add-to-" + listId + "-";
+		let groups = [];
+		
+		/*
+		Can be mulitple list groups.
+		Check string for commas "2.1,2.2" for groups
+		*/
+		dependents.split(',').forEach( group => {
+			
+	
+			let ids = group.split('.'); // could be mutliple list IDs e.g. 2.3.4.5
+			let obj = {};
+			// find group
+			
+			if(ids[0] === 0){
+				console.log('Error: OptionDependents, listGroup = 0 !!',  idPrefix + 'listgroup'+ids[0]);
+			}
+			
+			obj.div = document.querySelector(idPrefix + 'listgroup'+ids[0]); // <div> wrapper for optional lists
+			if(obj.div === null){
+				console.log('obj.div = null!',idPrefix + 'listgroup'+ids[0]);
+			}
+			
+			obj.holder = obj.div.querySelector('.optional-placeholder'); // default placeholder for Optional Lists
+			if(obj.holder === null){
+				console.log('Adder: no placeholder text for optional group');
+			}
+			
+	
+			/*
+			Does it have lists, or show default text?
+			e.g. 2.0
+			*/
+			if( ids[1] == 0 ){
+				obj.showDefaultText = true;
+			} else {
+				obj.showDefaultText = false;
+				/*
+				Not a ZERO... so:
+				Loop through option lists required
+				e.g. 2.4.5 (two lists in group '2')
+				*/
+				obj.lists = [];
+				for(let i=1;i<ids.length;i++ ){
+					let li = document.querySelector(idPrefix + 'list' + ids[i]);
+					if(li === null){
+						console.log('Err: OptionDependents, list? ', idPrefix + 'list' + ids[i]);	
+					} else {
+						obj.lists.push(li);
+					}
+					
+				}
+			}
+			
+			groups.push(obj);
+		});
+	
+		/*
+		Methods
+		*/
+		this.show = function( show ){
+			if(show){
+				/*
+				hide ALL optional lists
+				$('#add-to-'+listId+' .optional-list').hide();
+				*/
+				this.myLists();
+			} else {
+				// unclick
+				this.reset();
+			}
+		};
+	
+		this.hideAllOptionalLists = function(div){
+			let optionalLists = uiApp.nodeArray(div.querySelectorAll('.optional-list'));
+			optionalLists.forEach((list) => {
+				uiApp.hide(list);
+			});
+			
+		};
+	
+		this.myLists = function(){
+			groups.forEach( group => {
+				/*
+				in group hide other lists
+				*/
+				this.hideAllOptionalLists(group.div);
+				
+				if(group.showDefaultText){
+					if(group.holder) uiApp.show(group.holder, 'block');
+				} else {
+					if(group.holder) uiApp.hide(group.holder);
+					// show required Lists
+					group.lists.forEach( list => {
+						uiApp.show(list, 'block');
+					});
+				}
+				
+			});
+		};
+		
+		/*
+		Reset (these!) groups!	
+		*/
+		this.reset = function(){
+			groups.forEach( group => {
+				this.hideAllOptionalLists(group.div);
+				if(group.holder) uiApp.show(group.holder, 'block');
+			});
+		};
+			
+	};
+	
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	const addSelect = uiApp.namespace( 'addSelect' );
+	
+	addSelect.OptionsList = function(ul){
+		
+		let json = JSON.parse(ul.dataset.options);
+		
+		/*
+		Types: Single & Multi are the main ones but 
+		added in "inputTemplate" to handle the 
+		list of options to fill the input field
+		*/
+		const template = json.type == 'inputTemplate' ? true : false;
+		const single = json.type == 'single' ? true : false ;				
+		// some assumptions here... 
+		const hasOptions = json.hasExtraOptions === "true" ? true : false;
+		const isOptionalList = json.isOptionalList === "true" ? true : false;
+		
+		this.uniqueId  = ul.dataset.id; // passes in DOM id (unique part) 
+		
+		/*
+		Optional List? 
+		Needs hiding. The List Option it depends on will show
+		it when it's clicked	
+		*/
+		if(isOptionalList) {
+			uiApp.hide(ul.parentNode);
+		}
+		 
+		/*
+		Store all List Options	
+		*/
+		let me = this; // hmmm... this could be better.
+		let options = [];
+		let defaultSelected = [];
+		
+		const listElems = uiApp.nodeArray(ul.querySelectorAll('li'));
+		listElems.forEach((li) => {
+			let liOpt = new addSelect.ListOption(li, this);
+			options.push(liOpt);
+			/*
+			If liOpt is selected AND has dependents
+			Need to activate the list AFTER all the other DOM
+			is set up
+			*/
+			if( liOpt.selected && liOpt.dependents){
+				/*
+				Store and then loop through after
+				others are all done to set up default
+				selected states 
+				*/
+				defaultSelected.push(liOpt);
+			}
+		});
+		
+		/*
+		Methods	
+		*/
+		this.optionClicked = function( selected, listOption ){
+		
+			if(template){
+				// Assume that we have an input field available.
+				let input = ul.previousElementSibling;
+				let template = listOption.value;
+				let selectStart = template.indexOf('{');
+				let selectEnd = template.indexOf('}') + 1;
+				input.value = template;
+				listOption.deselect();
+				// let the events play out
+				setTimeout(() => {
+					input.focus();
+					input.select();
+					input.setSelectionRange(selectStart, selectEnd);
+				}, 50);
+				return;
+			}
+			
+			
+			/*
+			Manage this list. 
+			Multi-select is the default	
+			*/
+			if(selected){
+				if(single){
+					options.forEach( option => {
+						if(option !== listOption) option.deselect();
+					});
+				}
+			} 
+		};
+		
+		
+		this.checkForDefaultSelections = () => {
+			if( defaultSelected.length ){
+				/*
+				This all need 'clicking' to activate
+				the dependent optional lists	
+				*/
+				defaultSelected.forEach( d => {
+					/*
+					To make the click work correctly 
+					de-select the list btn, click will
+					re-select it and activate the dependents 
+					*/
+					d.selected = false;
+					d.click();
+				});
+			}
+		};			
+	};
+		
+})(bluejay); 
+
+(function (uiApp) {
+
+	'use strict';	
+	
+	const addSelect = uiApp.namespace( 'addSelect' );
+	
+	addSelect.Popup = function( greenBtn ){	
+		
+		let popup = document.querySelector('#' + greenBtn.dataset.popup);
+		
+		if( popup == null ) return;
+		
+		let lists = [];
+		const reset = true;
+		const require = false; 
+	
+		/*
+		Using in analytics to build the data filters. Popup
+		needs to anchor to the left. Can not rely to x < n to do this.
+		*/
+		this.anchorLeft = popup.dataset.anchorLeft ? true : false;
+	
+		/*
+		Props
+		*/ 
+		this.btn = greenBtn;  
+		this.popup = popup;
+		this.closeBtn = popup.querySelector('.close-icon-btn');
+	
+		/*
+		Methods
+		*/
+		this.open = function(){
+			this.position();
+			addSelect.closeAll();
+			uiApp.show(popup, 'block');
+			
+			this.closeBtn.addEventListener('mousedown', this.close.bind(this));
+			//window.addEventListener('scroll', this.close.bind(this), {capture:true, once:true});
+		};
+		
+		this.close = function(){
+			popup.style.display = "none";	
+		};
+		
+		this.reset = function(){
+			// reset (to default state)
+		};
+		
+		let addOptions = uiApp.nodeArray(popup.querySelectorAll('.add-options'));
+		addOptions.forEach((option) => {
+			let list = new addSelect.OptionsList(option);
+			list.checkForDefaultSelections();
+			lists.push(list);
+		});
+		
+		//idg.addSelectInsert.btnEvent( this, $popup.children('.close-icon-btn'), this.close );
+		this.btn.addEventListener('mousedown', this.open.bind(this) );		
+	};
+	
+	
+	addSelect.Popup.prototype.position = function(){
+		let rect = this.btn.getBoundingClientRect();	
+		let w = window.innerWidth; // hmmm, this could be better as forces reflow
+		let h = window.innerHeight;
+		let posH = (h - rect.bottom);
+		
+		// check popup doesn't go off the top of the screen 
+		// and don't overlay Logo! or Patient Name
+		if(h - posH < 325){
+			posH = h - 325;
+		}
+		
+		/*
+		Popup can be 'requested' to anchor left.
+		Only used in Analytics (so far)	
+		*/
+		if( this.anchorLeft ){
+			this.popup.style.left = rect.left + 'px';
+		} else {
+			// is popup pushing off the left
+			let leftSideEdge = rect.right - this.popup.getBoundingClientRect().width;
+			let adjustRight =  leftSideEdge < 0 ? leftSideEdge - 25 : 0;
+			this.popup.style.right = (w - rect.right) + adjustRight + 'px' ;
+		}
+		
+		this.popup.style.bottom = posH + 'px';
+
+	};
+	
+		
+})(bluejay); 
+
 (function( bj ){
 
 	'use strict';	
@@ -13068,7 +13062,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			bj.hide( face );
 			bj.show( eyeballs );
 		}
-	}
+	};
 	
 	model.views.add( muscleMode );
 	
@@ -13118,7 +13112,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	const calcUnits = ( vol ) => {
 		const unitsPerMl = document.querySelector('input[name="btx-units-ml"]');
 		return  vol * parseInt( unitsPerMl.value, 10 ); // floating point
-	}
+	};
 	
 	/**
 	* @callback - user clicks on face

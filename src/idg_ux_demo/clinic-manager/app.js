@@ -152,13 +152,7 @@
 			const ul = document.getElementById('js-clinic-filter');
 			[
 				['Show all','all'],
-				['Hide completed','completed'],
-				['MM', 'MM'],
-				['AB', 'AB'],
-				['AG', 'AG'],
-				['RB', 'RB'],
-				['CW', 'CW'],
-				['Not assigned', 'unassigned']
+				['Hide completed','completed']
 			].forEach( btn => {
 				filters.add( clinic.filterBtn({
 					name: btn[0],

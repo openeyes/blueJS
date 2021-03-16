@@ -88,7 +88,7 @@
 			bj.hide( face );
 			bj.show( eyeballs );
 		}
-	}
+	};
 	
 	model.views.add( muscleMode );
 	
@@ -138,7 +138,7 @@
 	const calcUnits = ( vol ) => {
 		const unitsPerMl = document.querySelector('input[name="btx-units-ml"]');
 		return  vol * parseInt( unitsPerMl.value, 10 ); // floating point
-	}
+	};
 	
 	/**
 	* @callback - user clicks on face

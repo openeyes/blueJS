@@ -53,9 +53,9 @@
 		*/
 		const svgCircles = () => {
 			let color = 'green';			
-			if( mins > 14 ) color = 'yellow';
-			if( mins > 29 ) color = 'orange';
-			if( mins > 59 ) color = 'red';
+			if( mins > 120 ) color = 'yellow';
+			if( mins > 180 ) color = 'orange';
+			if( mins > 240 ) color = 'red';
 			
 			const r = 6;
 			const d = r * 2;
