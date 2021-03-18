@@ -99,23 +99,22 @@
 		const render = ( status ) => {
 			const div = bj.div();
 			
-			if( status  == 'complete' ){
-				div.className = 'wait-duration';
-				div.appendChild( waitMins());
-			}
-			
-			if( status == "active"){
-				div.className = 'wait-duration';
-				div.appendChild( svgCircles());
-				div.appendChild( waitMins());
-			}
-			
-			if( status == "todo" ){
-				div.className = 'flex';
-				div.innerHTML = [
-					`<button class="cols-7 blue hint js-idg-clinic-btn-arrived" data-patient="${patientID}">Arrived</button>`,
-					`<button class="cols-4 js-idg-clinic-btn-DNA" data-patient="${patientID}">DNA</button>`
-				].join('');
+			switch( status ){
+				case "complete": 
+					div.className = 'wait-duration';
+					div.appendChild( waitMins());
+				break;
+				case "todo":
+					div.className = 'flex';
+					div.innerHTML = [
+						`<button class="cols-7 blue hint js-idg-clinic-btn-arrived" data-patient="${patientID}">Arrived</button>`,
+						`<button class="cols-4 js-idg-clinic-btn-DNA" data-patient="${patientID}">DNA</button>`
+					].join('');
+				break;
+				default: 
+					div.className = 'wait-duration';
+					div.appendChild( svgCircles());
+					div.appendChild( waitMins());
 			}
 			
 			td.innerHTML = "";

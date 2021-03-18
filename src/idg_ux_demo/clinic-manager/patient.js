@@ -9,11 +9,22 @@
 	*/
 	const patient = ( props ) => {
 		
-		const tr = document.createElement('tr');
+		/**
+		* Patient UI is a table row <tr>
+		* Hold elements for ease of access
+		*/
 		const pathway =  bj.div('pathway');
-		const assigned = document.createElement('td');
-		const addIcon = document.createElement('td');
-		const complete = document.createElement('td');
+		const tr = document.createElement('tr');
+		const td = {
+			path: document.createElement('td'),
+			addIcon: document.createElement('td'),
+			flags: document.createElement('td'),
+			risk: document.createElement('td'),
+			complete: document.createElement('td'),
+		};
+		
+		// DOM structure for pathway
+		td.path.append( pathway );	 
 		
 		/** 
 		* Model
@@ -23,6 +34,7 @@
 			_uid: props.uid,
 			_status: null, // "todo", "active", "complete"
 			_assigned: false,
+			_bufferStep: false, // buffer step tracks the last step until it's finished
 			
 			get status(){
 				return this._status;
@@ -43,7 +55,8 @@
 		/**
 		* GETTER / SETTER: App needs to get and set patient assigned from Adder
 		*/
-		const getAssigned = () => model.assigned;
+		const getStatus = () => model.status;
+		
 		const setAssigned = ( val ) => model.assigned = val;
 		
 		const getTime = () => model.time;
@@ -62,38 +75,26 @@
 		const changeStatus = () => {
 			tr.className = model.status;
 			pathway.className = `pathway ${model.status}`;
-			addIcon.innerHTML = model.status == "complete" ? 
-				"" : 
-				`<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
+			td.addIcon.innerHTML = model.status == "complete" ? 
+				"<!-- complete -->" : `<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
 			
 			waitDuration.render( model.status );
 		};
 		
-		/**
-		* VIEW: patient assignment
-		*/
-		const changeAssignment = () => {
-			const fullText = bj.namespace('pathstep').fullShortCode( model.assigned );
-			assigned.innerHTML = model.assigned == "unassigned" ?  
-				`<small class="fade">${fullText}</small>` : 
-				`<div>${fullText}</div>`;
-		};
+		model.views.add( changeStatus );
 		
 		/**
 		* VIEW: complete (tick icon) / done
 		*/
 		const changeComplete = () => {
-			complete.innerHTML = "";
-			if( model.status == "complete"){
-				complete.innerHTML = '<span class="fade">Done</span>';
-			}
-			if( model.status == "active"){
-				complete.innerHTML = `<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model._uid}"></i>`;
+			td.complete.innerHTML = "";
+			switch( model.status ){
+				case "complete": td.complete.innerHTML = '<span class="fade">Done</span>';
+				break;
+				case "active": td.complete.innerHTML = `<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model._uid}"></i>`;
 			}
 		};
 		
-		model.views.add( changeStatus );
-		model.views.add( changeAssignment );
 		model.views.add( changeComplete );
 		
 		/**
@@ -101,24 +102,77 @@
 		* @param {Object} step
 		*/
 		const addPathStep = ( step ) => {
-			if( step.type == "arrive" ) waitDuration.arrived( step.timestamp, model.status );
-			if( step.type == "finish" ) waitDuration.finished( step.timestamp );
-			// build pathStep
-			step.info = step.timestamp == false ? "clock" : bj.clock24( new Date ( step.timestamp ));
+			
+			switch( step.type ){
+				case "arrive": 
+					waitDuration.arrived( step.timestamp, model.status );
+					step.info = bj.clock24( new Date ( step.timestamp ));
+				break; 
+				case "finish": 
+					waitDuration.finished( step.timestamp );
+					step.info = bj.clock24( new Date ( step.timestamp ));
+				break;
+				default: 
+					step.info = step.mins ? step.mins : "0"; // inbetween needs to show there duration in mins
+			}
+			
 			gui.pathStep( step, pathway );
 		};
+		
+		/**
+		* Risks 
+		*/
+		const risk = ( r ) => {
+			let icon = 'grey';
+			let tip = 'Not assessed';
+			switch( r ){
+				case 3:	
+					icon = 'green';
+					tip = 'Patient Risk: 3 (Low).<br>Mild consequences from delayed appointment. <br>Previous Cancelled: 1';
+				break;
+				case 2:
+					icon = 'orange';
+					tip = 'Patient Risk: 2 (Medium).<br>Reversible harm from delayed appointment. <br>Previous Cancelled: 0';	
+				break;
+				case 1:	
+					icon = 'red';
+					tip = 'Patient Risk: 1 (High).<br>Irreversible harm from delayed appointment. Do NOT rescheduled patient. <br>Previous Cancelled: 0';
+				break;
+			}
+			
+			td.risk.innerHTML = `<i class="oe-i triangle-${icon} small-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
+		};
+		
+		/**
+		* Flags
+		*/
+		const flag = ( arr ) => {
+			if( arr == undefined ) return; 
+			const colors = ['grey','red','orange','green'];
+			const icon = colors[arr[0]];
+			const tip = arr[1];
+			td.flags.innerHTML = `<i class="oe-i flag-${icon} small-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
+		};
+		
 		
 		/**
 		* 'on' Handlers for Event delegation
 		*/
 		const onArrived = () => {
 			addPathStep({
-				shortcode: 'Arr',
+				shortcode: 'i-Arr',
 				timestamp: Date.now(),
 				status: 'done',
 				type: 'arrive',
 			});
-			model.status = "active";
+			addPathStep({
+				shortcode: 'Waiting',
+				mins: 1,
+				status: 'w-room',
+				type: 'wait',
+			});
+			
+			model.status = "waiting";
 		};
 		
 		const onDNA = () => {
@@ -133,7 +187,7 @@
 		
 		const onComplete = () => {
 			addPathStep({
-				shortcode: 'Fin',
+				shortcode: 'i-Fin',
 				timestamp: Date.now(), 
 				status: 'done',
 				type: 'finish',
@@ -147,17 +201,12 @@
 		* @returns {Element} (if covered by filter option)	
 		*/
 		const render = ( filter ) => {
-			// completed?
-			if(	filter == "completed" && 
-				model.status == 'complete' ) return null;
-			
-			// assigned?
-			if( filter !== "all" &&
-				filter !== "completed" ){
-				if( model.assigned !== filter) return null;
+			const status = model.status;
+			switch( filter ){
+				case "all": return tr;
+				case "hide-done": return status == 'complete' ? null : tr;
+				default:  return status == filter ? tr : null;
 			}
-			// ok! 	
-			return tr;
 		};
 		
 		/**
@@ -174,33 +223,31 @@
 			// build pathway steps
 			props.pathway.forEach( step => addPathStep( step ));
 			
+			risk( props.r );
+			flag( props.f );
+			
 			// build <tr>
 			tr.setAttribute( 'data-timestamp', props.booked );
-			tr.innerHTML = Mustache.render([
-				'<td>{{time}}</td>',
-				'<td>{{num}}</td>',
-				'<td><div class="speciality">{{speciality}}</div><small class="type">{{specialityState}}</small></td>'
-			].join(''), props );
 			
-			// slightly more complex Elements, but static content
+			tr.insertAdjacentHTML('beforeend', `<td>${props.time}</td>`);
+			tr.insertAdjacentHTML('beforeend', `<td><div class="speciality">${props.clinic[0]}</div><small class="type">${props.clinic[1]}</small></td>`);
+			tr.insertAdjacentHTML('beforeend', `<td>${props.dob}</td>`);
 			
-			tr.append( clinic.patientQuickView( props ));
+			// slightly more complex Elements and dynamic areas...
 			tr.append( clinic.patientMeta( props ));
-			tr.append( addIcon );
-			
-			const td = document.createElement('td');
-			td.append( pathway );
-			tr.append( td );	
-				
-			tr.append( assigned );
-			tr.append( waitDuration.render( props.status ));
-			tr.append( complete );
+			tr.append( clinic.patientQuickView( props ));
+			tr.append( td.path );
+			tr.append( td.addIcon );
+			tr.append( td.risk );	
+			tr.append( td.flags );
+			tr.append( waitDuration.render( props.status )); // returns a <td>
+			tr.append( td.complete );
 		})();
 			
 		/* 
 		API
 		*/
-		return { onArrived, onDNA, onComplete, render, getAssigned, setAssigned, getTime, getLastname, addPathStep };
+		return { onArrived, onDNA, onComplete, render, getStatus, setAssigned, getTime, getLastname, addPathStep };
 	};
 	
 	// make component available to Clinic SPA	

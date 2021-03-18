@@ -9888,6 +9888,431 @@ Updated to Vanilla JS for IDG
 
 
 })(bluejay); 
+/*
+List Options Constructor
+*/
+(function (uiApp) {
+
+	'use strict';	
+	
+	const addSelect = uiApp.namespace( 'addSelect' );	
+	
+	addSelect.ListOption = function (li, parent){
+		
+		let _selected = li.classList.contains('selected'); // check not setup to be selected:
+		let _dependents = false;
+		let json = JSON.parse(li.dataset.insert);
+		
+		
+		/*
+		Does list have any dependency lists?
+		*/
+		if( json.dependents !== undefined ){
+			// build dependents
+			_dependents = new addSelect.OptionDependents(json.dependents, parent.uniqueId);
+		}
+	
+		/*
+		Methods
+		*/ 
+		this.click = function(){
+			this.toggleState();
+			parent.optionClicked( _selected, this );
+	
+			if(_dependents != false){
+				_dependents.show( _selected );
+			}	
+		};
+		
+		this.toggleState = function() {
+			li.classList.toggle('selected'); 
+			_selected = !_selected;
+		};	
+		
+		this.deselect = function(){
+			if( _selected ){
+				this.toggleState();
+			}
+		};
+		
+		
+		Object.defineProperty(this, 'selected',{
+			get: () => {
+				return _selected;
+			},
+			set: (v) => {
+				_selected = v;
+				if(!v){
+					li.classList.remove('selected');
+				}
+			}
+		});
+		
+		Object.defineProperty(this, 'dependents',{
+			get: () => {
+				return _dependents === false ? false : true; 
+			}
+		});
+		
+		Object.defineProperty(this, 'value',{
+			get: () => {
+				return json.value; 
+			}
+		});
+		
+	
+	
+		/*
+		Events 
+		*/
+		li.addEventListener( "mousedown", this.click.bind( this ) );
+	};
+		
+})(bluejay); 
+/*
+Optional Lists based on List selection
+find group ID: 	"add-to-{uniqueID}-listgroup{n}";
+find list ID: 	"add-to-{uniqueID}-list{n}";
+
+@param dependents: String e.g. "2.1" or "2.1,2.2": 
+*/
+
+(function (uiApp) {
+
+	'use strict';	
+	
+	const addSelect = uiApp.namespace( 'addSelect' );	
+	
+	addSelect.OptionDependents = function( dependents, listId ){
+
+		if(dependents === undefined)  return false;
+		
+		/*
+		List has extra list options	
+		*/
+		const idPrefix = "#add-to-" + listId + "-";
+		let groups = [];
+		
+		/*
+		Can be mulitple list groups.
+		Check string for commas "2.1,2.2" for groups
+		*/
+		dependents.split(',').forEach( group => {
+			
+	
+			let ids = group.split('.'); // could be mutliple list IDs e.g. 2.3.4.5
+			let obj = {};
+			// find group
+			
+			if(ids[0] === 0){
+				console.log('Error: OptionDependents, listGroup = 0 !!',  idPrefix + 'listgroup'+ids[0]);
+			}
+			
+			obj.div = document.querySelector(idPrefix + 'listgroup'+ids[0]); // <div> wrapper for optional lists
+			if(obj.div === null){
+				console.log('obj.div = null!',idPrefix + 'listgroup'+ids[0]);
+			}
+			
+			obj.holder = obj.div.querySelector('.optional-placeholder'); // default placeholder for Optional Lists
+			if(obj.holder === null){
+				console.log('Adder: no placeholder text for optional group');
+			}
+			
+	
+			/*
+			Does it have lists, or show default text?
+			e.g. 2.0
+			*/
+			if( ids[1] == 0 ){
+				obj.showDefaultText = true;
+			} else {
+				obj.showDefaultText = false;
+				/*
+				Not a ZERO... so:
+				Loop through option lists required
+				e.g. 2.4.5 (two lists in group '2')
+				*/
+				obj.lists = [];
+				for(let i=1;i<ids.length;i++ ){
+					let li = document.querySelector(idPrefix + 'list' + ids[i]);
+					if(li === null){
+						console.log('Err: OptionDependents, list? ', idPrefix + 'list' + ids[i]);	
+					} else {
+						obj.lists.push(li);
+					}
+					
+				}
+			}
+			
+			groups.push(obj);
+		});
+	
+		/*
+		Methods
+		*/
+		this.show = function( show ){
+			if(show){
+				/*
+				hide ALL optional lists
+				$('#add-to-'+listId+' .optional-list').hide();
+				*/
+				this.myLists();
+			} else {
+				// unclick
+				this.reset();
+			}
+		};
+	
+		this.hideAllOptionalLists = function(div){
+			let optionalLists = uiApp.nodeArray(div.querySelectorAll('.optional-list'));
+			optionalLists.forEach((list) => {
+				uiApp.hide(list);
+			});
+			
+		};
+	
+		this.myLists = function(){
+			groups.forEach( group => {
+				/*
+				in group hide other lists
+				*/
+				this.hideAllOptionalLists(group.div);
+				
+				if(group.showDefaultText){
+					if(group.holder) uiApp.show(group.holder, 'block');
+				} else {
+					if(group.holder) uiApp.hide(group.holder);
+					// show required Lists
+					group.lists.forEach( list => {
+						uiApp.show(list, 'block');
+					});
+				}
+				
+			});
+		};
+		
+		/*
+		Reset (these!) groups!	
+		*/
+		this.reset = function(){
+			groups.forEach( group => {
+				this.hideAllOptionalLists(group.div);
+				if(group.holder) uiApp.show(group.holder, 'block');
+			});
+		};
+			
+	};
+	
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	const addSelect = uiApp.namespace( 'addSelect' );
+	
+	addSelect.OptionsList = function(ul){
+		
+		let json = JSON.parse(ul.dataset.options);
+		
+		/*
+		Types: Single & Multi are the main ones but 
+		added in "inputTemplate" to handle the 
+		list of options to fill the input field
+		*/
+		const template = json.type == 'inputTemplate' ? true : false;
+		const single = json.type == 'single' ? true : false ;				
+		// some assumptions here... 
+		const hasOptions = json.hasExtraOptions === "true" ? true : false;
+		const isOptionalList = json.isOptionalList === "true" ? true : false;
+		
+		this.uniqueId  = ul.dataset.id; // passes in DOM id (unique part) 
+		
+		/*
+		Optional List? 
+		Needs hiding. The List Option it depends on will show
+		it when it's clicked	
+		*/
+		if(isOptionalList) {
+			uiApp.hide(ul.parentNode);
+		}
+		 
+		/*
+		Store all List Options	
+		*/
+		let me = this; // hmmm... this could be better.
+		let options = [];
+		let defaultSelected = [];
+		
+		const listElems = uiApp.nodeArray(ul.querySelectorAll('li'));
+		listElems.forEach((li) => {
+			let liOpt = new addSelect.ListOption(li, this);
+			options.push(liOpt);
+			/*
+			If liOpt is selected AND has dependents
+			Need to activate the list AFTER all the other DOM
+			is set up
+			*/
+			if( liOpt.selected && liOpt.dependents){
+				/*
+				Store and then loop through after
+				others are all done to set up default
+				selected states 
+				*/
+				defaultSelected.push(liOpt);
+			}
+		});
+		
+		/*
+		Methods	
+		*/
+		this.optionClicked = function( selected, listOption ){
+		
+			if(template){
+				// Assume that we have an input field available.
+				let input = ul.previousElementSibling;
+				let template = listOption.value;
+				let selectStart = template.indexOf('{');
+				let selectEnd = template.indexOf('}') + 1;
+				input.value = template;
+				listOption.deselect();
+				// let the events play out
+				setTimeout(() => {
+					input.focus();
+					input.select();
+					input.setSelectionRange(selectStart, selectEnd);
+				}, 50);
+				return;
+			}
+			
+			
+			/*
+			Manage this list. 
+			Multi-select is the default	
+			*/
+			if(selected){
+				if(single){
+					options.forEach( option => {
+						if(option !== listOption) option.deselect();
+					});
+				}
+			} 
+		};
+		
+		
+		this.checkForDefaultSelections = () => {
+			if( defaultSelected.length ){
+				/*
+				This all need 'clicking' to activate
+				the dependent optional lists	
+				*/
+				defaultSelected.forEach( d => {
+					/*
+					To make the click work correctly 
+					de-select the list btn, click will
+					re-select it and activate the dependents 
+					*/
+					d.selected = false;
+					d.click();
+				});
+			}
+		};			
+	};
+		
+})(bluejay); 
+
+(function (uiApp) {
+
+	'use strict';	
+	
+	const addSelect = uiApp.namespace( 'addSelect' );
+	
+	addSelect.Popup = function( greenBtn ){	
+		
+		let popup = document.querySelector('#' + greenBtn.dataset.popup);
+		
+		if( popup == null ) return;
+		
+		let lists = [];
+		const reset = true;
+		const require = false; 
+	
+		/*
+		Using in analytics to build the data filters. Popup
+		needs to anchor to the left. Can not rely to x < n to do this.
+		*/
+		this.anchorLeft = popup.dataset.anchorLeft ? true : false;
+	
+		/*
+		Props
+		*/ 
+		this.btn = greenBtn;  
+		this.popup = popup;
+		this.closeBtn = popup.querySelector('.close-icon-btn');
+	
+		/*
+		Methods
+		*/
+		this.open = function(){
+			this.position();
+			addSelect.closeAll();
+			uiApp.show(popup, 'block');
+			
+			this.closeBtn.addEventListener('mousedown', this.close.bind(this));
+			//window.addEventListener('scroll', this.close.bind(this), {capture:true, once:true});
+		};
+		
+		this.close = function(){
+			popup.style.display = "none";	
+		};
+		
+		this.reset = function(){
+			// reset (to default state)
+		};
+		
+		let addOptions = uiApp.nodeArray(popup.querySelectorAll('.add-options'));
+		addOptions.forEach((option) => {
+			let list = new addSelect.OptionsList(option);
+			list.checkForDefaultSelections();
+			lists.push(list);
+		});
+		
+		//idg.addSelectInsert.btnEvent( this, $popup.children('.close-icon-btn'), this.close );
+		this.btn.addEventListener('mousedown', this.open.bind(this) );		
+	};
+	
+	
+	addSelect.Popup.prototype.position = function(){
+		let rect = this.btn.getBoundingClientRect();	
+		let w = window.innerWidth; // hmmm, this could be better as forces reflow
+		let h = window.innerHeight;
+		let posH = (h - rect.bottom);
+		
+		// check popup doesn't go off the top of the screen 
+		// and don't overlay Logo! or Patient Name
+		if(h - posH < 325){
+			posH = h - 325;
+		}
+		
+		/*
+		Popup can be 'requested' to anchor left.
+		Only used in Analytics (so far)	
+		*/
+		if( this.anchorLeft ){
+			this.popup.style.left = rect.left + 'px';
+		} else {
+			// is popup pushing off the left
+			let leftSideEdge = rect.right - this.popup.getBoundingClientRect().width;
+			let adjustRight =  leftSideEdge < 0 ? leftSideEdge - 25 : 0;
+			this.popup.style.right = (w - rect.right) + adjustRight + 'px' ;
+		}
+		
+		this.popup.style.bottom = posH + 'px';
+
+	};
+	
+		
+})(bluejay); 
+
 (function( bj ){
 
 	'use strict';	
@@ -10356,13 +10781,17 @@ Updated to Vanilla JS for IDG
 			As times are relative to 'now', make sure appointments 
 			always appeared scheduled on whole 5 minutes: 
 			*/
+/*
 			const appointment = new Date( Date.now() + ( patient.booked * 60000 )); 
 			const offsetFive = appointment.getMinutes() % 5; 
 			appointment.setMinutes( appointment.getMinutes() - offsetFive );
 			patient.booked = appointment.getTime();
+*/
+			
+			const booked = Date.now() + ( patient.booked * 60000 );
 			
 			// convert to booked time to human time
-			patient.time = bj.clock24( new Date( patient.booked ));
+			patient.time = bj.clock24( new Date( booked ));
 			
 			/*
 			Step Pathway is multi-dimensional array.
@@ -10371,7 +10800,8 @@ Updated to Vanilla JS for IDG
 			patient.pathway.forEach(( step, i, thisArr ) => {
 				const obj = {
 					shortcode: step[0],
-					timestamp: Date.now() + ( step[1] * 60000 ),
+					timestamp: Date.now() + ( step[1] * 60000 ), // Arrived and Finish need this
+					mins: step[1],
 					status: step[2],
 					type: step[3],
 				};
@@ -10386,10 +10816,10 @@ Updated to Vanilla JS for IDG
 		*/
 		const table = bj.dom('table', 'oe-clinic-list');
 		table.innerHTML = Mustache.render([
-			'<thead><tr>{{#th}}<th>{{.}}</th>{{/th}}</tr></thead>',
+			'<thead><tr>{{#th}}<th>{{{.}}}</th>{{/th}}</tr></thead>',
 			'<tbody></tbody>'
 		].join(''), {
-			"th": ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', '', 'Pathway', 'Assigned', 'Mins', '']
+			"th": ['Arr.', 'Clinic', 'Dob',  'Name', '', 'Pathway', '', 'R1-3', '<i class="oe-i flag small"></i>', 'Mins', '']
 		});
 		
 		document.getElementById('js-clinic-manager').appendChild( table );
@@ -10445,17 +10875,18 @@ Updated to Vanilla JS for IDG
 			tbody.append( fragment );
 		};
 		
+		model.views.add( filterPatients );
+		
 		/**
 		* VIEW: Update Filter Buttons
-		* loop through patients and get all their assignments
+		* loop through patients and get their status
 		*/
 		const updateFilters = () => {
-			const assignments = [];
-			patients.forEach( patient => assignments.push( patient.getAssigned()));
-			filters.forEach( filter => filter.update( assignments, model.filter ));
+			const status = [];
+			patients.forEach( patient => status.push( patient.getStatus()));
+			filters.forEach( filter => filter.update( status, model.filter ));
 		};
 		
-		model.views.add( filterPatients );
 		model.views.add( updateFilters );
 
 		/**
@@ -10494,6 +10925,7 @@ Updated to Vanilla JS for IDG
 			const id = ev.target.dataset.patient;
 			patients.get( id ).onArrived();
 			adder.onPatientArrived( id );
+			model.filter = model.filter;
 		});
 		
 		// Button: "DNA"
@@ -10556,8 +10988,14 @@ Updated to Vanilla JS for IDG
 			// add in filter buttons to the header
 			const ul = document.getElementById('js-clinic-filter');
 			[
-				['Show all','all'],
-				['Hide completed','completed']
+				['Hide done','hide-done'],
+				['All','all'],
+				['Active','active'],
+				['Waiting','waiting'],
+				['Stranded','stuck'],
+				//['Later','later'],
+				['Done','complete'],
+				//['Search','search']
 			].forEach( btn => {
 				filters.add( clinic.filterBtn({
 					name: btn[0],
@@ -10879,46 +11317,44 @@ Updated to Vanilla JS for IDG
 	*/
 	const filterBtn = ( props, ul ) => {
 		
-		const filter = props.filter;
-		const li = document.createElement('li');
+		const filter = props.filter; 
 		const count = bj.div('count');
 		
+		const li = document.createElement('li');
 		li.className = "filter-btn js-idg-clinic-btn-filter"; 
 		li.setAttribute('data-filter', filter );
 		
-		
 		// build btn and add to <ul> header
 		(() => {
-			const name = props.name;
-			// check if it's short code
-			const fullShortCode = bj.namespace('pathstep').fullShortCode( name );
-			const fullName = fullShortCode == name ? false : fullShortCode;
-			
 			const div = bj.div('filter');
-			let html = `<div class="name">${name}</div>`;
-			if( fullName ) html += `<div class="fullname">${fullName}</div>`;
-			div.innerHTML = html;
-			
-			// only show the count for patient assignments
-			if( filter !== "all" && filter !== "completed"){
-				div.appendChild( count );	
-			}
-			
-			li.appendChild( div );
-			
-			// update DOM
-			ul.appendChild( li );
-			
+			div.innerHTML = `<div class="name">${props.name}</div>`;
+			if( filter !== "hide-done") div.append( count );	
+			li.append( div );
+			ul.append( li );
 		})();
 		
-		
-		const update = ( allPatientAssignments, currentFilter ) => {
-			// work out the counts per filter.
-			const num = allPatientAssignments.reduce((acc, assigned ) => {
-				if( assigned == filter ) return acc + 1; 
-				return acc;
-			}, 0 );
+		/**
+		* API - update
+		* On any updates to clinic need to update the filter count
+		* @param {Array} status - all status setting for all patients
+		* @param {String} currentFilter - current filter for the clinic list
+		*/	
+		const update = ( status, currentFilter ) => {
+			let num = 0;
 			
+			if( filter == "all"){
+				num = status.length;
+			} else {
+				// work out the counts per filter.
+				num = status.reduce(( acc, val ) => {
+					if( val == filter ) return acc + 1; 
+					return acc;
+				}, 0 );
+			}
+			
+			
+			
+			// update DOM
 			count.textContent = num;
 			
 			if( currentFilter === filter ){
@@ -10947,11 +11383,22 @@ Updated to Vanilla JS for IDG
 	*/
 	const patient = ( props ) => {
 		
-		const tr = document.createElement('tr');
+		/**
+		* Patient UI is a table row <tr>
+		* Hold elements for ease of access
+		*/
 		const pathway =  bj.div('pathway');
-		const assigned = document.createElement('td');
-		const addIcon = document.createElement('td');
-		const complete = document.createElement('td');
+		const tr = document.createElement('tr');
+		const td = {
+			path: document.createElement('td'),
+			addIcon: document.createElement('td'),
+			flags: document.createElement('td'),
+			risk: document.createElement('td'),
+			complete: document.createElement('td'),
+		};
+		
+		// DOM structure for pathway
+		td.path.append( pathway );	 
 		
 		/** 
 		* Model
@@ -10961,6 +11408,7 @@ Updated to Vanilla JS for IDG
 			_uid: props.uid,
 			_status: null, // "todo", "active", "complete"
 			_assigned: false,
+			_bufferStep: false, // buffer step tracks the last step until it's finished
 			
 			get status(){
 				return this._status;
@@ -10981,7 +11429,8 @@ Updated to Vanilla JS for IDG
 		/**
 		* GETTER / SETTER: App needs to get and set patient assigned from Adder
 		*/
-		const getAssigned = () => model.assigned;
+		const getStatus = () => model.status;
+		
 		const setAssigned = ( val ) => model.assigned = val;
 		
 		const getTime = () => model.time;
@@ -11000,38 +11449,26 @@ Updated to Vanilla JS for IDG
 		const changeStatus = () => {
 			tr.className = model.status;
 			pathway.className = `pathway ${model.status}`;
-			addIcon.innerHTML = model.status == "complete" ? 
-				"" : 
-				`<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
+			td.addIcon.innerHTML = model.status == "complete" ? 
+				"<!-- complete -->" : `<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
 			
 			waitDuration.render( model.status );
 		};
 		
-		/**
-		* VIEW: patient assignment
-		*/
-		const changeAssignment = () => {
-			const fullText = bj.namespace('pathstep').fullShortCode( model.assigned );
-			assigned.innerHTML = model.assigned == "unassigned" ?  
-				`<small class="fade">${fullText}</small>` : 
-				`<div>${fullText}</div>`;
-		};
+		model.views.add( changeStatus );
 		
 		/**
 		* VIEW: complete (tick icon) / done
 		*/
 		const changeComplete = () => {
-			complete.innerHTML = "";
-			if( model.status == "complete"){
-				complete.innerHTML = '<span class="fade">Done</span>';
-			}
-			if( model.status == "active"){
-				complete.innerHTML = `<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model._uid}"></i>`;
+			td.complete.innerHTML = "";
+			switch( model.status ){
+				case "complete": td.complete.innerHTML = '<span class="fade">Done</span>';
+				break;
+				case "active": td.complete.innerHTML = `<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model._uid}"></i>`;
 			}
 		};
 		
-		model.views.add( changeStatus );
-		model.views.add( changeAssignment );
 		model.views.add( changeComplete );
 		
 		/**
@@ -11039,24 +11476,77 @@ Updated to Vanilla JS for IDG
 		* @param {Object} step
 		*/
 		const addPathStep = ( step ) => {
-			if( step.type == "arrive" ) waitDuration.arrived( step.timestamp, model.status );
-			if( step.type == "finish" ) waitDuration.finished( step.timestamp );
-			// build pathStep
-			step.info = step.timestamp == false ? "clock" : bj.clock24( new Date ( step.timestamp ));
+			
+			switch( step.type ){
+				case "arrive": 
+					waitDuration.arrived( step.timestamp, model.status );
+					step.info = bj.clock24( new Date ( step.timestamp ));
+				break; 
+				case "finish": 
+					waitDuration.finished( step.timestamp );
+					step.info = bj.clock24( new Date ( step.timestamp ));
+				break;
+				default: 
+					step.info = step.mins ? step.mins : "0"; // inbetween needs to show there duration in mins
+			}
+			
 			gui.pathStep( step, pathway );
 		};
+		
+		/**
+		* Risks 
+		*/
+		const risk = ( r ) => {
+			let icon = 'grey';
+			let tip = 'Not assessed';
+			switch( r ){
+				case 3:	
+					icon = 'green';
+					tip = 'Patient Risk: 3 (Low).<br>Mild consequences from delayed appointment. <br>Previous Cancelled: 1';
+				break;
+				case 2:
+					icon = 'orange';
+					tip = 'Patient Risk: 2 (Medium).<br>Reversible harm from delayed appointment. <br>Previous Cancelled: 0';	
+				break;
+				case 1:	
+					icon = 'red';
+					tip = 'Patient Risk: 1 (High).<br>Irreversible harm from delayed appointment. Do NOT rescheduled patient. <br>Previous Cancelled: 0';
+				break;
+			}
+			
+			td.risk.innerHTML = `<i class="oe-i triangle-${icon} small-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
+		};
+		
+		/**
+		* Flags
+		*/
+		const flag = ( arr ) => {
+			if( arr == undefined ) return; 
+			const colors = ['grey','red','orange','green'];
+			const icon = colors[arr[0]];
+			const tip = arr[1];
+			td.flags.innerHTML = `<i class="oe-i flag-${icon} small-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
+		};
+		
 		
 		/**
 		* 'on' Handlers for Event delegation
 		*/
 		const onArrived = () => {
 			addPathStep({
-				shortcode: 'Arr',
+				shortcode: 'i-Arr',
 				timestamp: Date.now(),
 				status: 'done',
 				type: 'arrive',
 			});
-			model.status = "active";
+			addPathStep({
+				shortcode: 'Waiting',
+				mins: 1,
+				status: 'w-room',
+				type: 'wait',
+			});
+			
+			model.status = "waiting";
 		};
 		
 		const onDNA = () => {
@@ -11071,7 +11561,7 @@ Updated to Vanilla JS for IDG
 		
 		const onComplete = () => {
 			addPathStep({
-				shortcode: 'Fin',
+				shortcode: 'i-Fin',
 				timestamp: Date.now(), 
 				status: 'done',
 				type: 'finish',
@@ -11085,17 +11575,12 @@ Updated to Vanilla JS for IDG
 		* @returns {Element} (if covered by filter option)	
 		*/
 		const render = ( filter ) => {
-			// completed?
-			if(	filter == "completed" && 
-				model.status == 'complete' ) return null;
-			
-			// assigned?
-			if( filter !== "all" &&
-				filter !== "completed" ){
-				if( model.assigned !== filter) return null;
+			const status = model.status;
+			switch( filter ){
+				case "all": return tr;
+				case "hide-done": return status == 'complete' ? null : tr;
+				default:  return status == filter ? tr : null;
 			}
-			// ok! 	
-			return tr;
 		};
 		
 		/**
@@ -11112,33 +11597,31 @@ Updated to Vanilla JS for IDG
 			// build pathway steps
 			props.pathway.forEach( step => addPathStep( step ));
 			
+			risk( props.r );
+			flag( props.f );
+			
 			// build <tr>
 			tr.setAttribute( 'data-timestamp', props.booked );
-			tr.innerHTML = Mustache.render([
-				'<td>{{time}}</td>',
-				'<td>{{num}}</td>',
-				'<td><div class="speciality">{{speciality}}</div><small class="type">{{specialityState}}</small></td>'
-			].join(''), props );
 			
-			// slightly more complex Elements, but static content
+			tr.insertAdjacentHTML('beforeend', `<td>${props.time}</td>`);
+			tr.insertAdjacentHTML('beforeend', `<td><div class="speciality">${props.clinic[0]}</div><small class="type">${props.clinic[1]}</small></td>`);
+			tr.insertAdjacentHTML('beforeend', `<td>${props.dob}</td>`);
 			
-			tr.append( clinic.patientQuickView( props ));
+			// slightly more complex Elements and dynamic areas...
 			tr.append( clinic.patientMeta( props ));
-			tr.append( addIcon );
-			
-			const td = document.createElement('td');
-			td.append( pathway );
-			tr.append( td );	
-				
-			tr.append( assigned );
-			tr.append( waitDuration.render( props.status ));
-			tr.append( complete );
+			tr.append( clinic.patientQuickView( props ));
+			tr.append( td.path );
+			tr.append( td.addIcon );
+			tr.append( td.risk );	
+			tr.append( td.flags );
+			tr.append( waitDuration.render( props.status )); // returns a <td>
+			tr.append( td.complete );
 		})();
 			
 		/* 
 		API
 		*/
-		return { onArrived, onDNA, onComplete, render, getAssigned, setAssigned, getTime, getLastname, addPathStep };
+		return { onArrived, onDNA, onComplete, render, getStatus, setAssigned, getTime, getLastname, addPathStep };
 	};
 	
 	// make component available to Clinic SPA	
@@ -11325,23 +11808,22 @@ Updated to Vanilla JS for IDG
 		const render = ( status ) => {
 			const div = bj.div();
 			
-			if( status  == 'complete' ){
-				div.className = 'wait-duration';
-				div.appendChild( waitMins());
-			}
-			
-			if( status == "active"){
-				div.className = 'wait-duration';
-				div.appendChild( svgCircles());
-				div.appendChild( waitMins());
-			}
-			
-			if( status == "todo" ){
-				div.className = 'flex';
-				div.innerHTML = [
-					`<button class="cols-7 blue hint js-idg-clinic-btn-arrived" data-patient="${patientID}">Arrived</button>`,
-					`<button class="cols-4 js-idg-clinic-btn-DNA" data-patient="${patientID}">DNA</button>`
-				].join('');
+			switch( status ){
+				case "complete": 
+					div.className = 'wait-duration';
+					div.appendChild( waitMins());
+				break;
+				case "todo":
+					div.className = 'flex';
+					div.innerHTML = [
+						`<button class="cols-7 blue hint js-idg-clinic-btn-arrived" data-patient="${patientID}">Arrived</button>`,
+						`<button class="cols-4 js-idg-clinic-btn-DNA" data-patient="${patientID}">DNA</button>`
+					].join('');
+				break;
+				default: 
+					div.className = 'wait-duration';
+					div.appendChild( svgCircles());
+					div.appendChild( waitMins());
 			}
 			
 			td.innerHTML = "";
@@ -11358,431 +11840,6 @@ Updated to Vanilla JS for IDG
 	
 
 })( bluejay, bluejay.namespace('clinic') ); 
-/*
-List Options Constructor
-*/
-(function (uiApp) {
-
-	'use strict';	
-	
-	const addSelect = uiApp.namespace( 'addSelect' );	
-	
-	addSelect.ListOption = function (li, parent){
-		
-		let _selected = li.classList.contains('selected'); // check not setup to be selected:
-		let _dependents = false;
-		let json = JSON.parse(li.dataset.insert);
-		
-		
-		/*
-		Does list have any dependency lists?
-		*/
-		if( json.dependents !== undefined ){
-			// build dependents
-			_dependents = new addSelect.OptionDependents(json.dependents, parent.uniqueId);
-		}
-	
-		/*
-		Methods
-		*/ 
-		this.click = function(){
-			this.toggleState();
-			parent.optionClicked( _selected, this );
-	
-			if(_dependents != false){
-				_dependents.show( _selected );
-			}	
-		};
-		
-		this.toggleState = function() {
-			li.classList.toggle('selected'); 
-			_selected = !_selected;
-		};	
-		
-		this.deselect = function(){
-			if( _selected ){
-				this.toggleState();
-			}
-		};
-		
-		
-		Object.defineProperty(this, 'selected',{
-			get: () => {
-				return _selected;
-			},
-			set: (v) => {
-				_selected = v;
-				if(!v){
-					li.classList.remove('selected');
-				}
-			}
-		});
-		
-		Object.defineProperty(this, 'dependents',{
-			get: () => {
-				return _dependents === false ? false : true; 
-			}
-		});
-		
-		Object.defineProperty(this, 'value',{
-			get: () => {
-				return json.value; 
-			}
-		});
-		
-	
-	
-		/*
-		Events 
-		*/
-		li.addEventListener( "mousedown", this.click.bind( this ) );
-	};
-		
-})(bluejay); 
-/*
-Optional Lists based on List selection
-find group ID: 	"add-to-{uniqueID}-listgroup{n}";
-find list ID: 	"add-to-{uniqueID}-list{n}";
-
-@param dependents: String e.g. "2.1" or "2.1,2.2": 
-*/
-
-(function (uiApp) {
-
-	'use strict';	
-	
-	const addSelect = uiApp.namespace( 'addSelect' );	
-	
-	addSelect.OptionDependents = function( dependents, listId ){
-
-		if(dependents === undefined)  return false;
-		
-		/*
-		List has extra list options	
-		*/
-		const idPrefix = "#add-to-" + listId + "-";
-		let groups = [];
-		
-		/*
-		Can be mulitple list groups.
-		Check string for commas "2.1,2.2" for groups
-		*/
-		dependents.split(',').forEach( group => {
-			
-	
-			let ids = group.split('.'); // could be mutliple list IDs e.g. 2.3.4.5
-			let obj = {};
-			// find group
-			
-			if(ids[0] === 0){
-				console.log('Error: OptionDependents, listGroup = 0 !!',  idPrefix + 'listgroup'+ids[0]);
-			}
-			
-			obj.div = document.querySelector(idPrefix + 'listgroup'+ids[0]); // <div> wrapper for optional lists
-			if(obj.div === null){
-				console.log('obj.div = null!',idPrefix + 'listgroup'+ids[0]);
-			}
-			
-			obj.holder = obj.div.querySelector('.optional-placeholder'); // default placeholder for Optional Lists
-			if(obj.holder === null){
-				console.log('Adder: no placeholder text for optional group');
-			}
-			
-	
-			/*
-			Does it have lists, or show default text?
-			e.g. 2.0
-			*/
-			if( ids[1] == 0 ){
-				obj.showDefaultText = true;
-			} else {
-				obj.showDefaultText = false;
-				/*
-				Not a ZERO... so:
-				Loop through option lists required
-				e.g. 2.4.5 (two lists in group '2')
-				*/
-				obj.lists = [];
-				for(let i=1;i<ids.length;i++ ){
-					let li = document.querySelector(idPrefix + 'list' + ids[i]);
-					if(li === null){
-						console.log('Err: OptionDependents, list? ', idPrefix + 'list' + ids[i]);	
-					} else {
-						obj.lists.push(li);
-					}
-					
-				}
-			}
-			
-			groups.push(obj);
-		});
-	
-		/*
-		Methods
-		*/
-		this.show = function( show ){
-			if(show){
-				/*
-				hide ALL optional lists
-				$('#add-to-'+listId+' .optional-list').hide();
-				*/
-				this.myLists();
-			} else {
-				// unclick
-				this.reset();
-			}
-		};
-	
-		this.hideAllOptionalLists = function(div){
-			let optionalLists = uiApp.nodeArray(div.querySelectorAll('.optional-list'));
-			optionalLists.forEach((list) => {
-				uiApp.hide(list);
-			});
-			
-		};
-	
-		this.myLists = function(){
-			groups.forEach( group => {
-				/*
-				in group hide other lists
-				*/
-				this.hideAllOptionalLists(group.div);
-				
-				if(group.showDefaultText){
-					if(group.holder) uiApp.show(group.holder, 'block');
-				} else {
-					if(group.holder) uiApp.hide(group.holder);
-					// show required Lists
-					group.lists.forEach( list => {
-						uiApp.show(list, 'block');
-					});
-				}
-				
-			});
-		};
-		
-		/*
-		Reset (these!) groups!	
-		*/
-		this.reset = function(){
-			groups.forEach( group => {
-				this.hideAllOptionalLists(group.div);
-				if(group.holder) uiApp.show(group.holder, 'block');
-			});
-		};
-			
-	};
-	
-})(bluejay); 
-(function (uiApp) {
-
-	'use strict';	
-	
-	const addSelect = uiApp.namespace( 'addSelect' );
-	
-	addSelect.OptionsList = function(ul){
-		
-		let json = JSON.parse(ul.dataset.options);
-		
-		/*
-		Types: Single & Multi are the main ones but 
-		added in "inputTemplate" to handle the 
-		list of options to fill the input field
-		*/
-		const template = json.type == 'inputTemplate' ? true : false;
-		const single = json.type == 'single' ? true : false ;				
-		// some assumptions here... 
-		const hasOptions = json.hasExtraOptions === "true" ? true : false;
-		const isOptionalList = json.isOptionalList === "true" ? true : false;
-		
-		this.uniqueId  = ul.dataset.id; // passes in DOM id (unique part) 
-		
-		/*
-		Optional List? 
-		Needs hiding. The List Option it depends on will show
-		it when it's clicked	
-		*/
-		if(isOptionalList) {
-			uiApp.hide(ul.parentNode);
-		}
-		 
-		/*
-		Store all List Options	
-		*/
-		let me = this; // hmmm... this could be better.
-		let options = [];
-		let defaultSelected = [];
-		
-		const listElems = uiApp.nodeArray(ul.querySelectorAll('li'));
-		listElems.forEach((li) => {
-			let liOpt = new addSelect.ListOption(li, this);
-			options.push(liOpt);
-			/*
-			If liOpt is selected AND has dependents
-			Need to activate the list AFTER all the other DOM
-			is set up
-			*/
-			if( liOpt.selected && liOpt.dependents){
-				/*
-				Store and then loop through after
-				others are all done to set up default
-				selected states 
-				*/
-				defaultSelected.push(liOpt);
-			}
-		});
-		
-		/*
-		Methods	
-		*/
-		this.optionClicked = function( selected, listOption ){
-		
-			if(template){
-				// Assume that we have an input field available.
-				let input = ul.previousElementSibling;
-				let template = listOption.value;
-				let selectStart = template.indexOf('{');
-				let selectEnd = template.indexOf('}') + 1;
-				input.value = template;
-				listOption.deselect();
-				// let the events play out
-				setTimeout(() => {
-					input.focus();
-					input.select();
-					input.setSelectionRange(selectStart, selectEnd);
-				}, 50);
-				return;
-			}
-			
-			
-			/*
-			Manage this list. 
-			Multi-select is the default	
-			*/
-			if(selected){
-				if(single){
-					options.forEach( option => {
-						if(option !== listOption) option.deselect();
-					});
-				}
-			} 
-		};
-		
-		
-		this.checkForDefaultSelections = () => {
-			if( defaultSelected.length ){
-				/*
-				This all need 'clicking' to activate
-				the dependent optional lists	
-				*/
-				defaultSelected.forEach( d => {
-					/*
-					To make the click work correctly 
-					de-select the list btn, click will
-					re-select it and activate the dependents 
-					*/
-					d.selected = false;
-					d.click();
-				});
-			}
-		};			
-	};
-		
-})(bluejay); 
-
-(function (uiApp) {
-
-	'use strict';	
-	
-	const addSelect = uiApp.namespace( 'addSelect' );
-	
-	addSelect.Popup = function( greenBtn ){	
-		
-		let popup = document.querySelector('#' + greenBtn.dataset.popup);
-		
-		if( popup == null ) return;
-		
-		let lists = [];
-		const reset = true;
-		const require = false; 
-	
-		/*
-		Using in analytics to build the data filters. Popup
-		needs to anchor to the left. Can not rely to x < n to do this.
-		*/
-		this.anchorLeft = popup.dataset.anchorLeft ? true : false;
-	
-		/*
-		Props
-		*/ 
-		this.btn = greenBtn;  
-		this.popup = popup;
-		this.closeBtn = popup.querySelector('.close-icon-btn');
-	
-		/*
-		Methods
-		*/
-		this.open = function(){
-			this.position();
-			addSelect.closeAll();
-			uiApp.show(popup, 'block');
-			
-			this.closeBtn.addEventListener('mousedown', this.close.bind(this));
-			//window.addEventListener('scroll', this.close.bind(this), {capture:true, once:true});
-		};
-		
-		this.close = function(){
-			popup.style.display = "none";	
-		};
-		
-		this.reset = function(){
-			// reset (to default state)
-		};
-		
-		let addOptions = uiApp.nodeArray(popup.querySelectorAll('.add-options'));
-		addOptions.forEach((option) => {
-			let list = new addSelect.OptionsList(option);
-			list.checkForDefaultSelections();
-			lists.push(list);
-		});
-		
-		//idg.addSelectInsert.btnEvent( this, $popup.children('.close-icon-btn'), this.close );
-		this.btn.addEventListener('mousedown', this.open.bind(this) );		
-	};
-	
-	
-	addSelect.Popup.prototype.position = function(){
-		let rect = this.btn.getBoundingClientRect();	
-		let w = window.innerWidth; // hmmm, this could be better as forces reflow
-		let h = window.innerHeight;
-		let posH = (h - rect.bottom);
-		
-		// check popup doesn't go off the top of the screen 
-		// and don't overlay Logo! or Patient Name
-		if(h - posH < 325){
-			posH = h - 325;
-		}
-		
-		/*
-		Popup can be 'requested' to anchor left.
-		Only used in Analytics (so far)	
-		*/
-		if( this.anchorLeft ){
-			this.popup.style.left = rect.left + 'px';
-		} else {
-			// is popup pushing off the left
-			let leftSideEdge = rect.right - this.popup.getBoundingClientRect().width;
-			let adjustRight =  leftSideEdge < 0 ? leftSideEdge - 25 : 0;
-			this.popup.style.right = (w - rect.right) + adjustRight + 'px' ;
-		}
-		
-		this.popup.style.bottom = posH + 'px';
-
-	};
-	
-		
-})(bluejay); 
-
 (function( bj ){
 
 	'use strict';	
@@ -11923,9 +11980,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				this.info = info;
 				
 				if( this.info ){
-					const el = bj.dom('span','info');
-					this.span.append( el );
-					this.iSpan = el;
+					this.infoSpan = bj.dom('span','info');
+					this.span.append( this.infoSpan );
 					this.render();
 				} 
 			}, 
@@ -11933,14 +11989,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			updateInfo(){
 				if( !this.info  ) return; 
 				
-				this.iSpan.textContent = this.info === "clock" ? 
+				this.infoSpan.textContent = this.info === "clock" ? 
 					bj.clock24( new Date( Date.now())):
 					this.info;
 				
 				if( this.status == 'todo' || this.status == 'config' ){
-					this.iSpan.classList.add('invisible'); // need the DOM to keep the step height consistent
+					this.infoSpan.classList.add('invisible'); // need the DOM to keep the step height consistent
 				} else {
-					this.iSpan.classList.remove('invisible');
+					this.infoSpan.classList.remove('invisible');
 				}
 			}
 		});

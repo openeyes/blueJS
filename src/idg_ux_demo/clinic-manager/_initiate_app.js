@@ -38,13 +38,17 @@
 			As times are relative to 'now', make sure appointments 
 			always appeared scheduled on whole 5 minutes: 
 			*/
+/*
 			const appointment = new Date( Date.now() + ( patient.booked * 60000 )); 
 			const offsetFive = appointment.getMinutes() % 5; 
 			appointment.setMinutes( appointment.getMinutes() - offsetFive );
 			patient.booked = appointment.getTime();
+*/
+			
+			const booked = Date.now() + ( patient.booked * 60000 );
 			
 			// convert to booked time to human time
-			patient.time = bj.clock24( new Date( patient.booked ));
+			patient.time = bj.clock24( new Date( booked ));
 			
 			/*
 			Step Pathway is multi-dimensional array.
@@ -53,7 +57,8 @@
 			patient.pathway.forEach(( step, i, thisArr ) => {
 				const obj = {
 					shortcode: step[0],
-					timestamp: Date.now() + ( step[1] * 60000 ),
+					timestamp: Date.now() + ( step[1] * 60000 ), // Arrived and Finish need this
+					mins: step[1],
 					status: step[2],
 					type: step[3],
 				};
@@ -68,10 +73,10 @@
 		*/
 		const table = bj.dom('table', 'oe-clinic-list');
 		table.innerHTML = Mustache.render([
-			'<thead><tr>{{#th}}<th>{{.}}</th>{{/th}}</tr></thead>',
+			'<thead><tr>{{#th}}<th>{{{.}}}</th>{{/th}}</tr></thead>',
 			'<tbody></tbody>'
 		].join(''), {
-			"th": ['Appt.', 'Hospital No.', 'Speciality', '', 'Name', '', 'Pathway', 'Assigned', 'Mins', '']
+			"th": ['Arr.', 'Clinic', 'Dob',  'Name', '', 'Pathway', '', 'R1-3', '<i class="oe-i flag small"></i>', 'Mins', '']
 		});
 		
 		document.getElementById('js-clinic-manager').appendChild( table );

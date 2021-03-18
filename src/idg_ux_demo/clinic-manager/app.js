@@ -40,17 +40,18 @@
 			tbody.append( fragment );
 		};
 		
+		model.views.add( filterPatients );
+		
 		/**
 		* VIEW: Update Filter Buttons
-		* loop through patients and get all their assignments
+		* loop through patients and get their status
 		*/
 		const updateFilters = () => {
-			const assignments = [];
-			patients.forEach( patient => assignments.push( patient.getAssigned()));
-			filters.forEach( filter => filter.update( assignments, model.filter ));
+			const status = [];
+			patients.forEach( patient => status.push( patient.getStatus()));
+			filters.forEach( filter => filter.update( status, model.filter ));
 		};
 		
-		model.views.add( filterPatients );
 		model.views.add( updateFilters );
 
 		/**
@@ -89,6 +90,7 @@
 			const id = ev.target.dataset.patient;
 			patients.get( id ).onArrived();
 			adder.onPatientArrived( id );
+			model.filter = model.filter;
 		});
 		
 		// Button: "DNA"
@@ -151,8 +153,14 @@
 			// add in filter buttons to the header
 			const ul = document.getElementById('js-clinic-filter');
 			[
-				['Show all','all'],
-				['Hide completed','completed']
+				['Hide done','hide-done'],
+				['All','all'],
+				['Active','active'],
+				['Waiting','waiting'],
+				['Stranded','stuck'],
+				//['Later','later'],
+				['Done','complete'],
+				//['Search','search']
 			].forEach( btn => {
 				filters.add( clinic.filterBtn({
 					name: btn[0],

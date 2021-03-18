@@ -10,46 +10,44 @@
 	*/
 	const filterBtn = ( props, ul ) => {
 		
-		const filter = props.filter;
-		const li = document.createElement('li');
+		const filter = props.filter; 
 		const count = bj.div('count');
 		
+		const li = document.createElement('li');
 		li.className = "filter-btn js-idg-clinic-btn-filter"; 
 		li.setAttribute('data-filter', filter );
 		
-		
 		// build btn and add to <ul> header
 		(() => {
-			const name = props.name;
-			// check if it's short code
-			const fullShortCode = bj.namespace('pathstep').fullShortCode( name );
-			const fullName = fullShortCode == name ? false : fullShortCode;
-			
 			const div = bj.div('filter');
-			let html = `<div class="name">${name}</div>`;
-			if( fullName ) html += `<div class="fullname">${fullName}</div>`;
-			div.innerHTML = html;
-			
-			// only show the count for patient assignments
-			if( filter !== "all" && filter !== "completed"){
-				div.appendChild( count );	
-			}
-			
-			li.appendChild( div );
-			
-			// update DOM
-			ul.appendChild( li );
-			
+			div.innerHTML = `<div class="name">${props.name}</div>`;
+			if( filter !== "hide-done") div.append( count );	
+			li.append( div );
+			ul.append( li );
 		})();
 		
-		
-		const update = ( allPatientAssignments, currentFilter ) => {
-			// work out the counts per filter.
-			const num = allPatientAssignments.reduce((acc, assigned ) => {
-				if( assigned == filter ) return acc + 1; 
-				return acc;
-			}, 0 );
+		/**
+		* API - update
+		* On any updates to clinic need to update the filter count
+		* @param {Array} status - all status setting for all patients
+		* @param {String} currentFilter - current filter for the clinic list
+		*/	
+		const update = ( status, currentFilter ) => {
+			let num = 0;
 			
+			if( filter == "all"){
+				num = status.length;
+			} else {
+				// work out the counts per filter.
+				num = status.reduce(( acc, val ) => {
+					if( val == filter ) return acc + 1; 
+					return acc;
+				}, 0 );
+			}
+			
+			
+			
+			// update DOM
 			count.textContent = num;
 			
 			if( currentFilter === filter ){

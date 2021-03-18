@@ -91,9 +91,8 @@
 				this.info = info;
 				
 				if( this.info ){
-					const el = bj.dom('span','info');
-					this.span.append( el );
-					this.iSpan = el;
+					this.infoSpan = bj.dom('span','info');
+					this.span.append( this.infoSpan );
 					this.render();
 				} 
 			}, 
@@ -101,14 +100,14 @@
 			updateInfo(){
 				if( !this.info  ) return; 
 				
-				this.iSpan.textContent = this.info === "clock" ? 
+				this.infoSpan.textContent = this.info === "clock" ? 
 					bj.clock24( new Date( Date.now())):
 					this.info;
 				
 				if( this.status == 'todo' || this.status == 'config' ){
-					this.iSpan.classList.add('invisible'); // need the DOM to keep the step height consistent
+					this.infoSpan.classList.add('invisible'); // need the DOM to keep the step height consistent
 				} else {
-					this.iSpan.classList.remove('invisible');
+					this.infoSpan.classList.remove('invisible');
 				}
 			}
 		});
