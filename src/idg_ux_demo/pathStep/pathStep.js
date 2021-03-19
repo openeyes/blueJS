@@ -43,6 +43,15 @@
 		
 		const _setters = () => ({
 			/**
+			* @param {String} shortcode - change shortcode (from initial value)
+			*/
+			setCode( shortcode ){
+				this.shortcode = shortcode;
+				this.span.querySelector('.step').textContent = shortcode;
+				this.render();
+			},
+			
+			/**
 			* @param {String} type - e.g. arrive, finish, process, person, config
 			*/
 			setType( type ){
@@ -100,11 +109,13 @@
 			updateInfo(){
 				if( !this.info  ) return; 
 				
-				this.infoSpan.textContent = this.info === "clock" ? 
-					bj.clock24( new Date( Date.now())):
+				this.infoSpan.innerHTML = this.info === "clock" ? 
+					bj.clock24( new Date( Date.now())) :
 					this.info;
 				
-				if( this.status == 'todo' || this.status == 'config' ){
+				if( this.status == 'todo' || 
+					this.status == 'todo-later' ||
+					this.status == 'config' ){
 					this.infoSpan.classList.add('invisible'); // need the DOM to keep the step height consistent
 				} else {
 					this.infoSpan.classList.remove('invisible');
@@ -158,7 +169,7 @@
 			
 			// new DOM element
 			/*
-			Check for specials, e.g. Drug Admin
+			Check for icons specials, e.g. i-Arr, etc
 			*/
 			const name = shortcode.startsWith('i-') ? 
 				`<span class="step ${shortcode}"></span>` :
@@ -183,11 +194,16 @@
 			// update collection 	
 			ps.setKey( collection.add( ps, span ));
 		
-			// update DOM
-			if( shortcode === "Arr") {
-				pathway.prepend( span ); // put Arrived at the start of pathway
+			// add to DOM.
+			// if DOM parentNode pathway is provided.
+			if( pathway ){
+				if( shortcode === "Arr") {
+					pathway.prepend( span ); // put Arrived at the start of pathway
+				} else {
+					pathway.append( span );
+				}
 			} else {
-				pathway.append( span );
+				return ps; // return new pathstep to be used else where
 			}
 		};
 		

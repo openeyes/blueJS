@@ -46,6 +46,7 @@
 */
 			
 			const booked = Date.now() + ( patient.booked * 60000 );
+			patient.bookedTimestamp = booked;
 			
 			// convert to booked time to human time
 			patient.time = bj.clock24( new Date( booked ));
@@ -76,7 +77,7 @@
 			'<thead><tr>{{#th}}<th>{{{.}}}</th>{{/th}}</tr></thead>',
 			'<tbody></tbody>'
 		].join(''), {
-			"th": ['Arr.', 'Clinic', 'Dob',  'Name', '', 'Pathway', '', 'R1-3', '<i class="oe-i flag small"></i>', 'Mins', '']
+			"th": ['Arr.', 'Clinic', 'Dob',  'Patient', '', 'Pathway', '', 'R1-3', '<i class="oe-i flag small"></i>', 'Mins', '']
 		});
 		
 		document.getElementById('js-clinic-manager').appendChild( table );

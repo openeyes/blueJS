@@ -14,13 +14,22 @@
 		* Extended with views
 		*/
 		const model = Object.assign({
-			_filter: "all", // "hideCompleted", "Unassigned", "MM", etc
+			_filter: "", // view filter
+			delayID: null,
 			get filter(){
 				return this._filter;
 			},
 			set filter( val ){
 				this._filter = val; 
 				this.views.notify();
+			},
+			// slightly delay the view filters
+			updateFilterView(){
+				if( this.delayID ) return;
+				this.delayID = setTimeout(() => {
+					this.views.notify();
+					this.delayID = null;
+				}, 750 );
 			}
 			
 		}, bj.ModelViews());
@@ -90,7 +99,7 @@
 			const id = ev.target.dataset.patient;
 			patients.get( id ).onArrived();
 			adder.onPatientArrived( id );
-			model.filter = model.filter;
+			model.updateFilterView();
 		});
 		
 		// Button: "DNA"
@@ -101,6 +110,7 @@
 		// Icon: "tick" (complete)
 		bj.userDown('.js-idg-clinic-icon-complete', ( ev ) => {
 			patients.get( ev.target.dataset.patient ).onComplete();
+			model.updateFilterView();
 		});
 		
 		// Filter button (in header bar)
@@ -122,13 +132,32 @@
 		});
 		
 		//  + icon for ALL patients in header
-		bj.userDown('.oe-clinic-filter button.add-to-all', ( ev ) => {
+		bj.userDown('button.add-to-all', ( ev ) => {
 			if( adderAllBtn.classList.contains('open')){
 				adderAllBtn.classList.replace('open', 'close');
 				adder.showAll();
 			} else {
 				hideAdder();
 			}
+		});
+		
+		//  Advanced search filter in header
+		bj.userDown('button.search-all', ( ev ) => {
+			const btn = ev.target;
+			const quick = document.querySelector('.clinic-filters ul.quick-filters');
+			const search = document.querySelector('.clinic-filters .search-filters');
+			
+			if( btn.classList.contains('close')){
+				btn.classList.remove('close');
+				bj.hide( search );
+				bj.show( quick );
+			} else {
+				btn.classList.add('close');
+				bj.hide( quick );
+				bj.show( search );
+			}
+			
+			
 		});
 		
 		// Adder popup update action 
@@ -150,17 +179,20 @@
 			// build patients (<tr>)
 			json.forEach( patient => patients.set( patient.uid, clinic.patient( patient )));
 			
-			// add in filter buttons to the header
-			const ul = document.getElementById('js-clinic-filter');
+			// option-right area in in the <header>
+			const div = document.getElementById('js-clinic-filters');
+			
+			// Quick filters based on patient status
+			const ul = bj.dom('ul', "quick-filters" );
+			
 			[
-				['Hide done','hide-done'],
+				['Hide done','hide-done'], 
 				['All','all'],
 				['Active','active'],
 				['Waiting','waiting'],
 				['Stranded','stuck'],
-				//['Later','later'],
+				//['Later','later'], // not needed for A&E
 				['Done','complete'],
-				//['Search','search']
 			].forEach( btn => {
 				filters.add( clinic.filterBtn({
 					name: btn[0],
@@ -168,18 +200,34 @@
 				}, ul ));
 			});
 			
-			// add in + all adder button to header
-			const li = document.createElement('li');
 			adderAllBtn = bj.dom('button', "add-to-all open");
-			li.append( adderAllBtn );
-			ul.append( li );
+			const searchBtn = bj.dom('button', 'search-all');
+			const searchFilters = bj.div('search-filters');
+			searchFilters.style.display = "none";
+			
+			searchFilters.innerHTML = Mustache.render( [
+				`<input class="search" type="text" placeholder="Search patient name or number">`,
+				`<div class="group"><select>{{#age}}<option>{{.}}</option>{{/age}}</select></div>`,
+				`<div class="group"><select>{{#wait}}<option>{{.}}</option>{{/wait}}</select></div>`,
+				`<div class="group"><select>{{#flags}}<option>{{.}}</option>{{/flags}}</select></div>`,
+				`<div class="group"><select>{{#step}}<option>{{.}}</option>{{/step}}</select></div>`,
+				`<div class="group"><select>{{#states}}<option>{{.}}</option>{{/states}}</select></div>`,
+			].join(''), {
+				age: ['All ages', '0 - 6y', '6 - 12y', '12 - 18y', '18 - 30y', '40 - 50y','50 - 60y'],
+				wait: ['Wait - all', '0 - 1hr', '2hr - 3hr', '3hr - 4rh', '4hr +'],
+				step: ['Steps - all', 'Waiting - Triage', 'Waiting - Nurse', 'Waiting - Doctor', 'VisAcu - Visual Acuity', 'Dilate', 'etc, etc ...'],
+				flags: ['Flags - all', 'No Flags', 'Change in pupils', 'Diplopia', 'Post Op Diplopia', 'Rapid change in VA', 'Systemically unwell'],
+				states: ['Hide done', 'All', 'Active', 'Waiting', 'Done'],
+			});
+			
+			// build DOM
+			div.append( ul, searchFilters, searchBtn, adderAllBtn );
 
-			// clinic always starts on "all"
-			model.filter = "all";
+			// set up Clinic filter default
+			model.filter = "hide-done";
 		
 			// the clock is running! 
 			clinic.clock();
-	
 		})();
 	};
 

@@ -10789,6 +10789,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 */
 			
 			const booked = Date.now() + ( patient.booked * 60000 );
+			patient.bookedTimestamp = booked;
 			
 			// convert to booked time to human time
 			patient.time = bj.clock24( new Date( booked ));
@@ -10819,7 +10820,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			'<thead><tr>{{#th}}<th>{{{.}}}</th>{{/th}}</tr></thead>',
 			'<tbody></tbody>'
 		].join(''), {
-			"th": ['Arr.', 'Clinic', 'Dob',  'Name', '', 'Pathway', '', 'R1-3', '<i class="oe-i flag small"></i>', 'Mins', '']
+			"th": ['Arr.', 'Clinic', 'Dob',  'Patient', '', 'Pathway', '', 'R1-3', '<i class="oe-i flag small"></i>', 'Mins', '']
 		});
 		
 		document.getElementById('js-clinic-manager').appendChild( table );
@@ -10849,13 +10850,22 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* Extended with views
 		*/
 		const model = Object.assign({
-			_filter: "all", // "hideCompleted", "Unassigned", "MM", etc
+			_filter: "", // view filter
+			delayID: null,
 			get filter(){
 				return this._filter;
 			},
 			set filter( val ){
 				this._filter = val; 
 				this.views.notify();
+			},
+			// slightly delay the view filters
+			updateFilterView(){
+				if( this.delayID ) return;
+				this.delayID = setTimeout(() => {
+					this.views.notify();
+					this.delayID = null;
+				}, 750 );
 			}
 			
 		}, bj.ModelViews());
@@ -10925,7 +10935,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			const id = ev.target.dataset.patient;
 			patients.get( id ).onArrived();
 			adder.onPatientArrived( id );
-			model.filter = model.filter;
+			model.updateFilterView();
 		});
 		
 		// Button: "DNA"
@@ -10936,6 +10946,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		// Icon: "tick" (complete)
 		bj.userDown('.js-idg-clinic-icon-complete', ( ev ) => {
 			patients.get( ev.target.dataset.patient ).onComplete();
+			model.updateFilterView();
 		});
 		
 		// Filter button (in header bar)
@@ -10957,13 +10968,32 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		});
 		
 		//  + icon for ALL patients in header
-		bj.userDown('.oe-clinic-filter button.add-to-all', ( ev ) => {
+		bj.userDown('button.add-to-all', ( ev ) => {
 			if( adderAllBtn.classList.contains('open')){
 				adderAllBtn.classList.replace('open', 'close');
 				adder.showAll();
 			} else {
 				hideAdder();
 			}
+		});
+		
+		//  Advanced search filter in header
+		bj.userDown('button.search-all', ( ev ) => {
+			const btn = ev.target;
+			const quick = document.querySelector('.clinic-filters ul.quick-filters');
+			const search = document.querySelector('.clinic-filters .search-filters');
+			
+			if( btn.classList.contains('close')){
+				btn.classList.remove('close');
+				bj.hide( search );
+				bj.show( quick );
+			} else {
+				btn.classList.add('close');
+				bj.hide( quick );
+				bj.show( search );
+			}
+			
+			
 		});
 		
 		// Adder popup update action 
@@ -10985,17 +11015,20 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// build patients (<tr>)
 			json.forEach( patient => patients.set( patient.uid, clinic.patient( patient )));
 			
-			// add in filter buttons to the header
-			const ul = document.getElementById('js-clinic-filter');
+			// option-right area in in the <header>
+			const div = document.getElementById('js-clinic-filters');
+			
+			// Quick filters based on patient status
+			const ul = bj.dom('ul', "quick-filters" );
+			
 			[
-				['Hide done','hide-done'],
+				['Hide done','hide-done'], 
 				['All','all'],
 				['Active','active'],
 				['Waiting','waiting'],
 				['Stranded','stuck'],
-				//['Later','later'],
+				//['Later','later'], // not needed for A&E
 				['Done','complete'],
-				//['Search','search']
 			].forEach( btn => {
 				filters.add( clinic.filterBtn({
 					name: btn[0],
@@ -11003,18 +11036,34 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				}, ul ));
 			});
 			
-			// add in + all adder button to header
-			const li = document.createElement('li');
 			adderAllBtn = bj.dom('button', "add-to-all open");
-			li.append( adderAllBtn );
-			ul.append( li );
+			const searchBtn = bj.dom('button', 'search-all');
+			const searchFilters = bj.div('search-filters');
+			searchFilters.style.display = "none";
+			
+			searchFilters.innerHTML = Mustache.render( [
+				`<input class="search" type="text" placeholder="Search patient name or number">`,
+				`<div class="group"><select>{{#age}}<option>{{.}}</option>{{/age}}</select></div>`,
+				`<div class="group"><select>{{#wait}}<option>{{.}}</option>{{/wait}}</select></div>`,
+				`<div class="group"><select>{{#flags}}<option>{{.}}</option>{{/flags}}</select></div>`,
+				`<div class="group"><select>{{#step}}<option>{{.}}</option>{{/step}}</select></div>`,
+				`<div class="group"><select>{{#states}}<option>{{.}}</option>{{/states}}</select></div>`,
+			].join(''), {
+				age: ['All ages', '0 - 6y', '6 - 12y', '12 - 18y', '18 - 30y', '40 - 50y','50 - 60y'],
+				wait: ['Wait - all', '0 - 1hr', '2hr - 3hr', '3hr - 4rh', '4hr +'],
+				step: ['Steps - all', 'Waiting - Triage', 'Waiting - Nurse', 'Waiting - Doctor', 'VisAcu - Visual Acuity', 'Dilate', 'etc, etc ...'],
+				flags: ['Flags - all', 'No Flags', 'Change in pupils', 'Diplopia', 'Post Op Diplopia', 'Rapid change in VA', 'Systemically unwell'],
+				states: ['Hide done', 'All', 'Active', 'Waiting', 'Done'],
+			});
+			
+			// build DOM
+			div.append( ul, searchFilters, searchBtn, adderAllBtn );
 
-			// clinic always starts on "all"
-			model.filter = "all";
+			// set up Clinic filter default
+			model.filter = "hide-done";
 		
 			// the clock is running! 
 			clinic.clock();
-	
 		})();
 	};
 
@@ -11388,6 +11437,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* Hold elements for ease of access
 		*/
 		const pathway =  bj.div('pathway');
+		const psBuff = gui.pathStep({
+			shortcode: '?',
+			status: 'buff',
+			type: 'person',
+			info: '&nbsp;'
+		}, false );
+	
 		const tr = document.createElement('tr');
 		const td = {
 			path: document.createElement('td'),
@@ -11406,10 +11462,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const model = Object.assign({
 			_uid: props.uid,
-			_status: null, // "todo", "active", "complete"
+			_status: null, // "todo", "active", "complete", etc!
 			_assigned: false,
-			_bufferStep: false, // buffer step tracks the last step until it's finished
-			
+	
 			get status(){
 				return this._status;
 			},
@@ -11426,16 +11481,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			},
 		}, bj.ModelViews());
 		
-		/**
-		* GETTER / SETTER: App needs to get and set patient assigned from Adder
-		*/
-		const getStatus = () => model.status;
-		
-		const setAssigned = ( val ) => model.assigned = val;
-		
-		const getTime = () => model.time;
-		const getLastname = () => model.lastname;
-		
+	
 		/*
 		WaitDuration is based on the Arrival time and rendered based on 
 		patient state, when patient arrives start the clock
@@ -11450,7 +11496,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			tr.className = model.status;
 			pathway.className = `pathway ${model.status}`;
 			td.addIcon.innerHTML = model.status == "complete" ? 
-				"<!-- complete -->" : `<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
+				"<!-- complete -->" :
+				`<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
 			
 			waitDuration.render( model.status );
 		};
@@ -11461,22 +11508,36 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* VIEW: complete (tick icon) / done
 		*/
 		const changeComplete = () => {
-			td.complete.innerHTML = "";
-			switch( model.status ){
-				case "complete": td.complete.innerHTML = '<span class="fade">Done</span>';
-				break;
-				case "active": td.complete.innerHTML = `<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model._uid}"></i>`;
-			}
+			const completeHTML = model.status == "complete" ?
+				'<span class="fade">Done</span>' :
+				`<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model._uid}"></i>`;
+
+			// update DOM
+			td.complete.innerHTML = model.status == "later" ?  "" : completeHTML;					
 		};
 		
 		model.views.add( changeComplete );
+		
+		/** 
+		* VIEW: Update Buffer
+		*/
+		const updateBuffer = () => {
+			psBuff.setCode( model.assigned );
+			if( model.assigned == "Unassigned" ){
+				psBuff.setType("unassigned");
+			} else {
+				psBuff.setType("person");
+			}
+		};
+		
+		model.views.add( updateBuffer );
+		
 		
 		/**
 		* Add PathStep to patient pathway
 		* @param {Object} step
 		*/
 		const addPathStep = ( step ) => {
-			
 			switch( step.type ){
 				case "arrive": 
 					waitDuration.arrived( step.timestamp, model.status );
@@ -11490,7 +11551,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					step.info = step.mins ? step.mins : "0"; // inbetween needs to show there duration in mins
 			}
 			
+			// add new Pathstep to the pathway
 			gui.pathStep( step, pathway );
+			
+			// buff / assignment
+			if( model.status != "complete" &&
+				model.status != "later" ){
+					pathway.append( psBuff.span ); // make sure buff is last!
+				}
 		};
 		
 		/**
@@ -11601,7 +11669,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			flag( props.f );
 			
 			// build <tr>
-			tr.setAttribute( 'data-timestamp', props.booked );
+			tr.setAttribute( 'data-timestamp', props.bookedTimestamp );
 			
 			tr.insertAdjacentHTML('beforeend', `<td>${props.time}</td>`);
 			tr.insertAdjacentHTML('beforeend', `<td><div class="speciality">${props.clinic[0]}</div><small class="type">${props.clinic[1]}</small></td>`);
@@ -11618,9 +11686,15 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			tr.append( td.complete );
 		})();
 			
-		/* 
-		API
+		/**
+		* API
+		* GETTER / SETTER: App needs to get and set patient assigned from Adder
 		*/
+		const getStatus = () => model.status;
+		const setAssigned = ( val ) => model.assigned = val;
+		const getTime = () => model.time;
+		const getLastname = () => model.lastname;
+		
 		return { onArrived, onDNA, onComplete, render, getStatus, setAssigned, getTime, getLastname, addPathStep };
 	};
 	
@@ -11652,7 +11726,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			'<div class="oe-patient-meta">',
 				'<div class="patient-name">',
 					'<span class="patient-surname">{{lastname}}</span>, ',
-					'<span class="patient-firstname">{{firstname}}</span>',
+					'<span class="patient-firstname">{{{firstname}}}</span>',
 				'</div>',
 				'<div class="patient-details">',
 					'<div class="nhs-number"><span>NHS</span>{{nhs}}</div>',
@@ -11813,7 +11887,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					div.className = 'wait-duration';
 					div.appendChild( waitMins());
 				break;
-				case "todo":
+				case "later":
 					div.className = 'flex';
 					div.innerHTML = [
 						`<button class="cols-7 blue hint js-idg-clinic-btn-arrived" data-patient="${patientID}">Arrived</button>`,
@@ -11932,6 +12006,15 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		const _setters = () => ({
 			/**
+			* @param {String} shortcode - change shortcode (from initial value)
+			*/
+			setCode( shortcode ){
+				this.shortcode = shortcode;
+				this.span.querySelector('.step').textContent = shortcode;
+				this.render();
+			},
+			
+			/**
 			* @param {String} type - e.g. arrive, finish, process, person, config
 			*/
 			setType( type ){
@@ -11989,11 +12072,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			updateInfo(){
 				if( !this.info  ) return; 
 				
-				this.infoSpan.textContent = this.info === "clock" ? 
-					bj.clock24( new Date( Date.now())):
+				this.infoSpan.innerHTML = this.info === "clock" ? 
+					bj.clock24( new Date( Date.now())) :
 					this.info;
 				
-				if( this.status == 'todo' || this.status == 'config' ){
+				if( this.status == 'todo' || 
+					this.status == 'todo-later' ||
+					this.status == 'config' ){
 					this.infoSpan.classList.add('invisible'); // need the DOM to keep the step height consistent
 				} else {
 					this.infoSpan.classList.remove('invisible');
@@ -12047,7 +12132,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			// new DOM element
 			/*
-			Check for specials, e.g. Drug Admin
+			Check for icons specials, e.g. i-Arr, etc
 			*/
 			const name = shortcode.startsWith('i-') ? 
 				`<span class="step ${shortcode}"></span>` :
@@ -12072,11 +12157,16 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// update collection 	
 			ps.setKey( collection.add( ps, span ));
 		
-			// update DOM
-			if( shortcode === "Arr") {
-				pathway.prepend( span ); // put Arrived at the start of pathway
+			// add to DOM.
+			// if DOM parentNode pathway is provided.
+			if( pathway ){
+				if( shortcode === "Arr") {
+					pathway.prepend( span ); // put Arrived at the start of pathway
+				} else {
+					pathway.append( span );
+				}
 			} else {
-				pathway.append( span );
+				return ps; // return new pathstep to be used else where
 			}
 		};
 		

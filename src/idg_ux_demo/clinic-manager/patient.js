@@ -14,6 +14,13 @@
 		* Hold elements for ease of access
 		*/
 		const pathway =  bj.div('pathway');
+		const psBuff = gui.pathStep({
+			shortcode: '?',
+			status: 'buff',
+			type: 'person',
+			info: '&nbsp;'
+		}, false );
+	
 		const tr = document.createElement('tr');
 		const td = {
 			path: document.createElement('td'),
@@ -32,10 +39,9 @@
 		*/
 		const model = Object.assign({
 			_uid: props.uid,
-			_status: null, // "todo", "active", "complete"
+			_status: null, // "todo", "active", "complete", etc!
 			_assigned: false,
-			_bufferStep: false, // buffer step tracks the last step until it's finished
-			
+	
 			get status(){
 				return this._status;
 			},
@@ -52,16 +58,7 @@
 			},
 		}, bj.ModelViews());
 		
-		/**
-		* GETTER / SETTER: App needs to get and set patient assigned from Adder
-		*/
-		const getStatus = () => model.status;
-		
-		const setAssigned = ( val ) => model.assigned = val;
-		
-		const getTime = () => model.time;
-		const getLastname = () => model.lastname;
-		
+	
 		/*
 		WaitDuration is based on the Arrival time and rendered based on 
 		patient state, when patient arrives start the clock
@@ -76,7 +73,8 @@
 			tr.className = model.status;
 			pathway.className = `pathway ${model.status}`;
 			td.addIcon.innerHTML = model.status == "complete" ? 
-				"<!-- complete -->" : `<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
+				"<!-- complete -->" :
+				`<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
 			
 			waitDuration.render( model.status );
 		};
@@ -87,22 +85,36 @@
 		* VIEW: complete (tick icon) / done
 		*/
 		const changeComplete = () => {
-			td.complete.innerHTML = "";
-			switch( model.status ){
-				case "complete": td.complete.innerHTML = '<span class="fade">Done</span>';
-				break;
-				case "active": td.complete.innerHTML = `<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model._uid}"></i>`;
-			}
+			const completeHTML = model.status == "complete" ?
+				'<span class="fade">Done</span>' :
+				`<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model._uid}"></i>`;
+
+			// update DOM
+			td.complete.innerHTML = model.status == "later" ?  "" : completeHTML;					
 		};
 		
 		model.views.add( changeComplete );
+		
+		/** 
+		* VIEW: Update Buffer
+		*/
+		const updateBuffer = () => {
+			psBuff.setCode( model.assigned );
+			if( model.assigned == "Unassigned" ){
+				psBuff.setType("unassigned");
+			} else {
+				psBuff.setType("person");
+			}
+		};
+		
+		model.views.add( updateBuffer );
+		
 		
 		/**
 		* Add PathStep to patient pathway
 		* @param {Object} step
 		*/
 		const addPathStep = ( step ) => {
-			
 			switch( step.type ){
 				case "arrive": 
 					waitDuration.arrived( step.timestamp, model.status );
@@ -116,7 +128,14 @@
 					step.info = step.mins ? step.mins : "0"; // inbetween needs to show there duration in mins
 			}
 			
+			// add new Pathstep to the pathway
 			gui.pathStep( step, pathway );
+			
+			// buff / assignment
+			if( model.status != "complete" &&
+				model.status != "later" ){
+					pathway.append( psBuff.span ); // make sure buff is last!
+				}
 		};
 		
 		/**
@@ -227,7 +246,7 @@
 			flag( props.f );
 			
 			// build <tr>
-			tr.setAttribute( 'data-timestamp', props.booked );
+			tr.setAttribute( 'data-timestamp', props.bookedTimestamp );
 			
 			tr.insertAdjacentHTML('beforeend', `<td>${props.time}</td>`);
 			tr.insertAdjacentHTML('beforeend', `<td><div class="speciality">${props.clinic[0]}</div><small class="type">${props.clinic[1]}</small></td>`);
@@ -244,9 +263,15 @@
 			tr.append( td.complete );
 		})();
 			
-		/* 
-		API
+		/**
+		* API
+		* GETTER / SETTER: App needs to get and set patient assigned from Adder
 		*/
+		const getStatus = () => model.status;
+		const setAssigned = ( val ) => model.assigned = val;
+		const getTime = () => model.time;
+		const getLastname = () => model.lastname;
+		
 		return { onArrived, onDNA, onComplete, render, getStatus, setAssigned, getTime, getLastname, addPathStep };
 	};
 	

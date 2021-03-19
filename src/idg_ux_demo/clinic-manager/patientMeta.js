@@ -21,7 +21,7 @@
 			'<div class="oe-patient-meta">',
 				'<div class="patient-name">',
 					'<span class="patient-surname">{{lastname}}</span>, ',
-					'<span class="patient-firstname">{{firstname}}</span>',
+					'<span class="patient-firstname">{{{firstname}}}</span>',
 				'</div>',
 				'<div class="patient-details">',
 					'<div class="nhs-number"><span>NHS</span>{{nhs}}</div>',

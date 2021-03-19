@@ -104,7 +104,7 @@
 					div.className = 'wait-duration';
 					div.appendChild( waitMins());
 				break;
-				case "todo":
+				case "later":
 					div.className = 'flex';
 					div.innerHTML = [
 						`<button class="cols-7 blue hint js-idg-clinic-btn-arrived" data-patient="${patientID}">Arrived</button>`,
