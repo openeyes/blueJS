@@ -17,10 +17,10 @@
 			case "unassigned" : full = "Not assigned"; break;
 
 			case "MM" : full = "Mr Michael Morgan"; break;
-			case "AB" : full = "Dr Amit Baum"; break;
-			case "AG" : full = "Dr Angela Glasby"; break;
-			case "RB" : full = "Dr Robin Baum"; break;
-			case "CW" : full = "Dr Coral Woodhouse"; break; 
+			case "GJB" : full = "Dr Georg Joseph Beer "; break;
+			case "GP" : full = "Dr George Bartischy"; break;
+			case "Su" : full = "Sushruta"; break;
+			case "ZF" : full = "Dr Zofia Falkowska"; break; 
 			
 			case "Img" : full = "Imaging"; break;
 			case "VisAcu" : full = "Visual Acuity"; break;

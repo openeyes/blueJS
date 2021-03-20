@@ -11042,16 +11042,18 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			searchFilters.style.display = "none";
 			
 			searchFilters.innerHTML = Mustache.render( [
-				`<input class="search" type="text" placeholder="Search patient name or number">`,
+				`<input class="search" type="text" placeholder="Patient name or number">`,
 				`<div class="group"><select>{{#age}}<option>{{.}}</option>{{/age}}</select></div>`,
 				`<div class="group"><select>{{#wait}}<option>{{.}}</option>{{/wait}}</select></div>`,
-				`<div class="group"><select>{{#flags}}<option>{{.}}</option>{{/flags}}</select></div>`,
 				`<div class="group"><select>{{#step}}<option>{{.}}</option>{{/step}}</select></div>`,
+				`<div class="group"><select>{{#assigned}}<option>{{.}}</option>{{/assigned}}</select></div>`,
+				`<div class="group"><select>{{#flags}}<option>{{.}}</option>{{/flags}}</select></div>`,
 				`<div class="group"><select>{{#states}}<option>{{.}}</option>{{/states}}</select></div>`,
 			].join(''), {
 				age: ['All ages', '0 - 6y', '6 - 12y', '12 - 18y', '18 - 30y', '40 - 50y','50 - 60y'],
 				wait: ['Wait - all', '0 - 1hr', '2hr - 3hr', '3hr - 4rh', '4hr +'],
 				step: ['Steps - all', 'Waiting - Triage', 'Waiting - Nurse', 'Waiting - Doctor', 'VisAcu - Visual Acuity', 'Dilate', 'etc, etc ...'],
+				assigned: ['Assigned - all', 'Unassigned', 'GJB - Dr Georg Joseph Beer', 'GP - Dr George Bartischy', 'MM - Mr Michael Morgan', 'Su - Sushruta', 'ZF - Dr Zofia Falkowska'],
 				flags: ['Flags - all', 'No Flags', 'Change in pupils', 'Diplopia', 'Post Op Diplopia', 'Rapid change in VA', 'Systemically unwell'],
 				states: ['Hide done', 'All', 'Active', 'Waiting', 'Done'],
 			});
@@ -11933,10 +11935,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			case "unassigned" : full = "Not assigned"; break;
 
 			case "MM" : full = "Mr Michael Morgan"; break;
-			case "AB" : full = "Dr Amit Baum"; break;
-			case "AG" : full = "Dr Angela Glasby"; break;
-			case "RB" : full = "Dr Robin Baum"; break;
-			case "CW" : full = "Dr Coral Woodhouse"; break; 
+			case "GJB" : full = "Dr Georg Joseph Beer "; break;
+			case "GP" : full = "Dr George Bartischy"; break;
+			case "Su" : full = "Sushruta"; break;
+			case "ZF" : full = "Dr Zofia Falkowska"; break; 
 			
 			case "Img" : full = "Imaging"; break;
 			case "VisAcu" : full = "Visual Acuity"; break;
