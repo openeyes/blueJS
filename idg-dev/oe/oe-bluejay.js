@@ -10820,7 +10820,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			'<thead><tr>{{#th}}<th>{{{.}}}</th>{{/th}}</tr></thead>',
 			'<tbody></tbody>'
 		].join(''), {
-			"th": ['Arr.', 'Clinic', 'Dob',  'Patient', '', 'Pathway', '', 'R1-3', '<i class="oe-i flag small"></i>', 'Mins', '']
+			"th": ['Arr.', 'Clinic', 'Dob',  'Patient', '', 'Pathway', '', '<i class="oe-i person small"></i>', '<i class="oe-i flag small"></i>', 'Mins', '']
 		});
 		
 		document.getElementById('js-clinic-manager').appendChild( table );
@@ -11451,7 +11451,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			path: document.createElement('td'),
 			addIcon: document.createElement('td'),
 			flags: document.createElement('td'),
-			risk: document.createElement('td'),
+			owner: document.createElement('td'),
 			complete: document.createElement('td'),
 		};
 		

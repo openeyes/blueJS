@@ -26,7 +26,7 @@
 			path: document.createElement('td'),
 			addIcon: document.createElement('td'),
 			flags: document.createElement('td'),
-			risk: document.createElement('td'),
+			owner: document.createElement('td'),
 			complete: document.createElement('td'),
 		};
 		
