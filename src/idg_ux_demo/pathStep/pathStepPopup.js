@@ -29,18 +29,6 @@
 		};
 		
 		/**
-		* Title, updates the <h3> title, always present
-		* @param {String} shortcode 
-		* @returns {Element}
-		*/
-		const setTitle = ( shortcode ) => {
-			const h3 = bj.dom('h3', 'title');
-			h3.textContent = bj.namespace('pathstep').fullShortCode( shortcode );
-			return h3; 
-		};
-		
-		
-		/**
 		* Load content, loading this from the server
 		* @params {String} shortcode - PathStep shortcode e.g. "Arr", etc
 		* @params {String} status - 'todo', 'active', 'etc'...
@@ -55,7 +43,17 @@
 			bj.xhr(`/idg-php/load/pathstep/_ps.php?full=${full}&code=${phpCode}`, pathStepKey )
 				.then( xreq => {
 					if( pathStepKey != xreq.token ) return;
-					popup.insertAdjacentHTML('beforeend', xreq.html );
+					// clear and replace content
+					bj.empty( popup );
+					const div = bj.div('slide-open');
+					div.innerHTML = xreq.html;
+					// add either a close icon or an expand icon
+					popup.append( div, closeBtn( full ));
+					// CSS has a default height of 50px.. expand heightto show content
+					// CSS will handle animation
+					popup.style.height = (div.scrollHeight + 20) + 'px'; 
+					
+					
 				})
 				.catch( e => console.log('PHP failed to load', e ));
 		};
@@ -77,11 +75,16 @@
 			// clear all children and reset the CSS
 			bj.empty( popup );
 			popup.classList.remove('arrow-t', 'arrow-b');
+			popup.removeAttribute('style'); // remove the height until it's loaded in (reverts back to CSS)
 			
-			// build node tree:
-			popup.append( closeBtn( full ));
-			popup.append( setTitle( useCode ));
+			// there will be a small loading period: 
+			const h3 = bj.dom('h3', 'title');
+			h3.innerHTML = `<i class="spinner as-icon"></i>`;
+			popup.append( h3 );
 			
+			// iDG loads PHP to demo content.
+			// either a basic demo based on the shortcode
+			// or using an iDG code to demo specific content
 			loadContent(useCode , status, full );
 			
 			/*

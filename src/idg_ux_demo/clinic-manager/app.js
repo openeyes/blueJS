@@ -190,7 +190,7 @@
 				['All','all'],
 				['Active','active'],
 				['Waiting','waiting'],
-				['Stranded','stuck'],
+				['Stuck','stuck'],
 				//['Later','later'], // not needed for A&E
 				['Done','complete'],
 			].forEach( btn => {

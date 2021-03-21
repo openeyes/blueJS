@@ -63,6 +63,8 @@
 					status: step[2],
 					type: step[3],
 				};
+				
+				if( step[4] ) obj.idgPopupCode = step[4];
 								
 				// update the nested step array to an Object
 				thisArr[i] = obj;

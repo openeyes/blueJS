@@ -13,14 +13,7 @@
 		* Patient UI is a table row <tr>
 		* Hold elements for ease of access
 		*/
-		const pathway =  bj.div('pathway');
-		const psBuff = gui.pathStep({
-			shortcode: '?',
-			status: 'buff',
-			type: 'person',
-			info: '&nbsp;'
-		}, false );
-	
+		
 		const tr = document.createElement('tr');
 		const td = {
 			path: document.createElement('td'),
@@ -29,6 +22,17 @@
 			owner: document.createElement('td'),
 			complete: document.createElement('td'),
 		};
+		
+		const pathway =  bj.div('pathway');
+		const psBuff = gui.pathStep({
+			shortcode: '?',
+			status: 'buff',
+			type: 'person',
+			info: '&nbsp;'
+		}, false );
+		
+		td.owner.append( psBuff.span );
+		
 		
 		// DOM structure for pathway
 		td.path.append( pathway );	 
@@ -100,11 +104,6 @@
 		*/
 		const updateBuffer = () => {
 			psBuff.setCode( model.assigned );
-			if( model.assigned == "Unassigned" ){
-				psBuff.setType("unassigned");
-			} else {
-				psBuff.setType("person");
-			}
 		};
 		
 		model.views.add( updateBuffer );
@@ -129,38 +128,11 @@
 			}
 			
 			// add new Pathstep to the pathway
+			// @param {.} step - {shortcode, status, type, info, idgPopupCode}
 			gui.pathStep( step, pathway );
-			
-			// buff / assignment
-			if( model.status != "complete" &&
-				model.status != "later" ){
-					pathway.append( psBuff.span ); // make sure buff is last!
-				}
+
 		};
 		
-		/**
-		* Risks 
-		*/
-		const risk = ( r ) => {
-			let icon = 'grey';
-			let tip = 'Not assessed';
-			switch( r ){
-				case 3:	
-					icon = 'green';
-					tip = 'Patient Risk: 3 (Low).<br>Mild consequences from delayed appointment. <br>Previous Cancelled: 1';
-				break;
-				case 2:
-					icon = 'orange';
-					tip = 'Patient Risk: 2 (Medium).<br>Reversible harm from delayed appointment. <br>Previous Cancelled: 0';	
-				break;
-				case 1:	
-					icon = 'red';
-					tip = 'Patient Risk: 1 (High).<br>Irreversible harm from delayed appointment. Do NOT rescheduled patient. <br>Previous Cancelled: 0';
-				break;
-			}
-			
-			td.risk.innerHTML = `<i class="oe-i triangle-${icon} small-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
-		};
 		
 		/**
 		* Flags
@@ -183,6 +155,7 @@
 				timestamp: Date.now(),
 				status: 'done',
 				type: 'arrive',
+				idgPopupCode: 'arrive-basic',
 			});
 			addPathStep({
 				shortcode: 'Waiting',
@@ -242,7 +215,7 @@
 			// build pathway steps
 			props.pathway.forEach( step => addPathStep( step ));
 			
-			risk( props.r );
+			
 			flag( props.f );
 			
 			// build <tr>
@@ -257,7 +230,7 @@
 			tr.append( clinic.patientQuickView( props ));
 			tr.append( td.path );
 			tr.append( td.addIcon );
-			tr.append( td.risk );	
+			tr.append( td.owner );	
 			tr.append( td.flags );
 			tr.append( waitDuration.render( props.status )); // returns a <td>
 			tr.append( td.complete );

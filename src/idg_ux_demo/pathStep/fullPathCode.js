@@ -11,8 +11,10 @@
 		let full = shortcode; // e.g "Nurse" doesn't need expanding on
 	
 		switch( shortcode ){
-			case 'Arr': full = "Arrived"; break;
-			case 'Fin': full = "Finish"; break;
+			case 'i-Arr': full = "Arrived"; break;
+			case 'i-Wait': full = "Waiting"; break;
+			case 'i-Stop': full = "Auto-complete after last completed step"; break;
+			case 'i-Fin': full = "Finished Pathway - Patient discharged"; break;
 			case "DNA" : full = "Did Not Attend"; break;
 			case "unassigned" : full = "Not assigned"; break;
 

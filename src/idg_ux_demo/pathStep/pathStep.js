@@ -73,7 +73,9 @@
 				let newStatus;
 				switch( this.status ){
 					case 'config': newStatus = 'todo'; break;
-					case 'todo': newStatus = 'active'; break;
+					case 'todo': 
+					case 'todo-later':
+						newStatus = 'active'; break;
 					case 'active': newStatus = 'done'; break;
 				}
 				this.setStatus( newStatus );

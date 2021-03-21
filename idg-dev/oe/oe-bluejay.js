@@ -10806,6 +10806,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					status: step[2],
 					type: step[3],
 				};
+				
+				if( step[4] ) obj.idgPopupCode = step[4];
 								
 				// update the nested step array to an Object
 				thisArr[i] = obj;
@@ -11026,7 +11028,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				['All','all'],
 				['Active','active'],
 				['Waiting','waiting'],
-				['Stranded','stuck'],
+				['Stuck','stuck'],
 				//['Later','later'], // not needed for A&E
 				['Done','complete'],
 			].forEach( btn => {
@@ -11438,14 +11440,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* Patient UI is a table row <tr>
 		* Hold elements for ease of access
 		*/
-		const pathway =  bj.div('pathway');
-		const psBuff = gui.pathStep({
-			shortcode: '?',
-			status: 'buff',
-			type: 'person',
-			info: '&nbsp;'
-		}, false );
-	
+		
 		const tr = document.createElement('tr');
 		const td = {
 			path: document.createElement('td'),
@@ -11454,6 +11449,17 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			owner: document.createElement('td'),
 			complete: document.createElement('td'),
 		};
+		
+		const pathway =  bj.div('pathway');
+		const psBuff = gui.pathStep({
+			shortcode: '?',
+			status: 'buff',
+			type: 'person',
+			info: '&nbsp;'
+		}, false );
+		
+		td.owner.append( psBuff.span );
+		
 		
 		// DOM structure for pathway
 		td.path.append( pathway );	 
@@ -11525,11 +11531,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const updateBuffer = () => {
 			psBuff.setCode( model.assigned );
-			if( model.assigned == "Unassigned" ){
-				psBuff.setType("unassigned");
-			} else {
-				psBuff.setType("person");
-			}
 		};
 		
 		model.views.add( updateBuffer );
@@ -11554,38 +11555,11 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			}
 			
 			// add new Pathstep to the pathway
+			// @param {.} step - {shortcode, status, type, info, idgPopupCode}
 			gui.pathStep( step, pathway );
-			
-			// buff / assignment
-			if( model.status != "complete" &&
-				model.status != "later" ){
-					pathway.append( psBuff.span ); // make sure buff is last!
-				}
+
 		};
 		
-		/**
-		* Risks 
-		*/
-		const risk = ( r ) => {
-			let icon = 'grey';
-			let tip = 'Not assessed';
-			switch( r ){
-				case 3:	
-					icon = 'green';
-					tip = 'Patient Risk: 3 (Low).<br>Mild consequences from delayed appointment. <br>Previous Cancelled: 1';
-				break;
-				case 2:
-					icon = 'orange';
-					tip = 'Patient Risk: 2 (Medium).<br>Reversible harm from delayed appointment. <br>Previous Cancelled: 0';	
-				break;
-				case 1:	
-					icon = 'red';
-					tip = 'Patient Risk: 1 (High).<br>Irreversible harm from delayed appointment. Do NOT rescheduled patient. <br>Previous Cancelled: 0';
-				break;
-			}
-			
-			td.risk.innerHTML = `<i class="oe-i triangle-${icon} small-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
-		};
 		
 		/**
 		* Flags
@@ -11608,6 +11582,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				timestamp: Date.now(),
 				status: 'done',
 				type: 'arrive',
+				idgPopupCode: 'arrive-basic',
 			});
 			addPathStep({
 				shortcode: 'Waiting',
@@ -11667,7 +11642,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// build pathway steps
 			props.pathway.forEach( step => addPathStep( step ));
 			
-			risk( props.r );
+			
 			flag( props.f );
 			
 			// build <tr>
@@ -11682,7 +11657,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			tr.append( clinic.patientQuickView( props ));
 			tr.append( td.path );
 			tr.append( td.addIcon );
-			tr.append( td.risk );	
+			tr.append( td.owner );	
 			tr.append( td.flags );
 			tr.append( waitDuration.render( props.status )); // returns a <td>
 			tr.append( td.complete );
@@ -11726,9 +11701,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const template = [
 			'<div class="oe-patient-meta">',
+				
 				'<div class="patient-name">',
-					'<span class="patient-surname">{{lastname}}</span>, ',
-					'<span class="patient-firstname">{{{firstname}}}</span>',
+					'<a href="/v3-SEM/patient-overview">',
+						'<span class="patient-surname">{{lastname}}</span>, ',
+						'<span class="patient-firstname">{{{firstname}}}</span>',
+					'</a>',
 				'</div>',
 				'<div class="patient-details">',
 					'<div class="nhs-number"><span>NHS</span>{{nhs}}</div>',
@@ -11929,8 +11907,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		let full = shortcode; // e.g "Nurse" doesn't need expanding on
 	
 		switch( shortcode ){
-			case 'Arr': full = "Arrived"; break;
-			case 'Fin': full = "Finish"; break;
+			case 'i-Arr': full = "Arrived"; break;
+			case 'i-Wait': full = "Waiting"; break;
+			case 'i-Stop': full = "Auto-complete after last completed step"; break;
+			case 'i-Fin': full = "Finished Pathway - Patient discharged"; break;
 			case "DNA" : full = "Did Not Attend"; break;
 			case "unassigned" : full = "Not assigned"; break;
 
@@ -12038,7 +12018,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				let newStatus;
 				switch( this.status ){
 					case 'config': newStatus = 'todo'; break;
-					case 'todo': newStatus = 'active'; break;
+					case 'todo': 
+					case 'todo-later':
+						newStatus = 'active'; break;
 					case 'active': newStatus = 'done'; break;
 				}
 				this.setStatus( newStatus );
@@ -12211,18 +12193,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		};
 		
 		/**
-		* Title, updates the <h3> title, always present
-		* @param {String} shortcode 
-		* @returns {Element}
-		*/
-		const setTitle = ( shortcode ) => {
-			const h3 = bj.dom('h3', 'title');
-			h3.textContent = bj.namespace('pathstep').fullShortCode( shortcode );
-			return h3; 
-		};
-		
-		
-		/**
 		* Load content, loading this from the server
 		* @params {String} shortcode - PathStep shortcode e.g. "Arr", etc
 		* @params {String} status - 'todo', 'active', 'etc'...
@@ -12237,7 +12207,17 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			bj.xhr(`/idg-php/load/pathstep/_ps.php?full=${full}&code=${phpCode}`, pathStepKey )
 				.then( xreq => {
 					if( pathStepKey != xreq.token ) return;
-					popup.insertAdjacentHTML('beforeend', xreq.html );
+					// clear and replace content
+					bj.empty( popup );
+					const div = bj.div('slide-open');
+					div.innerHTML = xreq.html;
+					// add either a close icon or an expand icon
+					popup.append( div, closeBtn( full ));
+					// CSS has a default height of 50px.. expand heightto show content
+					// CSS will handle animation
+					popup.style.height = (div.scrollHeight + 20) + 'px'; 
+					
+					
 				})
 				.catch( e => console.log('PHP failed to load', e ));
 		};
@@ -12259,11 +12239,16 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// clear all children and reset the CSS
 			bj.empty( popup );
 			popup.classList.remove('arrow-t', 'arrow-b');
+			popup.removeAttribute('style'); // remove the height until it's loaded in (reverts back to CSS)
 			
-			// build node tree:
-			popup.append( closeBtn( full ));
-			popup.append( setTitle( useCode ));
+			// there will be a small loading period: 
+			const h3 = bj.dom('h3', 'title');
+			h3.innerHTML = `<i class="spinner as-icon"></i>`;
+			popup.append( h3 );
 			
+			// iDG loads PHP to demo content.
+			// either a basic demo based on the shortcode
+			// or using an iDG code to demo specific content
 			loadContent(useCode , status, full );
 			
 			/*
