@@ -2,215 +2,215 @@
 
 	'use strict';	
 	
-	/**
-	* @param {JSON} json
-	*/
-	const adder = ( json ) => {
+	const adder = () => {
+		
+		// hold in memory
+		let multi; // 'single' or 'multiple' patients 
+		let multiPatientCheckBoxes;
 		
 		const div = bj.div('oe-clinic-adder');
 		const patients = bj.div('patients');
 		const singlePatient = bj.div('single-patient'); 
-		const arrived = new Map();
-		const later = new Map();
 		const selectedPatients = new Set(); 
 		
 		/**
-		* GETTER: App
+		* Reset DOM and clear selectedPatients
+		* @param {String} mode - 'single' or 'multiple'
 		*/
-		const getSelectedPatients = () => selectedPatients;
-		
-		/**
-		* <div> row with <h4> title 
-		* @param {String} title
-		* @returns {Element};
-		*/
-		const _row = ( title ) => {
-			const row = bj.div('row');
-			row.innerHTML = `<h4>${title}</h4>`;
-			return row;
-		};
-		
-		/**
-		* <ul>
-		* @param {String} class
-		* @returns {Element};
-		*/
-		const _ul = ( css ) => {
-			const ul = document.createElement('ul');
-			ul.className = css;
-			return ul;
-		}; 
-
-		/**
-		* Patient list - update the DOM for Arrived and Later groups
-		*/
-		const updatePatientList = () => {
-			
-			const list = ( title, listMap ) => {
-				const row = _row( title );
-				const ul = _ul("row-list");
-				listMap.forEach(( value, key ) => {
-					const li = document.createElement('li');
-					li.innerHTML = `<label class="highlight"><input type="checkbox" value="${key}" /><span>${value.time} - ${value.lastname}</span></label>`;
-					ul.append( li );
-				});
-				row.append( ul );
-				return row;
-			}; 
-			
-			// update DOM
-			patients.innerHTML = "";
-			patients.append( list( "Arrived", arrived ));
-			patients.append( list( "Later", later ));			
-		};
-		
-		/**
-		* Patient list - update who's selected
-		*/
-		const updateSelectPatients = () => {
+		const reset = ( mode) => {
+			multi = ( mode == 'multi'); // set Boolean
+			bj.empty( patients )
+			patients.remove();
+			singlePatient.remove();
 			selectedPatients.clear();
-			const inputs = bj.nodeArray( patients.querySelectorAll('input[type=checkbox]'));
-			inputs.forEach( input => {
-				if( input.checked ) selectedPatients.add( input.value );
-			});
-		};
+		}
 		
 		/**
-		* Event delegation, just interested if a checkbox is changed
-		*/
-		patients.addEventListener('change', updateSelectPatients );
-		
-		/**
-		* CSS Animation touch
+		* Display uses CSS animation
+		* Display default in CSS is: "none"
+		* adding "fadein" starts the CSS animation AND sets display
 		*/
 		const fadein = () => {
-			if( div.classList.contains('fadein')) div.classList.remove('fadein');
+			div.classList.remove('fadein');
 			div.classList.add('fadein');
 		};
 		
+		// removing "fadein" effectively equals: display:none
+		const hide = () => {
+			div.classList.remove('fadein');
+			reset();
+		}
+		
 		/**
-		* API patient arrived, need to update my lists
-		* @param {String} id - patient key
+		* @callback - App
+		* when an insert step option is click, App needs to know 
+		* which patients are select
+		* @returns {Set} - Patient IDs
 		*/
-		const onPatientArrived = ( id ) => {
-			if( later.has( id )){
-				arrived.set( id, later.get(id));
-				later.delete( id );
-			}	
-			// update Arrived and Later patient groups
-			updatePatientList();
+		const getSelectedPatients = () => {
+			if( multi ){
+				// update from checked patients
+				selectedPatients.clear();
+				multiPatientCheckBoxes.forEach( checkbox => {
+					if( checkbox.checked ){
+						selectedPatients.add( checkbox.value )
+					}					
+				});
+			}
+			
+			return selectedPatients;
+		};
+		
+		/**
+		* Event: input check box (selected patients)
+		* A quick hack to demo Selecting "All" patients
+		*/
+		patients.addEventListener('change', ev => {
+			const input = ev.target;
+			if( input.value == "select-all"){
+				multiPatientCheckBoxes.forEach( checkbox => checkbox.checked = input.checked );
+			} 
+		});
+		
+
+		/**
+		* @callback - list all patients in view
+		* @param {Set} - set of the filtered patients
+		*/
+		const showAll = ( patientSet ) => {
+			reset('multi');
+			
+			// Helper - build <li>
+			const _li = ( val, text ) => {
+				const li = document.createElement('li');
+				li.innerHTML = `<label class="highlight"><input type="checkbox" value="${val}" checked/><span>${text}</span></label>`;
+				return li;
+			}
+			
+			// <ul>
+			const ul = bj.dom('ul','row-list');
+			
+			// add patients
+			patientSet.forEach( patient => {
+				ul.append( _li( patient.getID(), patient.getNameAge() ));
+			});	
+			
+			// update DOM
+			patients.append( ul );
+			div.prepend( patients );
+			
+			// store array of patient checkboxes
+			multiPatientCheckBoxes = bj.nodeArray( patients.querySelectorAll('input[type=checkbox]'));
+			
+			// add a "select all" option
+			ul.prepend( _li('select-all', 'All')); // add "All" - always first
+			
+			fadein();
+		};
+		
+		/**
+		* @callback - specific patient 
+		*/
+		const showSingle = ( id, nameAge ) => {
+			reset('single');
+			selectedPatients.add( id );
+			singlePatient.innerHTML = `<span class="highlighter">${nameAge}</span>`;
+			div.querySelector('.insert-steps').prepend( singlePatient );
+			fadein();
 		};
 
 		/**
-		* API: Show ALL patients
-		*/
-		const showAll = () => {
-			bj.show( patients );
-			bj.hide( singlePatient );
-			updateSelectPatients(); // reset the selected list
-			fadein();
-		};
-		
-		/**
-		* API: Show for specific patient
-		* specific patient 
-		*/
-		const showSingle = ( id, time, surname ) => {
-			bj.hide( patients );
-			singlePatient.innerHTML = `${time} - ${surname}`;
-			bj.show( singlePatient );
-			selectedPatients.clear();
-			selectedPatients.add( id );
-			fadein();
-		};
-		
-		/**
-		* API: Hide adder
-		*/
-		const hide = () => div.classList.remove('fadein');
-		
-		/**
-		* Init Adder and build staic DOM elements	
+		* Init 
+		* build all the steps that can be added
+		* patients shown depend on filters	
 		*/
 		(() => {
-			// split patients into arrived and later groups
-			json.forEach( patient => {
-				if( patient.status == "active"){
-					arrived.set( patient.uid, {
-						time: patient.time, 
-						lastname: patient.lastname
-					});
-				} 
-				if( patient.status === 'todo' ){
-					later.set( patient.uid, {
-						time: patient.time, 
-						lastname: patient.lastname
-					});
-				}
-			});
-			
-			updatePatientList();
-			
 			/*
-			Update actions are static, build once
+			* Insert steps options are static, build once
+			*
+			* Each shortcode has a full title shown in the popup.
+			* In iDG that is in the PHP, however we also have to show 
+			* it here where the user has to select a step.
 			*/
-			const updates = bj.div('update-actions');
-			updates.append( singlePatient );
+			const fullText = new Map();	
+			fullText.set('i-Arr', 'Arrived');
+			fullText.set('i-Wait', 'Waiting');
+			fullText.set('i-Stop', 'Auto-complete after last completed step');
+			fullText.set('i-Fin', 'Finished Pathway - Patient discharged');
+			fullText.set('DNA', 'Did Not Attend');
+			fullText.set('unassigned', 'Not assigned');
 			
-			const doctors = ['MM', 'AB', 'AG', 'RB', 'CW'].sort();
-			const people = ['Nurse'];
-			const process = ['Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort();
+			fullText.set('MM', 'Mr Michael Morgan');
+			fullText.set('GJB', 'Dr Georg Joseph Beer ');
+			fullText.set('GP', 'Dr George Bartischy');
+			fullText.set('Su', 'Sushruta');
+			fullText.set('ZF', 'Dr Zofia Falkowska'); 
+			fullText.set('Nurse', 'Nurse');
 			
-			// helper
+			fullText.set('Dilate', 'Dilate');
+			fullText.set('Colour', 'Colour');
+			fullText.set('Img', 'Imaging');
+			fullText.set('VisAcu', 'Visual Acuity');
+			fullText.set('Orth', 'Orthoptics');
+			fullText.set('Fields', 'Visual Fields');
+			fullText.set('Ref', 'Refraction');
+			
+			fullText.set('PSD', 'Patient Specific Directive');
+			fullText.set('PGD', 'Patient Group Directive');
+			
+			fullText.set('c-last', 'remove last pathway step');
+			fullText.set('c-all', 'Clear all pathway steps');
+				
+			/*
+			* Element for all inserts
+			* only need to build this once
+			*/
+			const inserts = bj.div('insert-steps');
+			
+			// helper build <li>
 			const _li = ( code, type, html ) => {
-				const li = document.createElement('li');
-				li.setAttribute('data-shortcode', code );
-				li.setAttribute('data-type', type);
-				li.innerHTML = html;
+				
 				return li;
 			};
 			
-			/*
-			assignment options
-			*/
-			const nsPathStep = bj.namespace('pathstep'); 
-			
-			let row = _row('Assign to');
-			let ul = _ul('btn-list');
-			
-			['unassigned'].concat( doctors ).forEach( code => {
-				ul.append( _li( code, 'assign', nsPathStep.fullShortCode( code ))); 
-			});
-			
-			row.append( ul );
-			updates.append( row );
-			
-			/*
-			people & processes pathsteps
-			*/
-			row = _row('Add to patient pathway');
-			ul = _ul('btn-list');
-			
-			// people
-			[].concat( doctors, people ).forEach( code => {
-				const fullText = nsPathStep.fullShortCode( code );
-				ul.append( _li( code, 'person', `${code} <small>- ${fullText}</small>`)); 
-			});
+			const buildGroup = ( title, list, type ) => {
+				const group = bj.dom('div','row', `<h4>${title}</h4>`);
+				const ul = bj.dom('ul', 'btn-list');
+				
+				list.forEach( code => {
+					let shortcode = code;
+					if( code == "c-all") code = "Clear all";
+					if( code == "c-last") code = "Remove last";
+					
+					
+					const li = document.createElement('li');
+					li.setAttribute('data-code', shortcode );
+					li.setAttribute('data-type', type);
+					li.innerHTML = `${code} <small>- ${fullText.get(shortcode)}</small>`;
+					
+					if( shortcode == "c-last"){
+						li.className = "red";
+					}
+					
+					ul.append( li );
+				});
+				
+				group.append( ul );
+				inserts.append( group );
+			};
+		
+			// Step groups
+			const process = ['Colour','Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort();
+			const people = ['MM', 'GJB', 'GP', 'Su', 'ZF','Nurse'].sort();
 			
 			// processes 
-			process.forEach( code => {
-				const fullText = nsPathStep.fullShortCode( code );
-				ul.append( _li( code, 'process', `${code} <small>- ${fullText}</small>`)); 
-			});
+			buildGroup('Steps', process, 'process' );
+			buildGroup('People', people, 'person' );
 			
-			row.append( ul );
-			updates.append( row );
-			
-			/*
-			build structure & hide it
-			*/
-			div.append( bj.div('close-btn'), patients, updates );
-			hide();
+			buildGroup('Remove "todo" steps from selected', ['c-last'], 'removeTodos' );
+
+			// build div
+			div.append( bj.div('close-btn'), inserts );
 			
 			// update DOM
 			document.querySelector('.oe-clinic').append( div );
@@ -220,8 +220,12 @@
 		/* 
 		API
 		*/
-		return { showAll, showSingle, hide, onPatientArrived, getSelectedPatients };
-		
+		return { 
+			showAll, 
+			showSingle, 
+			hide, 
+			getSelectedPatients, 
+		};	
 	};
 	
 	clinic.adder = adder;

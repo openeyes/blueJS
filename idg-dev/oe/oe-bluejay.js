@@ -10313,434 +10313,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 })(bluejay); 
 
-(function( bj ){
-
-	'use strict';	
-	
-	/**
-	* React Component 
-	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-		const react = bj.namespace('react');
-
-		class PathStepPopup extends React.Component {
-			
-			constructor( props ){
-				super( props );
-				
-				// no need for state (at least, as I currently understand React JS ;)
-				
-				this.setTitle = this.setTitle.bind( this );
-				this.content = this.content.bind( this );
-				this.stepPIN = this.stepPIN.bind( this );
-				this.stepActions = this.stepActions.bind( this );
-				this.stepStatus = this.stepStatus.bind( this );
-			}
-			
-			/**
-			* Title, convert shortcode into full title
-			* @params {*} this.props.step
-			* @returns {ReactElement}
-			*/
-			setTitle( step ){
-				const title = react.fullShortCode( step.shortcode );
-				const time = ( step.status == 'next' ) ? "Next" : bj.clock24( new Date( step.timestamp ));
-				return rEl('h3', null, `${time} - ${title}` ); 
-			}
-			
-			/**
-			* Demo some content example for popup
-			*/
-			content(){
-				return (
-					rEl('div', { 
-							className: 'popup-overflow' 
-						}, 
-						rEl('div', { 
-							className: 'data-group', 
-							dangerouslySetInnerHTML: { 
-								__html : '<table class="data-table"><tbody><tr><td><span class="oe-eye-lat-icons"><i class="oe-i laterality R small"></i><i class="oe-i laterality L small"></i></span></td><td>No step data being shown for this demo...</td><td>UX Demo</td></tr></tbody></table>'
-							}, 	
-						})
-					)
-				);
-			}
-			
-			/**
-			* Demo PIN inputs
-			* @params {*} this.props.step
-			* @returns {ReactElement}
-			<div class="oe-user-pin pin-right-eye"><input class="user-pin-entry" type="text" maxlength="4" inputmode="numeric" placeholder="****"></div>
-			*/
-			stepPIN( step ){
-				if( step.status == 'active' ){
-					return (
-						rEl('div', { className: 'step-pin cols-6 flex' }, 
-							rEl('div', { className: 'oe-user-pin pin-right-eye' },  
-								rEl('input', { 
-									className: 'user-pin-entry', 
-									type:'text', 
-									maxlength: 4, 
-									inputmode: 'numeric',
-									placeholder: '****',
-								})
-							),
-							rEl('div', { className: 'oe-user-pin pin-left-eye' },  
-								rEl('input', { 
-									className: 'user-pin-entry', 
-									type:'text', 
-									maxlength: 4, 
-									inputmode: 'numeric',
-									placeholder: '****',
-								})
-							)
-						)	
-					);
-				}
-			}
-			
-			
-			/**
-			* <button> actions for the popup, 
-			* available actions depend on step status
-			* @params {*} this.props.step
-			* @returns {ReactElement}
-			*/
-			stepActions( step ){
-				
-				if( step.status != 'active' && step.status != 'next') return null; 
-				
-				const btn = ( css, btnTxt, newStatus ) => {
-					return rEl( 'button', { 
-						className: css,
-						onClick: () => this.props.onChangeStepStatus( step.patientArrRef, step.arrRef, newStatus )
-					}, btnTxt );
-				};
-				
-				if( step.status == 'active' ){
-					return (
-						rEl('div', { className: 'step-actions' }, 
-							btn('green hint', 'Complete', 'done' ),
-							btn('red hint', 'Remove', 'remove' )
-						)	
-					);
-				}
-				
-				if( step.status == 'next' ){
-					return (
-						rEl('div', { className: 'step-actions' }, 
-							btn('blue hint', 'Make active', 'active' ),
-							btn('red hint', 'Remove', 'remove' )
-						)	
-					);
-				}
-				
-									
-			}
-			
-			/**
-			* show the steps status with CSS 
-			* @params {*} this.props.step
-			* @returns {ReactElement}
-			*/
-			stepStatus( step ){
-				let css = 'step-status'; 
-				if( step.status == 'done' ) css += ' green';
-				if( step.status == 'active' ) css += ' orange';
-				return rEl('div', { className: css }, step.status );
-			}
-			
-			
-			/**
-			* Render
-			*/
-			render(){ 
-				// Build and position the popup	
-				const step = this.props.step; 
-		
-				if( step.shortcode == "~Fields"){
-					return rEl( react.PopupFields, {
-						step, 
-						onActions: this.props.onClosePopup,
-					});
-				}
-				
-				if( step.shortcode == "~Img"){
-					return rEl( react.PopupImage, {
-						step, 
-						onActions: this.props.onClosePopup,
-					});
-				}
-
-				// set up a default standard step.
-				return (
-					rEl('div', {
-							className: 'oe-pathstep-popup a-t-l',
-							style: {
-								top: step.rect.bottom,
-								left: step.rect.left,
-							}
-						},
-						rEl('div', { 
-							className: 'close-icon-btn', 
-							onClick: this.props.onClosePopup,
-							dangerouslySetInnerHTML: { __html : '<i class="oe-i remove-circle medium"></i>'}
-						}),
-						
-						this.setTitle( step ),
-						this.content( step ),
-						this.stepPIN( step ),
-						this.stepActions( step ),
-						this.stepStatus( step )
-					)
-				);
-					
-			}
-		}
-		
-		// make component available	
-		react.PathStepPopup = PathStepPopup;			
-	};
-	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
-
-})( bluejay ); 
-(function( bj ){
-
-	'use strict';	
-	
-	/**
-	* React Component 
-	*/
-	const buildComponent = () => {
-				
-		const rEl = React.createElement;
-		const react = bj.namespace('react');
-
-		class PopupImage extends React.Component {
-			
-			constructor( props ){
-				super( props );
-				
-				// no need for state (at least, as I currently understand React JS ;)
-				
-				this.setTitle = this.setTitle.bind( this );
-				this.content = this.content.bind( this );
-				this.stepActions = this.stepActions.bind( this );
-				this.stepStatus = this.stepStatus.bind( this );
-			}
-			
-			/**
-			* Title, convert shortcode into full title
-			* @params {*} this.props.step
-			* @returns {ReactElement}
-			*/
-			setTitle( step ){
-				const title = react.fullShortCode( step.shortcode );
-				const time = ( step.status == 'next' ) ? "Configure" : bj.clock24( new Date( step.timestamp ));
-				return rEl('h3', null, `Configure - Imaging` ); 
-			}
-			
-			/**
-			* Demo some content example for popup
-			*/
-			content(){
-				return (
-					rEl('div', { className: 'popup-overflow' }, 
-						rEl('div', { className: 'data-group' }, 
-							rEl('table', null, 
-								rEl('tbody', null, 
-									rEl('tr', null, 
-										rEl('th', null, 'Eye:'),
-										rEl('td', null, 
-											rEl('fieldset', null, 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'checkbox', name:'eye' }, null), 
-													rEl('i', { className: 'oe-i laterality R medium' }, null)
-												), 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'checkbox', name:'eye' }, null), 
-													rEl('i', { className: 'oe-i laterality L medium' }, null)
-												)
-											)
-										)
-									),
-									rEl('tr', null, 
-										rEl('th', null, 'OCT:'), 
-										rEl('td', null, 
-											rEl('fieldset', null, 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'radio', name:'fieldtest' }, null), 
-													rEl('span', null, 'Disc')
-												), 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'radio', name:'fieldtest' }, null), 
-													rEl('span', null, 'Mac')
-												), 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'radio', name:'fieldtest' }, null), 
-													rEl('span', null, 'Mac-Disc')
-												)
-											)
-										)
-									),
-									rEl('tr', null, 
-										rEl('th', null, 'Type:'), 
-										rEl('td', null, 
-											rEl('fieldset', null, 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'radio', name:'type' }, null), 
-													rEl('span', null, 'Zeiss')
-												), 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'radio', name:'type' }, null), 
-													rEl('span', null, 'Topcon')
-												), 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'radio', name:'type' }, null), 
-													rEl('span', null, 'Spectralis')
-												)
-											)
-										)
-									),
-									rEl('tr', null, 
-										rEl('th', null, 'KOWA-Disc:'), 
-										rEl('td', null, 
-											rEl('fieldset', null, 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'checkbox', name:'kowa' }, null), 
-													rEl('span', null, 'KOWA-Dis')
-												)
-											)
-										)
-									),
-									rEl('tr', null, 
-										rEl('th', null, 'Optos:'), 
-										rEl('td', null, 
-											rEl('fieldset', null, 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'radio', name:'sta' }, null), 
-													rEl('span', null, 'Daytona')
-												), 
-												rEl('label', { className: 'highlight inline'}, 
-													rEl('input', { type: 'radio', name:'sta' }, null), 
-													rEl('span', null, 'Silverstone')
-												)
-											)
-										)
-									)
-								)
-							)								
-						)
-					)
-				);
-			}
-			
-			//<label class="inline highlight"><input value="R" name="a-eye-sides" type="checkbox" checked=""> <i class="oe-i laterality R medium"></i></label>
-			
-			
-			
-			
-			/**
-			* <button> actions for the popup, 
-			* available actions depend on step status
-			* @params {*} this.props.step
-			* @returns {ReactElement}
-			*/
-			stepActions( step ){
-				
-				if( step.status != 'active' && step.status != 'next') return null; 
-				
-				const btn = ( css, btnTxt, newStatus ) => {
-					return rEl( 'button', { 
-						className: css,
-						onClick: this.props.onActions
-					}, btnTxt );
-				};
-				
-				if( step.status == 'active' ){
-					return (
-						rEl('div', { className: 'step-actions' }, 
-							btn('green hint', 'Complete', 'done' ),
-							btn('red hint', 'Remove', 'remove' )
-						)	
-					);
-				}
-				
-				if( step.status == 'next' ){
-					return (
-						rEl('div', { className: 'step-actions' }, 
-							btn('blue hint', 'Request Test', 'active' ),
-							btn('red hint', 'Cancel Test', 'remove' )
-						)	
-					);
-				}
-				
-									
-			}
-			
-			/**
-			* show the steps status with CSS 
-			* @params {*} this.props.step
-			* @returns {ReactElement}
-			*/
-			stepStatus( step ){
-				let css = 'step-status'; 
-				if( step.status == 'done' ) css += ' green';
-				if( step.status == 'active' ) css += ' orange';
-				return rEl('div', { className: css }, step.status );
-			}
-			
-			
-			/**
-			* Render
-			*/
-			render(){ 
-				// Build and position the popup	
-				const step = this.props.step; 
-
-				// set up a default standard step.
-				return (
-					rEl('div', {
-							className: 'oe-pathstep-popup a-t-l',
-							style: {
-								top: step.rect.bottom,
-								left: step.rect.left,
-							}
-						},
-						rEl('div', { 
-							className: 'close-icon-btn', 
-							onClick: this.props.onActions,
-							dangerouslySetInnerHTML: { __html : '<i class="oe-i remove-circle medium"></i>'}
-						}),
-						
-						this.setTitle( step ),
-						this.content( step ),
-						this.stepActions( step ),
-						this.stepStatus( step )
-					)
-				);
-					
-			}
-		}
-		
-		// make component available	
-		react.PopupImage = PopupImage;			
-	};
-	
-	/*
-	When React is available build the Component
-	*/
-	document.addEventListener('reactJSloaded', buildComponent, { once: true });
-	  
-
-})( bluejay ); 
 (function( bj, clinic ){
 
 	'use strict';	
@@ -10822,7 +10394,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			'<thead><tr>{{#th}}<th>{{{.}}}</th>{{/th}}</tr></thead>',
 			'<tbody></tbody>'
 		].join(''), {
-			"th": ['Arr.', 'Clinic', 'Dob',  'Patient', '', 'Pathway', '', '<i class="oe-i person small"></i>', '<i class="oe-i flag small"></i>', 'Mins', '']
+			"th": ['Arr.', 'Clinic', 'Dob',  'Patient', '', 'Pathway', '', '<i class="oe-i person small"></i>', '<i class="oe-i flag small"></i>', 'Wait', '']
 		});
 		
 		document.getElementById('js-clinic-manager').appendChild( table );
@@ -10844,7 +10416,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		const patients = new Map();
 		const filters = new Set();
-		const adder = clinic.adder( json );
+		const adder = clinic.adder();
 		let adderAllBtn;
 	
 		/** 
@@ -10853,6 +10425,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const model = Object.assign({
 			_filter: "", // view filter
+			filteredPatients: new Set(), // filter patients (patients in view)
 			delayID: null,
 			get filter(){
 				return this._filter;
@@ -10874,12 +10447,22 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 
 		/**
 		* VIEW: Filter Patients in Clinic
+		* This will update the DOM and keep 
 		*/
-		const filterPatients = () => {
+		const onFilterPatients = () => {
 			const fragment = new DocumentFragment();
+			
+			// clear and update
+			model.filteredPatients.clear();
+			
+			// Patients decide if they match the filter
+			// if so, show in the DOM and update the filterPatients set
 			patients.forEach( patient => {
 				const tr = patient.render( model.filter );
-				if( tr != null )fragment.appendChild( tr );
+				if( tr != null ){
+					fragment.appendChild( tr );
+					model.filteredPatients.add( patient );
+				}
 			});
 			
 			// update <tbody>
@@ -10887,7 +10470,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			tbody.append( fragment );
 		};
 		
-		model.views.add( filterPatients );
+		model.views.add( onFilterPatients );
 		
 		/**
 		* VIEW: Update Filter Buttons
@@ -10902,24 +10485,28 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		model.views.add( updateFilters );
 
 		/**
-		* Adder: when an update options is pressed. Update all selected patients
-		* @param {String} code - shortcode
-		* @param {String} type - option type (assign, people, process)
+		* Adder: Insert step option is pressed. Update all selected patients
+		* @param {Object} dataset from <li>
 		*/
-		const updateSelectedPatients = ( code, type ) => {
-			adder.getSelectedPatients().forEach( key => {
+		const handleAddStepToPatients = ({ code, type }) => {
+			// get the IDs for the checked patients
+			const patientIDs = adder.getSelectedPatients();
+			
+			// add to pathways...
+			patientIDs.forEach( key => {
 				const patient = patients.get( key );
-				if( type == 'assign'){
-					patient.setAssigned( code );
-					updateFilters();
+				
+				if( code == 'c-all' || 
+					code == 'c-last'){
+					patient.removePathStep( code );
 				} else {
 					patient.addPathStep({
 						shortcode: code,
-						timestamp: false,
-						status: 'todo',
+						mins: 0,
+						status: 'todo-later',
 						type,
 					});
-				}
+				}	
 			});
 		};
 		
@@ -10936,7 +10523,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		bj.userClick('.js-idg-clinic-btn-arrived', ( ev ) => {
 			const id = ev.target.dataset.patient;
 			patients.get( id ).onArrived();
-			adder.onPatientArrived( id );
 			model.updateFilterView();
 		});
 		
@@ -10964,8 +10550,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			const id = ev.target.dataset.patient;
 			adder.showSingle( 
 				id, 
-				patients.get( id ).getTime(),
-				patients.get( id ).getLastname()
+				patients.get( id ).getNameAge()
 			);
 		});
 		
@@ -10973,7 +10558,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		bj.userDown('button.add-to-all', ( ev ) => {
 			if( adderAllBtn.classList.contains('open')){
 				adderAllBtn.classList.replace('open', 'close');
-				adder.showAll();
+				adder.showAll( model.filteredPatients );
 			} else {
 				hideAdder();
 			}
@@ -10999,11 +10584,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		});
 		
 		// Adder popup update action 
-		bj.userDown('.oe-clinic-adder .update-actions li', ( ev ) => {
-			updateSelectedPatients(
-				ev.target.dataset.shortcode, 
-				ev.target.dataset.type
-			);
+		bj.userDown('.oe-clinic-adder .insert-steps li', ( ev ) => {
+			handleAddStepToPatients( ev.target.dataset )
 		});
 		
 		// Adder close btn
@@ -11066,8 +10648,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// set up Clinic filter default
 			model.filter = "hide-done";
 		
-			// the clock is running! 
+			// and the clock is running! 
 			clinic.clock();
+			
 		})();
 	};
 
@@ -11079,215 +10662,215 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 
 	'use strict';	
 	
-	/**
-	* @param {JSON} json
-	*/
-	const adder = ( json ) => {
+	const adder = () => {
+		
+		// hold in memory
+		let multi; // 'single' or 'multiple' patients 
+		let multiPatientCheckBoxes;
 		
 		const div = bj.div('oe-clinic-adder');
 		const patients = bj.div('patients');
 		const singlePatient = bj.div('single-patient'); 
-		const arrived = new Map();
-		const later = new Map();
 		const selectedPatients = new Set(); 
 		
 		/**
-		* GETTER: App
+		* Reset DOM and clear selectedPatients
+		* @param {String} mode - 'single' or 'multiple'
 		*/
-		const getSelectedPatients = () => selectedPatients;
-		
-		/**
-		* <div> row with <h4> title 
-		* @param {String} title
-		* @returns {Element};
-		*/
-		const _row = ( title ) => {
-			const row = bj.div('row');
-			row.innerHTML = `<h4>${title}</h4>`;
-			return row;
-		};
-		
-		/**
-		* <ul>
-		* @param {String} class
-		* @returns {Element};
-		*/
-		const _ul = ( css ) => {
-			const ul = document.createElement('ul');
-			ul.className = css;
-			return ul;
-		}; 
-
-		/**
-		* Patient list - update the DOM for Arrived and Later groups
-		*/
-		const updatePatientList = () => {
-			
-			const list = ( title, listMap ) => {
-				const row = _row( title );
-				const ul = _ul("row-list");
-				listMap.forEach(( value, key ) => {
-					const li = document.createElement('li');
-					li.innerHTML = `<label class="highlight"><input type="checkbox" value="${key}" /><span>${value.time} - ${value.lastname}</span></label>`;
-					ul.append( li );
-				});
-				row.append( ul );
-				return row;
-			}; 
-			
-			// update DOM
-			patients.innerHTML = "";
-			patients.append( list( "Arrived", arrived ));
-			patients.append( list( "Later", later ));			
-		};
-		
-		/**
-		* Patient list - update who's selected
-		*/
-		const updateSelectPatients = () => {
+		const reset = ( mode) => {
+			multi = ( mode == 'multi'); // set Boolean
+			bj.empty( patients )
+			patients.remove();
+			singlePatient.remove();
 			selectedPatients.clear();
-			const inputs = bj.nodeArray( patients.querySelectorAll('input[type=checkbox]'));
-			inputs.forEach( input => {
-				if( input.checked ) selectedPatients.add( input.value );
-			});
-		};
+		}
 		
 		/**
-		* Event delegation, just interested if a checkbox is changed
-		*/
-		patients.addEventListener('change', updateSelectPatients );
-		
-		/**
-		* CSS Animation touch
+		* Display uses CSS animation
+		* Display default in CSS is: "none"
+		* adding "fadein" starts the CSS animation AND sets display
 		*/
 		const fadein = () => {
-			if( div.classList.contains('fadein')) div.classList.remove('fadein');
+			div.classList.remove('fadein');
 			div.classList.add('fadein');
 		};
 		
+		// removing "fadein" effectively equals: display:none
+		const hide = () => {
+			div.classList.remove('fadein');
+			reset();
+		}
+		
 		/**
-		* API patient arrived, need to update my lists
-		* @param {String} id - patient key
+		* @callback - App
+		* when an insert step option is click, App needs to know 
+		* which patients are select
+		* @returns {Set} - Patient IDs
 		*/
-		const onPatientArrived = ( id ) => {
-			if( later.has( id )){
-				arrived.set( id, later.get(id));
-				later.delete( id );
-			}	
-			// update Arrived and Later patient groups
-			updatePatientList();
+		const getSelectedPatients = () => {
+			if( multi ){
+				// update from checked patients
+				selectedPatients.clear();
+				multiPatientCheckBoxes.forEach( checkbox => {
+					if( checkbox.checked ){
+						selectedPatients.add( checkbox.value )
+					}					
+				});
+			}
+			
+			return selectedPatients;
+		};
+		
+		/**
+		* Event: input check box (selected patients)
+		* A quick hack to demo Selecting "All" patients
+		*/
+		patients.addEventListener('change', ev => {
+			const input = ev.target;
+			if( input.value == "select-all"){
+				multiPatientCheckBoxes.forEach( checkbox => checkbox.checked = input.checked );
+			} 
+		});
+		
+
+		/**
+		* @callback - list all patients in view
+		* @param {Set} - set of the filtered patients
+		*/
+		const showAll = ( patientSet ) => {
+			reset('multi');
+			
+			// Helper - build <li>
+			const _li = ( val, text ) => {
+				const li = document.createElement('li');
+				li.innerHTML = `<label class="highlight"><input type="checkbox" value="${val}" checked/><span>${text}</span></label>`;
+				return li;
+			}
+			
+			// <ul>
+			const ul = bj.dom('ul','row-list');
+			
+			// add patients
+			patientSet.forEach( patient => {
+				ul.append( _li( patient.getID(), patient.getNameAge() ));
+			});	
+			
+			// update DOM
+			patients.append( ul );
+			div.prepend( patients );
+			
+			// store array of patient checkboxes
+			multiPatientCheckBoxes = bj.nodeArray( patients.querySelectorAll('input[type=checkbox]'));
+			
+			// add a "select all" option
+			ul.prepend( _li('select-all', 'All')); // add "All" - always first
+			
+			fadein();
+		};
+		
+		/**
+		* @callback - specific patient 
+		*/
+		const showSingle = ( id, nameAge ) => {
+			reset('single');
+			selectedPatients.add( id );
+			singlePatient.innerHTML = `<span class="highlighter">${nameAge}</span>`;
+			div.querySelector('.insert-steps').prepend( singlePatient );
+			fadein();
 		};
 
 		/**
-		* API: Show ALL patients
-		*/
-		const showAll = () => {
-			bj.show( patients );
-			bj.hide( singlePatient );
-			updateSelectPatients(); // reset the selected list
-			fadein();
-		};
-		
-		/**
-		* API: Show for specific patient
-		* specific patient 
-		*/
-		const showSingle = ( id, time, surname ) => {
-			bj.hide( patients );
-			singlePatient.innerHTML = `${time} - ${surname}`;
-			bj.show( singlePatient );
-			selectedPatients.clear();
-			selectedPatients.add( id );
-			fadein();
-		};
-		
-		/**
-		* API: Hide adder
-		*/
-		const hide = () => div.classList.remove('fadein');
-		
-		/**
-		* Init Adder and build staic DOM elements	
+		* Init 
+		* build all the steps that can be added
+		* patients shown depend on filters	
 		*/
 		(() => {
-			// split patients into arrived and later groups
-			json.forEach( patient => {
-				if( patient.status == "active"){
-					arrived.set( patient.uid, {
-						time: patient.time, 
-						lastname: patient.lastname
-					});
-				} 
-				if( patient.status === 'todo' ){
-					later.set( patient.uid, {
-						time: patient.time, 
-						lastname: patient.lastname
-					});
-				}
-			});
-			
-			updatePatientList();
-			
 			/*
-			Update actions are static, build once
+			* Insert steps options are static, build once
+			*
+			* Each shortcode has a full title shown in the popup.
+			* In iDG that is in the PHP, however we also have to show 
+			* it here where the user has to select a step.
 			*/
-			const updates = bj.div('update-actions');
-			updates.append( singlePatient );
+			const fullText = new Map();	
+			fullText.set('i-Arr', 'Arrived');
+			fullText.set('i-Wait', 'Waiting');
+			fullText.set('i-Stop', 'Auto-complete after last completed step');
+			fullText.set('i-Fin', 'Finished Pathway - Patient discharged');
+			fullText.set('DNA', 'Did Not Attend');
+			fullText.set('unassigned', 'Not assigned');
 			
-			const doctors = ['MM', 'AB', 'AG', 'RB', 'CW'].sort();
-			const people = ['Nurse'];
-			const process = ['Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort();
+			fullText.set('MM', 'Mr Michael Morgan');
+			fullText.set('GJB', 'Dr Georg Joseph Beer ');
+			fullText.set('GP', 'Dr George Bartischy');
+			fullText.set('Su', 'Sushruta');
+			fullText.set('ZF', 'Dr Zofia Falkowska'); 
+			fullText.set('Nurse', 'Nurse');
 			
-			// helper
+			fullText.set('Dilate', 'Dilate');
+			fullText.set('Colour', 'Colour');
+			fullText.set('Img', 'Imaging');
+			fullText.set('VisAcu', 'Visual Acuity');
+			fullText.set('Orth', 'Orthoptics');
+			fullText.set('Fields', 'Visual Fields');
+			fullText.set('Ref', 'Refraction');
+			
+			fullText.set('PSD', 'Patient Specific Directive');
+			fullText.set('PGD', 'Patient Group Directive');
+			
+			fullText.set('c-last', 'remove last pathway step');
+			fullText.set('c-all', 'Clear all pathway steps');
+				
+			/*
+			* Element for all inserts
+			* only need to build this once
+			*/
+			const inserts = bj.div('insert-steps');
+			
+			// helper build <li>
 			const _li = ( code, type, html ) => {
-				const li = document.createElement('li');
-				li.setAttribute('data-shortcode', code );
-				li.setAttribute('data-type', type);
-				li.innerHTML = html;
+				
 				return li;
 			};
 			
-			/*
-			assignment options
-			*/
-			const nsPathStep = bj.namespace('pathstep'); 
-			
-			let row = _row('Assign to');
-			let ul = _ul('btn-list');
-			
-			['unassigned'].concat( doctors ).forEach( code => {
-				ul.append( _li( code, 'assign', nsPathStep.fullShortCode( code ))); 
-			});
-			
-			row.append( ul );
-			updates.append( row );
-			
-			/*
-			people & processes pathsteps
-			*/
-			row = _row('Add to patient pathway');
-			ul = _ul('btn-list');
-			
-			// people
-			[].concat( doctors, people ).forEach( code => {
-				const fullText = nsPathStep.fullShortCode( code );
-				ul.append( _li( code, 'person', `${code} <small>- ${fullText}</small>`)); 
-			});
+			const buildGroup = ( title, list, type ) => {
+				const group = bj.dom('div','row', `<h4>${title}</h4>`);
+				const ul = bj.dom('ul', 'btn-list');
+				
+				list.forEach( code => {
+					let shortcode = code;
+					if( code == "c-all") code = "Clear all";
+					if( code == "c-last") code = "Remove last";
+					
+					
+					const li = document.createElement('li');
+					li.setAttribute('data-code', shortcode );
+					li.setAttribute('data-type', type);
+					li.innerHTML = `${code} <small>- ${fullText.get(shortcode)}</small>`;
+					
+					if( shortcode == "c-last"){
+						li.className = "red";
+					}
+					
+					ul.append( li );
+				});
+				
+				group.append( ul );
+				inserts.append( group );
+			};
+		
+			// Step groups
+			const process = ['Colour','Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort();
+			const people = ['MM', 'GJB', 'GP', 'Su', 'ZF','Nurse'].sort();
 			
 			// processes 
-			process.forEach( code => {
-				const fullText = nsPathStep.fullShortCode( code );
-				ul.append( _li( code, 'process', `${code} <small>- ${fullText}</small>`)); 
-			});
+			buildGroup('Steps', process, 'process' );
+			buildGroup('People', people, 'person' );
 			
-			row.append( ul );
-			updates.append( row );
-			
-			/*
-			build structure & hide it
-			*/
-			div.append( bj.div('close-btn'), patients, updates );
-			hide();
+			buildGroup('Remove "todo" steps from selected', ['c-last'], 'removeTodos' );
+
+			// build div
+			div.append( bj.div('close-btn'), inserts );
 			
 			// update DOM
 			document.querySelector('.oe-clinic').append( div );
@@ -11297,8 +10880,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		/* 
 		API
 		*/
-		return { showAll, showSingle, hide, onPatientArrived, getSelectedPatients };
-		
+		return { 
+			showAll, 
+			showSingle, 
+			hide, 
+			getSelectedPatients, 
+		};	
 	};
 	
 	clinic.adder = adder;
@@ -11438,9 +11025,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		/**
 		* Patient UI is a table row <tr>
-		* Hold elements for ease of access
+		* Hold DOM elements for easy usage
 		*/
-		
 		const tr = document.createElement('tr');
 		const td = {
 			path: document.createElement('td'),
@@ -11450,26 +11036,30 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			complete: document.createElement('td'),
 		};
 		
+		// pathway <div> for pathSteps
+		const pathSteps = [];
 		const pathway =  bj.div('pathway');
-		const psBuff = gui.pathStep({
+		td.path.append( pathway );	
+		
+		// patient Owner (has it's own column)
+		const psOwner = gui.pathStep({
 			shortcode: '?',
 			status: 'buff',
-			type: 'person',
+			type: 'owner',
 			info: '&nbsp;'
 		}, false );
+		td.owner.append( psOwner.render());
 		
-		td.owner.append( psBuff.span );
+		// waitDuration widget
+		const waitDuration = clinic.waitDuration( props.uid );
 		
-		
-		// DOM structure for pathway
-		td.path.append( pathway );	 
-		
+
 		/** 
 		* Model
 		* Extended with views
 		*/
 		const model = Object.assign({
-			_uid: props.uid,
+			uid: props.uid,
 			_status: null, // "todo", "active", "complete", etc!
 			_assigned: false,
 	
@@ -11489,52 +11079,77 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			},
 		}, bj.ModelViews());
 		
-	
-		/*
-		WaitDuration is based on the Arrival time and rendered based on 
-		patient state, when patient arrives start the clock
-		*/
-		const waitDuration = clinic.waitDuration( props.uid );
-		
 		/**
 		* VIEW: status of patient
 		* if patient is "complete" hide the specific + icon
 		*/
-		const changeStatus = () => {
+		const onChangeStatus = () => {
 			tr.className = model.status;
 			pathway.className = `pathway ${model.status}`;
 			td.addIcon.innerHTML = model.status == "complete" ? 
 				"<!-- complete -->" :
-				`<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
+				`<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model.uid}"></i>`;
 			
 			waitDuration.render( model.status );
 		};
 		
-		model.views.add( changeStatus );
+		model.views.add( onChangeStatus );
 		
 		/**
 		* VIEW: complete (tick icon) / done
 		*/
-		const changeComplete = () => {
+		const onChangeComplete = () => {
 			const completeHTML = model.status == "complete" ?
 				'<span class="fade">Done</span>' :
-				`<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model._uid}"></i>`;
+				`<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model.uid}"></i>`;
 
 			// update DOM
 			td.complete.innerHTML = model.status == "later" ?  "" : completeHTML;					
 		};
 		
-		model.views.add( changeComplete );
+		model.views.add( onChangeComplete );
 		
 		/** 
 		* VIEW: Update Buffer
 		*/
-		const updateBuffer = () => {
-			psBuff.setCode( model.assigned );
+		const onUpdateOwner = () => {
+			psOwner.setCode( model.assigned );
 		};
 		
-		model.views.add( updateBuffer );
+		model.views.add( onUpdateOwner );
 		
+		/**
+		* Add a new step to the pathway
+		* @param {PathStep} newPS
+		*/
+		const addToPathway = ( newPS ) => {
+			switch( newPS.getCode()){
+				case 'i-Arr':
+					pathway.prepend( newPS.render());
+					pathSteps.splice(0, 0, newPS);
+				break;
+				case 'i-Wait':
+					const todoIndex = pathSteps.findIndex( ps => {
+						const status = ps.getStatus();
+						return ( status == 'todo' || status == 'todo-later');
+					});
+					
+					// no other steps with "todo" yet added to the pathway
+					if( todoIndex === -1 ){
+						pathway.append( newPS.render());
+						pathSteps.push( newPS );
+					} else {
+						pathway.insertBefore( newPS.render(), pathSteps[todoIndex].render());
+						pathSteps.splice( todoIndex, 0, newPS );
+					}
+			
+				break; 
+				default:
+					pathway.append( newPS.render());
+					pathSteps.push( newPS );
+			}	
+			
+		};
 		
 		/**
 		* Add PathStep to patient pathway
@@ -11554,15 +11169,33 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					step.info = step.mins ? step.mins : "0"; // inbetween needs to show there duration in mins
 			}
 			
-			// add new Pathstep to the pathway
+			// create a new Pathstep
 			// @param {.} step - {shortcode, status, type, info, idgPopupCode}
-			gui.pathStep( step, pathway );
-
+			addToPathway( gui.pathStep( step, null ));
 		};
 		
+		/**
+		* Remove either last "todo" or ALL 'todo'
+		* @param {String} code - 'c-all', 'c-last'
+		*/
+		const removePathStep = ( code ) => {
+			if( !pathSteps.length ) return;
+ 			
+			if( code == 'c-last' ){
+				const lastStep = pathSteps[ pathSteps.length - 1 ];
+				const status = lastStep.getStatus();
+				if( status == "todo" || 
+					status == "todo-later" || 
+					status == "config"){
+						
+					lastStep.remove();
+					pathSteps.splice( -1, 1 );
+				}
+			}
+		}
 		
 		/**
-		* Flags
+		* set Flags
 		*/
 		const flag = ( arr ) => {
 			if( arr == undefined ) return; 
@@ -11572,7 +11205,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			td.flags.innerHTML = `<i class="oe-i flag-${icon} small-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
 		};
 		
-		
 		/**
 		* 'on' Handlers for Event delegation
 		*/
@@ -11580,14 +11212,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			addPathStep({
 				shortcode: 'i-Arr',
 				timestamp: Date.now(),
-				status: 'done',
+				status: 'buff',
 				type: 'arrive',
 				idgPopupCode: 'arrive-basic',
 			});
 			addPathStep({
-				shortcode: 'Waiting',
-				mins: 1,
-				status: 'w-room',
+				shortcode: 'i-Wait',
+				mins: 0,
+				status: 'buff',
 				type: 'wait',
 			});
 			
@@ -11608,7 +11240,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			addPathStep({
 				shortcode: 'i-Fin',
 				timestamp: Date.now(), 
-				status: 'done',
+				status: 'buff',
 				type: 'finish',
 			});
 			model.status = "complete";
@@ -11636,13 +11268,11 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// patient state 
 			model.status = props.status; 
 			model.assigned = props.assigned;
-			model.time = props.time;
-			model.lastname = props.lastname;
+			model.nameAge = `${props.lastname} <span class="fade">${props.age}</span>`;
 			
 			// build pathway steps
 			props.pathway.forEach( step => addPathStep( step ));
-			
-			
+
 			flag( props.f );
 			
 			// build <tr>
@@ -11661,18 +11291,24 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			tr.append( td.flags );
 			tr.append( waitDuration.render( props.status )); // returns a <td>
 			tr.append( td.complete );
+			
 		})();
 			
 		/**
 		* API
-		* GETTER / SETTER: App needs to get and set patient assigned from Adder
 		*/
-		const getStatus = () => model.status;
-		const setAssigned = ( val ) => model.assigned = val;
-		const getTime = () => model.time;
-		const getLastname = () => model.lastname;
-		
-		return { onArrived, onDNA, onComplete, render, getStatus, setAssigned, getTime, getLastname, addPathStep };
+		return { 
+			onArrived, 
+			onDNA, 
+			onComplete, 
+			getID: () => model.uid, 
+			getStatus: () => model.status, 
+			setAssigned: ( val ) => model.assigned = val, 
+			getNameAge: () => model.nameAge, 
+			render, 
+			addPathStep, 
+			removePathStep, 
+		};
 	};
 	
 	// make component available to Clinic SPA	
@@ -11705,7 +11341,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				'<div class="patient-name">',
 					'<a href="/v3-SEM/patient-overview">',
 						'<span class="patient-surname">{{lastname}}</span>, ',
-						'<span class="patient-firstname">{{{firstname}}}</span>',
+						'<span class="patient-firstname">{{{firstname}}}',
+						'{{#duplicate}}<i class="oe-i person-split small pad-left js-has-tooltip" data-tt-type="basic" data-tooltip-content="Double check details. More than one DARWIN in clinic"></i>{{/duplicate}}',
+						'</span>',
 					'</a>',
 				'</div>',
 				'<div class="patient-details">',
@@ -11847,10 +11485,16 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* Render Mins DOM
 		* @returns {Element}
 		*/
-		const waitMins = () => {
+		const waitMins = ( active ) => {
 			const div = bj.div('mins');
-			const suffix = mins > 1 ? 'mins' : 'min';
-			div.innerHTML = `<span>${mins}</span><small>${suffix}</small>`;
+			// turns mins into hours 
+			const hours = Math.floor( mins / 60 );
+			const clockMins = (mins % 60).toString().padStart(2,'0');
+			
+			// const suffix = mins > 1 ? 'mins' : 'min';
+			div.innerHTML = active ? 
+				`<small>${hours}:${clockMins}</small>`: 
+				`${hours}:${clockMins}`;
 			return div;
 		};
 		
@@ -11865,7 +11509,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			switch( status ){
 				case "complete": 
 					div.className = 'wait-duration';
-					div.appendChild( waitMins());
+					div.appendChild( waitMins( false ));
 				break;
 				case "later":
 					div.className = 'flex';
@@ -11877,7 +11521,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				default: 
 					div.className = 'wait-duration';
 					div.appendChild( svgCircles());
-					div.appendChild( waitMins());
+					div.appendChild( waitMins( true ));
 			}
 			
 			td.innerHTML = "";
@@ -11894,55 +11538,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	
 
 })( bluejay, bluejay.namespace('clinic') ); 
-(function( bj ){
-
-	'use strict';	
-	
-	/*
-	Centeralise, in the "pathstep" namespace, a method to get the 
-	full text for shortcodes...	
-	*/
-	bj.namespace('pathstep').fullShortCode = ( shortcode ) => {
-		
-		let full = shortcode; // e.g "Nurse" doesn't need expanding on
-	
-		switch( shortcode ){
-			case 'i-Arr': full = "Arrived"; break;
-			case 'i-Wait': full = "Waiting"; break;
-			case 'i-Stop': full = "Auto-complete after last completed step"; break;
-			case 'i-Fin': full = "Finished Pathway - Patient discharged"; break;
-			case "DNA" : full = "Did Not Attend"; break;
-			case "unassigned" : full = "Not assigned"; break;
-
-			case "MM" : full = "Mr Michael Morgan"; break;
-			case "GJB" : full = "Dr Georg Joseph Beer "; break;
-			case "GP" : full = "Dr George Bartischy"; break;
-			case "Su" : full = "Sushruta"; break;
-			case "ZF" : full = "Dr Zofia Falkowska"; break; 
-			
-			case "Img" : full = "Imaging"; break;
-			case "VisAcu" : full = "Visual Acuity"; break;
-			case "Orth" : full = "Orthoptics"; break;
-			case "Fields" : full = "Visual Fields"; break;
-			case "Ref" : full = "Refraction"; break;
-			
-			case "PSD" : full = "Patient Specific Directive"; break;
-			case "PGD" : full = "Patient Group Directive"; break;
-			
-			// icon instead of text
-			case "PSD-A-overview":
-			case "PSD-A" : full = "Haider Special Mix Set"; break;
-			case "PSD-B-overview":
-			case "PSD-B" : full = "Pre Op drops"; break;
-			case "PSD-C-overview":
-			case "PSD-C" : full = "HCA Nightingale (Custom)"; break;
-			case "PSD-D" : full = "David Haider (Custom)"; break;
-		}
-		
-		return full; 
-	}; 
-		
-})( bluejay ); 
 (function( bj, gui ){
 
 	'use strict';	
@@ -11976,6 +11571,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const _render = () => ({
 			/**
 			* Update the DOM CSS
+			* @returns <span> Element
 			*/
 			render(){
 				const css = [ selector ];
@@ -11983,6 +11579,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				css.push( this.type );
 				this.span.className = css.join(' ');
 				this.updateInfo();
+				return this.span;
 			}
 		});
 		
@@ -11994,6 +11591,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				this.shortcode = shortcode;
 				this.span.querySelector('.step').textContent = shortcode;
 				this.render();
+			},
+			
+			getCode( shortcode ){
+				return this.shortcode;
 			},
 			
 			/**
@@ -12010,6 +11611,11 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				this.status = status;
 				this.render();
 			}, 
+			
+			getStatus(){
+				return this.status;
+			},
+			
 			/**
 			* pathStepPopup move pathStep on to next state
 			* @param {String} status - next is default
@@ -12111,6 +11717,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* API - add new PathStep to DOM
 		* @param {Object} step properties
 		* @param {DOM parentNode} pathway 
+		* @returns {PathStep}
 		*/
 		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, pathway ) => {
 			
@@ -12142,16 +11749,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			ps.setKey( collection.add( ps, span ));
 		
 			// add to DOM.
-			// if DOM parentNode pathway is provided.
-			if( pathway ){
-				if( shortcode === "Arr") {
-					pathway.prepend( span ); // put Arrived at the start of pathway
-				} else {
-					pathway.append( span );
-				}
-			} else {
-				return ps; // return new pathstep to be used else where
-			}
+			if( pathway ) pathway.append( span );
+			
+			return ps; // return PathStep
 		};
 		
 		// API

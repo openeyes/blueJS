@@ -84,10 +84,16 @@
 		* Render Mins DOM
 		* @returns {Element}
 		*/
-		const waitMins = () => {
+		const waitMins = ( active ) => {
 			const div = bj.div('mins');
-			const suffix = mins > 1 ? 'mins' : 'min';
-			div.innerHTML = `<span>${mins}</span><small>${suffix}</small>`;
+			// turns mins into hours 
+			const hours = Math.floor( mins / 60 );
+			const clockMins = (mins % 60).toString().padStart(2,'0');
+			
+			// const suffix = mins > 1 ? 'mins' : 'min';
+			div.innerHTML = active ? 
+				`<small>${hours}:${clockMins}</small>`: 
+				`${hours}:${clockMins}`;
 			return div;
 		};
 		
@@ -102,7 +108,7 @@
 			switch( status ){
 				case "complete": 
 					div.className = 'wait-duration';
-					div.appendChild( waitMins());
+					div.appendChild( waitMins( false ));
 				break;
 				case "later":
 					div.className = 'flex';
@@ -114,7 +120,7 @@
 				default: 
 					div.className = 'wait-duration';
 					div.appendChild( svgCircles());
-					div.appendChild( waitMins());
+					div.appendChild( waitMins( true ));
 			}
 			
 			td.innerHTML = "";

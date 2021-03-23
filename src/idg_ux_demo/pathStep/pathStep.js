@@ -31,6 +31,7 @@
 		const _render = () => ({
 			/**
 			* Update the DOM CSS
+			* @returns <span> Element
 			*/
 			render(){
 				const css = [ selector ];
@@ -38,6 +39,7 @@
 				css.push( this.type );
 				this.span.className = css.join(' ');
 				this.updateInfo();
+				return this.span;
 			}
 		});
 		
@@ -49,6 +51,10 @@
 				this.shortcode = shortcode;
 				this.span.querySelector('.step').textContent = shortcode;
 				this.render();
+			},
+			
+			getCode( shortcode ){
+				return this.shortcode;
 			},
 			
 			/**
@@ -65,6 +71,11 @@
 				this.status = status;
 				this.render();
 			}, 
+			
+			getStatus(){
+				return this.status;
+			},
+			
 			/**
 			* pathStepPopup move pathStep on to next state
 			* @param {String} status - next is default
@@ -166,6 +177,7 @@
 		* API - add new PathStep to DOM
 		* @param {Object} step properties
 		* @param {DOM parentNode} pathway 
+		* @returns {PathStep}
 		*/
 		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, pathway ) => {
 			
@@ -197,16 +209,9 @@
 			ps.setKey( collection.add( ps, span ));
 		
 			// add to DOM.
-			// if DOM parentNode pathway is provided.
-			if( pathway ){
-				if( shortcode === "Arr") {
-					pathway.prepend( span ); // put Arrived at the start of pathway
-				} else {
-					pathway.append( span );
-				}
-			} else {
-				return ps; // return new pathstep to be used else where
-			}
+			if( pathway ) pathway.append( span );
+			
+			return ps; // return PathStep
 		};
 		
 		// API

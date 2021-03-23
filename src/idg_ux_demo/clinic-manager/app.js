@@ -6,7 +6,7 @@
 		
 		const patients = new Map();
 		const filters = new Set();
-		const adder = clinic.adder( json );
+		const adder = clinic.adder();
 		let adderAllBtn;
 	
 		/** 
@@ -15,6 +15,7 @@
 		*/
 		const model = Object.assign({
 			_filter: "", // view filter
+			filteredPatients: new Set(), // filter patients (patients in view)
 			delayID: null,
 			get filter(){
 				return this._filter;
@@ -36,12 +37,22 @@
 
 		/**
 		* VIEW: Filter Patients in Clinic
+		* This will update the DOM and keep 
 		*/
-		const filterPatients = () => {
+		const onFilterPatients = () => {
 			const fragment = new DocumentFragment();
+			
+			// clear and update
+			model.filteredPatients.clear();
+			
+			// Patients decide if they match the filter
+			// if so, show in the DOM and update the filterPatients set
 			patients.forEach( patient => {
 				const tr = patient.render( model.filter );
-				if( tr != null )fragment.appendChild( tr );
+				if( tr != null ){
+					fragment.appendChild( tr );
+					model.filteredPatients.add( patient );
+				}
 			});
 			
 			// update <tbody>
@@ -49,7 +60,7 @@
 			tbody.append( fragment );
 		};
 		
-		model.views.add( filterPatients );
+		model.views.add( onFilterPatients );
 		
 		/**
 		* VIEW: Update Filter Buttons
@@ -64,24 +75,28 @@
 		model.views.add( updateFilters );
 
 		/**
-		* Adder: when an update options is pressed. Update all selected patients
-		* @param {String} code - shortcode
-		* @param {String} type - option type (assign, people, process)
+		* Adder: Insert step option is pressed. Update all selected patients
+		* @param {Object} dataset from <li>
 		*/
-		const updateSelectedPatients = ( code, type ) => {
-			adder.getSelectedPatients().forEach( key => {
+		const handleAddStepToPatients = ({ code, type }) => {
+			// get the IDs for the checked patients
+			const patientIDs = adder.getSelectedPatients();
+			
+			// add to pathways...
+			patientIDs.forEach( key => {
 				const patient = patients.get( key );
-				if( type == 'assign'){
-					patient.setAssigned( code );
-					updateFilters();
+				
+				if( code == 'c-all' || 
+					code == 'c-last'){
+					patient.removePathStep( code );
 				} else {
 					patient.addPathStep({
 						shortcode: code,
-						timestamp: false,
-						status: 'todo',
+						mins: 0,
+						status: 'todo-later',
 						type,
 					});
-				}
+				}	
 			});
 		};
 		
@@ -98,7 +113,6 @@
 		bj.userClick('.js-idg-clinic-btn-arrived', ( ev ) => {
 			const id = ev.target.dataset.patient;
 			patients.get( id ).onArrived();
-			adder.onPatientArrived( id );
 			model.updateFilterView();
 		});
 		
@@ -126,8 +140,7 @@
 			const id = ev.target.dataset.patient;
 			adder.showSingle( 
 				id, 
-				patients.get( id ).getTime(),
-				patients.get( id ).getLastname()
+				patients.get( id ).getNameAge()
 			);
 		});
 		
@@ -135,7 +148,7 @@
 		bj.userDown('button.add-to-all', ( ev ) => {
 			if( adderAllBtn.classList.contains('open')){
 				adderAllBtn.classList.replace('open', 'close');
-				adder.showAll();
+				adder.showAll( model.filteredPatients );
 			} else {
 				hideAdder();
 			}
@@ -161,11 +174,8 @@
 		});
 		
 		// Adder popup update action 
-		bj.userDown('.oe-clinic-adder .update-actions li', ( ev ) => {
-			updateSelectedPatients(
-				ev.target.dataset.shortcode, 
-				ev.target.dataset.type
-			);
+		bj.userDown('.oe-clinic-adder .insert-steps li', ( ev ) => {
+			handleAddStepToPatients( ev.target.dataset )
 		});
 		
 		// Adder close btn
@@ -228,8 +238,9 @@
 			// set up Clinic filter default
 			model.filter = "hide-done";
 		
-			// the clock is running! 
+			// and the clock is running! 
 			clinic.clock();
+			
 		})();
 	};
 

@@ -11,9 +11,8 @@
 		
 		/**
 		* Patient UI is a table row <tr>
-		* Hold elements for ease of access
+		* Hold DOM elements for easy usage
 		*/
-		
 		const tr = document.createElement('tr');
 		const td = {
 			path: document.createElement('td'),
@@ -23,26 +22,30 @@
 			complete: document.createElement('td'),
 		};
 		
+		// pathway <div> for pathSteps
+		const pathSteps = [];
 		const pathway =  bj.div('pathway');
-		const psBuff = gui.pathStep({
+		td.path.append( pathway );	
+		
+		// patient Owner (has it's own column)
+		const psOwner = gui.pathStep({
 			shortcode: '?',
 			status: 'buff',
-			type: 'person',
+			type: 'owner',
 			info: '&nbsp;'
 		}, false );
+		td.owner.append( psOwner.render());
 		
-		td.owner.append( psBuff.span );
+		// waitDuration widget
+		const waitDuration = clinic.waitDuration( props.uid );
 		
-		
-		// DOM structure for pathway
-		td.path.append( pathway );	 
-		
+
 		/** 
 		* Model
 		* Extended with views
 		*/
 		const model = Object.assign({
-			_uid: props.uid,
+			uid: props.uid,
 			_status: null, // "todo", "active", "complete", etc!
 			_assigned: false,
 	
@@ -62,52 +65,77 @@
 			},
 		}, bj.ModelViews());
 		
-	
-		/*
-		WaitDuration is based on the Arrival time and rendered based on 
-		patient state, when patient arrives start the clock
-		*/
-		const waitDuration = clinic.waitDuration( props.uid );
-		
 		/**
 		* VIEW: status of patient
 		* if patient is "complete" hide the specific + icon
 		*/
-		const changeStatus = () => {
+		const onChangeStatus = () => {
 			tr.className = model.status;
 			pathway.className = `pathway ${model.status}`;
 			td.addIcon.innerHTML = model.status == "complete" ? 
 				"<!-- complete -->" :
-				`<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model._uid}"></i>`;
+				`<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model.uid}"></i>`;
 			
 			waitDuration.render( model.status );
 		};
 		
-		model.views.add( changeStatus );
+		model.views.add( onChangeStatus );
 		
 		/**
 		* VIEW: complete (tick icon) / done
 		*/
-		const changeComplete = () => {
+		const onChangeComplete = () => {
 			const completeHTML = model.status == "complete" ?
 				'<span class="fade">Done</span>' :
-				`<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model._uid}"></i>`;
+				`<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model.uid}"></i>`;
 
 			// update DOM
 			td.complete.innerHTML = model.status == "later" ?  "" : completeHTML;					
 		};
 		
-		model.views.add( changeComplete );
+		model.views.add( onChangeComplete );
 		
 		/** 
 		* VIEW: Update Buffer
 		*/
-		const updateBuffer = () => {
-			psBuff.setCode( model.assigned );
+		const onUpdateOwner = () => {
+			psOwner.setCode( model.assigned );
 		};
 		
-		model.views.add( updateBuffer );
+		model.views.add( onUpdateOwner );
 		
+		/**
+		* Add a new step to the pathway
+		* @param {PathStep} newPS
+		*/
+		const addToPathway = ( newPS ) => {
+			switch( newPS.getCode()){
+				case 'i-Arr':
+					pathway.prepend( newPS.render());
+					pathSteps.splice(0, 0, newPS);
+				break;
+				case 'i-Wait':
+					const todoIndex = pathSteps.findIndex( ps => {
+						const status = ps.getStatus();
+						return ( status == 'todo' || status == 'todo-later');
+					});
+					
+					// no other steps with "todo" yet added to the pathway
+					if( todoIndex === -1 ){
+						pathway.append( newPS.render());
+						pathSteps.push( newPS );
+					} else {
+						pathway.insertBefore( newPS.render(), pathSteps[todoIndex].render());
+						pathSteps.splice( todoIndex, 0, newPS );
+					}
+			
+				break; 
+				default:
+					pathway.append( newPS.render());
+					pathSteps.push( newPS );
+			}	
+			
+		};
 		
 		/**
 		* Add PathStep to patient pathway
@@ -127,15 +155,33 @@
 					step.info = step.mins ? step.mins : "0"; // inbetween needs to show there duration in mins
 			}
 			
-			// add new Pathstep to the pathway
+			// create a new Pathstep
 			// @param {.} step - {shortcode, status, type, info, idgPopupCode}
-			gui.pathStep( step, pathway );
-
+			addToPathway( gui.pathStep( step, null ));
 		};
 		
+		/**
+		* Remove either last "todo" or ALL 'todo'
+		* @param {String} code - 'c-all', 'c-last'
+		*/
+		const removePathStep = ( code ) => {
+			if( !pathSteps.length ) return;
+ 			
+			if( code == 'c-last' ){
+				const lastStep = pathSteps[ pathSteps.length - 1 ];
+				const status = lastStep.getStatus();
+				if( status == "todo" || 
+					status == "todo-later" || 
+					status == "config"){
+						
+					lastStep.remove();
+					pathSteps.splice( -1, 1 );
+				}
+			}
+		}
 		
 		/**
-		* Flags
+		* set Flags
 		*/
 		const flag = ( arr ) => {
 			if( arr == undefined ) return; 
@@ -145,7 +191,6 @@
 			td.flags.innerHTML = `<i class="oe-i flag-${icon} small-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
 		};
 		
-		
 		/**
 		* 'on' Handlers for Event delegation
 		*/
@@ -153,14 +198,14 @@
 			addPathStep({
 				shortcode: 'i-Arr',
 				timestamp: Date.now(),
-				status: 'done',
+				status: 'buff',
 				type: 'arrive',
 				idgPopupCode: 'arrive-basic',
 			});
 			addPathStep({
-				shortcode: 'Waiting',
-				mins: 1,
-				status: 'w-room',
+				shortcode: 'i-Wait',
+				mins: 0,
+				status: 'buff',
 				type: 'wait',
 			});
 			
@@ -181,7 +226,7 @@
 			addPathStep({
 				shortcode: 'i-Fin',
 				timestamp: Date.now(), 
-				status: 'done',
+				status: 'buff',
 				type: 'finish',
 			});
 			model.status = "complete";
@@ -209,13 +254,11 @@
 			// patient state 
 			model.status = props.status; 
 			model.assigned = props.assigned;
-			model.time = props.time;
-			model.lastname = props.lastname;
+			model.nameAge = `${props.lastname} <span class="fade">${props.age}</span>`;
 			
 			// build pathway steps
 			props.pathway.forEach( step => addPathStep( step ));
-			
-			
+
 			flag( props.f );
 			
 			// build <tr>
@@ -234,18 +277,24 @@
 			tr.append( td.flags );
 			tr.append( waitDuration.render( props.status )); // returns a <td>
 			tr.append( td.complete );
+			
 		})();
 			
 		/**
 		* API
-		* GETTER / SETTER: App needs to get and set patient assigned from Adder
 		*/
-		const getStatus = () => model.status;
-		const setAssigned = ( val ) => model.assigned = val;
-		const getTime = () => model.time;
-		const getLastname = () => model.lastname;
-		
-		return { onArrived, onDNA, onComplete, render, getStatus, setAssigned, getTime, getLastname, addPathStep };
+		return { 
+			onArrived, 
+			onDNA, 
+			onComplete, 
+			getID: () => model.uid, 
+			getStatus: () => model.status, 
+			setAssigned: ( val ) => model.assigned = val, 
+			getNameAge: () => model.nameAge, 
+			render, 
+			addPathStep, 
+			removePathStep, 
+		};
 	};
 	
 	// make component available to Clinic SPA	
