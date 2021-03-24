@@ -37,6 +37,7 @@
 				const css = [ selector ];
 				css.push( this.status );
 				css.push( this.type );
+				console.log( this.span );
 				this.span.className = css.join(' ');
 				this.updateInfo();
 				return this.span;
@@ -45,35 +46,36 @@
 		
 		const _setters = () => ({
 			/**
-			* @param {String} shortcode - change shortcode (from initial value)
+			* @param {String} val - change shortcode (from initial value)
 			*/
-			setCode( shortcode ){
-				this.shortcode = shortcode;
-				this.span.querySelector('.step').textContent = shortcode;
+			setCode( val ){
+				this.shortcode = val;
+				this.span.querySelector('.step').textContent = val;
 				this.render();
 			},
 			
-			getCode( shortcode ){
+			getCode(){
 				return this.shortcode;
 			},
 			
 			/**
-			* @param {String} type - e.g. arrive, finish, process, person, config
+			* @param {String} - config, todo, todo-later, done, (buff)
 			*/
-			setType( type ){
-				this.type = type;
-				this.render();
-			},
-			/**
-			* @param {String} status - next is default
-			*/
-			setStatus( status ){
-				this.status = status;
+			setStatus( val ){
+				this.status = val;
 				this.render();
 			}, 
 			
 			getStatus(){
-				return this.status;
+				return this.status;	
+			},
+						
+			/**
+			* @param {String} - person, process (arrive, finish, wait, auto-finish)
+			*/
+			setType( val ){
+				this.type = val;
+				this.render();
 			},
 			
 			/**
@@ -96,8 +98,8 @@
 			* IDG specific hack to provide a specific code for demo popups
 			* @param {String} code
 			*/
-			setIdgPopupCode( idgCode ){
-				this.idgCode = idgCode;
+			setIdgPopupCode( val ){
+				this.idgCode = val;
 			}
 			
 		});
@@ -145,13 +147,12 @@
 		
 		/**
 		* @Class
-		* @param {Object} me - initialise
+		* @param {Element} span - initialise with new DOM element
 		* @returns {*} new PathStep
 		*/
-		const createPathStep = ( newPS ) => {
+		const createPathStep = ( span ) => {
 			return Object.assign( 
-				newPS, 
-				{ type:null },
+				{ span },
 				{ setKey( k ){ this.key = k; }},
 				_render(),
 				_setters(),
@@ -181,18 +182,14 @@
 		*/
 		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, pathway ) => {
 			
-			// new DOM element
-			/*
-			Check for icons specials, e.g. i-Arr, etc
-			*/
+			// new DOM element, check for icons
 			const name = shortcode.startsWith('i-') ? 
 				`<span class="step ${shortcode}"></span>` :
 				`<span class="step">${shortcode}</span>`;
-			
-			const span = bj.dom('span', selector, name);
-						
+		
 			// create new PathStep & set up
-			const ps = createPathStep({ shortcode, span });
+			const ps = createPathStep( bj.dom('span', selector, name));
+			ps.shortcode = shortcode;
 			ps.setStatus( status );
 			ps.setType( type );
 			
@@ -206,10 +203,10 @@
 			ps.setInfo( info );
 			
 			// update collection 	
-			ps.setKey( collection.add( ps, span ));
+			ps.setKey( collection.add( ps, ps.render()));
 		
-			// add to DOM.
-			if( pathway ) pathway.append( span );
+			// add to DOM?
+			if( pathway ) pathway.append( ps.render());
 			
 			return ps; // return PathStep
 		};

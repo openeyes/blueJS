@@ -202,7 +202,7 @@
 				['Waiting','waiting'],
 				['Stuck','stuck'],
 				//['Later','later'], // not needed for A&E
-				['Done','complete'],
+				['Done','done'],
 			].forEach( btn => {
 				filters.add( clinic.filterBtn({
 					name: btn[0],

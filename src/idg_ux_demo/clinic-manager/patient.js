@@ -24,6 +24,7 @@
 		
 		// pathway <div> for pathSteps
 		const pathSteps = [];
+		let autoFinishStep = null;
 		const pathway =  bj.div('pathway');
 		td.path.append( pathway );	
 		
@@ -109,6 +110,8 @@
 		* @param {PathStep} newPS
 		*/
 		const addToPathway = ( newPS ) => {
+			if( model.status == "done") return;
+			
 			switch( newPS.getCode()){
 				case 'i-Arr':
 					pathway.prepend( newPS.render());
@@ -129,12 +132,19 @@
 						pathSteps.splice( todoIndex, 0, newPS );
 					}
 			
+				break;
+				case 'i-Stop': 
+					// Automatic stop must alway be last.
+					autoFinishStep = newPS;
 				break; 
+				case 'i-Fin':
+					model.status = "done";
 				default:
 					pathway.append( newPS.render());
 					pathSteps.push( newPS );
-			}	
+			}
 			
+			if( autoFinishStep ) pathway.append( autoFinishStep.render());
 		};
 		
 		/**
@@ -219,7 +229,7 @@
 				status: 'done',
 				type: 'DNA',
 			});
-			model.status = "complete";
+			model.status = "done";
 		};
 		
 		const onComplete = () => {
@@ -229,7 +239,7 @@
 				status: 'buff',
 				type: 'finish',
 			});
-			model.status = "complete";
+			model.status = "done";
 		};
 		
 		/**
@@ -241,7 +251,7 @@
 			const status = model.status;
 			switch( filter ){
 				case "all": return tr;
-				case "hide-done": return status == 'complete' ? null : tr;
+				case "hide-done": return status == 'done' ? null : tr;
 				default:  return status == filter ? tr : null;
 			}
 		};
@@ -266,7 +276,6 @@
 			
 			tr.insertAdjacentHTML('beforeend', `<td>${props.time}</td>`);
 			tr.insertAdjacentHTML('beforeend', `<td><div class="speciality">${props.clinic[0]}</div><small class="type">${props.clinic[1]}</small></td>`);
-			tr.insertAdjacentHTML('beforeend', `<td>${props.dob}</td>`);
 			
 			// slightly more complex Elements and dynamic areas...
 			tr.append( clinic.patientMeta( props ));

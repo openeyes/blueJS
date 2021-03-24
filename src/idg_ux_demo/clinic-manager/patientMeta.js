@@ -24,14 +24,14 @@
 					'<a href="/v3-SEM/patient-overview">',
 						'<span class="patient-surname">{{lastname}}</span>, ',
 						'<span class="patient-firstname">{{{firstname}}}',
-						'{{#duplicate}}<i class="oe-i person-split small pad-left js-has-tooltip" data-tt-type="basic" data-tooltip-content="Double check details. More than one DARWIN in clinic"></i>{{/duplicate}}',
+						'{{#duplicate}}<i class="oe-i exclamation-orange small pad-left js-has-tooltip" data-tt-type="basic" data-tooltip-content="Double check details. More than one {{lastname}} in clinic"></i>{{/duplicate}}',
 						'</span>',
 					'</a>',
 				'</div>',
 				'<div class="patient-details">',
 					'<div class="nhs-number"><span>NHS</span>{{nhs}}</div>',
 					'<div class="patient-gender"><span>Gen</span>{{gender}}</div>',
-					'<div class="patient-age"><span>Age</span>{{age}}</div>',
+					'<div class="patient-age"><span>Born</span> {{dob}} <span class="yrs">{{age}}</span></div>',
 				'</div>',
 			'</div>'
 		].join('');

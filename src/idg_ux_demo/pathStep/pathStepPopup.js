@@ -39,7 +39,8 @@
 			Async.
 			Use the pathStepKey for the token check
 			*/
-			const phpCode = `${shortcode}.${status}`.toLowerCase();
+			const urlShortCode = shortcode.replace(' ','-'); // watch out for "Dr XY";
+			const phpCode = `${urlShortCode}.${status}`.toLowerCase();
 			bj.xhr(`/idg-php/load/pathstep/_ps.php?full=${full}&code=${phpCode}`, pathStepKey )
 				.then( xreq => {
 					if( pathStepKey != xreq.token ) return;

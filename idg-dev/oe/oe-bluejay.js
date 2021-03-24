@@ -10394,7 +10394,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			'<thead><tr>{{#th}}<th>{{{.}}}</th>{{/th}}</tr></thead>',
 			'<tbody></tbody>'
 		].join(''), {
-			"th": ['Arr.', 'Clinic', 'Dob',  'Patient', '', 'Pathway', '', '<i class="oe-i person small"></i>', '<i class="oe-i flag small"></i>', 'Wait', '']
+			"th": ['Arr.', 'Clinic', 'Patient', '', 'Pathway', '', '<i class="oe-i person small"></i>', '<i class="oe-i flag small"></i>', 'Wait', '']
 		});
 		
 		document.getElementById('js-clinic-manager').appendChild( table );
@@ -10612,7 +10612,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				['Waiting','waiting'],
 				['Stuck','stuck'],
 				//['Later','later'], // not needed for A&E
-				['Done','complete'],
+				['Done','done'],
 			].forEach( btn => {
 				filters.add( clinic.filterBtn({
 					name: btn[0],
@@ -11038,6 +11038,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		// pathway <div> for pathSteps
 		const pathSteps = [];
+		let autoFinishStep = null;
 		const pathway =  bj.div('pathway');
 		td.path.append( pathway );	
 		
@@ -11123,6 +11124,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* @param {PathStep} newPS
 		*/
 		const addToPathway = ( newPS ) => {
+			if( model.status == "done") return;
+			
 			switch( newPS.getCode()){
 				case 'i-Arr':
 					pathway.prepend( newPS.render());
@@ -11143,12 +11146,19 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 						pathSteps.splice( todoIndex, 0, newPS );
 					}
 			
+				break;
+				case 'i-Stop': 
+					// Automatic stop must alway be last.
+					autoFinishStep = newPS;
 				break; 
+				case 'i-Fin':
+					model.status = "done";
 				default:
 					pathway.append( newPS.render());
 					pathSteps.push( newPS );
-			}	
+			}
 			
+			if( autoFinishStep ) pathway.append( autoFinishStep.render());
 		};
 		
 		/**
@@ -11233,7 +11243,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				status: 'done',
 				type: 'DNA',
 			});
-			model.status = "complete";
+			model.status = "done";
 		};
 		
 		const onComplete = () => {
@@ -11243,7 +11253,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				status: 'buff',
 				type: 'finish',
 			});
-			model.status = "complete";
+			model.status = "done";
 		};
 		
 		/**
@@ -11255,7 +11265,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			const status = model.status;
 			switch( filter ){
 				case "all": return tr;
-				case "hide-done": return status == 'complete' ? null : tr;
+				case "hide-done": return status == 'done' ? null : tr;
 				default:  return status == filter ? tr : null;
 			}
 		};
@@ -11280,7 +11290,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			tr.insertAdjacentHTML('beforeend', `<td>${props.time}</td>`);
 			tr.insertAdjacentHTML('beforeend', `<td><div class="speciality">${props.clinic[0]}</div><small class="type">${props.clinic[1]}</small></td>`);
-			tr.insertAdjacentHTML('beforeend', `<td>${props.dob}</td>`);
 			
 			// slightly more complex Elements and dynamic areas...
 			tr.append( clinic.patientMeta( props ));
@@ -11342,14 +11351,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					'<a href="/v3-SEM/patient-overview">',
 						'<span class="patient-surname">{{lastname}}</span>, ',
 						'<span class="patient-firstname">{{{firstname}}}',
-						'{{#duplicate}}<i class="oe-i person-split small pad-left js-has-tooltip" data-tt-type="basic" data-tooltip-content="Double check details. More than one DARWIN in clinic"></i>{{/duplicate}}',
+						'{{#duplicate}}<i class="oe-i exclamation-orange small pad-left js-has-tooltip" data-tt-type="basic" data-tooltip-content="Double check details. More than one {{lastname}} in clinic"></i>{{/duplicate}}',
 						'</span>',
 					'</a>',
 				'</div>',
 				'<div class="patient-details">',
 					'<div class="nhs-number"><span>NHS</span>{{nhs}}</div>',
 					'<div class="patient-gender"><span>Gen</span>{{gender}}</div>',
-					'<div class="patient-age"><span>Age</span>{{age}}</div>',
+					'<div class="patient-age"><span>Born</span> {{dob}} <span class="yrs">{{age}}</span></div>',
 				'</div>',
 			'</div>'
 		].join('');
@@ -11577,6 +11586,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				const css = [ selector ];
 				css.push( this.status );
 				css.push( this.type );
+				console.log( this.span );
 				this.span.className = css.join(' ');
 				this.updateInfo();
 				return this.span;
@@ -11585,35 +11595,36 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		const _setters = () => ({
 			/**
-			* @param {String} shortcode - change shortcode (from initial value)
+			* @param {String} val - change shortcode (from initial value)
 			*/
-			setCode( shortcode ){
-				this.shortcode = shortcode;
-				this.span.querySelector('.step').textContent = shortcode;
+			setCode( val ){
+				this.shortcode = val;
+				this.span.querySelector('.step').textContent = val;
 				this.render();
 			},
 			
-			getCode( shortcode ){
+			getCode(){
 				return this.shortcode;
 			},
 			
 			/**
-			* @param {String} type - e.g. arrive, finish, process, person, config
+			* @param {String} - config, todo, todo-later, done, (buff)
 			*/
-			setType( type ){
-				this.type = type;
-				this.render();
-			},
-			/**
-			* @param {String} status - next is default
-			*/
-			setStatus( status ){
-				this.status = status;
+			setStatus( val ){
+				this.status = val;
 				this.render();
 			}, 
 			
 			getStatus(){
-				return this.status;
+				return this.status;	
+			},
+						
+			/**
+			* @param {String} - person, process (arrive, finish, wait, auto-finish)
+			*/
+			setType( val ){
+				this.type = val;
+				this.render();
 			},
 			
 			/**
@@ -11636,8 +11647,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			* IDG specific hack to provide a specific code for demo popups
 			* @param {String} code
 			*/
-			setIdgPopupCode( idgCode ){
-				this.idgCode = idgCode;
+			setIdgPopupCode( val ){
+				this.idgCode = val;
 			}
 			
 		});
@@ -11685,13 +11696,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		/**
 		* @Class
-		* @param {Object} me - initialise
+		* @param {Element} span - initialise with new DOM element
 		* @returns {*} new PathStep
 		*/
-		const createPathStep = ( newPS ) => {
+		const createPathStep = ( span ) => {
 			return Object.assign( 
-				newPS, 
-				{ type:null },
+				{ span },
 				{ setKey( k ){ this.key = k; }},
 				_render(),
 				_setters(),
@@ -11721,18 +11731,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, pathway ) => {
 			
-			// new DOM element
-			/*
-			Check for icons specials, e.g. i-Arr, etc
-			*/
+			// new DOM element, check for icons
 			const name = shortcode.startsWith('i-') ? 
 				`<span class="step ${shortcode}"></span>` :
 				`<span class="step">${shortcode}</span>`;
-			
-			const span = bj.dom('span', selector, name);
-						
+		
 			// create new PathStep & set up
-			const ps = createPathStep({ shortcode, span });
+			const ps = createPathStep( bj.dom('span', selector, name));
+			ps.shortcode = shortcode;
 			ps.setStatus( status );
 			ps.setType( type );
 			
@@ -11746,10 +11752,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			ps.setInfo( info );
 			
 			// update collection 	
-			ps.setKey( collection.add( ps, span ));
+			ps.setKey( collection.add( ps, ps.render()));
 		
-			// add to DOM.
-			if( pathway ) pathway.append( span );
+			// add to DOM?
+			if( pathway ) pathway.append( ps.render());
 			
 			return ps; // return PathStep
 		};
@@ -11803,7 +11809,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			Async.
 			Use the pathStepKey for the token check
 			*/
-			const phpCode = `${shortcode}.${status}`.toLowerCase();
+			const urlShortCode = shortcode.replace(' ','-'); // watch out for "Dr XY";
+			const phpCode = `${urlShortCode}.${status}`.toLowerCase();
 			bj.xhr(`/idg-php/load/pathstep/_ps.php?full=${full}&code=${phpCode}`, pathStepKey )
 				.then( xreq => {
 					if( pathStepKey != xreq.token ) return;
