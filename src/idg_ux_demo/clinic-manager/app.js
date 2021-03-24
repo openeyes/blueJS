@@ -182,12 +182,19 @@
 		bj.userDown('.oe-clinic-adder .close-btn', hideAdder );
 		
 		/**
+		* @callback for Patient change
+		*/
+		const updateAppFilters = () => {
+			model.updateFilterView();
+		}
+		
+		/**
 		* Init Patients and set state from the JSON	
 		* Add filters in the header bar
 		*/
 		(() => {
 			// build patients (<tr>)
-			json.forEach( patient => patients.set( patient.uid, clinic.patient( patient )));
+			json.forEach( patient => patients.set( patient.uid, clinic.patient( patient, updateAppFilters )));
 			
 			// option-right area in in the <header>
 			const div = document.getElementById('js-clinic-filters');
@@ -196,13 +203,13 @@
 			const ul = bj.dom('ul', "quick-filters" );
 			
 			[
-				['Hide done','hide-done'], 
+				['Hide completed','hide-done'], 
 				['All','all'],
 				['Active','active'],
 				['Waiting','waiting'],
 				['Stuck','stuck'],
 				//['Later','later'], // not needed for A&E
-				['Done','done'],
+				['Completed','done'],
 			].forEach( btn => {
 				filters.add( clinic.filterBtn({
 					name: btn[0],

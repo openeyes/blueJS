@@ -5,9 +5,10 @@
 	/**
 	* Patient (<tr>)
 	* @param {*} props
+	* @param {Func} updateAppFilters - callback for App
 	* @returns {*} public methods
 	*/
-	const patient = ( props ) => {
+	const patient = ( props, updateAppFilters ) => {
 		
 		/**
 		* Patient UI is a table row <tr>
@@ -67,27 +68,29 @@
 		}, bj.ModelViews());
 		
 		/**
-		* VIEW: status of patient
+		* VIEW: Status change
 		* if patient is "complete" hide the specific + icon
 		*/
 		const onChangeStatus = () => {
 			tr.className = model.status;
 			pathway.className = `pathway ${model.status}`;
-			td.addIcon.innerHTML = model.status == "complete" ? 
+			waitDuration.render( model.status );
+			
+			// show + icon to add pathSteps?
+			td.addIcon.innerHTML = model.status == "done" ? 
 				"<!-- complete -->" :
 				`<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model.uid}"></i>`;
-			
-			waitDuration.render( model.status );
 		};
 		
 		model.views.add( onChangeStatus );
 		
 		/**
-		* VIEW: complete (tick icon) / done
+		* VIEW: Pathway Completed
+		* complete (tick icon) / done?
 		*/
 		const onChangeComplete = () => {
-			const completeHTML = model.status == "complete" ?
-				'<span class="fade">Done</span>' :
+			const completeHTML = model.status == "done" ?
+				'<small class="fade">Done</small>' :
 				`<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model.uid}"></i>`;
 
 			// update DOM
@@ -111,6 +114,7 @@
 		*/
 		const addToPathway = ( newPS ) => {
 			if( model.status == "done") return;
+			if( newPS.getCode() == 'i-Fin' ) model.status = "done"; // iDG hack
 			
 			switch( newPS.getCode()){
 				case 'i-Arr':
@@ -136,9 +140,7 @@
 				case 'i-Stop': 
 					// Automatic stop must alway be last.
 					autoFinishStep = newPS;
-				break; 
-				case 'i-Fin':
-					model.status = "done";
+				break;
 				default:
 					pathway.append( newPS.render());
 					pathSteps.push( newPS );
@@ -146,6 +148,23 @@
 			
 			if( autoFinishStep ) pathway.append( autoFinishStep.render());
 		};
+		
+		/**
+		* @callback for PathStep change
+		* need to know if a pathStep changes state
+		* @param {String} newStepStatus - ps new status
+		*/
+		const onPathStepChange = ( newStepStatus ) => {
+			switch( newStepStatus ){
+				case "active":
+					model.status = "active"; 
+					removeWaitingStep();
+					updateAppFilters(); // let the App know to update Filters
+					
+					
+				break;
+			}
+		}
 		
 		/**
 		* Add PathStep to patient pathway
@@ -166,8 +185,8 @@
 			}
 			
 			// create a new Pathstep
-			// @param {.} step - {shortcode, status, type, info, idgPopupCode}
-			addToPathway( gui.pathStep( step, null ));
+			// step - {shortcode, status, type, info, idgPopupCode}
+			addToPathway( gui.pathStep( step, null, onPathStepChange ));
 		};
 		
 		/**
@@ -188,6 +207,24 @@
 					pathSteps.splice( -1, 1 );
 				}
 			}
+		};
+		
+		/**
+		* Remove waiting step
+		*/
+		const removeWaitingStep = () => {
+			let waitingIndex = false;
+			
+			pathSteps.forEach(( ps, index ) => {
+				const code = ps.getCode();
+				if( code == 'i-Wait' || code == "Waiting"){
+					ps.remove();
+					waitingIndex = index;
+				}
+			});
+			
+			// wait step removed?
+			if( waitingIndex ) pathSteps.splice( waitingIndex, 1 );
 		}
 		
 		/**

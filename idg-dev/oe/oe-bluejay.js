@@ -10592,12 +10592,19 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		bj.userDown('.oe-clinic-adder .close-btn', hideAdder );
 		
 		/**
+		* @callback for Patient change
+		*/
+		const updateAppFilters = () => {
+			model.updateFilterView();
+		}
+		
+		/**
 		* Init Patients and set state from the JSON	
 		* Add filters in the header bar
 		*/
 		(() => {
 			// build patients (<tr>)
-			json.forEach( patient => patients.set( patient.uid, clinic.patient( patient )));
+			json.forEach( patient => patients.set( patient.uid, clinic.patient( patient, updateAppFilters )));
 			
 			// option-right area in in the <header>
 			const div = document.getElementById('js-clinic-filters');
@@ -10606,13 +10613,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			const ul = bj.dom('ul', "quick-filters" );
 			
 			[
-				['Hide done','hide-done'], 
+				['Hide completed','hide-done'], 
 				['All','all'],
 				['Active','active'],
 				['Waiting','waiting'],
 				['Stuck','stuck'],
 				//['Later','later'], // not needed for A&E
-				['Done','done'],
+				['Completed','done'],
 			].forEach( btn => {
 				filters.add( clinic.filterBtn({
 					name: btn[0],
@@ -11012,6 +11019,20 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	clinic.filterBtn = filterBtn;			
   
 })( bluejay, bluejay.namespace('clinic')); 
+(function( bj, clinic ){
+
+	'use strict';	
+	
+	const pathway = () => {
+		
+		
+	};
+	
+	// make component available to Clinic SPA	
+	clinic.pathway = pathway;
+	
+
+})( bluejay, bluejay.namespace('clinic')); 
 (function( bj, clinic, gui ){
 
 	'use strict';	
@@ -11019,9 +11040,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	/**
 	* Patient (<tr>)
 	* @param {*} props
+	* @param {Func} updateAppFilters - callback for App
 	* @returns {*} public methods
 	*/
-	const patient = ( props ) => {
+	const patient = ( props, updateAppFilters ) => {
 		
 		/**
 		* Patient UI is a table row <tr>
@@ -11081,27 +11103,29 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		}, bj.ModelViews());
 		
 		/**
-		* VIEW: status of patient
+		* VIEW: Status change
 		* if patient is "complete" hide the specific + icon
 		*/
 		const onChangeStatus = () => {
 			tr.className = model.status;
 			pathway.className = `pathway ${model.status}`;
-			td.addIcon.innerHTML = model.status == "complete" ? 
+			waitDuration.render( model.status );
+			
+			// show + icon to add pathSteps?
+			td.addIcon.innerHTML = model.status == "done" ? 
 				"<!-- complete -->" :
 				`<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model.uid}"></i>`;
-			
-			waitDuration.render( model.status );
 		};
 		
 		model.views.add( onChangeStatus );
 		
 		/**
-		* VIEW: complete (tick icon) / done
+		* VIEW: Pathway Completed
+		* complete (tick icon) / done?
 		*/
 		const onChangeComplete = () => {
-			const completeHTML = model.status == "complete" ?
-				'<span class="fade">Done</span>' :
+			const completeHTML = model.status == "done" ?
+				'<small class="fade">Done</small>' :
 				`<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model.uid}"></i>`;
 
 			// update DOM
@@ -11125,6 +11149,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const addToPathway = ( newPS ) => {
 			if( model.status == "done") return;
+			if( newPS.getCode() == 'i-Fin' ) model.status = "done"; // iDG hack
 			
 			switch( newPS.getCode()){
 				case 'i-Arr':
@@ -11150,9 +11175,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				case 'i-Stop': 
 					// Automatic stop must alway be last.
 					autoFinishStep = newPS;
-				break; 
-				case 'i-Fin':
-					model.status = "done";
+				break;
 				default:
 					pathway.append( newPS.render());
 					pathSteps.push( newPS );
@@ -11160,6 +11183,23 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			if( autoFinishStep ) pathway.append( autoFinishStep.render());
 		};
+		
+		/**
+		* @callback for PathStep change
+		* need to know if a pathStep changes state
+		* @param {String} newStepStatus - ps new status
+		*/
+		const onPathStepChange = ( newStepStatus ) => {
+			switch( newStepStatus ){
+				case "active":
+					model.status = "active"; 
+					removeWaitingStep();
+					updateAppFilters(); // let the App know to update Filters
+					
+					
+				break;
+			}
+		}
 		
 		/**
 		* Add PathStep to patient pathway
@@ -11180,8 +11220,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			}
 			
 			// create a new Pathstep
-			// @param {.} step - {shortcode, status, type, info, idgPopupCode}
-			addToPathway( gui.pathStep( step, null ));
+			// step - {shortcode, status, type, info, idgPopupCode}
+			addToPathway( gui.pathStep( step, null, onPathStepChange ));
 		};
 		
 		/**
@@ -11202,6 +11242,24 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					pathSteps.splice( -1, 1 );
 				}
 			}
+		};
+		
+		/**
+		* Remove waiting step
+		*/
+		const removeWaitingStep = () => {
+			let waitingIndex = false;
+			
+			pathSteps.forEach(( ps, index ) => {
+				const code = ps.getCode();
+				if( code == 'i-Wait' || code == "Waiting"){
+					ps.remove();
+					waitingIndex = index;
+				}
+			});
+			
+			// wait step removed?
+			if( waitingIndex ) pathSteps.splice( waitingIndex, 1 );
 		}
 		
 		/**
@@ -11583,12 +11641,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			* @returns <span> Element
 			*/
 			render(){
-				const css = [ selector ];
-				css.push( this.status );
-				css.push( this.type );
-				console.log( this.span );
-				this.span.className = css.join(' ');
-				this.updateInfo();
+				this.span.className = [ selector, this.status, this.type ].join(' ');
+				this.displayInfo();
 				return this.span;
 			}
 		});
@@ -11634,55 +11688,85 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			nextState(){
 				let newStatus;
 				switch( this.status ){
-					case 'config': newStatus = 'todo'; break;
+					case 'config': newStatus = 'todo'; 
+					break;
 					case 'todo': 
-					case 'todo-later':
-						newStatus = 'active'; break;
-					case 'active': newStatus = 'done'; break;
+					case 'todo-later': newStatus = 'active'; 
+					break;
+					case 'active': 
+						newStatus = 'done';
+						this.info.textContent = '15'; // set fake duration
+					break;
 				}
 				this.setStatus( newStatus );
+				if( this.callback ) this.callback( newStatus );
 				gui.pathStepPopup.full( this, true );
-			}, 
+			},
+			
+			prevState(){
+				let newStatus;
+				switch( this.status ){
+					case 'active': newStatus = 'todo'; 
+					break;
+				}
+				this.setStatus( newStatus );
+				if( this.callback ) this.callback( newStatus );
+				gui.pathStepPopup.full( this, true );
+			},
+			 
 			/**
 			* IDG specific hack to provide a specific code for demo popups
-			* @param {String} code
+			* @param {String} val
 			*/
 			setIdgPopupCode( val ){
 				this.idgCode = val;
+			},
+			
+			/**
+			* IDG specific hack to provide a specific code for demo popups
+			* @param {Function} func
+			*/
+			setCallback( func ){
+				this.callback = func;
 			}
 			
 		});
 		
 		
-		const _setInfo = () => ({
+		const _stepInfo = () => ({
 			/** 
-			* @params {String} - custom string or "clock" or false,
-			* If it's false don't added it to the DOM as it increase height
-			* "clock" - show a clock for each state change
+			* PathStep height depends on the "info".Height is not fixed, 
+			* this allows the pathStep to fit in a standard table row. (This may change)
+			* @params {String} info
+			* info - A custom DOMstring (could be "&nbsp;") or "clock" or false,
+			* If it's false don't add to the DOM as this affects the height.
 			*/
 			setInfo( info ){
-				this.info = info;
-				
-				if( this.info ){
-					this.infoSpan = bj.dom('span','info');
-					this.span.append( this.infoSpan );
-					this.render();
+				if( info !== false ){
+					this.info = bj.dom('span','info');
+					
+					// set content
+					this.info.innerHTML = info === "clock" ? 
+						bj.clock24( new Date( Date.now())) :
+						info;
+					
+					// append
+					this.span.append( this.info );
 				} 
 			}, 
 			
-			updateInfo(){
+			/**
+			* When state changes and PathStep is rendered
+			* check info display state.
+			*/  
+			displayInfo(){
 				if( !this.info  ) return; 
-				
-				this.infoSpan.innerHTML = this.info === "clock" ? 
-					bj.clock24( new Date( Date.now())) :
-					this.info;
-				
 				if( this.status == 'todo' || 
 					this.status == 'todo-later' ||
 					this.status == 'config' ){
-					this.infoSpan.classList.add('invisible'); // need the DOM to keep the step height consistent
+					this.info.classList.add('invisible'); // need the DOM to keep the height consistent
 				} else {
-					this.infoSpan.classList.remove('invisible');
+					this.info.classList.remove('invisible');
 				}
 			}
 		});
@@ -11705,7 +11789,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				{ setKey( k ){ this.key = k; }},
 				_render(),
 				_setters(),
-				_setInfo(), 
+				_stepInfo(), 
 				_events(), 
 				_remove()
 			);
@@ -11727,9 +11811,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* API - add new PathStep to DOM
 		* @param {Object} step properties
 		* @param {DOM parentNode} pathway 
+		* @param {Function} cb - Callback - CM Patient needs to know of any changes
 		* @returns {PathStep}
 		*/
-		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, pathway ) => {
+		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, pathway, cb = false ) => {
 			
 			// new DOM element, check for icons
 			const name = shortcode.startsWith('i-') ? 
@@ -11739,25 +11824,26 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// create new PathStep & set up
 			const ps = createPathStep( bj.dom('span', selector, name));
 			ps.shortcode = shortcode;
-			ps.setStatus( status );
-			ps.setType( type );
-			
-			if( idgPopupCode ) ps.setIdgPopupCode( idgPopupCode );
-			
-			/*
-			Adding info to a pathstep will increase the button height.
-			For PSDs and for pathSteps in Orders elements the info isn't needed and is "false"
-			It can be a custom String, but mostly it's shows the time ("clock")
-			*/
+			ps.status = status;
+			ps.type = type;
 			ps.setInfo( info );
 			
-			// update collection 	
-			ps.setKey( collection.add( ps, ps.render()));
-		
-			// add to DOM?
-			if( pathway ) pathway.append( ps.render());
+			// render DOM
+			const spanDOM = ps.render();
 			
-			return ps; // return PathStep
+			// iDG code to show specific content in popup
+			if( idgPopupCode ) ps.setIdgPopupCode( idgPopupCode );
+			
+			// update collection 	
+			ps.setKey( collection.add( ps, spanDOM ));
+		
+			// add to a pathway DOM?
+			if( pathway ) pathway.append( spanDOM );
+			
+			// patient callback?
+			if( cb ) ps.setCallback( cb );
+			
+			return ps; // return new PathStep
 		};
 		
 		// API
@@ -11940,12 +12026,19 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		// btn actions within popup. these are generic on IDG for demos
 		bj.userDown('.oe-pathstep-popup .js-idg-ps-popup-btn', ( ev ) => {
 			const userRequest = ev.target.dataset.action;
-			if( userRequest == 'remove'){
-				pathStep.remove();
-				removeReset();
-			}
-			if( userRequest == 'next'){
-				pathStep.nextState();
+			
+			// fake UIX process buttons in popup can request these
+			switch( userRequest ){
+				case 'remove':
+					pathStep.remove();
+					removeReset();
+				break;
+				case 'next':
+					pathStep.nextState();
+				break;
+				case 'prev':
+					pathStep.prevState();
+				break;
 			}
 		});
 	    

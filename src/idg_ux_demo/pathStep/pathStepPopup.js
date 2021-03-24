@@ -170,12 +170,19 @@
 		// btn actions within popup. these are generic on IDG for demos
 		bj.userDown('.oe-pathstep-popup .js-idg-ps-popup-btn', ( ev ) => {
 			const userRequest = ev.target.dataset.action;
-			if( userRequest == 'remove'){
-				pathStep.remove();
-				removeReset();
-			}
-			if( userRequest == 'next'){
-				pathStep.nextState();
+			
+			// fake UIX process buttons in popup can request these
+			switch( userRequest ){
+				case 'remove':
+					pathStep.remove();
+					removeReset();
+				break;
+				case 'next':
+					pathStep.nextState();
+				break;
+				case 'prev':
+					pathStep.prevState();
+				break;
 			}
 		});
 	    

@@ -34,12 +34,8 @@
 			* @returns <span> Element
 			*/
 			render(){
-				const css = [ selector ];
-				css.push( this.status );
-				css.push( this.type );
-				console.log( this.span );
-				this.span.className = css.join(' ');
-				this.updateInfo();
+				this.span.className = [ selector, this.status, this.type ].join(' ');
+				this.displayInfo();
 				return this.span;
 			}
 		});
@@ -85,55 +81,85 @@
 			nextState(){
 				let newStatus;
 				switch( this.status ){
-					case 'config': newStatus = 'todo'; break;
+					case 'config': newStatus = 'todo'; 
+					break;
 					case 'todo': 
-					case 'todo-later':
-						newStatus = 'active'; break;
-					case 'active': newStatus = 'done'; break;
+					case 'todo-later': newStatus = 'active'; 
+					break;
+					case 'active': 
+						newStatus = 'done';
+						this.info.textContent = '15'; // set fake duration
+					break;
 				}
 				this.setStatus( newStatus );
+				if( this.callback ) this.callback( newStatus );
 				gui.pathStepPopup.full( this, true );
-			}, 
+			},
+			
+			prevState(){
+				let newStatus;
+				switch( this.status ){
+					case 'active': newStatus = 'todo'; 
+					break;
+				}
+				this.setStatus( newStatus );
+				if( this.callback ) this.callback( newStatus );
+				gui.pathStepPopup.full( this, true );
+			},
+			 
 			/**
 			* IDG specific hack to provide a specific code for demo popups
-			* @param {String} code
+			* @param {String} val
 			*/
 			setIdgPopupCode( val ){
 				this.idgCode = val;
+			},
+			
+			/**
+			* IDG specific hack to provide a specific code for demo popups
+			* @param {Function} func
+			*/
+			setCallback( func ){
+				this.callback = func;
 			}
 			
 		});
 		
 		
-		const _setInfo = () => ({
+		const _stepInfo = () => ({
 			/** 
-			* @params {String} - custom string or "clock" or false,
-			* If it's false don't added it to the DOM as it increase height
-			* "clock" - show a clock for each state change
+			* PathStep height depends on the "info".Height is not fixed, 
+			* this allows the pathStep to fit in a standard table row. (This may change)
+			* @params {String} info
+			* info - A custom DOMstring (could be "&nbsp;") or "clock" or false,
+			* If it's false don't add to the DOM as this affects the height.
 			*/
 			setInfo( info ){
-				this.info = info;
-				
-				if( this.info ){
-					this.infoSpan = bj.dom('span','info');
-					this.span.append( this.infoSpan );
-					this.render();
+				if( info !== false ){
+					this.info = bj.dom('span','info');
+					
+					// set content
+					this.info.innerHTML = info === "clock" ? 
+						bj.clock24( new Date( Date.now())) :
+						info;
+					
+					// append
+					this.span.append( this.info );
 				} 
 			}, 
 			
-			updateInfo(){
+			/**
+			* When state changes and PathStep is rendered
+			* check info display state.
+			*/  
+			displayInfo(){
 				if( !this.info  ) return; 
-				
-				this.infoSpan.innerHTML = this.info === "clock" ? 
-					bj.clock24( new Date( Date.now())) :
-					this.info;
-				
 				if( this.status == 'todo' || 
 					this.status == 'todo-later' ||
 					this.status == 'config' ){
-					this.infoSpan.classList.add('invisible'); // need the DOM to keep the step height consistent
+					this.info.classList.add('invisible'); // need the DOM to keep the height consistent
 				} else {
-					this.infoSpan.classList.remove('invisible');
+					this.info.classList.remove('invisible');
 				}
 			}
 		});
@@ -156,7 +182,7 @@
 				{ setKey( k ){ this.key = k; }},
 				_render(),
 				_setters(),
-				_setInfo(), 
+				_stepInfo(), 
 				_events(), 
 				_remove()
 			);
@@ -178,9 +204,10 @@
 		* API - add new PathStep to DOM
 		* @param {Object} step properties
 		* @param {DOM parentNode} pathway 
+		* @param {Function} cb - Callback - CM Patient needs to know of any changes
 		* @returns {PathStep}
 		*/
-		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, pathway ) => {
+		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, pathway, cb = false ) => {
 			
 			// new DOM element, check for icons
 			const name = shortcode.startsWith('i-') ? 
@@ -190,25 +217,26 @@
 			// create new PathStep & set up
 			const ps = createPathStep( bj.dom('span', selector, name));
 			ps.shortcode = shortcode;
-			ps.setStatus( status );
-			ps.setType( type );
-			
-			if( idgPopupCode ) ps.setIdgPopupCode( idgPopupCode );
-			
-			/*
-			Adding info to a pathstep will increase the button height.
-			For PSDs and for pathSteps in Orders elements the info isn't needed and is "false"
-			It can be a custom String, but mostly it's shows the time ("clock")
-			*/
+			ps.status = status;
+			ps.type = type;
 			ps.setInfo( info );
 			
-			// update collection 	
-			ps.setKey( collection.add( ps, ps.render()));
-		
-			// add to DOM?
-			if( pathway ) pathway.append( ps.render());
+			// render DOM
+			const spanDOM = ps.render();
 			
-			return ps; // return PathStep
+			// iDG code to show specific content in popup
+			if( idgPopupCode ) ps.setIdgPopupCode( idgPopupCode );
+			
+			// update collection 	
+			ps.setKey( collection.add( ps, spanDOM ));
+		
+			// add to a pathway DOM?
+			if( pathway ) pathway.append( spanDOM );
+			
+			// patient callback?
+			if( cb ) ps.setCallback( cb );
+			
+			return ps; // return new PathStep
 		};
 		
 		// API
