@@ -24,11 +24,14 @@
 				this._filter = val; 
 				this.views.notify();
 			},
-			// slightly delay the view filters
+			// delay the view filters
 			updateFilterView(){
 				if( this.delayID ) return;
 				this.delayID = setTimeout(() => {
-					this.views.notify();
+					// check user isn't working on a step first!
+					if( document.querySelector('.oe-pathstep-popup') == null ){
+						this.views.notify();
+					}
 					this.delayID = null;
 				}, 750 );
 			}
@@ -93,7 +96,7 @@
 					patient.addPathStep({
 						shortcode: code,
 						mins: 0,
-						status: 'todo-later',
+						status: 'todo',
 						type,
 					});
 				}	
@@ -207,6 +210,7 @@
 				['All','all'],
 				['Active','active'],
 				['Waiting','waiting'],
+				['Delayed','long-wait'],
 				['Stuck','stuck'],
 				//['Later','later'], // not needed for A&E
 				['Completed','done'],

@@ -10434,11 +10434,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				this._filter = val; 
 				this.views.notify();
 			},
-			// slightly delay the view filters
+			// delay the view filters
 			updateFilterView(){
 				if( this.delayID ) return;
 				this.delayID = setTimeout(() => {
-					this.views.notify();
+					// check user isn't working on a step first!
+					if( document.querySelector('.oe-pathstep-popup') == null ){
+						this.views.notify();
+					}
 					this.delayID = null;
 				}, 750 );
 			}
@@ -10503,7 +10506,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					patient.addPathStep({
 						shortcode: code,
 						mins: 0,
-						status: 'todo-later',
+						status: 'todo',
 						type,
 					});
 				}	
@@ -10617,6 +10620,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				['All','all'],
 				['Active','active'],
 				['Waiting','waiting'],
+				['Delayed','long-wait'],
 				['Stuck','stuck'],
 				//['Later','later'], // not needed for A&E
 				['Completed','done'],
@@ -11019,20 +11023,202 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	clinic.filterBtn = filterBtn;			
   
 })( bluejay, bluejay.namespace('clinic')); 
-(function( bj, clinic ){
+(function( bj, clinic, gui ){
 
 	'use strict';	
 	
-	const pathway = () => {
+	/**
+	* Patient Pathway
+	* @param {Element} parentNode 
+	*/
+	const pathway = ( parentNode ) => {
 		
+		// div for steps and append to the parentnode
+		const div = bj.div('pathway');
+		parentNode.append( div );
 		
+		// virtual pathsteps 
+		const pathSteps = [];
+		
+		// auto-stop 
+		let autoStop = null;
+		
+		/**
+		* Helpers
+		*/
+		const findFirstTodoIndex = () => {
+			const index = pathSteps.findIndex( ps => {
+				const status = ps.getStatus();
+				return ( status == 'todo');
+			});
+			
+			return index;
+		}
+		
+		const firstActiveIndex = () => pathSteps.findIndex( ps => ps.getStatus() == 'active');
+		
+		// there might be 1+ active steps
+		const lastActiveIndex = () => {
+			let index = -1;
+			
+			pathSteps.forEach(( ps, i ) => {
+				if( ps.getStatus() == 'active' ) index = i;
+			});
+			
+			return index;
+		}
+		
+		const renderPathway = () => {
+			pathSteps.forEach( ps => div.append( ps.render()));
+		}
+		
+		/**
+		* Set pathway status on div
+		* @param {String} status - maybe useful
+		*/
+		const setStatus = ( status ) => div.className = `pathway ${status}`;
+		
+		/**
+		* Add step to the pathway. 
+		* Based on the step code adjust position in the pathway
+		* @param {PathStep} newStep
+		*/	
+		const addStep = ( newStep ) => {
+			
+			switch( newStep.getCode()){
+				case 'i-Arr':
+					div.prepend( newStep.render());
+					pathSteps.splice(0, 0, newStep );
+				break;
+				case 'i-Wait':
+					/* 
+					if a pathway is build before a patient arrive
+					when they arrive a "i-Wait" is added as well.
+					Ensure that the "wait" step is added before "todo" steps.
+					*/
+					const todoIndex = findFirstTodoIndex();
+					
+					if( todoIndex === -1 ){
+						// No other steps with "todo" yet added to the pathway
+						div.append( newStep.render());
+						pathSteps.push( newStep );
+					} else {
+						// Position in pathway and add to array
+						div.insertBefore( newStep.render(), pathSteps[todoIndex].render());
+						pathSteps.splice( todoIndex, 0, newStep );
+					}
+			
+				break;
+				case 'i-Stop': 
+					// Automatic stop must alway be last.
+					autoStop = newStep;
+				break;
+				default:
+					div.append( newStep.render());
+					pathSteps.push( newStep );
+			}
+			
+			// does pathway have an auto-stop? 
+			// make sure it's alway at the end
+			if( autoStop ) div.append( autoStop.render());
+		}
+		
+		/**
+		* Remove the last "todo", or "config" 
+		* @param {String} code - 'c-last' (c-all not using)
+		*/
+		const removeStep = ( code ) => {
+			if( !pathSteps.length ) return;
+ 			
+			if( code == 'c-last' ){
+				const last = pathSteps[ pathSteps.length - 1 ];
+				const status = last.getStatus();
+				
+				// check ok to remove
+				if( status == "todo" ||  
+					status == "config"){
+						
+					lastStep.remove();
+					pathSteps.splice( -1, 1 );
+				}
+			}
+		};
+		
+		/**
+		* Remove the waiting step
+		* Patient has registered a PathStep being made "active"
+		*/
+		const stopWaiting = () => {
+			// find the Waiting step
+			let waitingIndex = false;
+			pathSteps.forEach(( ps, index ) => {
+				const code = ps.getCode();
+				if( code == 'i-Wait' || code == "Waiting"){
+					ps.remove();
+					waitingIndex = index;
+				}
+			});
+			
+			// and if found remove it from array
+			if( waitingIndex ) pathSteps.splice( waitingIndex, 1 );
+			
+			// activate step needs moving to the left of all "todo" steps
+			const todoIndex = findFirstTodoIndex();
+			const activeIndex = lastActiveIndex();
+	
+			if( activeIndex > todoIndex ){
+				// swap positions and re-render
+				pathSteps[ activeIndex ] = pathSteps.splice( todoIndex, 1, pathSteps[ activeIndex ])[0]; // note: [0]!
+				renderPathway();
+			}
+		}
+		
+		/**
+		* PathStep has completed.
+		* If no other active steps add a wait.
+		*/
+		const addWaiting = () => {
+			const activeIndex = firstActiveIndex();
+			if( activeIndex == -1 ){
+				// add waitstep.
+				const newStep = gui.pathStep({
+					shortcode: 'i-Wait',
+					info: 0,
+					status: 'buff',
+					type: 'wait',
+				}, null );
+				
+				pathSteps.splice( findFirstTodoIndex(), 0, newStep );
+				renderPathway();
+				return true;
+				
+			} else {
+				// check complete order position order
+				// there is another active step.
+				
+				
+				return false;
+			}
+		}
+		
+		/**
+		* API
+		*/
+		return {
+			setStatus,
+			addStep,
+			removeStep,
+			stopWaiting,
+			addWaiting
+		}
+			
 	};
 	
 	// make component available to Clinic SPA	
 	clinic.pathway = pathway;
 	
 
-})( bluejay, bluejay.namespace('clinic')); 
+})( bluejay, bluejay.namespace('clinic'), bluejay.namespace('gui')); 
 (function( bj, clinic, gui ){
 
 	'use strict';	
@@ -11058,22 +11244,26 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			complete: document.createElement('td'),
 		};
 		
-		// pathway <div> for pathSteps
-		const pathSteps = [];
-		let autoFinishStep = null;
-		const pathway =  bj.div('pathway');
-		td.path.append( pathway );	
+		/**
+		* Pathway 
+		*/
+		const pathway = clinic.pathway( td.path );
 		
-		// patient Owner (has it's own column)
+		/* 
+		* Owner
+		*/
 		const psOwner = gui.pathStep({
 			shortcode: '?',
 			status: 'buff',
 			type: 'owner',
 			info: '&nbsp;'
 		}, false );
+		
 		td.owner.append( psOwner.render());
 		
-		// waitDuration widget
+		/** 
+		* WaitDuration widget
+		*/
 		const waitDuration = clinic.waitDuration( props.uid );
 		
 
@@ -11108,7 +11298,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const onChangeStatus = () => {
 			tr.className = model.status;
-			pathway.className = `pathway ${model.status}`;
+			pathway.setStatus( model.status );
 			waitDuration.render( model.status );
 			
 			// show + icon to add pathSteps?
@@ -11144,47 +11334,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		model.views.add( onUpdateOwner );
 		
 		/**
-		* Add a new step to the pathway
-		* @param {PathStep} newPS
-		*/
-		const addToPathway = ( newPS ) => {
-			if( model.status == "done") return;
-			if( newPS.getCode() == 'i-Fin' ) model.status = "done"; // iDG hack
-			
-			switch( newPS.getCode()){
-				case 'i-Arr':
-					pathway.prepend( newPS.render());
-					pathSteps.splice(0, 0, newPS);
-				break;
-				case 'i-Wait':
-					const todoIndex = pathSteps.findIndex( ps => {
-						const status = ps.getStatus();
-						return ( status == 'todo' || status == 'todo-later');
-					});
-					
-					// no other steps with "todo" yet added to the pathway
-					if( todoIndex === -1 ){
-						pathway.append( newPS.render());
-						pathSteps.push( newPS );
-					} else {
-						pathway.insertBefore( newPS.render(), pathSteps[todoIndex].render());
-						pathSteps.splice( todoIndex, 0, newPS );
-					}
-			
-				break;
-				case 'i-Stop': 
-					// Automatic stop must alway be last.
-					autoFinishStep = newPS;
-				break;
-				default:
-					pathway.append( newPS.render());
-					pathSteps.push( newPS );
-			}
-			
-			if( autoFinishStep ) pathway.append( autoFinishStep.render());
-		};
-		
-		/**
 		* @callback for PathStep change
 		* need to know if a pathStep changes state
 		* @param {String} newStepStatus - ps new status
@@ -11193,9 +11342,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			switch( newStepStatus ){
 				case "active":
 					model.status = "active"; 
-					removeWaitingStep();
+					pathway.stopWaiting();
 					updateAppFilters(); // let the App know to update Filters
-					
+				break;
+				case "done":
+					// although a step is completed there may be another one still active
+					if( pathway.addWaiting()) model.status = "waiting";
+					updateAppFilters();
 					
 				break;
 			}
@@ -11206,6 +11359,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* @param {Object} step
 		*/
 		const addPathStep = ( step ) => {
+			
+			if( model.status == "done") return;
+			
 			switch( step.type ){
 				case "arrive": 
 					waitDuration.arrived( step.timestamp, model.status );
@@ -11214,6 +11370,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				case "finish": 
 					waitDuration.finished( step.timestamp );
 					step.info = bj.clock24( new Date ( step.timestamp ));
+					model.status = "done";
 				break;
 				default: 
 					step.info = step.mins ? step.mins : "0"; // inbetween needs to show there duration in mins
@@ -11221,46 +11378,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			// create a new Pathstep
 			// step - {shortcode, status, type, info, idgPopupCode}
-			addToPathway( gui.pathStep( step, null, onPathStepChange ));
+			pathway.addStep( gui.pathStep( step, null, onPathStepChange ));
 		};
 		
-		/**
-		* Remove either last "todo" or ALL 'todo'
-		* @param {String} code - 'c-all', 'c-last'
-		*/
-		const removePathStep = ( code ) => {
-			if( !pathSteps.length ) return;
- 			
-			if( code == 'c-last' ){
-				const lastStep = pathSteps[ pathSteps.length - 1 ];
-				const status = lastStep.getStatus();
-				if( status == "todo" || 
-					status == "todo-later" || 
-					status == "config"){
-						
-					lastStep.remove();
-					pathSteps.splice( -1, 1 );
-				}
-			}
-		};
-		
-		/**
-		* Remove waiting step
-		*/
-		const removeWaitingStep = () => {
-			let waitingIndex = false;
-			
-			pathSteps.forEach(( ps, index ) => {
-				const code = ps.getCode();
-				if( code == 'i-Wait' || code == "Waiting"){
-					ps.remove();
-					waitingIndex = index;
-				}
-			});
-			
-			// wait step removed?
-			if( waitingIndex ) pathSteps.splice( waitingIndex, 1 );
-		}
 		
 		/**
 		* set Flags
@@ -11374,7 +11494,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			getNameAge: () => model.nameAge, 
 			render, 
 			addPathStep, 
-			removePathStep, 
+			removePathStep: ( code ) => pathway.removeStep( code), 
 		};
 	};
 	

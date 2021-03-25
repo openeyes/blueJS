@@ -23,22 +23,26 @@
 			complete: document.createElement('td'),
 		};
 		
-		// pathway <div> for pathSteps
-		const pathSteps = [];
-		let autoFinishStep = null;
-		const pathway =  bj.div('pathway');
-		td.path.append( pathway );	
+		/**
+		* Pathway 
+		*/
+		const pathway = clinic.pathway( td.path );
 		
-		// patient Owner (has it's own column)
+		/* 
+		* Owner
+		*/
 		const psOwner = gui.pathStep({
 			shortcode: '?',
 			status: 'buff',
 			type: 'owner',
 			info: '&nbsp;'
 		}, false );
+		
 		td.owner.append( psOwner.render());
 		
-		// waitDuration widget
+		/** 
+		* WaitDuration widget
+		*/
 		const waitDuration = clinic.waitDuration( props.uid );
 		
 
@@ -73,7 +77,7 @@
 		*/
 		const onChangeStatus = () => {
 			tr.className = model.status;
-			pathway.className = `pathway ${model.status}`;
+			pathway.setStatus( model.status );
 			waitDuration.render( model.status );
 			
 			// show + icon to add pathSteps?
@@ -109,47 +113,6 @@
 		model.views.add( onUpdateOwner );
 		
 		/**
-		* Add a new step to the pathway
-		* @param {PathStep} newPS
-		*/
-		const addToPathway = ( newPS ) => {
-			if( model.status == "done") return;
-			if( newPS.getCode() == 'i-Fin' ) model.status = "done"; // iDG hack
-			
-			switch( newPS.getCode()){
-				case 'i-Arr':
-					pathway.prepend( newPS.render());
-					pathSteps.splice(0, 0, newPS);
-				break;
-				case 'i-Wait':
-					const todoIndex = pathSteps.findIndex( ps => {
-						const status = ps.getStatus();
-						return ( status == 'todo' || status == 'todo-later');
-					});
-					
-					// no other steps with "todo" yet added to the pathway
-					if( todoIndex === -1 ){
-						pathway.append( newPS.render());
-						pathSteps.push( newPS );
-					} else {
-						pathway.insertBefore( newPS.render(), pathSteps[todoIndex].render());
-						pathSteps.splice( todoIndex, 0, newPS );
-					}
-			
-				break;
-				case 'i-Stop': 
-					// Automatic stop must alway be last.
-					autoFinishStep = newPS;
-				break;
-				default:
-					pathway.append( newPS.render());
-					pathSteps.push( newPS );
-			}
-			
-			if( autoFinishStep ) pathway.append( autoFinishStep.render());
-		};
-		
-		/**
 		* @callback for PathStep change
 		* need to know if a pathStep changes state
 		* @param {String} newStepStatus - ps new status
@@ -158,9 +121,13 @@
 			switch( newStepStatus ){
 				case "active":
 					model.status = "active"; 
-					removeWaitingStep();
+					pathway.stopWaiting();
 					updateAppFilters(); // let the App know to update Filters
-					
+				break;
+				case "done":
+					// although a step is completed there may be another one still active
+					if( pathway.addWaiting()) model.status = "waiting";
+					updateAppFilters();
 					
 				break;
 			}
@@ -171,6 +138,9 @@
 		* @param {Object} step
 		*/
 		const addPathStep = ( step ) => {
+			
+			if( model.status == "done") return;
+			
 			switch( step.type ){
 				case "arrive": 
 					waitDuration.arrived( step.timestamp, model.status );
@@ -179,6 +149,7 @@
 				case "finish": 
 					waitDuration.finished( step.timestamp );
 					step.info = bj.clock24( new Date ( step.timestamp ));
+					model.status = "done";
 				break;
 				default: 
 					step.info = step.mins ? step.mins : "0"; // inbetween needs to show there duration in mins
@@ -186,46 +157,9 @@
 			
 			// create a new Pathstep
 			// step - {shortcode, status, type, info, idgPopupCode}
-			addToPathway( gui.pathStep( step, null, onPathStepChange ));
+			pathway.addStep( gui.pathStep( step, null, onPathStepChange ));
 		};
 		
-		/**
-		* Remove either last "todo" or ALL 'todo'
-		* @param {String} code - 'c-all', 'c-last'
-		*/
-		const removePathStep = ( code ) => {
-			if( !pathSteps.length ) return;
- 			
-			if( code == 'c-last' ){
-				const lastStep = pathSteps[ pathSteps.length - 1 ];
-				const status = lastStep.getStatus();
-				if( status == "todo" || 
-					status == "todo-later" || 
-					status == "config"){
-						
-					lastStep.remove();
-					pathSteps.splice( -1, 1 );
-				}
-			}
-		};
-		
-		/**
-		* Remove waiting step
-		*/
-		const removeWaitingStep = () => {
-			let waitingIndex = false;
-			
-			pathSteps.forEach(( ps, index ) => {
-				const code = ps.getCode();
-				if( code == 'i-Wait' || code == "Waiting"){
-					ps.remove();
-					waitingIndex = index;
-				}
-			});
-			
-			// wait step removed?
-			if( waitingIndex ) pathSteps.splice( waitingIndex, 1 );
-		}
 		
 		/**
 		* set Flags
@@ -339,7 +273,7 @@
 			getNameAge: () => model.nameAge, 
 			render, 
 			addPathStep, 
-			removePathStep, 
+			removePathStep: ( code ) => pathway.removeStep( code), 
 		};
 	};
 	
