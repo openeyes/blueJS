@@ -4,119 +4,24 @@
 	
 	const adder = () => {
 		
-		// hold in memory
-		let multi; // 'single' or 'multiple' patients 
-		let multiPatientCheckBoxes;
-		
 		const div = bj.div('oe-clinic-adder');
-		const patients = bj.div('patients');
-		const singlePatient = bj.div('single-patient'); 
-		const selectedPatients = new Set(); 
-		
-		/**
-		* Reset DOM and clear selectedPatients
-		* @param {String} mode - 'single' or 'multiple'
-		*/
-		const reset = ( mode) => {
-			multi = ( mode == 'multi'); // set Boolean
-			bj.empty( patients );
-			patients.remove();
-			singlePatient.remove();
-			selectedPatients.clear();
-		};
-		
-		/**
-		* Display uses CSS animation
-		* Display default in CSS is: "none"
-		* adding "fadein" starts the CSS animation AND sets display
-		*/
-		const fadein = () => {
-			div.classList.remove('fadein');
-			div.classList.add('fadein');
-		};
+		let open = false;
 		
 		// removing "fadein" effectively equals: display:none
 		const hide = () => {
+			open = false;
 			div.classList.remove('fadein');
-			reset();
 		};
 		
 		/**
-		* @callback - App
-		* when an insert step option is click, App needs to know 
-		* which patients are select
-		* @returns {Set} - Patient IDs
+		* Show.
+		* Every time a checkbox box is checked it will try
+		* and show the adder.
 		*/
-		const getSelectedPatients = () => {
-			if( multi ){
-				// update from checked patients
-				selectedPatients.clear();
-				multiPatientCheckBoxes.forEach( checkbox => {
-					if( checkbox.checked ){
-						selectedPatients.add( checkbox.value );
-					}					
-				});
-			}
-			
-			return selectedPatients;
-		};
-		
-		/**
-		* Event: input check box (selected patients)
-		* A quick hack to demo Selecting "All" patients
-		*/
-		patients.addEventListener('change', ev => {
-			const input = ev.target;
-			if( input.value == "select-all"){
-				multiPatientCheckBoxes.forEach( checkbox => checkbox.checked = input.checked );
-			} 
-		});
-		
-
-		/**
-		* @callback - list all patients in view
-		* @param {Set} - set of the filtered patients
-		*/
-		const showAll = ( patientSet ) => {
-			reset('multi');
-			
-			// Helper - build <li>
-			const _li = ( val, text ) => {
-				const li = document.createElement('li');
-				li.innerHTML = `<label class="highlight"><input type="checkbox" value="${val}" checked/><span>${text}</span></label>`;
-				return li;
-			};
-			
-			// <ul>
-			const ul = bj.dom('ul','row-list');
-			
-			// add patients
-			patientSet.forEach( patient => {
-				ul.append( _li( patient.getID(), patient.getNameAge() ));
-			});	
-			
-			// update DOM
-			patients.append( ul );
-			div.prepend( patients );
-			
-			// store array of patient checkboxes
-			multiPatientCheckBoxes = bj.nodeArray( patients.querySelectorAll('input[type=checkbox]'));
-			
-			// add a "select all" option
-			ul.prepend( _li('select-all', 'All')); // add "All" - always first
-			
-			fadein();
-		};
-		
-		/**
-		* @callback - specific patient 
-		*/
-		const showSingle = ( id, nameAge ) => {
-			reset('single');
-			selectedPatients.add( id );
-			singlePatient.innerHTML = `<span class="highlighter">${nameAge}</span>`;
-			div.querySelector('.insert-steps').prepend( singlePatient );
-			fadein();
+		const show = () => {
+			if( open ) return; else open = true;
+			div.classList.remove('fadein');
+			div.classList.add('fadein');
 		};
 
 		/**
@@ -221,10 +126,8 @@
 		API
 		*/
 		return { 
-			showAll, 
-			showSingle, 
-			hide, 
-			getSelectedPatients, 
+			show, 
+			hide
 		};	
 	};
 	

@@ -83,7 +83,7 @@
 		*/
 		const handleAddStepToPatients = ({ code, type }) => {
 			// get the IDs for the checked patients
-			const patientIDs = adder.getSelectedPatients();
+			const patientIDs = getAllSelectedPatients();
 			
 			// add to pathways...
 			patientIDs.forEach( key => {
@@ -103,9 +103,28 @@
 			});
 		};
 		
-		const hideAdder = () => {
-			adder.hide();
+		const selectAllPatients = ( checked) => {
+			const allTicks = bj.nodeArray( root.querySelectorAll('input.js-check-patient'));
+			allTicks.forEach(( tick, index ) => {
+				if( index ) tick.checked = checked; // ignore the "all" tick
+			});
 		};
+		
+		const deselectAllPatients = () => {
+			const allTicks = bj.nodeArray( root.querySelectorAll('input.js-check-patient'));
+			allTicks.forEach( tick => tick.checked = false );
+			adder.hide();
+		}
+		
+		const getAllSelectedPatients = () => {
+			const ids = new Set();
+			const allTicks = bj.nodeArray( root.querySelectorAll('input.js-check-patient'));
+			allTicks.forEach(( tick, index ) => {
+				if( index && tick.checked ) ids.add( tick.value); // ignore the "all" tick
+			});
+			
+			return ids;
+		}
 		
 		/**
 		* Event delegation
@@ -131,19 +150,10 @@
 		
 		// Filter button (in header bar)
 		bj.userDown('.js-idg-clinic-btn-filter', ( ev ) => {
+			deselectAllPatients()
 			model.filter = ev.target.dataset.filter;
-			hideAdder();
 			gui.pathStepPopup.remove();
 			
-		});
-		
-		//  + icon specific for patient (<tr>)
-		bj.userDown('.js-idg-clinic-icon-add', ( ev ) => {
-			const id = ev.target.dataset.patient;
-			adder.showSingle( 
-				id, 
-				patients.get( id ).getNameAge()
-			);
 		});
 		
 		//  Advanced search filter in header
@@ -171,15 +181,21 @@
 		});
 		
 		// Adder close btn
-		bj.userDown('.oe-clinic-adder .close-btn', hideAdder );
+		bj.userDown('.oe-clinic-adder .close-btn', deselectAllPatients );
 		
-		
-		// Patient selection (tick checkboxes)
 		
 		root.addEventListener('change', ev => {
 			ev.stopPropagation();
-			if( ev.target.matches('.js-check-patient')){
-				console.log( ev.target );
+			const input = ev.target;
+			if( input.matches('.js-check-patient')){
+				if( input.checked ){
+					adder.show();
+				}
+				
+				
+				if( input.value == "all"){
+					selectAllPatients( input.checked );
+				}
 			}
 		}, { useCapture:true });
 	

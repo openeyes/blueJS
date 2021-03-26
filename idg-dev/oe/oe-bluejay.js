@@ -10503,7 +10503,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const handleAddStepToPatients = ({ code, type }) => {
 			// get the IDs for the checked patients
-			const patientIDs = adder.getSelectedPatients();
+			const patientIDs = getAllSelectedPatients();
 			
 			// add to pathways...
 			patientIDs.forEach( key => {
@@ -10523,9 +10523,28 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			});
 		};
 		
-		const hideAdder = () => {
-			adder.hide();
+		const selectAllPatients = ( checked) => {
+			const allTicks = bj.nodeArray( root.querySelectorAll('input.js-check-patient'));
+			allTicks.forEach(( tick, index ) => {
+				if( index ) tick.checked = checked; // ignore the "all" tick
+			});
 		};
+		
+		const deselectAllPatients = () => {
+			const allTicks = bj.nodeArray( root.querySelectorAll('input.js-check-patient'));
+			allTicks.forEach( tick => tick.checked = false );
+			adder.hide();
+		}
+		
+		const getAllSelectedPatients = () => {
+			const ids = new Set();
+			const allTicks = bj.nodeArray( root.querySelectorAll('input.js-check-patient'));
+			allTicks.forEach(( tick, index ) => {
+				if( index && tick.checked ) ids.add( tick.value); // ignore the "all" tick
+			});
+			
+			return ids;
+		}
 		
 		/**
 		* Event delegation
@@ -10551,19 +10570,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		// Filter button (in header bar)
 		bj.userDown('.js-idg-clinic-btn-filter', ( ev ) => {
+			deselectAllPatients()
 			model.filter = ev.target.dataset.filter;
-			hideAdder();
 			gui.pathStepPopup.remove();
 			
-		});
-		
-		//  + icon specific for patient (<tr>)
-		bj.userDown('.js-idg-clinic-icon-add', ( ev ) => {
-			const id = ev.target.dataset.patient;
-			adder.showSingle( 
-				id, 
-				patients.get( id ).getNameAge()
-			);
 		});
 		
 		//  Advanced search filter in header
@@ -10591,15 +10601,21 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		});
 		
 		// Adder close btn
-		bj.userDown('.oe-clinic-adder .close-btn', hideAdder );
+		bj.userDown('.oe-clinic-adder .close-btn', deselectAllPatients );
 		
-		
-		// Patient selection (tick checkboxes)
 		
 		root.addEventListener('change', ev => {
 			ev.stopPropagation();
-			if( ev.target.matches('.js-check-patient')){
-				console.log( ev.target );
+			const input = ev.target;
+			if( input.matches('.js-check-patient')){
+				if( input.checked ){
+					adder.show();
+				}
+				
+				
+				if( input.value == "all"){
+					selectAllPatients( input.checked );
+				}
 			}
 		}, { useCapture:true });
 	
@@ -10684,119 +10700,24 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	
 	const adder = () => {
 		
-		// hold in memory
-		let multi; // 'single' or 'multiple' patients 
-		let multiPatientCheckBoxes;
-		
 		const div = bj.div('oe-clinic-adder');
-		const patients = bj.div('patients');
-		const singlePatient = bj.div('single-patient'); 
-		const selectedPatients = new Set(); 
-		
-		/**
-		* Reset DOM and clear selectedPatients
-		* @param {String} mode - 'single' or 'multiple'
-		*/
-		const reset = ( mode) => {
-			multi = ( mode == 'multi'); // set Boolean
-			bj.empty( patients );
-			patients.remove();
-			singlePatient.remove();
-			selectedPatients.clear();
-		};
-		
-		/**
-		* Display uses CSS animation
-		* Display default in CSS is: "none"
-		* adding "fadein" starts the CSS animation AND sets display
-		*/
-		const fadein = () => {
-			div.classList.remove('fadein');
-			div.classList.add('fadein');
-		};
+		let open = false;
 		
 		// removing "fadein" effectively equals: display:none
 		const hide = () => {
+			open = false;
 			div.classList.remove('fadein');
-			reset();
 		};
 		
 		/**
-		* @callback - App
-		* when an insert step option is click, App needs to know 
-		* which patients are select
-		* @returns {Set} - Patient IDs
+		* Show.
+		* Every time a checkbox box is checked it will try
+		* and show the adder.
 		*/
-		const getSelectedPatients = () => {
-			if( multi ){
-				// update from checked patients
-				selectedPatients.clear();
-				multiPatientCheckBoxes.forEach( checkbox => {
-					if( checkbox.checked ){
-						selectedPatients.add( checkbox.value );
-					}					
-				});
-			}
-			
-			return selectedPatients;
-		};
-		
-		/**
-		* Event: input check box (selected patients)
-		* A quick hack to demo Selecting "All" patients
-		*/
-		patients.addEventListener('change', ev => {
-			const input = ev.target;
-			if( input.value == "select-all"){
-				multiPatientCheckBoxes.forEach( checkbox => checkbox.checked = input.checked );
-			} 
-		});
-		
-
-		/**
-		* @callback - list all patients in view
-		* @param {Set} - set of the filtered patients
-		*/
-		const showAll = ( patientSet ) => {
-			reset('multi');
-			
-			// Helper - build <li>
-			const _li = ( val, text ) => {
-				const li = document.createElement('li');
-				li.innerHTML = `<label class="highlight"><input type="checkbox" value="${val}" checked/><span>${text}</span></label>`;
-				return li;
-			};
-			
-			// <ul>
-			const ul = bj.dom('ul','row-list');
-			
-			// add patients
-			patientSet.forEach( patient => {
-				ul.append( _li( patient.getID(), patient.getNameAge() ));
-			});	
-			
-			// update DOM
-			patients.append( ul );
-			div.prepend( patients );
-			
-			// store array of patient checkboxes
-			multiPatientCheckBoxes = bj.nodeArray( patients.querySelectorAll('input[type=checkbox]'));
-			
-			// add a "select all" option
-			ul.prepend( _li('select-all', 'All')); // add "All" - always first
-			
-			fadein();
-		};
-		
-		/**
-		* @callback - specific patient 
-		*/
-		const showSingle = ( id, nameAge ) => {
-			reset('single');
-			selectedPatients.add( id );
-			singlePatient.innerHTML = `<span class="highlighter">${nameAge}</span>`;
-			div.querySelector('.insert-steps').prepend( singlePatient );
-			fadein();
+		const show = () => {
+			if( open ) return; else open = true;
+			div.classList.remove('fadein');
+			div.classList.add('fadein');
 		};
 
 		/**
@@ -10901,10 +10822,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		API
 		*/
 		return { 
-			showAll, 
-			showSingle, 
-			hide, 
-			getSelectedPatients, 
+			show, 
+			hide
 		};	
 	};
 	
