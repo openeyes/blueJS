@@ -21,13 +21,13 @@
 		(() => {
 			const div = bj.div('filter');
 			div.innerHTML = `<div class="name">${props.name}</div>`;
-			if( filter !== "hide-done") div.append( count );	
+			div.append( count );	
 			li.append( div );
 			ul.append( li );
 		})();
 		
 		/**
-		* API - update
+		* Update
 		* On any updates to clinic need to update the filter count
 		* @param {Array} status - all status setting for all patients
 		* @param {String} currentFilter - current filter for the clinic list
@@ -37,6 +37,12 @@
 			
 			if( filter == "all"){
 				num = status.length;
+			} else if ( filter == "clinic"){
+				// work out the counts per filter.
+				num = status.reduce(( acc, val ) => {
+					if( val != "done" && val != 'later' ) return acc + 1; 
+					return acc;
+				}, 0 );
 			} else {
 				// work out the counts per filter.
 				num = status.reduce(( acc, val ) => {
@@ -44,8 +50,6 @@
 					return acc;
 				}, 0 );
 			}
-			
-			
 			
 			// update DOM
 			count.textContent = num;
@@ -55,7 +59,6 @@
 			} else {
 				li.classList.remove('selected');
 			}
-			
 		};
 		
 		return { update };	

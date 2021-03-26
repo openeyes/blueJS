@@ -25,6 +25,18 @@
 		bj.log('[Clinic Manager] - intialising');
 		
 		/*
+		As times are relative to 'now', make sure later appointments 
+		always appeared scheduled on whole 5 minutes: 
+		*/
+		const fiveMinAppointments = ( booked ) => {
+			const appointment = new Date( Date.now() + ( booked * 60000 )); 
+			const offsetFive = appointment.getMinutes() % 5; 
+			appointment.setMinutes( appointment.getMinutes() - offsetFive );
+			return appointment.getTime();
+		};
+		
+		
+		/*
 		To make the IDG UX prototype easier to test an initial state JSON is provided by PHP.
 		The demo times are set in RELATIVE minutes, which are updated to full timestamps
 		*/
@@ -33,17 +45,6 @@
 			
 			// Unique ID for each patient
 			patient.uid = bj.getToken(); 
-		
-			/*
-			As times are relative to 'now', make sure appointments 
-			always appeared scheduled on whole 5 minutes: 
-			*/
-/*
-			const appointment = new Date( Date.now() + ( patient.booked * 60000 )); 
-			const offsetFive = appointment.getMinutes() % 5; 
-			appointment.setMinutes( appointment.getMinutes() - offsetFive );
-			patient.booked = appointment.getTime();
-*/
 			
 			const booked = Date.now() + ( patient.booked * 60000 );
 			patient.bookedTimestamp = booked;
@@ -85,7 +86,8 @@
 				'Patient', 
 				'',
 				'Pathway',
-				'<label class="patient-checkbox"><input class="js-check-patient" value="all" type="checkbox"><div class="checkbox-btn"></div></label>', '<i class="oe-i person small"></i>',
+				'<label class="patient-checkbox"><input class="js-check-patient" value="all" type="checkbox"><div class="checkbox-btn"></div></label>', 
+				'<i class="oe-i person small"></i>',
 				'<i class="oe-i flag small"></i>',
 				'Wait hours', 
 				''

@@ -2,6 +2,11 @@
 
 	'use strict';	
 	
+	/**
+	* App
+	* @param {Element} tbody = <tbody>
+	* @param {JSON} json - data to initiate with
+	*/
 	const app = ( tbody, json ) => {
 		
 		const root = document.querySelector('.oe-clinic');
@@ -14,9 +19,9 @@
 		* Extended with views
 		*/
 		const model = Object.assign({
-			_filter: "", // view filter
-			filteredPatients: new Set(), // filter patients (patients in view)
+			_filter: "", // clinic filter state
 			delayID: null,
+			
 			get filter(){
 				return this._filter;
 			},
@@ -24,7 +29,12 @@
 				this._filter = val; 
 				this.views.notify();
 			},
-			// delay the view filters
+			
+			/* 
+			Delay the view filters updates
+			Allow the user to see what happened then update
+			If they are not using the popup
+			*/
 			updateFilterView(){
 				if( this.delayID ) clearTimeout( this.delayID );
 				this.delayID = setTimeout(() => {
@@ -39,14 +49,12 @@
 		}, bj.ModelViews());
 
 		/**
-		* VIEW: Filter Patients in Clinic
-		* This will update the DOM and keep 
+		* VIEW
+		* Filter Patients in Clinic and render DOM 
 		*/
 		const onFilterPatients = () => {
+			// build new <tbody>
 			const fragment = new DocumentFragment();
-			
-			// clear and update
-			model.filteredPatients.clear();
 			
 			// Patients decide if they match the filter
 			// if so, show in the DOM and update the filterPatients set
@@ -54,7 +62,6 @@
 				const tr = patient.render( model.filter );
 				if( tr != null ){
 					fragment.appendChild( tr );
-					model.filteredPatients.add( patient );
 				}
 			});
 			
@@ -66,8 +73,10 @@
 		model.views.add( onFilterPatients );
 		
 		/**
-		* VIEW: Update Filter Buttons
-		* loop through patients and get their status
+		* VIEW
+		* Update Filter Buttons
+		* Loop through patients and get their status
+		* Filter btns will figure out their count
 		*/
 		const updateFilters = () => {
 			const status = [];
@@ -78,7 +87,8 @@
 		model.views.add( updateFilters );
 
 		/**
-		* Adder: Insert step option is pressed. Update all selected patients
+		* Add steps to patients
+		* Insert step option is pressed. Update selected patients
 		* @param {Object} dataset from <li>
 		*/
 		const handleAddStepToPatients = ({ code, type }) => {
@@ -89,33 +99,45 @@
 			patientIDs.forEach( key => {
 				const patient = patients.get( key );
 				
-				if( code == 'c-all' || 
-					code == 'c-last'){
+				if( code == 'c-last' ){
+					// Remove last step button
 					patient.removePathStep( code );
 				} else {
 					patient.addPathStep({
-						shortcode: code,
+						shortcode: code, // pass in code
 						mins: 0,
 						status: 'todo',
-						type,
+						type, // pass in type
 					});
 				}	
 			});
 		};
 		
+		/**
+		* Patient select checkboxes
+		* select all/none (tick in <th>) 
+		*/
 		const selectAllPatients = ( checked) => {
 			const allTicks = bj.nodeArray( root.querySelectorAll('input.js-check-patient'));
 			allTicks.forEach(( tick, index ) => {
-				if( index ) tick.checked = checked; // ignore the "all" tick
+				if( index ) tick.checked = checked; // ignore the "all" tick in <th>
 			});
 		};
 		
+		/**
+		* Deselect and remove the adder 
+		*/
 		const deselectAllPatients = () => {
 			const allTicks = bj.nodeArray( root.querySelectorAll('input.js-check-patient'));
 			allTicks.forEach( tick => tick.checked = false );
 			adder.hide();
-		}
+		};
 		
+		/**
+		* Get all the selected patients (ticked)
+		* get ids from the value
+		* @returns {Set} ids
+		*/
 		const getAllSelectedPatients = () => {
 			const ids = new Set();
 			const allTicks = bj.nodeArray( root.querySelectorAll('input.js-check-patient'));
@@ -124,7 +146,7 @@
 			});
 			
 			return ids;
-		}
+		};
 		
 		/**
 		* Event delegation
@@ -142,7 +164,7 @@
 			patients.get( ev.target.dataset.patient ).onDNA();
 		});
 		
-		// Icon: "tick" (complete)
+		// Icon: "tick" (completed)
 		bj.userDown('.js-idg-clinic-icon-complete', ( ev ) => {
 			patients.get( ev.target.dataset.patient ).onComplete();
 			model.updateFilterView();
@@ -150,13 +172,15 @@
 		
 		// Filter button (in header bar)
 		bj.userDown('.js-idg-clinic-btn-filter', ( ev ) => {
-			deselectAllPatients()
+			deselectAllPatients();
 			model.filter = ev.target.dataset.filter;
 			gui.pathStepPopup.remove();
-			
 		});
 		
-		//  Advanced search filter in header
+		/*
+		* Advanced search filter in header
+		* Not doing anything - just show/hide it
+		*/
 		bj.userDown('button.search-all', ( ev ) => {
 			const btn = ev.target;
 			const quick = document.querySelector('.clinic-filters ul.quick-filters');
@@ -171,11 +195,12 @@
 				bj.hide( quick );
 				bj.show( search );
 			}
-			
-			
 		});
 		
-		// Adder popup update action 
+		/*
+		* Adder 
+		* User clicks on a step to add it to patients
+		*/
 		bj.userDown('.oe-clinic-adder .insert-steps li', ( ev ) => {
 			handleAddStepToPatients( ev.target.dataset );
 		});
@@ -183,7 +208,10 @@
 		// Adder close btn
 		bj.userDown('.oe-clinic-adder .close-btn', deselectAllPatients );
 		
-		
+		/*
+		* Patient select checkboxes 
+		* anytime any is checked show the adder
+		*/
 		root.addEventListener('change', ev => {
 			ev.stopPropagation();
 			const input = ev.target;
@@ -191,31 +219,32 @@
 				if( input.checked ){
 					adder.show();
 				}
-				
-				
 				if( input.value == "all"){
 					selectAllPatients( input.checked );
 				}
 			}
 		}, { useCapture:true });
-	
 		
 		/**
-		* Init Patients and set state from the JSON	
+		* Init Patients and set an inital state from the JSON	
 		* Add filters in the header bar
 		*/
 		(() => {
-			// build patients (<tr>)
+			/**
+			* Build patients (<tr>)
+			* and build Map
+			*/
 			json.forEach( patient => patients.set( patient.uid, clinic.patient( patient )));
 			
-			// option-right area in in the <header>
-			const div = document.getElementById('js-clinic-filters');
+			/**
+			* Filters in header
+			*/
+			const div = document.getElementById('js-clinic-filters'); // option-right area in in the <header>
+			const ul = bj.dom('ul', "quick-filters" ); // Quick filters based on patient status
 			
-			// Quick filters based on patient status
-			const ul = bj.dom('ul', "quick-filters" );
-			
+			// Filter Btns - [ Name, filter ]
 			[
-				['Hide completed','hide-done'], 
+				['Clinic','clinic'], 
 				['All','all'],
 				['Active','active'],
 				['Waiting','waiting'],
@@ -243,19 +272,19 @@
 				`<div class="group"><select>{{#flags}}<option>{{.}}</option>{{/flags}}</select></div>`,
 				`<div class="group"><select>{{#states}}<option>{{.}}</option>{{/states}}</select></div>`,
 			].join(''), {
-				age: ['All ages', '0 - 6y', '6 - 12y', '12 - 18y', '18 - 30y', '40 - 50y','50 - 60y'],
+				age: ['All ages', '0 - 16y Paeds', '16y+ Adults'],
 				wait: ['Wait - all', '0 - 1hr', '2hr - 3hr', '3hr - 4rh', '4hr +'],
 				step: ['Steps - all', 'Waiting - Triage', 'Waiting - Nurse', 'Waiting - Doctor', 'VisAcu - Visual Acuity', 'Dilate', 'etc, etc ...'],
 				assigned: ['Assigned - all', 'Unassigned', 'GJB - Dr Georg Joseph Beer', 'GP - Dr George Bartischy', 'MM - Mr Michael Morgan', 'Su - Sushruta', 'ZF - Dr Zofia Falkowska'],
 				flags: ['Flags - all', 'No Flags', 'Change in pupils', 'Diplopia', 'Post Op Diplopia', 'Rapid change in VA', 'Systemically unwell'],
-				states: ['Hide done', 'All', 'Active', 'Waiting', 'Done'],
+				states: ['in Clinic', 'Waiting', 'Delayed', 'No path', 'Scheduled', 'Completed'],
 			});
 			
 			// build DOM
 			div.append( ul, searchFilters, searchBtn );
 
 			// set up Clinic filter default
-			model.filter = "hide-done";
+			model.filter = "clinic";
 			
 			/**
 			* Custom Event: If a patient changes it status

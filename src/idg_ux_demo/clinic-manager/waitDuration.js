@@ -8,7 +8,9 @@
 	* @returns {*} API;	
 	*/
 	const waitDuration = ( patientID ) => {
+		
 		const td = document.createElement('td');
+		
 		let timestamp = null;
 		let mins = 0;
 		let timerID = null;				
@@ -23,7 +25,7 @@
 		};
 		
 		/**
-		* Callback from patient when the "Arr" step is added to the pathway
+		* @callback from patient when the "Arrive" step is added to the pathway
 		* @param {Number} arriveTime - timestamp
 		* @param {String} patientStatus - only looking for "active"
 		*/
@@ -38,7 +40,7 @@
 		};
 		
 		/**
-		* Callback from patient when the "Fin" step is added to the pathway
+		* @callback from patient when the "Finished" step is added to the pathway
 		* @param {Number} finishedTime - timestamp
 		*/
 		const finished = ( finishTime ) => {
@@ -94,6 +96,7 @@
 			div.innerHTML = active ? 
 				`<small>${hours}:${clockMins}</small>`: 
 				`${hours}:${clockMins}`;
+				
 			return div;
 		};
 		
@@ -106,7 +109,7 @@
 			const div = bj.div();
 			
 			switch( status ){
-				case "complete": 
+				case "done": 
 					div.className = 'wait-duration';
 					div.appendChild( waitMins( false ));
 				break;
@@ -123,8 +126,9 @@
 					div.appendChild( waitMins( true ));
 			}
 			
-			td.innerHTML = "";
-			td.appendChild( div );
+			bj.empty( td );
+			td.append( div );
+			
 			return td;
 		};
 		

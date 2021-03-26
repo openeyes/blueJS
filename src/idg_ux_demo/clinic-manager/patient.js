@@ -243,9 +243,13 @@
 		const render = ( filter ) => {
 			const status = model.status;
 			switch( filter ){
-				case "all": return tr;
-				case "hide-done": return status == 'done' ? null : tr;
-				default:  return status == filter ? tr : null;
+				case "all": 
+					return tr;
+				case "clinic": 
+					return status == 'done' ? null : 
+						   status == 'later' ? null : tr;
+				default:  
+					return status == filter ? tr : null;
 			}
 		};
 		

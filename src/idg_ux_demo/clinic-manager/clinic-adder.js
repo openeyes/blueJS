@@ -7,7 +7,10 @@
 		const div = bj.div('oe-clinic-adder');
 		let open = false;
 		
-		// removing "fadein" effectively equals: display:none
+		/**
+		* Hide
+		* removing "fadein" effectively equals: display:none
+		*/
 		const hide = () => {
 			open = false;
 			div.classList.remove('fadein');
@@ -21,7 +24,7 @@
 		const show = () => {
 			if( open ) return; else open = true;
 			div.classList.remove('fadein');
-			div.classList.add('fadein');
+			div.classList.add('fadein'); // CSS animation 
 		};
 
 		/**
@@ -64,7 +67,6 @@
 			fullText.set('PGD', 'Patient Group Directive');
 			
 			fullText.set('c-last', 'remove last pathway step');
-			fullText.set('c-all', 'Clear all pathway steps');
 				
 			/*
 			* Element for all inserts
@@ -122,13 +124,8 @@
 	
 		})();
 		
-		/* 
-		API
-		*/
-		return { 
-			show, 
-			hide
-		};	
+		// API 
+		return { show, hide };	
 	};
 	
 	clinic.adder = adder;

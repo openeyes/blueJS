@@ -8,20 +8,23 @@
 	const showClock = () => {
 		const div = bj.div('oe-clinic-clock');
 		div.textContent = "";
-		div.style.top = "100%";
+		div.style.top = "100%"; // move offscreen
 		document.body.appendChild( div );
 		
+		/**
+		* @callback for setInvterval
+		*/
 		const updateClock = () => {
-			const tableRows = bj.nodeArray( document.querySelectorAll('table.oe-clinic-list tbody tr'));
 			let top = "100%";
+			const tableRows = bj.nodeArray( document.querySelectorAll('table.oe-clinic-list tbody tr'));
 			
-			// there should always be a table, but in case not...
+			// check there are rows...
 			if( ! tableRows.length ){
 				div.style.top = top; // move offscreen if all TRs are in the "past".
 				return;
 			}
 			
-			// table TRs have a timestamp on them
+			// table TRs have a timestamp on them, use this to position clock
 			const now = Date.now();
 			
 			// end row position 
@@ -40,7 +43,9 @@
 			div.textContent = bj.clock24( new Date( now ));
 		};
 		
-		// check and update every half second
+		/**
+		* Check and update every half second
+		*/
 		setInterval( updateClock, 500 );
 	};
 	
