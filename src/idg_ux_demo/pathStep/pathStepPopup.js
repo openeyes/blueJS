@@ -121,7 +121,7 @@
 		const removeReset = () => {
 			pathStep = null;
 			lockedOpen = false;
-			// There is a flicker if you 'scrub' along a pathway, delay removal to stop this
+			// There is a flicker if you 'scrub' along a pathway over many steps, delay removal to stop this
 			removeTimerID = setTimeout(() => popup.remove(), 50 );
 		};
 
@@ -174,7 +174,7 @@
 			// fake UIX process buttons in popup can request these
 			switch( userRequest ){
 				case 'remove':
-					pathStep.remove();
+					pathStep.userRemove();
 					removeReset();
 				break;
 				case 'next':

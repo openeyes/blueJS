@@ -58,7 +58,7 @@
 			patient.pathway.forEach(( step, i, thisArr ) => {
 				const obj = {
 					shortcode: step[0],
-					timestamp: Date.now() + ( step[1] * 60000 ), // Arrived and Finish need this
+					timestamp: Date.now() + ( step[1] * 60000 ), 
 					mins: step[1],
 					status: step[2],
 					type: step[3],
@@ -79,7 +79,17 @@
 			'<thead><tr>{{#th}}<th>{{{.}}}</th>{{/th}}</tr></thead>',
 			'<tbody></tbody>'
 		].join(''), {
-			"th": ['Arr.', 'Clinic', 'Patient', '', 'Pathway', '', '<i class="oe-i person small"></i>', '<i class="oe-i flag small"></i>', 'Wait', '']
+			"th": [
+				'Arr.',
+				'Clinic',
+				'Patient', 
+				'',
+				'Pathway',
+				'<label class="patient-checkbox"><input class="js-check-patient" value="all" type="checkbox"><div class="checkbox-btn"></div></label>', '<i class="oe-i person small"></i>',
+				'<i class="oe-i flag small"></i>',
+				'Wait hours', 
+				''
+			]
 		});
 		
 		document.getElementById('js-clinic-manager').appendChild( table );

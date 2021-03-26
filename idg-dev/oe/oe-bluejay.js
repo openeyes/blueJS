@@ -10373,7 +10373,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			patient.pathway.forEach(( step, i, thisArr ) => {
 				const obj = {
 					shortcode: step[0],
-					timestamp: Date.now() + ( step[1] * 60000 ), // Arrived and Finish need this
+					timestamp: Date.now() + ( step[1] * 60000 ), 
 					mins: step[1],
 					status: step[2],
 					type: step[3],
@@ -10394,7 +10394,17 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			'<thead><tr>{{#th}}<th>{{{.}}}</th>{{/th}}</tr></thead>',
 			'<tbody></tbody>'
 		].join(''), {
-			"th": ['Arr.', 'Clinic', 'Patient', '', 'Pathway', '', '<i class="oe-i person small"></i>', '<i class="oe-i flag small"></i>', 'Wait', '']
+			"th": [
+				'Arr.',
+				'Clinic',
+				'Patient', 
+				'',
+				'Pathway',
+				'<label class="patient-checkbox"><input class="js-check-patient" value="all" type="checkbox"><div class="checkbox-btn"></div></label>', '<i class="oe-i person small"></i>',
+				'<i class="oe-i flag small"></i>',
+				'Wait hours', 
+				''
+			]
 		});
 		
 		document.getElementById('js-clinic-manager').appendChild( table );
@@ -10414,10 +10424,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	
 	const app = ( tbody, json ) => {
 		
+		const root = document.querySelector('.oe-clinic');
 		const patients = new Map();
 		const filters = new Set();
 		const adder = clinic.adder();
-		let adderAllBtn;
 	
 		/** 
 		* Model
@@ -10436,7 +10446,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			},
 			// delay the view filters
 			updateFilterView(){
-				if( this.delayID ) return;
+				if( this.delayID ) clearTimeout( this.delayID );
 				this.delayID = setTimeout(() => {
 					// check user isn't working on a step first!
 					if( document.querySelector('.oe-pathstep-popup') == null ){
@@ -10514,7 +10524,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		};
 		
 		const hideAdder = () => {
-			adderAllBtn.classList.replace('close', 'open');
 			adder.hide();
 		};
 		
@@ -10557,16 +10566,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			);
 		});
 		
-		//  + icon for ALL patients in header
-		bj.userDown('button.add-to-all', ( ev ) => {
-			if( adderAllBtn.classList.contains('open')){
-				adderAllBtn.classList.replace('open', 'close');
-				adder.showAll( model.filteredPatients );
-			} else {
-				hideAdder();
-			}
-		});
-		
 		//  Advanced search filter in header
 		bj.userDown('button.search-all', ( ev ) => {
 			const btn = ev.target;
@@ -10588,18 +10587,22 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		// Adder popup update action 
 		bj.userDown('.oe-clinic-adder .insert-steps li', ( ev ) => {
-			handleAddStepToPatients( ev.target.dataset )
+			handleAddStepToPatients( ev.target.dataset );
 		});
 		
 		// Adder close btn
 		bj.userDown('.oe-clinic-adder .close-btn', hideAdder );
 		
-		/**
-		* @callback for Patient change
-		*/
-		const updateAppFilters = () => {
-			model.updateFilterView();
-		}
+		
+		// Patient selection (tick checkboxes)
+		
+		root.addEventListener('change', ev => {
+			ev.stopPropagation();
+			if( ev.target.matches('.js-check-patient')){
+				console.log( ev.target );
+			}
+		}, { useCapture:true });
+	
 		
 		/**
 		* Init Patients and set state from the JSON	
@@ -10607,7 +10610,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		(() => {
 			// build patients (<tr>)
-			json.forEach( patient => patients.set( patient.uid, clinic.patient( patient, updateAppFilters )));
+			json.forEach( patient => patients.set( patient.uid, clinic.patient( patient )));
 			
 			// option-right area in in the <header>
 			const div = document.getElementById('js-clinic-filters');
@@ -10621,8 +10624,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				['Active','active'],
 				['Waiting','waiting'],
 				['Delayed','long-wait'],
-				['Stuck','stuck'],
-				//['Later','later'], // not needed for A&E
+				['No path','stuck'],
+				['Scheduled','later'], // not needed for A&E
 				['Completed','done'],
 			].forEach( btn => {
 				filters.add( clinic.filterBtn({
@@ -10631,7 +10634,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				}, ul ));
 			});
 			
-			adderAllBtn = bj.dom('button', "add-to-all open");
 			const searchBtn = bj.dom('button', 'search-all');
 			const searchFilters = bj.div('search-filters');
 			searchFilters.style.display = "none";
@@ -10654,10 +10656,17 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			});
 			
 			// build DOM
-			div.append( ul, searchFilters, searchBtn, adderAllBtn );
+			div.append( ul, searchFilters, searchBtn );
 
 			// set up Clinic filter default
 			model.filter = "hide-done";
+			
+			/**
+			* Custom Event: If a patient changes it status
+			*/
+			document.addEventListener('onClinicPatientStatusChange', ( ev ) => {
+				model.updateFilterView();
+			});
 		
 			// and the clock is running! 
 			clinic.clock();
@@ -10690,11 +10699,11 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const reset = ( mode) => {
 			multi = ( mode == 'multi'); // set Boolean
-			bj.empty( patients )
+			bj.empty( patients );
 			patients.remove();
 			singlePatient.remove();
 			selectedPatients.clear();
-		}
+		};
 		
 		/**
 		* Display uses CSS animation
@@ -10710,7 +10719,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const hide = () => {
 			div.classList.remove('fadein');
 			reset();
-		}
+		};
 		
 		/**
 		* @callback - App
@@ -10724,7 +10733,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				selectedPatients.clear();
 				multiPatientCheckBoxes.forEach( checkbox => {
 					if( checkbox.checked ){
-						selectedPatients.add( checkbox.value )
+						selectedPatients.add( checkbox.value );
 					}					
 				});
 			}
@@ -10756,7 +10765,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				const li = document.createElement('li');
 				li.innerHTML = `<label class="highlight"><input type="checkbox" value="${val}" checked/><span>${text}</span></label>`;
 				return li;
-			}
+			};
 			
 			// <ul>
 			const ul = bj.dom('ul','row-list');
@@ -10874,10 +10883,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			const process = ['Colour','Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort();
 			const people = ['MM', 'GJB', 'GP', 'Su', 'ZF','Nurse'].sort();
 			
-			// processes 
+			// buttons
 			buildGroup('Steps', process, 'process' );
 			buildGroup('People', people, 'person' );
-			
+			// remove button
 			buildGroup('Remove "todo" steps from selected', ['c-last'], 'removeTodos' );
 
 			// build div
@@ -10919,26 +10928,25 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		const updateClock = () => {
 			const tableRows = bj.nodeArray( document.querySelectorAll('table.oe-clinic-list tbody tr'));
+			let top = "100%";
 			
 			// there should always be a table, but in case not...
 			if( ! tableRows.length ){
-				div.style.top = "100%";
+				div.style.top = top; // move offscreen if all TRs are in the "past".
 				return;
 			}
 			
 			// table TRs have a timestamp on them
 			const now = Date.now();
 			
-			// move offscreen if all TRs are in the "past". 
-			let top = "100%"; 
+			// end row position 
+			top = ( tableRows[ tableRows.length-1 ].getBoundingClientRect().bottom - 9 ) + 'px'; 
 			
-			// find the next row booked time
-			tableRows.every( tr  => {
+			// but see if there are later times and adjust
+			tableRows.find( tr  => {
 				if( tr.dataset.timestamp > now ){
 					top = ( tr.getBoundingClientRect().top - 9 ) + 'px';
-					return false; // found it.
-				} else {
-					return true; // keep looking
+					return true;
 				}
 			});
 			
@@ -11044,33 +11052,34 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		let autoStop = null;
 		
 		/**
-		* Helpers
+		* Find Index positions
 		*/
-		const findFirstTodoIndex = () => {
-			const index = pathSteps.findIndex( ps => {
-				const status = ps.getStatus();
-				return ( status == 'todo');
-			});
-			
-			return index;
-		}
+		const findFirstIndex = ( a, b = false ) => pathSteps.findIndex( ps => ps.getStatus() == a || ps.getStatus() == b );
 		
-		const firstActiveIndex = () => pathSteps.findIndex( ps => ps.getStatus() == 'active');
-		
-		// there might be 1+ active steps
-		const lastActiveIndex = () => {
-			let index = -1;
-			
+		const findLastIndex = ( status, index = -1 ) => {
 			pathSteps.forEach(( ps, i ) => {
-				if( ps.getStatus() == 'active' ) index = i;
+				if( ps.getStatus() == status ) index = i;
 			});
-			
 			return index;
-		}
+		};
 		
+		/**
+		* Swap positions
+		*/
+		const swapSteps = ( a, b ) => {
+			pathSteps[ a ] = pathSteps.splice( b, 1, pathSteps[ a ])[0];
+		};
+		
+		/**
+		* Render pathway
+		*/
 		const renderPathway = () => {
 			pathSteps.forEach( ps => div.append( ps.render()));
-		}
+			// does pathway have an auto-stop? 
+			// make sure it's alway at the end
+			if( autoStop ) div.append( autoStop.render());
+			
+		};
 		
 		/**
 		* Set pathway status on div
@@ -11084,10 +11093,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* @param {PathStep} newStep
 		*/	
 		const addStep = ( newStep ) => {
-			
 			switch( newStep.getCode()){
 				case 'i-Arr':
-					div.prepend( newStep.render());
 					pathSteps.splice(0, 0, newStep );
 				break;
 				case 'i-Wait':
@@ -11096,32 +11103,27 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					when they arrive a "i-Wait" is added as well.
 					Ensure that the "wait" step is added before "todo" steps.
 					*/
-					const todoIndex = findFirstTodoIndex();
+					const todoIndex = findFirstIndex('todo', 'config');
 					
 					if( todoIndex === -1 ){
 						// No other steps with "todo" yet added to the pathway
-						div.append( newStep.render());
 						pathSteps.push( newStep );
+						
 					} else {
 						// Position in pathway and add to array
-						div.insertBefore( newStep.render(), pathSteps[todoIndex].render());
 						pathSteps.splice( todoIndex, 0, newStep );
 					}
 			
 				break;
 				case 'i-Stop': 
-					// Automatic stop must alway be last.
-					autoStop = newStep;
+					autoStop = newStep; // Automatic stop must alway be last.
 				break;
 				default:
-					div.append( newStep.render());
 					pathSteps.push( newStep );
 			}
 			
-			// does pathway have an auto-stop? 
-			// make sure it's alway at the end
-			if( autoStop ) div.append( autoStop.render());
-		}
+			renderPathway();
+		};
 		
 		/**
 		* Remove the last "todo", or "config" 
@@ -11138,11 +11140,27 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				if( status == "todo" ||  
 					status == "config"){
 						
-					lastStep.remove();
+					last.remove();
 					pathSteps.splice( -1, 1 );
 				}
 			}
 		};
+		
+		
+		/**
+		* User has removed a step directly update the pathway array
+		* @param {String} key 
+		*/
+		const deleteRemovedStep = ( key ) => {
+			pathSteps.forEach(( ps, index ) => {
+				if( ps.key == key ){
+					pathSteps.splice( index, 1 );
+				}
+			});
+			console.log('after', pathSteps);
+		};
+		
+		
 		
 		/**
 		* Remove the waiting step
@@ -11163,43 +11181,65 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			if( waitingIndex ) pathSteps.splice( waitingIndex, 1 );
 			
 			// activate step needs moving to the left of all "todo" steps
-			const todoIndex = findFirstTodoIndex();
-			const activeIndex = lastActiveIndex();
+			const todoIndex = findFirstIndex('todo', 'config');
+			const activeIndex = findLastIndex('active');
 	
 			if( activeIndex > todoIndex ){
 				// swap positions and re-render
-				pathSteps[ activeIndex ] = pathSteps.splice( todoIndex, 1, pathSteps[ activeIndex ])[0]; // note: [0]!
+				swapSteps( activeIndex, todoIndex );
 				renderPathway();
 			}
-		}
+		};
 		
 		/**
 		* PathStep has completed.
 		* If no other active steps add a wait.
+		* @returns state to Patent 
 		*/
 		const addWaiting = () => {
-			const activeIndex = firstActiveIndex();
+			const activeIndex = findFirstIndex('active');
+			let pathwayStatus = false;
 			if( activeIndex == -1 ){
 				// add waitstep.
-				const newStep = gui.pathStep({
+				const waitStep = gui.pathStep({
 					shortcode: 'i-Wait',
 					info: 0,
 					status: 'buff',
 					type: 'wait',
 				}, null );
 				
-				pathSteps.splice( findFirstTodoIndex(), 0, newStep );
-				renderPathway();
-				return true;
+				const todoIndex = findFirstIndex('todo', 'config');
+				
+				if( todoIndex == -1 ){
+					
+					if( autoStop ){
+						pathwayStatus = "auto-finish";
+						autoStop.remove();
+						autoStop = null;
+					} else {
+						pathSteps.push( waitStep );
+						pathwayStatus = "stuck";
+					}
+					
+				} else {
+					pathSteps.splice( todoIndex, 0, waitStep );
+					pathwayStatus = "waiting";
+				}	
 				
 			} else {
-				// check complete order position order
-				// there is another active step.
-				
-				
-				return false;
+				// There is another active step.
+				// make sure it's after the last completed
+				const lastCompleted = findLastIndex('done');
+				if( lastCompleted > activeIndex ){
+					// swap positions and re-render
+					swapSteps( activeIndex, lastCompleted );
+				}
 			}
-		}
+			
+			renderPathway();
+			return pathwayStatus;
+			
+		};
 		
 		/**
 		* API
@@ -11208,9 +11248,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			setStatus,
 			addStep,
 			removeStep,
+			deleteRemovedStep,
 			stopWaiting,
 			addWaiting
-		}
+		};
 			
 	};
 	
@@ -11226,10 +11267,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	/**
 	* Patient (<tr>)
 	* @param {*} props
-	* @param {Func} updateAppFilters - callback for App
 	* @returns {*} public methods
 	*/
-	const patient = ( props, updateAppFilters ) => {
+	const patient = ( props ) => {
 		
 		/**
 		* Patient UI is a table row <tr>
@@ -11280,8 +11320,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				return this._status;
 			},
 			set status( val ){
+				// 'fake-done', allows iDG to set up a completed pathway
+				// it's changed back to "done" when "i-Fin" is pathstep is added
+				const validStatus = ['fake-done', 'done', 'waiting', 'long-wait', 'active', 'stuck', 'later'].find( test => test == val );
+				if( !validStatus ) throw new Error(`Clinic: invaild Patient status: "${val}"`);
+				
 				this._status = val; 
 				this.views.notify();
+				bj.customEvent('onClinicPatientStatusChange', model.status ); // App is listening!
 			},
 			get assigned(){
 				return this._assigned; 
@@ -11304,7 +11350,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// show + icon to add pathSteps?
 			td.addIcon.innerHTML = model.status == "done" ? 
 				"<!-- complete -->" :
-				`<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model.uid}"></i>`;
+				`<label class="patient-checkbox"><input class="js-check-patient" value="${model.uid}" type="checkbox"><div class="checkbox-btn"></div></label>`;
+				
+				
+				//`<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model.uid}"></i>`;
 		};
 		
 		model.views.add( onChangeStatus );
@@ -11328,7 +11377,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* VIEW: Update Buffer
 		*/
 		const onUpdateOwner = () => {
-			psOwner.setCode( model.assigned );
+			if( model.assigned ) psOwner.setCode( model.assigned );
 		};
 		
 		model.views.add( onUpdateOwner );
@@ -11336,23 +11385,34 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		/**
 		* @callback for PathStep change
 		* need to know if a pathStep changes state
-		* @param {String} newStepStatus - ps new status
+		* @param {PathStep} pathStep - ps new status
 		*/
-		const onPathStepChange = ( newStepStatus ) => {
-			switch( newStepStatus ){
+		const onPathStepChange = ( pathStep ) => {
+			console.log( pathStep );
+			
+			const status = pathStep.getStatus();
+			
+			switch( status ){
 				case "active":
 					model.status = "active"; 
 					pathway.stopWaiting();
-					updateAppFilters(); // let the App know to update Filters
 				break;
 				case "done":
-					// although a step is completed there may be another one still active
-					if( pathway.addWaiting()) model.status = "waiting";
-					updateAppFilters();
-					
+					// pathway returns status depending on it's state
+					const pathwayStatus = pathway.addWaiting();
+					if( pathwayStatus == "auto-finish"){
+						onComplete();
+					} else if( pathwayStatus ){
+						model.status = pathwayStatus;
+					}
 				break;
+				case "userRemoved":
+					// User deleted through PathStepPopup
+					pathway.deleteRemovedStep( pathStep.key ); 
+				break;
+				
 			}
-		}
+		};
 		
 		/**
 		* Add PathStep to patient pathway
@@ -11362,19 +11422,22 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			if( model.status == "done") return;
 			
-			switch( step.type ){
-				case "arrive": 
+			step.info = bj.clock24( new Date ( step.timestamp ));
+			
+			switch( step.shortcode ){
+				case "i-Arr": 
 					waitDuration.arrived( step.timestamp, model.status );
-					step.info = bj.clock24( new Date ( step.timestamp ));
 				break; 
-				case "finish": 
+				case "i-Fin": 
 					waitDuration.finished( step.timestamp );
-					step.info = bj.clock24( new Date ( step.timestamp ));
 					model.status = "done";
 				break;
-				default: 
+				case 'i-Wait':
+				case 'Waiting':
 					step.info = step.mins ? step.mins : "0"; // inbetween needs to show there duration in mins
+				break; 
 			}
+
 			
 			// create a new Pathstep
 			// step - {shortcode, status, type, info, idgPopupCode}
@@ -11769,11 +11832,23 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		const _setters = () => ({
 			/**
+			* Shortcode
 			* @param {String} val - change shortcode (from initial value)
 			*/
-			setCode( val ){
-				this.shortcode = val;
-				this.span.querySelector('.step').textContent = val;
+			setCode( code ){
+				this.shortcode = code;
+				const stepName = this.span.querySelector('.step');
+				
+				if( code.startsWith('i-')){
+					stepName.textContent = '';
+					stepName.className = `step ${code}`;
+				} else {
+					stepName.className = `step`;
+					stepName.textContent = code;
+					
+					if( code == "Waiting") this.type += ' long';
+				}
+				
 				this.render();
 			},
 			
@@ -11782,9 +11857,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			},
 			
 			/**
-			* @param {String} - config, todo, todo-later, done, (buff)
+			* Status
+			* @param {String} val
 			*/
 			setStatus( val ){
+				// valid status settings
+				const valid = ['config', 'todo', 'todo-next', 'active', 'done', 'buff'].find( test => test == val );
+				if( !valid ) throw new Error(`PathStep: invaild status: "${val}"`);
+				
 				this.status = val;
 				this.render();
 			}, 
@@ -11794,9 +11874,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			},
 						
 			/**
-			* @param {String} - person, process (arrive, finish, wait, auto-finish)
+			* Type
+			* @param {String} val
 			*/
 			setType( val ){
+				// valid types
+				const valid = ['person', 'process', 'wait', 'wait long', 'arrive', 'auto-finish', 'finish', 'owner'].find( test => test == val );
+				if( !valid ) throw new Error(`PathStep: invaild type: "${val}"`);
+				
 				this.type = val;
 				this.render();
 			},
@@ -11806,32 +11891,43 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			* @param {String} status - next is default
 			*/
 			nextState(){
-				let newStatus;
+				let newStatus = false;
 				switch( this.status ){
 					case 'config': newStatus = 'todo'; 
 					break;
 					case 'todo': 
-					case 'todo-later': newStatus = 'active'; 
+					case 'todo-next': newStatus = 'active'; 
 					break;
 					case 'active': 
 						newStatus = 'done';
-						this.info.textContent = '15'; // set fake duration
+						// may not have any info DOM...
+						if( this.info ) this.info.textContent = bj.clock24( new Date( Date.now())); 
 					break;
 				}
-				this.setStatus( newStatus );
-				if( this.callback ) this.callback( newStatus );
-				gui.pathStepPopup.full( this, true );
+				
+				if( newStatus ) this.changeState( newStatus );
 			},
 			
 			prevState(){
-				let newStatus;
+				let newStatus = false;
 				switch( this.status ){
 					case 'active': newStatus = 'todo'; 
 					break;
 				}
+				
+				if( newStatus ) this.changeState( newStatus );
+			},
+			
+			changeState( newStatus ){
 				this.setStatus( newStatus );
-				if( this.callback ) this.callback( newStatus );
-				gui.pathStepPopup.full( this, true );
+				// internal change - patient needs to know:
+				if( this.callback ) this.callback( this );
+				
+				if( newStatus == 'done'){
+					gui.pathStepPopup.remove();
+				} else {
+					gui.pathStepPopup.full( this, true );
+				}
 			},
 			 
 			/**
@@ -11872,8 +11968,28 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					
 					// append
 					this.span.append( this.info );
+					
+					if( this.shortcode == 'i-Wait' || 
+						this.shortcode == 'Waiting'){
+							this.countWaitMins();
+						}
+					
 				} 
 			}, 
+			
+			countWaitMins(){
+				if( this.shortcode == 'i-Wait' || 
+					this.shortcode == 'Waiting'){
+						setTimeout(() => {
+							const mins = parseInt( this.info.textContent, 10 ) + 1;
+							this.info.textContent = mins; 
+							if( mins > 59 && this.shortcode !== 'Waiting' ){
+								this.setCode('Waiting');
+							}
+							this.countWaitMins(); // keep counting the mins?
+						}, 60000 );
+					}	
+			},
 			
 			/**
 			* When state changes and PathStep is rendered
@@ -11881,9 +11997,11 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			*/  
 			displayInfo(){
 				if( !this.info  ) return; 
+				
 				if( this.status == 'todo' || 
-					this.status == 'todo-later' ||
-					this.status == 'config' ){
+					this.status == 'todo-next' ||
+					this.status == 'config' || 
+					this.shortcode == 'i-Stop' ){
 					this.info.classList.add('invisible'); // need the DOM to keep the height consistent
 				} else {
 					this.info.classList.remove('invisible');
@@ -11892,9 +12010,20 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		});
 		
 		const _remove = () => ({
+			/**
+			* Remove - 
+			* Could be from the patient pathway "Remove last"
+			*/
 			remove(){
 				this.span.remove();
 				collection.delete( this.key );
+			}, 
+			
+			// Or, by the User from the pathStepPopup
+			userRemove(){
+				this.remove();
+				this.status = "userRemoved";
+				if( this.callback ) this.callback( this );
 			}
 		});
 		
@@ -11930,22 +12059,22 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		/**
 		* API - add new PathStep to DOM
 		* @param {Object} step properties
-		* @param {DOM parentNode} pathway 
+		* @param {DOM} parentNode 
 		* @param {Function} cb - Callback - CM Patient needs to know of any changes
 		* @returns {PathStep}
 		*/
-		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, pathway, cb = false ) => {
+		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, parentNode, cb = false ) => {
 			
 			// new DOM element, check for icons
-			const name = shortcode.startsWith('i-') ? 
+			const stepName = shortcode.startsWith('i-') ? 
 				`<span class="step ${shortcode}"></span>` :
 				`<span class="step">${shortcode}</span>`;
 		
 			// create new PathStep & set up
-			const ps = createPathStep( bj.dom('span', selector, name));
+			const ps = createPathStep( bj.dom('span', selector, stepName));
 			ps.shortcode = shortcode;
-			ps.status = status;
-			ps.type = type;
+			ps.setStatus( status );
+			ps.setType( type );
 			ps.setInfo( info );
 			
 			// render DOM
@@ -11957,8 +12086,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// update collection 	
 			ps.setKey( collection.add( ps, spanDOM ));
 		
-			// add to a pathway DOM?
-			if( pathway ) pathway.append( spanDOM );
+			// add to a parentNode DOM?
+			if( parentNode ) parentNode.append( spanDOM );
 			
 			// patient callback?
 			if( cb ) ps.setCallback( cb );
@@ -12097,7 +12226,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const removeReset = () => {
 			pathStep = null;
 			lockedOpen = false;
-			// There is a flicker if you 'scrub' along a pathway, delay removal to stop this
+			// There is a flicker if you 'scrub' along a pathway over many steps, delay removal to stop this
 			removeTimerID = setTimeout(() => popup.remove(), 50 );
 		};
 
@@ -12150,7 +12279,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// fake UIX process buttons in popup can request these
 			switch( userRequest ){
 				case 'remove':
-					pathStep.remove();
+					pathStep.userRemove();
 					removeReset();
 				break;
 				case 'next':

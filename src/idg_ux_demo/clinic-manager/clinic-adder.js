@@ -19,11 +19,11 @@
 		*/
 		const reset = ( mode) => {
 			multi = ( mode == 'multi'); // set Boolean
-			bj.empty( patients )
+			bj.empty( patients );
 			patients.remove();
 			singlePatient.remove();
 			selectedPatients.clear();
-		}
+		};
 		
 		/**
 		* Display uses CSS animation
@@ -39,7 +39,7 @@
 		const hide = () => {
 			div.classList.remove('fadein');
 			reset();
-		}
+		};
 		
 		/**
 		* @callback - App
@@ -53,7 +53,7 @@
 				selectedPatients.clear();
 				multiPatientCheckBoxes.forEach( checkbox => {
 					if( checkbox.checked ){
-						selectedPatients.add( checkbox.value )
+						selectedPatients.add( checkbox.value );
 					}					
 				});
 			}
@@ -85,7 +85,7 @@
 				const li = document.createElement('li');
 				li.innerHTML = `<label class="highlight"><input type="checkbox" value="${val}" checked/><span>${text}</span></label>`;
 				return li;
-			}
+			};
 			
 			// <ul>
 			const ul = bj.dom('ul','row-list');
@@ -203,10 +203,10 @@
 			const process = ['Colour','Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort();
 			const people = ['MM', 'GJB', 'GP', 'Su', 'ZF','Nurse'].sort();
 			
-			// processes 
+			// buttons
 			buildGroup('Steps', process, 'process' );
 			buildGroup('People', people, 'person' );
-			
+			// remove button
 			buildGroup('Remove "todo" steps from selected', ['c-last'], 'removeTodos' );
 
 			// build div

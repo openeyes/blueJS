@@ -13,26 +13,25 @@
 		
 		const updateClock = () => {
 			const tableRows = bj.nodeArray( document.querySelectorAll('table.oe-clinic-list tbody tr'));
+			let top = "100%";
 			
 			// there should always be a table, but in case not...
 			if( ! tableRows.length ){
-				div.style.top = "100%";
+				div.style.top = top; // move offscreen if all TRs are in the "past".
 				return;
 			}
 			
 			// table TRs have a timestamp on them
 			const now = Date.now();
 			
-			// move offscreen if all TRs are in the "past". 
-			let top = "100%"; 
+			// end row position 
+			top = ( tableRows[ tableRows.length-1 ].getBoundingClientRect().bottom - 9 ) + 'px'; 
 			
-			// find the next row booked time
-			tableRows.every( tr  => {
+			// but see if there are later times and adjust
+			tableRows.find( tr  => {
 				if( tr.dataset.timestamp > now ){
 					top = ( tr.getBoundingClientRect().top - 9 ) + 'px';
-					return false; // found it.
-				} else {
-					return true; // keep looking
+					return true;
 				}
 			});
 			

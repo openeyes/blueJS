@@ -4,10 +4,10 @@
 	
 	const app = ( tbody, json ) => {
 		
+		const root = document.querySelector('.oe-clinic');
 		const patients = new Map();
 		const filters = new Set();
 		const adder = clinic.adder();
-		let adderAllBtn;
 	
 		/** 
 		* Model
@@ -26,7 +26,7 @@
 			},
 			// delay the view filters
 			updateFilterView(){
-				if( this.delayID ) return;
+				if( this.delayID ) clearTimeout( this.delayID );
 				this.delayID = setTimeout(() => {
 					// check user isn't working on a step first!
 					if( document.querySelector('.oe-pathstep-popup') == null ){
@@ -104,7 +104,6 @@
 		};
 		
 		const hideAdder = () => {
-			adderAllBtn.classList.replace('close', 'open');
 			adder.hide();
 		};
 		
@@ -147,16 +146,6 @@
 			);
 		});
 		
-		//  + icon for ALL patients in header
-		bj.userDown('button.add-to-all', ( ev ) => {
-			if( adderAllBtn.classList.contains('open')){
-				adderAllBtn.classList.replace('open', 'close');
-				adder.showAll( model.filteredPatients );
-			} else {
-				hideAdder();
-			}
-		});
-		
 		//  Advanced search filter in header
 		bj.userDown('button.search-all', ( ev ) => {
 			const btn = ev.target;
@@ -178,18 +167,22 @@
 		
 		// Adder popup update action 
 		bj.userDown('.oe-clinic-adder .insert-steps li', ( ev ) => {
-			handleAddStepToPatients( ev.target.dataset )
+			handleAddStepToPatients( ev.target.dataset );
 		});
 		
 		// Adder close btn
 		bj.userDown('.oe-clinic-adder .close-btn', hideAdder );
 		
-		/**
-		* @callback for Patient change
-		*/
-		const updateAppFilters = () => {
-			model.updateFilterView();
-		}
+		
+		// Patient selection (tick checkboxes)
+		
+		root.addEventListener('change', ev => {
+			ev.stopPropagation();
+			if( ev.target.matches('.js-check-patient')){
+				console.log( ev.target );
+			}
+		}, { useCapture:true });
+	
 		
 		/**
 		* Init Patients and set state from the JSON	
@@ -197,7 +190,7 @@
 		*/
 		(() => {
 			// build patients (<tr>)
-			json.forEach( patient => patients.set( patient.uid, clinic.patient( patient, updateAppFilters )));
+			json.forEach( patient => patients.set( patient.uid, clinic.patient( patient )));
 			
 			// option-right area in in the <header>
 			const div = document.getElementById('js-clinic-filters');
@@ -211,8 +204,8 @@
 				['Active','active'],
 				['Waiting','waiting'],
 				['Delayed','long-wait'],
-				['Stuck','stuck'],
-				//['Later','later'], // not needed for A&E
+				['No path','stuck'],
+				['Scheduled','later'], // not needed for A&E
 				['Completed','done'],
 			].forEach( btn => {
 				filters.add( clinic.filterBtn({
@@ -221,7 +214,6 @@
 				}, ul ));
 			});
 			
-			adderAllBtn = bj.dom('button', "add-to-all open");
 			const searchBtn = bj.dom('button', 'search-all');
 			const searchFilters = bj.div('search-filters');
 			searchFilters.style.display = "none";
@@ -244,10 +236,17 @@
 			});
 			
 			// build DOM
-			div.append( ul, searchFilters, searchBtn, adderAllBtn );
+			div.append( ul, searchFilters, searchBtn );
 
 			// set up Clinic filter default
 			model.filter = "hide-done";
+			
+			/**
+			* Custom Event: If a patient changes it status
+			*/
+			document.addEventListener('onClinicPatientStatusChange', ( ev ) => {
+				model.updateFilterView();
+			});
 		
 			// and the clock is running! 
 			clinic.clock();

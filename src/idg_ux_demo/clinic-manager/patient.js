@@ -5,10 +5,9 @@
 	/**
 	* Patient (<tr>)
 	* @param {*} props
-	* @param {Func} updateAppFilters - callback for App
 	* @returns {*} public methods
 	*/
-	const patient = ( props, updateAppFilters ) => {
+	const patient = ( props ) => {
 		
 		/**
 		* Patient UI is a table row <tr>
@@ -59,8 +58,14 @@
 				return this._status;
 			},
 			set status( val ){
+				// 'fake-done', allows iDG to set up a completed pathway
+				// it's changed back to "done" when "i-Fin" is pathstep is added
+				const validStatus = ['fake-done', 'done', 'waiting', 'long-wait', 'active', 'stuck', 'later'].find( test => test == val );
+				if( !validStatus ) throw new Error(`Clinic: invaild Patient status: "${val}"`);
+				
 				this._status = val; 
 				this.views.notify();
+				bj.customEvent('onClinicPatientStatusChange', model.status ); // App is listening!
 			},
 			get assigned(){
 				return this._assigned; 
@@ -83,7 +88,10 @@
 			// show + icon to add pathSteps?
 			td.addIcon.innerHTML = model.status == "done" ? 
 				"<!-- complete -->" :
-				`<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model.uid}"></i>`;
+				`<label class="patient-checkbox"><input class="js-check-patient" value="${model.uid}" type="checkbox"><div class="checkbox-btn"></div></label>`;
+				
+				
+				//`<i class="oe-i plus-circle small-icon pad js-idg-clinic-icon-add" data-patient="${model.uid}"></i>`;
 		};
 		
 		model.views.add( onChangeStatus );
@@ -107,7 +115,7 @@
 		* VIEW: Update Buffer
 		*/
 		const onUpdateOwner = () => {
-			psOwner.setCode( model.assigned );
+			if( model.assigned ) psOwner.setCode( model.assigned );
 		};
 		
 		model.views.add( onUpdateOwner );
@@ -115,23 +123,34 @@
 		/**
 		* @callback for PathStep change
 		* need to know if a pathStep changes state
-		* @param {String} newStepStatus - ps new status
+		* @param {PathStep} pathStep - ps new status
 		*/
-		const onPathStepChange = ( newStepStatus ) => {
-			switch( newStepStatus ){
+		const onPathStepChange = ( pathStep ) => {
+			console.log( pathStep );
+			
+			const status = pathStep.getStatus();
+			
+			switch( status ){
 				case "active":
 					model.status = "active"; 
 					pathway.stopWaiting();
-					updateAppFilters(); // let the App know to update Filters
 				break;
 				case "done":
-					// although a step is completed there may be another one still active
-					if( pathway.addWaiting()) model.status = "waiting";
-					updateAppFilters();
-					
+					// pathway returns status depending on it's state
+					const pathwayStatus = pathway.addWaiting();
+					if( pathwayStatus == "auto-finish"){
+						onComplete();
+					} else if( pathwayStatus ){
+						model.status = pathwayStatus;
+					}
 				break;
+				case "userRemoved":
+					// User deleted through PathStepPopup
+					pathway.deleteRemovedStep( pathStep.key ); 
+				break;
+				
 			}
-		}
+		};
 		
 		/**
 		* Add PathStep to patient pathway
@@ -141,19 +160,22 @@
 			
 			if( model.status == "done") return;
 			
-			switch( step.type ){
-				case "arrive": 
+			step.info = bj.clock24( new Date ( step.timestamp ));
+			
+			switch( step.shortcode ){
+				case "i-Arr": 
 					waitDuration.arrived( step.timestamp, model.status );
-					step.info = bj.clock24( new Date ( step.timestamp ));
 				break; 
-				case "finish": 
+				case "i-Fin": 
 					waitDuration.finished( step.timestamp );
-					step.info = bj.clock24( new Date ( step.timestamp ));
 					model.status = "done";
 				break;
-				default: 
+				case 'i-Wait':
+				case 'Waiting':
 					step.info = step.mins ? step.mins : "0"; // inbetween needs to show there duration in mins
+				break; 
 			}
+
 			
 			// create a new Pathstep
 			// step - {shortcode, status, type, info, idgPopupCode}

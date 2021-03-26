@@ -42,11 +42,23 @@
 		
 		const _setters = () => ({
 			/**
+			* Shortcode
 			* @param {String} val - change shortcode (from initial value)
 			*/
-			setCode( val ){
-				this.shortcode = val;
-				this.span.querySelector('.step').textContent = val;
+			setCode( code ){
+				this.shortcode = code;
+				const stepName = this.span.querySelector('.step');
+				
+				if( code.startsWith('i-')){
+					stepName.textContent = '';
+					stepName.className = `step ${code}`;
+				} else {
+					stepName.className = `step`;
+					stepName.textContent = code;
+					
+					if( code == "Waiting") this.type += ' long';
+				}
+				
 				this.render();
 			},
 			
@@ -55,9 +67,14 @@
 			},
 			
 			/**
-			* @param {String} - config, todo, todo-later, done, (buff)
+			* Status
+			* @param {String} val
 			*/
 			setStatus( val ){
+				// valid status settings
+				const valid = ['config', 'todo', 'todo-next', 'active', 'done', 'buff'].find( test => test == val );
+				if( !valid ) throw new Error(`PathStep: invaild status: "${val}"`);
+				
 				this.status = val;
 				this.render();
 			}, 
@@ -67,9 +84,14 @@
 			},
 						
 			/**
-			* @param {String} - person, process (arrive, finish, wait, auto-finish)
+			* Type
+			* @param {String} val
 			*/
 			setType( val ){
+				// valid types
+				const valid = ['person', 'process', 'wait', 'wait long', 'arrive', 'auto-finish', 'finish', 'owner'].find( test => test == val );
+				if( !valid ) throw new Error(`PathStep: invaild type: "${val}"`);
+				
 				this.type = val;
 				this.render();
 			},
@@ -79,32 +101,43 @@
 			* @param {String} status - next is default
 			*/
 			nextState(){
-				let newStatus;
+				let newStatus = false;
 				switch( this.status ){
 					case 'config': newStatus = 'todo'; 
 					break;
 					case 'todo': 
-					case 'todo-later': newStatus = 'active'; 
+					case 'todo-next': newStatus = 'active'; 
 					break;
 					case 'active': 
 						newStatus = 'done';
-						this.info.textContent = '15'; // set fake duration
+						// may not have any info DOM...
+						if( this.info ) this.info.textContent = bj.clock24( new Date( Date.now())); 
 					break;
 				}
-				this.setStatus( newStatus );
-				if( this.callback ) this.callback( newStatus );
-				gui.pathStepPopup.full( this, true );
+				
+				if( newStatus ) this.changeState( newStatus );
 			},
 			
 			prevState(){
-				let newStatus;
+				let newStatus = false;
 				switch( this.status ){
 					case 'active': newStatus = 'todo'; 
 					break;
 				}
+				
+				if( newStatus ) this.changeState( newStatus );
+			},
+			
+			changeState( newStatus ){
 				this.setStatus( newStatus );
-				if( this.callback ) this.callback( newStatus );
-				gui.pathStepPopup.full( this, true );
+				// internal change - patient needs to know:
+				if( this.callback ) this.callback( this );
+				
+				if( newStatus == 'done'){
+					gui.pathStepPopup.remove();
+				} else {
+					gui.pathStepPopup.full( this, true );
+				}
 			},
 			 
 			/**
@@ -145,8 +178,28 @@
 					
 					// append
 					this.span.append( this.info );
+					
+					if( this.shortcode == 'i-Wait' || 
+						this.shortcode == 'Waiting'){
+							this.countWaitMins();
+						}
+					
 				} 
 			}, 
+			
+			countWaitMins(){
+				if( this.shortcode == 'i-Wait' || 
+					this.shortcode == 'Waiting'){
+						setTimeout(() => {
+							const mins = parseInt( this.info.textContent, 10 ) + 1;
+							this.info.textContent = mins; 
+							if( mins > 59 && this.shortcode !== 'Waiting' ){
+								this.setCode('Waiting');
+							}
+							this.countWaitMins(); // keep counting the mins?
+						}, 60000 );
+					}	
+			},
 			
 			/**
 			* When state changes and PathStep is rendered
@@ -154,9 +207,11 @@
 			*/  
 			displayInfo(){
 				if( !this.info  ) return; 
+				
 				if( this.status == 'todo' || 
-					this.status == 'todo-later' ||
-					this.status == 'config' ){
+					this.status == 'todo-next' ||
+					this.status == 'config' || 
+					this.shortcode == 'i-Stop' ){
 					this.info.classList.add('invisible'); // need the DOM to keep the height consistent
 				} else {
 					this.info.classList.remove('invisible');
@@ -165,9 +220,20 @@
 		});
 		
 		const _remove = () => ({
+			/**
+			* Remove - 
+			* Could be from the patient pathway "Remove last"
+			*/
 			remove(){
 				this.span.remove();
 				collection.delete( this.key );
+			}, 
+			
+			// Or, by the User from the pathStepPopup
+			userRemove(){
+				this.remove();
+				this.status = "userRemoved";
+				if( this.callback ) this.callback( this );
 			}
 		});
 		
@@ -203,22 +269,22 @@
 		/**
 		* API - add new PathStep to DOM
 		* @param {Object} step properties
-		* @param {DOM parentNode} pathway 
+		* @param {DOM} parentNode 
 		* @param {Function} cb - Callback - CM Patient needs to know of any changes
 		* @returns {PathStep}
 		*/
-		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, pathway, cb = false ) => {
+		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, parentNode, cb = false ) => {
 			
 			// new DOM element, check for icons
-			const name = shortcode.startsWith('i-') ? 
+			const stepName = shortcode.startsWith('i-') ? 
 				`<span class="step ${shortcode}"></span>` :
 				`<span class="step">${shortcode}</span>`;
 		
 			// create new PathStep & set up
-			const ps = createPathStep( bj.dom('span', selector, name));
+			const ps = createPathStep( bj.dom('span', selector, stepName));
 			ps.shortcode = shortcode;
-			ps.status = status;
-			ps.type = type;
+			ps.setStatus( status );
+			ps.setType( type );
 			ps.setInfo( info );
 			
 			// render DOM
@@ -230,8 +296,8 @@
 			// update collection 	
 			ps.setKey( collection.add( ps, spanDOM ));
 		
-			// add to a pathway DOM?
-			if( pathway ) pathway.append( spanDOM );
+			// add to a parentNode DOM?
+			if( parentNode ) parentNode.append( spanDOM );
 			
 			// patient callback?
 			if( cb ) ps.setCallback( cb );

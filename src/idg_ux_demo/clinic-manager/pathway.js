@@ -19,33 +19,34 @@
 		let autoStop = null;
 		
 		/**
-		* Helpers
+		* Find Index positions
 		*/
-		const findFirstTodoIndex = () => {
-			const index = pathSteps.findIndex( ps => {
-				const status = ps.getStatus();
-				return ( status == 'todo');
-			});
-			
-			return index;
-		}
+		const findFirstIndex = ( a, b = false ) => pathSteps.findIndex( ps => ps.getStatus() == a || ps.getStatus() == b );
 		
-		const firstActiveIndex = () => pathSteps.findIndex( ps => ps.getStatus() == 'active');
-		
-		// there might be 1+ active steps
-		const lastActiveIndex = () => {
-			let index = -1;
-			
+		const findLastIndex = ( status, index = -1 ) => {
 			pathSteps.forEach(( ps, i ) => {
-				if( ps.getStatus() == 'active' ) index = i;
+				if( ps.getStatus() == status ) index = i;
 			});
-			
 			return index;
-		}
+		};
 		
+		/**
+		* Swap positions
+		*/
+		const swapSteps = ( a, b ) => {
+			pathSteps[ a ] = pathSteps.splice( b, 1, pathSteps[ a ])[0];
+		};
+		
+		/**
+		* Render pathway
+		*/
 		const renderPathway = () => {
 			pathSteps.forEach( ps => div.append( ps.render()));
-		}
+			// does pathway have an auto-stop? 
+			// make sure it's alway at the end
+			if( autoStop ) div.append( autoStop.render());
+			
+		};
 		
 		/**
 		* Set pathway status on div
@@ -59,10 +60,8 @@
 		* @param {PathStep} newStep
 		*/	
 		const addStep = ( newStep ) => {
-			
 			switch( newStep.getCode()){
 				case 'i-Arr':
-					div.prepend( newStep.render());
 					pathSteps.splice(0, 0, newStep );
 				break;
 				case 'i-Wait':
@@ -71,32 +70,27 @@
 					when they arrive a "i-Wait" is added as well.
 					Ensure that the "wait" step is added before "todo" steps.
 					*/
-					const todoIndex = findFirstTodoIndex();
+					const todoIndex = findFirstIndex('todo', 'config');
 					
 					if( todoIndex === -1 ){
 						// No other steps with "todo" yet added to the pathway
-						div.append( newStep.render());
 						pathSteps.push( newStep );
+						
 					} else {
 						// Position in pathway and add to array
-						div.insertBefore( newStep.render(), pathSteps[todoIndex].render());
 						pathSteps.splice( todoIndex, 0, newStep );
 					}
 			
 				break;
 				case 'i-Stop': 
-					// Automatic stop must alway be last.
-					autoStop = newStep;
+					autoStop = newStep; // Automatic stop must alway be last.
 				break;
 				default:
-					div.append( newStep.render());
 					pathSteps.push( newStep );
 			}
 			
-			// does pathway have an auto-stop? 
-			// make sure it's alway at the end
-			if( autoStop ) div.append( autoStop.render());
-		}
+			renderPathway();
+		};
 		
 		/**
 		* Remove the last "todo", or "config" 
@@ -113,11 +107,27 @@
 				if( status == "todo" ||  
 					status == "config"){
 						
-					lastStep.remove();
+					last.remove();
 					pathSteps.splice( -1, 1 );
 				}
 			}
 		};
+		
+		
+		/**
+		* User has removed a step directly update the pathway array
+		* @param {String} key 
+		*/
+		const deleteRemovedStep = ( key ) => {
+			pathSteps.forEach(( ps, index ) => {
+				if( ps.key == key ){
+					pathSteps.splice( index, 1 );
+				}
+			});
+			console.log('after', pathSteps);
+		};
+		
+		
 		
 		/**
 		* Remove the waiting step
@@ -138,43 +148,65 @@
 			if( waitingIndex ) pathSteps.splice( waitingIndex, 1 );
 			
 			// activate step needs moving to the left of all "todo" steps
-			const todoIndex = findFirstTodoIndex();
-			const activeIndex = lastActiveIndex();
+			const todoIndex = findFirstIndex('todo', 'config');
+			const activeIndex = findLastIndex('active');
 	
 			if( activeIndex > todoIndex ){
 				// swap positions and re-render
-				pathSteps[ activeIndex ] = pathSteps.splice( todoIndex, 1, pathSteps[ activeIndex ])[0]; // note: [0]!
+				swapSteps( activeIndex, todoIndex );
 				renderPathway();
 			}
-		}
+		};
 		
 		/**
 		* PathStep has completed.
 		* If no other active steps add a wait.
+		* @returns state to Patent 
 		*/
 		const addWaiting = () => {
-			const activeIndex = firstActiveIndex();
+			const activeIndex = findFirstIndex('active');
+			let pathwayStatus = false;
 			if( activeIndex == -1 ){
 				// add waitstep.
-				const newStep = gui.pathStep({
+				const waitStep = gui.pathStep({
 					shortcode: 'i-Wait',
 					info: 0,
 					status: 'buff',
 					type: 'wait',
 				}, null );
 				
-				pathSteps.splice( findFirstTodoIndex(), 0, newStep );
-				renderPathway();
-				return true;
+				const todoIndex = findFirstIndex('todo', 'config');
+				
+				if( todoIndex == -1 ){
+					
+					if( autoStop ){
+						pathwayStatus = "auto-finish";
+						autoStop.remove();
+						autoStop = null;
+					} else {
+						pathSteps.push( waitStep );
+						pathwayStatus = "stuck";
+					}
+					
+				} else {
+					pathSteps.splice( todoIndex, 0, waitStep );
+					pathwayStatus = "waiting";
+				}	
 				
 			} else {
-				// check complete order position order
-				// there is another active step.
-				
-				
-				return false;
+				// There is another active step.
+				// make sure it's after the last completed
+				const lastCompleted = findLastIndex('done');
+				if( lastCompleted > activeIndex ){
+					// swap positions and re-render
+					swapSteps( activeIndex, lastCompleted );
+				}
 			}
-		}
+			
+			renderPathway();
+			return pathwayStatus;
+			
+		};
 		
 		/**
 		* API
@@ -183,9 +215,10 @@
 			setStatus,
 			addStep,
 			removeStep,
+			deleteRemovedStep,
 			stopWaiting,
 			addWaiting
-		}
+		};
 			
 	};
 	
