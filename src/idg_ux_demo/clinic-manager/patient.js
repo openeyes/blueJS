@@ -158,10 +158,12 @@
 			if( step.shortcode == 'i-Fin' ) waitDuration.finished( step.timestamp );
 			
 			// if it's a wait it's counting the mins
-			step.info = step.shortcode == 'i-Wait' ?
-				step.mins : 
-				bj.clock24( new Date ( step.timestamp ));
-			
+			if( step.shortcode == 'i-Wait' || 
+				step.shortcode == 'Waiting' ){
+				step.info = step.mins;	
+			} else {
+				step.info = bj.clock24( new Date ( step.timestamp ));
+			}
 			// add step to pathway, along with the callback
 			pathway.addStep( gui.pathStep( step, null, onPathStepChange ));
 			
@@ -253,7 +255,8 @@
 			
 			flag( props.f );
 			
-			td.addIcon.innerHTML = `<label class="patient-checkbox"><input class="js-check-patient" value="${model.uid}" type="checkbox"><div class="checkbox-btn"></div></label>`
+			// patient select checkbox
+			td.addIcon.innerHTML = `<label class="patient-checkbox"><input class="js-check-patient" value="${model.uid}" type="checkbox"><div class="checkbox-btn"></div></label>`;
 			
 			// build <tr>
 			tr.setAttribute( 'data-timestamp', props.bookedTimestamp );

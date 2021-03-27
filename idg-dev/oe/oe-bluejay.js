@@ -10370,6 +10370,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			/*
 			Step Pathway is multi-dimensional array.
 			Convert each step into an Object and add other useful info here. 
+			timestamp and mins are NOT used by PathStep either of these is
+			used for the "info"
 			*/		
 			patient.pathway.forEach(( step, i, thisArr ) => {
 				const obj = {
@@ -10380,7 +10382,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					type: step[3],
 				};
 				
-				if( step[4] ) obj.idgPopupCode = step[4];
+				if( step[4] ) obj.idgPopupCode = step[4]; // demo iDG popup content
 								
 				// update the nested step array to an Object
 				thisArr[i] = obj;
@@ -11414,10 +11416,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			if( step.shortcode == 'i-Fin' ) waitDuration.finished( step.timestamp );
 			
 			// if it's a wait it's counting the mins
-			step.info = step.shortcode == 'i-Wait' ?
-				step.mins : 
-				bj.clock24( new Date ( step.timestamp ));
-			
+			if( step.shortcode == 'i-Wait' || 
+				step.shortcode == 'Waiting' ){
+				step.info = step.mins;	
+			} else {
+				step.info = bj.clock24( new Date ( step.timestamp ));
+			}
 			// add step to pathway, along with the callback
 			pathway.addStep( gui.pathStep( step, null, onPathStepChange ));
 			
@@ -11509,7 +11513,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			flag( props.f );
 			
-			td.addIcon.innerHTML = `<label class="patient-checkbox"><input class="js-check-patient" value="${model.uid}" type="checkbox"><div class="checkbox-btn"></div></label>`
+			// patient select checkbox
+			td.addIcon.innerHTML = `<label class="patient-checkbox"><input class="js-check-patient" value="${model.uid}" type="checkbox"><div class="checkbox-btn"></div></label>`;
 			
 			// build <tr>
 			tr.setAttribute( 'data-timestamp', props.bookedTimestamp );

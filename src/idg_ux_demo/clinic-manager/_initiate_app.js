@@ -55,6 +55,8 @@
 			/*
 			Step Pathway is multi-dimensional array.
 			Convert each step into an Object and add other useful info here. 
+			timestamp and mins are NOT used by PathStep either of these is
+			used for the "info"
 			*/		
 			patient.pathway.forEach(( step, i, thisArr ) => {
 				const obj = {
@@ -65,7 +67,7 @@
 					type: step[3],
 				};
 				
-				if( step[4] ) obj.idgPopupCode = step[4];
+				if( step[4] ) obj.idgPopupCode = step[4]; // demo iDG popup content
 								
 				// update the nested step array to an Object
 				thisArr[i] = obj;
