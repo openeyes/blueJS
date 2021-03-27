@@ -11429,6 +11429,16 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			model.status = pathway.getStatus();
 		};
 		
+		/**
+		* Remove last PathStep from pathway 
+		* @param {Object} step
+		*/
+		const removePathStep = ( code ) => {
+			pathway.removeStep( code ); 
+			// update patient status based on pathway
+			model.status = pathway.getStatus();
+		};
+		
 		
 		/**
 		* @callbacks from App - User Events
@@ -11487,15 +11497,18 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const render = ( filter ) => {
 			const status = model.status;
-			switch( filter ){
-				case "all": 
-					return tr;
-				case "clinic": 
-					return status == 'done' ? null : 
-						   status == 'later' ? null : tr;
-				default:  
-					return status == filter ? tr : null;
+			
+			if( filter == "all" ){
+				return tr;
 			}
+			
+			if( filter == "clinic"){
+				return 	status == 'done' ? null : 
+						status == 'later' ? null : tr;
+			}
+			
+			// default if it status matches filter
+			return status == filter ? tr : null;
 		};
 		
 		/**
@@ -11506,16 +11519,18 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// build pathway steps
 			props.pathway.forEach( step => addPathStep( step ));
 			
-			// patient state 
-			model.status = props.status == 'fake-done' ? 'done' : props.status; 
-			model.assigned = props.assigned;
-			model.nameAge = `${props.lastname} <span class="fade">${props.age}</span>`;
-			
-			flag( props.f );
-			
 			// patient select checkbox
 			td.addIcon.innerHTML = `<label class="patient-checkbox"><input class="js-check-patient" value="${model.uid}" type="checkbox"><div class="checkbox-btn"></div></label>`;
 			
+			// set Flag (if there is one)
+			flag( props.f );
+			
+			// Set patient status this will trigger VIEWs:
+			model.status = props.status == 'fake-done' ? 'done' : props.status; 
+			
+			// Pathway ownder
+			model.assigned = props.assigned;
+		
 			// build <tr>
 			tr.setAttribute( 'data-timestamp', props.bookedTimestamp );
 			tr.insertAdjacentHTML('beforeend', `<td>${props.time}</td>`);
@@ -11528,8 +11543,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			tr.append( td.addIcon );
 			tr.append( td.owner );	
 			tr.append( td.flags );
-			tr.append( waitDuration.render( props.status )); // returns a <td>
-			tr.append( td.complete );
+			tr.append( waitDuration.render( model.status )); // returns a <td>
+			tr.append( td.complete );	
 			
 		})();
 			
@@ -11543,10 +11558,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			getID: () => model.uid, 
 			getStatus: () => model.status, 
 			setAssigned: ( val ) => model.assigned = val, 
-			getNameAge: () => model.nameAge, 
 			render, 
 			addPathStep, 
-			removePathStep: ( code ) => pathway.removeStep( code), 
+			removePathStep, 
 		};
 	};
 	
@@ -12142,7 +12156,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			Async.
 			Use the pathStepKey for the token check
 			*/
+			if( shortcode === '?' ) shortcode = "config-who";
 			const urlShortCode = shortcode.replace(' ','-'); // watch out for "Dr XY";
+			
 			const phpCode = `${urlShortCode}.${status}`.toLowerCase();
 			bj.xhr(`/idg-php/load/pathstep/_ps.php?full=${full}&code=${phpCode}`, pathStepKey )
 				.then( xreq => {

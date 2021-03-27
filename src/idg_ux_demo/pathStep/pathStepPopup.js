@@ -39,7 +39,9 @@
 			Async.
 			Use the pathStepKey for the token check
 			*/
+			if( shortcode === '?' ) shortcode = "config-who";
 			const urlShortCode = shortcode.replace(' ','-'); // watch out for "Dr XY";
+			
 			const phpCode = `${urlShortCode}.${status}`.toLowerCase();
 			bj.xhr(`/idg-php/load/pathstep/_ps.php?full=${full}&code=${phpCode}`, pathStepKey )
 				.then( xreq => {
