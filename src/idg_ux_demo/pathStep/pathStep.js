@@ -96,6 +96,10 @@
 				this.render();
 			},
 			
+			getType(){
+				return this.type;
+			},
+			
 			/**
 			* pathStepPopup move pathStep on to next state
 			* @param {String} status - next is default
@@ -195,6 +199,8 @@
 							this.info.textContent = mins; 
 							if( mins > 59 && this.shortcode !== 'Waiting' ){
 								this.setCode('Waiting');
+								// internal change - patient needs to know:
+								if( this.callback ) this.callback( this );
 							}
 							this.countWaitMins(); // keep counting the mins?
 						}, 60000 );

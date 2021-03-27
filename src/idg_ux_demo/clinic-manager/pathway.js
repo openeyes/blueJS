@@ -59,6 +59,36 @@
 		const setStatus = ( status ) => div.className = `pathway ${status}`;
 		
 		/**
+		* Work out patient status from the pathway steps
+		* @returns {String} 
+		*/
+		const getStatus = () => {
+			// work through the Rules
+			const lastCode = pathSteps[ pathSteps.length - 1 ].getCode();
+			
+			if( lastCode == 'i-Fin' ){
+				return 'done';
+			}
+			
+			if( lastCode == "i-Wait" || lastCode == "Waiting" ){
+				return "stuck";
+			}
+		
+			if( pathSteps.findIndex( ps => ps.getCode() == "Waiting") > 0){
+				console.log('return', 'long-wait');
+				return "long-wait";
+			}
+			
+			if( findFirstIndex('active') > 0){
+				console.log('return', 'active');
+				return "active";
+			} else {
+				console.log('return', 'waiting');
+				return 'waiting';
+			}	
+		};
+		
+		/**
 		* Add step to the pathway. 
 		* Based on the step code adjust position in the pathway
 		* @param {PathStep} newStep
@@ -162,10 +192,9 @@
 		* User has completed a PathStep.
 		* Patient requests to add Waiting. Pathway checks to see 
 		* if this the right thing to do or not.
-		* @returns {String} Pathway state 
+		* @returns {Boolean} - false means pathway
 		*/
 		const addWaiting = () => {
-			let pathwayStatus = false;
 			const activeIndex = findFirstIndex('active');
 			
 			if( activeIndex == -1 ){
@@ -183,17 +212,17 @@
 				if( todoIndex == -1 ){
 					// No, end of pathway, auto-finish or stuck?
 					if( autoStop ){
-						pathwayStatus = "auto-finish";
 						autoStop.remove();
 						autoStop = null;
+						
+						return false; // pathway needs auto-completing.
+						
 					} else {
 						pathSteps.push( waitStep );
-						pathwayStatus = "stuck";
 					}
 				} else {
 					// Yes, other todo/config steps
 					pathSteps.splice( todoIndex, 0, waitStep );
-					pathwayStatus = "waiting";
 				}	
 				
 			} else {
@@ -207,8 +236,7 @@
 			}
 			// update DOM
 			renderPathway();
-			
-			return pathwayStatus;
+			return true;
 		};
 		
 		/**
@@ -216,6 +244,7 @@
 		*/
 		return {
 			setStatus,
+			getStatus,
 			addStep,
 			removeStep,
 			deleteRemovedStep,

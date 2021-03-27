@@ -26,6 +26,11 @@
 			div.classList.remove('fadein');
 			div.classList.add('fadein'); // CSS animation 
 		};
+		
+		/**
+		* App needs to know this
+		*/
+		const isOpen = () => open;
 
 		/**
 		* Init 
@@ -125,7 +130,7 @@
 		})();
 		
 		// API 
-		return { show, hide };	
+		return { show, hide, isOpen };	
 	};
 	
 	clinic.adder = adder;

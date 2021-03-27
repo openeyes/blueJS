@@ -30,17 +30,17 @@
 				this.views.notify();
 			},
 			
-			/* 
-			Delay the view filters updates
-			Allow the user to see what happened then update
-			If they are not using the popup
+			/**
+			* Updating the Filters
+			* 1. Delay the view filters updates (allow the user to see what happened)
+			* 2. Only update if Users are not working on things
 			*/
 			updateFilterView(){
 				if( this.delayID ) clearTimeout( this.delayID );
 				this.delayID = setTimeout(() => {
-					// check user isn't working on a step first!
-					if( document.querySelector('.oe-pathstep-popup') == null ){
-						this.views.notify();
+					if( document.querySelector('.oe-pathstep-popup') == null && 
+						adder.isOpen() == false ){						
+						this.views.notify(); // OK to update views
 					}
 					this.delayID = null;
 				}, 750 );
@@ -105,9 +105,9 @@
 				} else {
 					patient.addPathStep({
 						shortcode: code, // pass in code
-						mins: 0,
 						status: 'todo',
 						type, // pass in type
+						timestamp: Date.now(),
 					});
 				}	
 			});
@@ -131,6 +131,7 @@
 			const allTicks = bj.nodeArray( root.querySelectorAll('input.js-check-patient'));
 			allTicks.forEach( tick => tick.checked = false );
 			adder.hide();
+			model.updateFilterView();
 		};
 		
 		/**
@@ -154,8 +155,7 @@
 		
 		// Button: "Arrived"
 		bj.userClick('.js-idg-clinic-btn-arrived', ( ev ) => {
-			const id = ev.target.dataset.patient;
-			patients.get( id ).onArrived();
+			patients.get( ev.target.dataset.patient ).onArrived();
 			model.updateFilterView();
 		});
 		
@@ -173,8 +173,8 @@
 		// Filter button (in header bar)
 		bj.userDown('.js-idg-clinic-btn-filter', ( ev ) => {
 			deselectAllPatients();
-			model.filter = ev.target.dataset.filter;
 			gui.pathStepPopup.remove();
+			model.filter = ev.target.dataset.filter;
 		});
 		
 		/*
@@ -206,7 +206,9 @@
 		});
 		
 		// Adder close btn
-		bj.userDown('.oe-clinic-adder .close-btn', deselectAllPatients );
+		bj.userDown('.oe-clinic-adder .close-btn', () => {
+			deselectAllPatients(); 
+		});
 		
 		/*
 		* Patient select checkboxes 

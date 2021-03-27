@@ -27,9 +27,8 @@
 		/**
 		* @callback from patient when the "Arrive" step is added to the pathway
 		* @param {Number} arriveTime - timestamp
-		* @param {String} patientStatus - only looking for "active"
 		*/
-		const arrived = ( arriveTime, patientStatus ) => {	
+		const arrived = ( arriveTime ) => {	
 			if( timestamp !== null ) return;
 			timestamp = arriveTime;
 			calcWaitMins();
