@@ -18,7 +18,7 @@
 			path: document.createElement('td'),
 			addIcon: document.createElement('td'),
 			flags: document.createElement('td'),
-			owner: document.createElement('td'),
+			notes: document.createElement('td'),
 			complete: document.createElement('td'),
 		};
 		
@@ -26,18 +26,6 @@
 		* Pathway 
 		*/
 		const pathway = clinic.pathway( td.path );
-		
-		/* 
-		* Owner
-		*/
-		const psOwner = gui.pathStep({
-			shortcode: '?',
-			status: 'buff',
-			type: 'owner',
-			info: '&nbsp;', // need this for the DOM to push the PathStep height
-		}, false );
-		
-		td.owner.append( psOwner.render());
 		
 		/** 
 		* WaitDuration widget
@@ -128,10 +116,12 @@
 					pathway.stopWaiting();
 				break;
 				case "done":
-					if( pathway.addWaiting() == false){
-						// if trying to add a Waiting step
-						// returns false it means it's hit an 'auto-finish'
-						onComplete();
+					/*
+					Add a waiting step, however if pathway 
+					hits an 'auto-finish', it returns False.
+					*/
+					if( pathway.addWaiting() == false ){
+						onComplete( true ); // auto-finish!
 					}
 				break;
 				case "userRemoved":
@@ -155,7 +145,10 @@
 			Pathway state could be: "waiting", "long-wait", "stuck" or "active" 
 			*/
 			if( step.shortcode == 'i-Arr' ) waitDuration.arrived( step.timestamp );
-			if( step.shortcode == 'i-Fin' ) waitDuration.finished( step.timestamp );
+			if( step.shortcode == 'i-Fin' ){
+				waitDuration.finished( step.timestamp );
+				pathway.completed();
+			}
 			
 			// if it's a wait it's counting the mins
 			if( step.shortcode == 'i-Wait' || 
@@ -212,7 +205,9 @@
 			});
 		};
 		
-		const onComplete = () => {
+		const onComplete = ( autostop = false ) => {
+			if( model.status == "active" && !autostop) return;
+			
 			addPathStep({
 				shortcode: 'i-Fin',
 				status: 'buff',
@@ -267,6 +262,18 @@
 			// set Flag (if there is one)
 			flag( props.f );
 			
+			// notes
+			
+			const psOwner = gui.pathStep({
+				shortcode: 'i-Comments',
+				status: 'buff',
+				type: props.notes ? 'comments added' : 'comments',
+				info: props.notes ? 'clock' : '&nbsp;', 
+				idgPopupCode: props.notes ? false : 'i-comments-none'
+			}, false );
+			
+			td.notes.append( psOwner.render());
+			
 			// Set patient status this will trigger VIEWs:
 			model.status = props.status == 'fake-done' ? 'done' : props.status; 
 			
@@ -283,8 +290,8 @@
 			tr.append( clinic.patientQuickView( props ));
 			tr.append( td.path );
 			tr.append( td.addIcon );
-			tr.append( td.owner );	
 			tr.append( td.flags );
+			tr.append( td.notes );	
 			tr.append( waitDuration.render( model.status )); // returns a <td>
 			tr.append( td.complete );	
 			

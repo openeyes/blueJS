@@ -43,7 +43,7 @@
 						this.views.notify(); // OK to update views
 					}
 					this.delayID = null;
-				}, 750 );
+				}, 1750 );
 			}
 			
 		}, bj.ModelViews());
@@ -91,7 +91,7 @@
 		* Insert step option is pressed. Update selected patients
 		* @param {Object} dataset from <li>
 		*/
-		const handleAddStepToPatients = ({ code, type }) => {
+		const handleAddStepToPatients = ({ code, type, idg:idgPopupCode }) => {
 			// get the IDs for the checked patients
 			const patientIDs = getAllSelectedPatients();
 			
@@ -108,6 +108,7 @@
 						status: 'todo',
 						type, // pass in type
 						timestamp: Date.now(),
+						idgPopupCode,
 					});
 				}	
 			});
@@ -246,7 +247,7 @@
 			
 			// Filter Btns - [ Name, filter ]
 			[
-				['Clinic','clinic'], 
+				['In Clinic','clinic'], 
 				['All','all'],
 				['Active','active'],
 				['Waiting','waiting'],
@@ -276,11 +277,12 @@
 			].join(''), {
 				age: ['All ages', '0 - 16y Paeds', '16y+ Adults'],
 				wait: ['Wait - all', '0 - 1hr', '2hr - 3hr', '3hr - 4rh', '4hr +'],
-				step: ['Steps - all', 'Waiting - Triage', 'Waiting - Nurse', 'Waiting - Doctor', 'VisAcu - Visual Acuity', 'Dilate', 'etc, etc ...'],
-				assigned: ['Assigned - all', 'Unassigned', 'GJB - Dr Georg Joseph Beer', 'GP - Dr George Bartischy', 'MM - Mr Michael Morgan', 'Su - Sushruta', 'ZF - Dr Zofia Falkowska'],
-				flags: ['Flags - all', 'No Flags', 'Change in pupils', 'Diplopia', 'Post Op Diplopia', 'Rapid change in VA', 'Systemically unwell'],
+				step: ['Steps - all', 'Visual acuity', 'Fields', 'Colour photos', 'OCT', 'Dilate'],
+				assigned: ['People - all', 'Unassigned', 'Nurse', 'Dr', 'Dr Georg Joseph Beer', 'Dr George Bartischy', 'Mr Michael Morgan', 'Sushruta', 'Dr Zofia Falkowska'],
+				flags: ['Flags - all', 'Red Flags', 'Amber Flags', 'Green Flags', 'Unflagged'],
 				states: ['in Clinic', 'Waiting', 'Delayed', 'No path', 'Scheduled', 'Completed'],
 			});
+			
 			
 			// build DOM
 			div.append( ul, searchFilters, searchBtn );

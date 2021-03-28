@@ -80,10 +80,8 @@
 			}
 			
 			if( findFirstIndex('active') > 0){
-				console.log('return', 'active');
 				return "active";
 			} else {
-				console.log('return', 'waiting');
 				return 'waiting';
 			}	
 		};
@@ -189,6 +187,29 @@
 		};
 		
 		/**
+		* User/or auto completed
+		* Clean up the pathway	
+		*/
+		const completed = () => {
+			// pathStep array is modified by splice so go through it backwards!
+			const len = pathSteps.length-1;
+			for ( let i=len; i >= 0; i-- ){
+				const ps = pathSteps[ i ];
+				const code = ps.getCode();
+				const status = ps.getStatus();
+				
+				if( code == "i-Wait" ||
+					code == "Waiting" ||
+					status == "todo" ||
+					status == "config" ){
+					ps.remove();
+					pathSteps.splice( i, 1 );	
+				}
+			}
+		};
+		
+		
+		/**
 		* User has completed a PathStep.
 		* Patient requests to add Waiting. Pathway checks to see 
 		* if this the right thing to do or not.
@@ -249,7 +270,8 @@
 			removeStep,
 			deleteRemovedStep,
 			stopWaiting,
-			addWaiting
+			addWaiting, 
+			completed
 		};
 			
 	};

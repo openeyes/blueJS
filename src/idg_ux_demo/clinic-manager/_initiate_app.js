@@ -89,8 +89,8 @@
 				'',
 				'Pathway',
 				'<label class="patient-checkbox"><input class="js-check-patient" value="all" type="checkbox"><div class="checkbox-btn"></div></label>', 
-				'<i class="oe-i person small"></i>',
-				'<i class="oe-i flag small"></i>',
+				'<i class="oe-i flag no-click small"></i>',
+				'<i class="oe-i comments no-click small"></i>',
 				'Wait hours', 
 				''
 			]

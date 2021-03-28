@@ -45,33 +45,28 @@
 			* In iDG that is in the PHP, however we also have to show 
 			* it here where the user has to select a step.
 			*/
-			const fullText = new Map();	
-			fullText.set('i-Arr', 'Arrived');
-			fullText.set('i-Wait', 'Waiting');
-			fullText.set('i-Stop', 'Auto-complete after last completed step');
-			fullText.set('i-Fin', 'Finished Pathway - Patient discharged');
-			fullText.set('DNA', 'Did Not Attend');
-			fullText.set('unassigned', 'Not assigned');
+			const full = new Map();	
+			full.set('i-Stop', ['Auto-complete after last completed step', 'buff']);
 			
-			fullText.set('MM', 'Mr Michael Morgan');
-			fullText.set('GJB', 'Dr Georg Joseph Beer ');
-			fullText.set('GP', 'Dr George Bartischy');
-			fullText.set('Su', 'Sushruta');
-			fullText.set('ZF', 'Dr Zofia Falkowska'); 
-			fullText.set('Nurse', 'Nurse');
+			full.set('Mr MM', ['Mr Michael Morgan', 'person']);
+			full.set('Dr GJB', ['Dr Georg Joseph Beer', 'person']);
+			full.set('Dr GP', ['Dr George Bartischy', 'person']);
+			full.set('Su', ['Sushruta', 'person']);
+			full.set('Dr ZF', ['Dr Zofia Falkowska', 'person']); 
+			full.set('Nurse', ['Nurse', 'person']);
 			
-			fullText.set('Dilate', 'Dilate');
-			fullText.set('Colour', 'Colour');
-			fullText.set('Img', 'Imaging');
-			fullText.set('VisAcu', 'Visual Acuity');
-			fullText.set('Orth', 'Orthoptics');
-			fullText.set('Fields', 'Visual Fields');
-			fullText.set('Ref', 'Refraction');
+			full.set('Dilate', ['Dilate', 'process']);
+			full.set('Colour', ['Colour', 'process']);
+			full.set('Img', ['Imaging', 'process']);
+			full.set('VisAcu', ['Visual Acuity', 'process']);
+			full.set('Orth', ['Orthoptics', 'process']);
+			full.set('Fields', ['Visual Fields', 'process']);
+			full.set('Ref', ['Refraction', 'process']);
 			
-			fullText.set('PSD', 'Patient Specific Directive');
-			fullText.set('PGD', 'Patient Group Directive');
+			full.set('PSD', ['Patient Specific Directive', 'process']);
+			full.set('PGD', ['Patient Group Directive', 'process']);
 			
-			fullText.set('c-last', 'remove last pathway step');
+			full.set('c-last', ['Remove last pathway step', null ]);
 				
 			/*
 			* Element for all inserts
@@ -85,24 +80,25 @@
 				return li;
 			};
 			
-			const buildGroup = ( title, list, type ) => {
+			const buildGroup = ( title, list ) => {
 				const group = bj.dom('div','row', `<h4>${title}</h4>`);
 				const ul = bj.dom('ul', 'btn-list');
 				
 				list.forEach( code => {
-					let shortcode = code;
-					if( code == "c-all") code = "Clear all";
-					if( code == "c-last") code = "Remove last";
-					
+					// code is the key.
+					const step = full.get( code );
+					const fullName = step[0];
+					const type = step[1];
+					const idgPHP = step[2] == undefined ? false : step[2];
 					
 					const li = document.createElement('li');
-					li.setAttribute('data-code', shortcode );
+					li.setAttribute('data-code', code );
 					li.setAttribute('data-type', type);
-					li.innerHTML = `${code} <small>- ${fullText.get(shortcode)}</small>`;
+					li.setAttribute('data-idg', idgPHP);
+					li.innerHTML = `${fullName}`;
 					
-					if( shortcode == "c-last"){
-						li.className = "red";
-					}
+					// Special remove button:
+					if( code == "c-last") li.className = "red";
 					
 					ul.append( li );
 				});
@@ -111,15 +107,10 @@
 				inserts.append( group );
 			};
 		
-			// Step groups
-			const process = ['Colour','Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort();
-			const people = ['MM', 'GJB', 'GP', 'Su', 'ZF','Nurse'].sort();
-			
-			// buttons
-			buildGroup('Steps', process, 'process' );
-			buildGroup('People', people, 'person' );
+			buildGroup( 'Common', ['Colour','Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort());
+			buildGroup('People', ['Mr MM', 'Dr GJB', 'Dr GP', 'Su', 'Dr ZF','Nurse'].sort());
 			// remove button
-			buildGroup('Remove "todo" steps from selected', ['c-last'], 'removeTodos' );
+			buildGroup('Remove "todo" steps from selected patient', ['c-last'], 'removeTodos' );
 
 			// build div
 			div.append( bj.div('close-btn'), inserts );
