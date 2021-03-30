@@ -68,6 +68,13 @@
 			// update <tbody>
 			bj.empty( tbody );
 			tbody.append( fragment );
+			
+			// if there aren't any rows
+			if( tbody.rows.length === 0 ){
+				const tr = bj.dom('tr','no-results', `<td></td><td colspan='9' style="padding:20px 0" class="fade">No patients found that match filter</div></td>`);
+				tbody.append( tr );
+			}
+			
 		};
 		
 		model.views.add( onFilterPatients );
@@ -91,7 +98,8 @@
 		* Insert step option is pressed. Update selected patients
 		* @param {Object} dataset from <li>
 		*/
-		const handleAddStepToPatients = ({ code, type, idg:idgPopupCode }) => {
+		const handleAddStepToPatients = ( json ) => {
+			const { c:code, s:status, t:type, i:idg } = ( JSON.parse(json) );
 			// get the IDs for the checked patients
 			const patientIDs = getAllSelectedPatients();
 			
@@ -105,10 +113,10 @@
 				} else {
 					patient.addPathStep({
 						shortcode: code, // pass in code
-						status: 'todo',
-						type, // pass in type
+						status,
+						type, 
 						timestamp: Date.now(),
-						idgPopupCode,
+						idgPopupCode: idg ? idg : false,
 					});
 				}	
 			});
@@ -203,7 +211,7 @@
 		* User clicks on a step to add it to patients
 		*/
 		bj.userDown('.oe-clinic-adder .insert-steps li', ( ev ) => {
-			handleAddStepToPatients( ev.target.dataset );
+			handleAddStepToPatients( ev.target.dataset.idg );
 		});
 		
 		// Adder close btn

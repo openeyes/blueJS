@@ -10492,6 +10492,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// update <tbody>
 			bj.empty( tbody );
 			tbody.append( fragment );
+			
+			// if there aren't any rows
+			if( tbody.rows.length === 0 ){
+				const tr = bj.dom('tr','no-results', `<td></td><td colspan='9' style="padding:20px 0" class="fade">No patients found that match filter</div></td>`);
+				tbody.append( tr );
+			}
+			
 		};
 		
 		model.views.add( onFilterPatients );
@@ -10515,7 +10522,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* Insert step option is pressed. Update selected patients
 		* @param {Object} dataset from <li>
 		*/
-		const handleAddStepToPatients = ({ code, type, idg:idgPopupCode }) => {
+		const handleAddStepToPatients = ( json ) => {
+			const { c:code, s:status, t:type, i:idg } = ( JSON.parse(json) );
 			// get the IDs for the checked patients
 			const patientIDs = getAllSelectedPatients();
 			
@@ -10529,10 +10537,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				} else {
 					patient.addPathStep({
 						shortcode: code, // pass in code
-						status: 'todo',
-						type, // pass in type
+						status,
+						type, 
 						timestamp: Date.now(),
-						idgPopupCode,
+						idgPopupCode: idg ? idg : false,
 					});
 				}	
 			});
@@ -10627,7 +10635,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* User clicks on a step to add it to patients
 		*/
 		bj.userDown('.oe-clinic-adder .insert-steps li', ( ev ) => {
-			handleAddStepToPatients( ev.target.dataset );
+			handleAddStepToPatients( ev.target.dataset.idg );
 		});
 		
 		// Adder close btn
@@ -10781,25 +10789,25 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			const full = new Map();	
 			full.set('i-Stop', ['Auto-complete after last completed step', 'buff']);
 			
-			full.set('Mr MM', ['Mr Michael Morgan', 'person']);
-			full.set('Dr GJB', ['Dr Georg Joseph Beer', 'person']);
-			full.set('Dr GP', ['Dr George Bartischy', 'person']);
-			full.set('Su', ['Sushruta', 'person']);
-			full.set('Dr ZF', ['Dr Zofia Falkowska', 'person']); 
-			full.set('Nurse', ['Nurse', 'person']);
+			full.set('Mr MM', ['Mr Michael Morgan', 'todo', 'person']);
+			full.set('Dr GJB', ['Dr Georg Joseph Beer', 'todo', 'person']);
+			full.set('Dr GP', ['Dr George Bartischy', 'todo', 'person']);
+			full.set('Su', ['Sushruta', 'todo', 'person']);
+			full.set('Dr ZF', ['Dr Zofia Falkowska', 'todo', 'person']); 
+			full.set('Nurse', ['Nurse', 'todo', 'person']);
 			
-			full.set('Dilate', ['Dilate', 'process']);
-			full.set('Colour', ['Colour', 'process']);
-			full.set('Img', ['Imaging', 'process']);
-			full.set('VisAcu', ['Visual Acuity', 'process']);
-			full.set('Orth', ['Orthoptics', 'process']);
-			full.set('Fields', ['Visual Fields', 'process']);
-			full.set('Ref', ['Refraction', 'process']);
+			full.set('Dilate', ['Dilate', 'todo', 'process']);
+			full.set('Colour', ['Colour', 'todo', 'process']);
+			full.set('Img', ['Imaging', 'todo', 'process']);
+			full.set('VisAcu', ['Visual Acuity', 'todo', 'process']);
+			full.set('Orth', ['Orthoptics', 'todo', 'process']);
+			full.set('Fields', ['Visual Fields', 'config', 'process']);
+			full.set('Ref', ['Refraction', 'todo', 'process']);
 			
-			full.set('PSD', ['Patient Specific Directive', 'process']);
-			full.set('PGD', ['Patient Group Directive', 'process']);
+			full.set('PSD', ['Patient Specific Directive', 'todo', 'process']);
+			full.set('PGD', ['Patient Group Directive', 'todo', 'process']);
 			
-			full.set('c-last', ['Remove last pathway step', null ]);
+			full.set('c-last', ['Remove last pathway step']);
 				
 			/*
 			* Element for all inserts
@@ -10820,15 +10828,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				list.forEach( code => {
 					// code is the key.
 					const step = full.get( code );
-					const fullName = step[0];
-					const type = step[1];
-					const idgPHP = step[2] == undefined ? false : step[2];
-					
 					const li = document.createElement('li');
-					li.setAttribute('data-code', code );
-					li.setAttribute('data-type', type);
-					li.setAttribute('data-idg', idgPHP);
-					li.innerHTML = `${fullName}`;
+					li.innerHTML = `${step[0]}`;
+					li.setAttribute('data-idg', JSON.stringify({
+						c: code,    // shortcode
+						s: step[1], // status
+						t: step[2], // type
+						i: step[3] == undefined ? 0 : step[3] // optional idgPHPcode
+					}));
 					
 					// Special remove button:
 					if( code == "c-last") li.className = "red";
@@ -11065,7 +11072,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			}
 		
 			if( pathSteps.findIndex( ps => ps.getCode() == "Waiting") > 0){
-				console.log('return', 'long-wait');
 				return "long-wait";
 			}
 			
@@ -11816,386 +11822,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	
 
 })( bluejay, bluejay.namespace('clinic') ); 
-(function( bj, queue ){
-
-	'use strict';	
-	
-	bj.addModule('queueManager');
-	
-	/*
-	Check we are on right page... 
-	*/
-	if( document.getElementById('js-queue-mgmt-app') === null ) return;
-	
-	/*
-	Fake a small loading delay, gives the impression it's doing something important
-	and demonstrates how to do the loader...
-	*/
-	const loading = bj.div('oe-popup-wrap', '<div class="spinner"></div><div class="spinner-message">Loading...</div>');
-	document.body.append( loading );
-	setTimeout(() => initApp(), 500 );
-	
-	/**
-	* Init the Queue Manager SPA
-	*/
-	const initApp = () => {
-		bj.log('[Queue Manager] - intialising');
-		/* 
-		OK, ready to run this app, lets go!
-		*/
-		queue.app( JSON.parse( idgQueueDemoJSON ));
-		loading.remove();
-	};
-	
-})( bluejay, bluejay.namespace('queue')); 
-
-(function( bj, queue ){
-
-	'use strict';	
-
-	const Qs = new Map();
-	const Ps = new Map();
-	
-	/**
-	* Patient 
-	* Abstract holds reference to DOM Element (only need to build <div> once)
-	* @param {Object} p - Data from JSON to build patient 'card'
-	* @returns {Object} 
-	*/
-	const initPatient = ( p ) => {
-		const id = bj.getToken(); // key for set
-		const div = bj.div('patient');
-		div.id = id; 
-		div.setAttribute('draggable', true );
-		
-		let risk = p.risk ? 'urgent' : 'grey';
-		
-		
-		div.innerHTML = `<i class="oe-i triangle-${risk} small pad-right selected"></i> ${p.lastname}, ${p.firstname}`;
-		
-		// API
-		return {
-			id, 
-			div,
-			queue: null, // patients queue
-			queuePos: null, // if dropped on, I need to know list position
-			queueChange( newQueue ){
-				/*
-				new queue? remove myself from old queue 	
-				*/
-				if( this.queue != newQueue ){
-					if( this.queue ) this.queue.removePatient( this.queuePos );
-					this.queue = newQueue;
-				}
-			}, 
-			setQueuePos( n ){
-				this.queuePos = n;
-			}
-		};
-	};
-
-	/**
-	* Queue 
-	* Abstract holds reference to DOM Element (only need to build <div> once)
-	* @param {Object} - Destructured
-	* @returns {Object} 
-	*/
-	const initQueue = ({ id, header, root }) => {
-		
-		const el = bj.div('queue');
-		const patientList = bj.div('patient-list');
-		el.id = id;
-		el.innerHTML = id == 'q0' ? 
-			`<header class="in-flow">${header}</header>`:
-			`<header>${header}</header>`;
-		el.append( patientList );
-		
-		// add a button in the sidebar to allow show/hide
-		const btn = bj.div('side-queue-btn selected');
-		btn.setAttribute('data-queue', id );
-		btn.innerHTML = `${header}<div class="patients"></div>`;
-		document.getElementById('idg-side-queue-clinicians').append( btn );
-		
-		
-		// update DOM (sloppy, but should be OK for demo)
-		root.append( el );
-		
-		// API
-		return {
-			id,
-			div: el, 
-			btn,
-			capacity: 10,
-			btnPatients: btn.querySelector('.patients'),
-			patientList,
-			list: [],
-			/* 
-			Every time there is change to the list
-			let all the Patients know their new positions	
-			*/
-			updatePatients(){
-				this.list.forEach(( p, index ) => p.setQueuePos( index ));
-				const showIcons = this.list.length > 21 ? 21 : this.list.length;
-				this.btnPatients.style.width = (showIcons * 11) + 'px';
-				//this.btnCount.textContent = this.list.length ? `${percent}%`: 'No patients assigned';
-			},
-			
-			/**
-			* Update patient position in same queue	
-			* have to do some Array juggling... 
-			*/
-			changePatientPos( patient, newPos ){
-				this.list[ patient.queuePos ] = null; // need to find this later
-				this.list.splice( newPos, 0, patient ); // move in list
-				const oldPosIndex = this.list.findIndex( i => i === null );// find old index
-				this.list.splice( oldPosIndex, 1 ); // remove it
-				this.render();
-			},
-			
-			/**
-			* Add new patient and insert in position	
-			* Let patient know it's new queue
-			* @param {*} patient
-			*/
-			addPatientAndPos( patient, pos ){
-				patient.queueChange( this );
-				this.list.splice( pos, 0, patient ); // place in list
-				this.render();
-				
-			},
-			
-			/**
-			* Add new patient to end of the queue
-			* Let patient know it's new queue
-			* @param {*} patient
-			*/
-			addPatient( patient ){
-				patient.queueChange( this );
-				this.list.push( patient ); // add to the end of the list
-				this.render();
-			},
-			
-			/**
-			* @callback from Patient, letting it's old list know it's moved on
-			* @param {Number} indexPos
-			*/
-			removePatient( indexPos ){
-				this.list.splice( indexPos, 1);
-				this.render();
-			},
-			render(){
-				// reflow Patient list
-				const fragment = new DocumentFragment();
-				this.list.forEach( p => fragment.append( p.div ));
-				
-				bj.empty( patientList );
-				patientList.append( fragment );
-				
-				// update patients with their new position the queue
-				this.updatePatients();
-			}
-		};
-	};
-	
-	
-	/**
-	* Drag n Drop
-	*/
-	
-	
-	/**
-	* Drag start - source element
-	* @param {Event} e
-	*/
-	const handleStart = ( e ) => {
-		e.target.classList.add('moving');
-		e.dataTransfer.effectAllowed = 'move';
-		/*
-		Can only set Text in the data. Set the ID.
-		(This allows for a list of elements)
-		e.g.node can be moved: add-to-end.append( document.getElementByID( e.dataTransfer.getData("text/plain") ));
-		*/
-		e.dataTransfer.setData("text/plain", e.target.id );	
-		
-	};
-	
-	/**
-	* Drag end - source element
-	* @param {Event} e
-	*/
-	const handleEnd = ( e ) => {
-		e.target.classList.remove('moving');
-	};
-	
-	/**
-	* Drag over - add-to-end element
-	* @param {Event} e
-	*/
-	const handleOver = ( e ) => {
-		e.preventDefault(); // required.
-		e.dataTransfer.dropEffect = 'move';
-		
-		if( e.target.matches('.queue')){
-			const list = bj.find('.patient-list', e.target );
-			list.classList.add('add-to-end');
-		}
-		
-		if( e.target.matches('.queue .patient-list .patient')){
-			e.target.classList.add('add-above');
-			e.target.classList.remove('over');
-		}
-
-		return false; // a good practice!
-	};
-	
-	/**
-	* Drag leave - add-to-end element
-	* @param {Event} e
-	*/
-	const handleDragLeave = (e) => {
-		if( e.target.matches('.queue')){
-			const list = bj.find('.patient-list', e.target );
-			list.classList.remove('add-to-end');
-		}	
-		
-		if( e.target.matches('.queue .patient-list .patient')){
-			e.target.classList.remove('add-above');
-		}	
-	}; 
-	
-	/**
-	* Drag DROP - add-to-end element
-	* @param {Event} e
-	*/
-	const handleDrop = ( e ) => {
-		e.preventDefault(); // required.
-		
-		const dataID = e.dataTransfer.getData("text/plain");
-		const p = Ps.get( dataID );
-	
-		if( e.target.matches('.queue')){
-			const list = bj.find('.patient-list', e.target );
-			list.classList.remove('add-to-end');
-			
-			// add to the end of a queue list
-			const queue = Qs.get( e.target.id ); 
-			queue.addPatient( p );
-		}
-		
-		if( e.target.matches('.queue .patient-list .patient')){
-			e.target.classList.remove('add-above');
-			
-			if( dataID == e.target.id ) return false; // dropping on self
-			
-			// dropping on a patient in a queue
-			const dropP = Ps.get( e.target.id );
-			const dropQ = dropP.queue;
-			
-			if( dropP.queue == p.queue ){
-				// same queue, update patient card position
-				dropQ.changePatientPos( p, dropP.queuePos );
-				
-			} else {
-				// dropping in a new queue
-				dropQ.addPatientAndPos( p, dropP.queuePos );
-			}
-			
-		}
-
-		return false;
-	};
-	
-
-	/**
-	* Init - SPA
-	* @param {Array} json - patients from PHP
-	*/
-	const app = ( json ) => {
-		const root = document.getElementById('js-queue-mgmt-app');
-		
-		/*
-		For the purpose of the demo hard code queues
-		*/
-		const buildQueue = ( id, header ) => {
-			Qs.set( id, initQueue({ id, header, root }));
-		};
-		
-		buildQueue( 'q0', 'New referrals' );
-		buildQueue( 'q1', 'Dr Amit Baum' );
-		buildQueue( 'q2', 'Dr Angela Glasby' );
-		buildQueue( 'q3', 'Dr Robin Baum' );
-		
-		
-		/*
-		Patient data is coming from the PHP JSON
-		each patient has a qNum that relates to
-		the queue key to start it in	
-		*/
-		json.forEach( p => {
-			const newPatient = initPatient( p );
-			Ps.set( newPatient.id, newPatient );
-		
-			const queue = Qs.get( 'q' + p.qNum );
-			queue.addPatient( newPatient );
-		});
-		
-		/*
-		fake a patient referral in-flow	
-		*/
-		const fakeInFlow = () => {
-			const surname = ['SMITH', 'JONES', 'TAYLOR', 'BROWN','WILLIAMS','JOHNSON','DAVIES'];
-			const firstname = ['Jack (Mr)', 'David (Mr)', 'Sarah (Ms)', 'Lucy (Mrs)', 'Jane (Mrs)', 'Mark (Mr)', 'James (Mr)', 'Ian (Mr)'];
-			//const randomRisk = Math.random() < 0.5;
-			
-			const newPatient = initPatient({
-				lastname: surname[Math.floor(Math.random() * surname.length)],
-				firstname:  firstname[Math.floor(Math.random() * firstname.length)],
-				risk: Math.random() < 0.2, // 1 in 5 Urgent!
-			});
-			
-			Ps.set( newPatient.id, newPatient );
-			Qs.get('q0').addPatient( newPatient );
-			
-			const randomInterval = ((Math.floor(Math.random() * 3)) * 2000) + 4000;
-			setTimeout( fakeInFlow, randomInterval );
-		};
-	
-		setTimeout( fakeInFlow, 4000 );
-		
-		
-		
-		// Drag n Drop, listeners
-		root.addEventListener('dragstart', handleStart, { useCapture: true });
-		//root.addEventListener('dragenter', handleEnter, { useCapture: true });
-		root.addEventListener('dragover', handleOver, { useCapture: true });
-		root.addEventListener('dragleave', handleDragLeave, { useCapture: true });
-		root.addEventListener('dragend', handleEnd, { useCapture: true });
-		root.addEventListener('drop', handleDrop, { useCapture: true });
-		
-		// Can not do the hover effect with CSS. Need to use JS
-		// and then clear the hover class with handleOver drag event
-		bj.userEnter('.queue  .patient', ( e ) => e.target.classList.add('over'));
-		bj.userLeave('.queue  .patient', ( e ) => e.target.classList.remove('over'));
-		
-		// side btns
-		bj.userDown('.side-queue-btn', e => {
-			const btn = e.target;
-			const queue = Qs.get( e.target.dataset.queue );
-			if( btn.classList.contains('selected')){
-				btn.classList.remove('selected');
-				bj.hide( queue.div );	
-			} else {
-				btn.classList.add('selected');
-				bj.show( queue.div );	
-			}
-		});
-		
-	};
-	
-	// add to namespace
-	queue.app = app;			
-
-})( bluejay, bluejay.namespace('queue')); 
 (function( bj, gui ){
 
 	'use strict';	
@@ -12271,7 +11897,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			setStatus( val ){
 				// valid status settings
 				const valid = ['config', 'todo', 'todo-next', 'active', 'done', 'buff'].find( test => test == val );
-				if( !valid ) throw new Error(`PathStep: invaild status: "${val}"`);
+				if( !valid ) throw new Error(`PathStep: invaild status: "${val}".`);
 				
 				this.status = val;
 				this.render();
@@ -12323,6 +11949,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			prevState(){
 				let newStatus = false;
 				switch( this.status ){
+					case 'todo': newStatus = 'config'; 
+					break;
 					case 'active': newStatus = 'todo'; 
 					break;
 				}
@@ -12715,6 +12343,386 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	gui.pathStepPopup = pathStepPopup();
 		
 })( bluejay, bluejay.namespace('gui'), bluejay.namespace('clinic')); 
+(function( bj, queue ){
+
+	'use strict';	
+	
+	bj.addModule('queueManager');
+	
+	/*
+	Check we are on right page... 
+	*/
+	if( document.getElementById('js-queue-mgmt-app') === null ) return;
+	
+	/*
+	Fake a small loading delay, gives the impression it's doing something important
+	and demonstrates how to do the loader...
+	*/
+	const loading = bj.div('oe-popup-wrap', '<div class="spinner"></div><div class="spinner-message">Loading...</div>');
+	document.body.append( loading );
+	setTimeout(() => initApp(), 500 );
+	
+	/**
+	* Init the Queue Manager SPA
+	*/
+	const initApp = () => {
+		bj.log('[Queue Manager] - intialising');
+		/* 
+		OK, ready to run this app, lets go!
+		*/
+		queue.app( JSON.parse( idgQueueDemoJSON ));
+		loading.remove();
+	};
+	
+})( bluejay, bluejay.namespace('queue')); 
+
+(function( bj, queue ){
+
+	'use strict';	
+
+	const Qs = new Map();
+	const Ps = new Map();
+	
+	/**
+	* Patient 
+	* Abstract holds reference to DOM Element (only need to build <div> once)
+	* @param {Object} p - Data from JSON to build patient 'card'
+	* @returns {Object} 
+	*/
+	const initPatient = ( p ) => {
+		const id = bj.getToken(); // key for set
+		const div = bj.div('patient');
+		div.id = id; 
+		div.setAttribute('draggable', true );
+		
+		let risk = p.risk ? 'urgent' : 'grey';
+		
+		
+		div.innerHTML = `<i class="oe-i triangle-${risk} small pad-right selected"></i> ${p.lastname}, ${p.firstname}`;
+		
+		// API
+		return {
+			id, 
+			div,
+			queue: null, // patients queue
+			queuePos: null, // if dropped on, I need to know list position
+			queueChange( newQueue ){
+				/*
+				new queue? remove myself from old queue 	
+				*/
+				if( this.queue != newQueue ){
+					if( this.queue ) this.queue.removePatient( this.queuePos );
+					this.queue = newQueue;
+				}
+			}, 
+			setQueuePos( n ){
+				this.queuePos = n;
+			}
+		};
+	};
+
+	/**
+	* Queue 
+	* Abstract holds reference to DOM Element (only need to build <div> once)
+	* @param {Object} - Destructured
+	* @returns {Object} 
+	*/
+	const initQueue = ({ id, header, root }) => {
+		
+		const el = bj.div('queue');
+		const patientList = bj.div('patient-list');
+		el.id = id;
+		el.innerHTML = id == 'q0' ? 
+			`<header class="in-flow">${header}</header>`:
+			`<header>${header}</header>`;
+		el.append( patientList );
+		
+		// add a button in the sidebar to allow show/hide
+		const btn = bj.div('side-queue-btn selected');
+		btn.setAttribute('data-queue', id );
+		btn.innerHTML = `${header}<div class="patients"></div>`;
+		document.getElementById('idg-side-queue-clinicians').append( btn );
+		
+		
+		// update DOM (sloppy, but should be OK for demo)
+		root.append( el );
+		
+		// API
+		return {
+			id,
+			div: el, 
+			btn,
+			capacity: 10,
+			btnPatients: btn.querySelector('.patients'),
+			patientList,
+			list: [],
+			/* 
+			Every time there is change to the list
+			let all the Patients know their new positions	
+			*/
+			updatePatients(){
+				this.list.forEach(( p, index ) => p.setQueuePos( index ));
+				const showIcons = this.list.length > 21 ? 21 : this.list.length;
+				this.btnPatients.style.width = (showIcons * 11) + 'px';
+				//this.btnCount.textContent = this.list.length ? `${percent}%`: 'No patients assigned';
+			},
+			
+			/**
+			* Update patient position in same queue	
+			* have to do some Array juggling... 
+			*/
+			changePatientPos( patient, newPos ){
+				this.list[ patient.queuePos ] = null; // need to find this later
+				this.list.splice( newPos, 0, patient ); // move in list
+				const oldPosIndex = this.list.findIndex( i => i === null );// find old index
+				this.list.splice( oldPosIndex, 1 ); // remove it
+				this.render();
+			},
+			
+			/**
+			* Add new patient and insert in position	
+			* Let patient know it's new queue
+			* @param {*} patient
+			*/
+			addPatientAndPos( patient, pos ){
+				patient.queueChange( this );
+				this.list.splice( pos, 0, patient ); // place in list
+				this.render();
+				
+			},
+			
+			/**
+			* Add new patient to end of the queue
+			* Let patient know it's new queue
+			* @param {*} patient
+			*/
+			addPatient( patient ){
+				patient.queueChange( this );
+				this.list.push( patient ); // add to the end of the list
+				this.render();
+			},
+			
+			/**
+			* @callback from Patient, letting it's old list know it's moved on
+			* @param {Number} indexPos
+			*/
+			removePatient( indexPos ){
+				this.list.splice( indexPos, 1);
+				this.render();
+			},
+			render(){
+				// reflow Patient list
+				const fragment = new DocumentFragment();
+				this.list.forEach( p => fragment.append( p.div ));
+				
+				bj.empty( patientList );
+				patientList.append( fragment );
+				
+				// update patients with their new position the queue
+				this.updatePatients();
+			}
+		};
+	};
+	
+	
+	/**
+	* Drag n Drop
+	*/
+	
+	
+	/**
+	* Drag start - source element
+	* @param {Event} e
+	*/
+	const handleStart = ( e ) => {
+		e.target.classList.add('moving');
+		e.dataTransfer.effectAllowed = 'move';
+		/*
+		Can only set Text in the data. Set the ID.
+		(This allows for a list of elements)
+		e.g.node can be moved: add-to-end.append( document.getElementByID( e.dataTransfer.getData("text/plain") ));
+		*/
+		e.dataTransfer.setData("text/plain", e.target.id );	
+		
+	};
+	
+	/**
+	* Drag end - source element
+	* @param {Event} e
+	*/
+	const handleEnd = ( e ) => {
+		e.target.classList.remove('moving');
+	};
+	
+	/**
+	* Drag over - add-to-end element
+	* @param {Event} e
+	*/
+	const handleOver = ( e ) => {
+		e.preventDefault(); // required.
+		e.dataTransfer.dropEffect = 'move';
+		
+		if( e.target.matches('.queue')){
+			const list = bj.find('.patient-list', e.target );
+			list.classList.add('add-to-end');
+		}
+		
+		if( e.target.matches('.queue .patient-list .patient')){
+			e.target.classList.add('add-above');
+			e.target.classList.remove('over');
+		}
+
+		return false; // a good practice!
+	};
+	
+	/**
+	* Drag leave - add-to-end element
+	* @param {Event} e
+	*/
+	const handleDragLeave = (e) => {
+		if( e.target.matches('.queue')){
+			const list = bj.find('.patient-list', e.target );
+			list.classList.remove('add-to-end');
+		}	
+		
+		if( e.target.matches('.queue .patient-list .patient')){
+			e.target.classList.remove('add-above');
+		}	
+	}; 
+	
+	/**
+	* Drag DROP - add-to-end element
+	* @param {Event} e
+	*/
+	const handleDrop = ( e ) => {
+		e.preventDefault(); // required.
+		
+		const dataID = e.dataTransfer.getData("text/plain");
+		const p = Ps.get( dataID );
+	
+		if( e.target.matches('.queue')){
+			const list = bj.find('.patient-list', e.target );
+			list.classList.remove('add-to-end');
+			
+			// add to the end of a queue list
+			const queue = Qs.get( e.target.id ); 
+			queue.addPatient( p );
+		}
+		
+		if( e.target.matches('.queue .patient-list .patient')){
+			e.target.classList.remove('add-above');
+			
+			if( dataID == e.target.id ) return false; // dropping on self
+			
+			// dropping on a patient in a queue
+			const dropP = Ps.get( e.target.id );
+			const dropQ = dropP.queue;
+			
+			if( dropP.queue == p.queue ){
+				// same queue, update patient card position
+				dropQ.changePatientPos( p, dropP.queuePos );
+				
+			} else {
+				// dropping in a new queue
+				dropQ.addPatientAndPos( p, dropP.queuePos );
+			}
+			
+		}
+
+		return false;
+	};
+	
+
+	/**
+	* Init - SPA
+	* @param {Array} json - patients from PHP
+	*/
+	const app = ( json ) => {
+		const root = document.getElementById('js-queue-mgmt-app');
+		
+		/*
+		For the purpose of the demo hard code queues
+		*/
+		const buildQueue = ( id, header ) => {
+			Qs.set( id, initQueue({ id, header, root }));
+		};
+		
+		buildQueue( 'q0', 'New referrals' );
+		buildQueue( 'q1', 'Dr Amit Baum' );
+		buildQueue( 'q2', 'Dr Angela Glasby' );
+		buildQueue( 'q3', 'Dr Robin Baum' );
+		
+		
+		/*
+		Patient data is coming from the PHP JSON
+		each patient has a qNum that relates to
+		the queue key to start it in	
+		*/
+		json.forEach( p => {
+			const newPatient = initPatient( p );
+			Ps.set( newPatient.id, newPatient );
+		
+			const queue = Qs.get( 'q' + p.qNum );
+			queue.addPatient( newPatient );
+		});
+		
+		/*
+		fake a patient referral in-flow	
+		*/
+		const fakeInFlow = () => {
+			const surname = ['SMITH', 'JONES', 'TAYLOR', 'BROWN','WILLIAMS','JOHNSON','DAVIES'];
+			const firstname = ['Jack (Mr)', 'David (Mr)', 'Sarah (Ms)', 'Lucy (Mrs)', 'Jane (Mrs)', 'Mark (Mr)', 'James (Mr)', 'Ian (Mr)'];
+			//const randomRisk = Math.random() < 0.5;
+			
+			const newPatient = initPatient({
+				lastname: surname[Math.floor(Math.random() * surname.length)],
+				firstname:  firstname[Math.floor(Math.random() * firstname.length)],
+				risk: Math.random() < 0.2, // 1 in 5 Urgent!
+			});
+			
+			Ps.set( newPatient.id, newPatient );
+			Qs.get('q0').addPatient( newPatient );
+			
+			const randomInterval = ((Math.floor(Math.random() * 3)) * 2000) + 4000;
+			setTimeout( fakeInFlow, randomInterval );
+		};
+	
+		setTimeout( fakeInFlow, 4000 );
+		
+		
+		
+		// Drag n Drop, listeners
+		root.addEventListener('dragstart', handleStart, { useCapture: true });
+		//root.addEventListener('dragenter', handleEnter, { useCapture: true });
+		root.addEventListener('dragover', handleOver, { useCapture: true });
+		root.addEventListener('dragleave', handleDragLeave, { useCapture: true });
+		root.addEventListener('dragend', handleEnd, { useCapture: true });
+		root.addEventListener('drop', handleDrop, { useCapture: true });
+		
+		// Can not do the hover effect with CSS. Need to use JS
+		// and then clear the hover class with handleOver drag event
+		bj.userEnter('.queue  .patient', ( e ) => e.target.classList.add('over'));
+		bj.userLeave('.queue  .patient', ( e ) => e.target.classList.remove('over'));
+		
+		// side btns
+		bj.userDown('.side-queue-btn', e => {
+			const btn = e.target;
+			const queue = Qs.get( e.target.dataset.queue );
+			if( btn.classList.contains('selected')){
+				btn.classList.remove('selected');
+				bj.hide( queue.div );	
+			} else {
+				btn.classList.add('selected');
+				bj.show( queue.div );	
+			}
+		});
+		
+	};
+	
+	// add to namespace
+	queue.app = app;			
+
+})( bluejay, bluejay.namespace('queue')); 
 (function (uiApp) {
 
 	'use strict';
@@ -13777,12 +13785,16 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	Quick little demo of the Multi-site login	
 	*/
 	
-	let loginStep = 1;
+	let loginStep = 0;
 	
 	const institution = document.querySelector('.login-institution');
 	const site = document.querySelector('.login-site');
+	const loginDetails = document.querySelector('.login-details');
 	const loginSteps = document.querySelector('.login-steps');
 	const stepOptions = document.querySelector('ul.step-options');
+	
+	bj.hide( loginDetails );
+	bj.hide( loginSteps );
 	
 	const userLogin = bj.div('user');
 	userLogin.innerHTML = '<input type="text" placeholder="Username"><input type="password" placeholder="Password"><button class="green hint" id="js-login">Login</button>';
@@ -13790,6 +13802,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	const showLoginStep = ( step, text='' ) => {
 		switch( step ){
 			case 1:
+				document.querySelector('.pre-id').remove();
+				bj.show( loginDetails );
+				bj.show( loginSteps );
 				institution.innerHTML = '<small>Please select an institution</small>';
 				site.textContent = '';
 				stepOptions.innerHTML = Mustache.render('{{#options}}<li>{{.}}</li>{{/options}}', {
@@ -13819,6 +13834,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const li = ev.target;
 		showLoginStep( ++loginStep, li.textContent );
 	});
+	
+	bj.userDown('#js-user-email-id', () => showLoginStep( ++loginStep));
 				
 })( bluejay ); 
 (function (uiApp) {

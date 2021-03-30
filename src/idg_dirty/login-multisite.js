@@ -8,12 +8,16 @@
 	Quick little demo of the Multi-site login	
 	*/
 	
-	let loginStep = 1;
+	let loginStep = 0;
 	
 	const institution = document.querySelector('.login-institution');
 	const site = document.querySelector('.login-site');
+	const loginDetails = document.querySelector('.login-details');
 	const loginSteps = document.querySelector('.login-steps');
 	const stepOptions = document.querySelector('ul.step-options');
+	
+	bj.hide( loginDetails );
+	bj.hide( loginSteps );
 	
 	const userLogin = bj.div('user');
 	userLogin.innerHTML = '<input type="text" placeholder="Username"><input type="password" placeholder="Password"><button class="green hint" id="js-login">Login</button>';
@@ -21,6 +25,9 @@
 	const showLoginStep = ( step, text='' ) => {
 		switch( step ){
 			case 1:
+				document.querySelector('.pre-id').remove();
+				bj.show( loginDetails );
+				bj.show( loginSteps );
 				institution.innerHTML = '<small>Please select an institution</small>';
 				site.textContent = '';
 				stepOptions.innerHTML = Mustache.render('{{#options}}<li>{{.}}</li>{{/options}}', {
@@ -50,5 +57,7 @@
 		const li = ev.target;
 		showLoginStep( ++loginStep, li.textContent );
 	});
+	
+	bj.userDown('#js-user-email-id', () => showLoginStep( ++loginStep));
 				
 })( bluejay ); 

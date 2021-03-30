@@ -48,25 +48,25 @@
 			const full = new Map();	
 			full.set('i-Stop', ['Auto-complete after last completed step', 'buff']);
 			
-			full.set('Mr MM', ['Mr Michael Morgan', 'person']);
-			full.set('Dr GJB', ['Dr Georg Joseph Beer', 'person']);
-			full.set('Dr GP', ['Dr George Bartischy', 'person']);
-			full.set('Su', ['Sushruta', 'person']);
-			full.set('Dr ZF', ['Dr Zofia Falkowska', 'person']); 
-			full.set('Nurse', ['Nurse', 'person']);
+			full.set('Mr MM', ['Mr Michael Morgan', 'todo', 'person']);
+			full.set('Dr GJB', ['Dr Georg Joseph Beer', 'todo', 'person']);
+			full.set('Dr GP', ['Dr George Bartischy', 'todo', 'person']);
+			full.set('Su', ['Sushruta', 'todo', 'person']);
+			full.set('Dr ZF', ['Dr Zofia Falkowska', 'todo', 'person']); 
+			full.set('Nurse', ['Nurse', 'todo', 'person']);
 			
-			full.set('Dilate', ['Dilate', 'process']);
-			full.set('Colour', ['Colour', 'process']);
-			full.set('Img', ['Imaging', 'process']);
-			full.set('VisAcu', ['Visual Acuity', 'process']);
-			full.set('Orth', ['Orthoptics', 'process']);
-			full.set('Fields', ['Visual Fields', 'process']);
-			full.set('Ref', ['Refraction', 'process']);
+			full.set('Dilate', ['Dilate', 'todo', 'process']);
+			full.set('Colour', ['Colour', 'todo', 'process']);
+			full.set('Img', ['Imaging', 'todo', 'process']);
+			full.set('VisAcu', ['Visual Acuity', 'todo', 'process']);
+			full.set('Orth', ['Orthoptics', 'todo', 'process']);
+			full.set('Fields', ['Visual Fields', 'config', 'process']);
+			full.set('Ref', ['Refraction', 'todo', 'process']);
 			
-			full.set('PSD', ['Patient Specific Directive', 'process']);
-			full.set('PGD', ['Patient Group Directive', 'process']);
+			full.set('PSD', ['Patient Specific Directive', 'todo', 'process']);
+			full.set('PGD', ['Patient Group Directive', 'todo', 'process']);
 			
-			full.set('c-last', ['Remove last pathway step', null ]);
+			full.set('c-last', ['Remove last pathway step']);
 				
 			/*
 			* Element for all inserts
@@ -87,15 +87,14 @@
 				list.forEach( code => {
 					// code is the key.
 					const step = full.get( code );
-					const fullName = step[0];
-					const type = step[1];
-					const idgPHP = step[2] == undefined ? false : step[2];
-					
 					const li = document.createElement('li');
-					li.setAttribute('data-code', code );
-					li.setAttribute('data-type', type);
-					li.setAttribute('data-idg', idgPHP);
-					li.innerHTML = `${fullName}`;
+					li.innerHTML = `${step[0]}`;
+					li.setAttribute('data-idg', JSON.stringify({
+						c: code,    // shortcode
+						s: step[1], // status
+						t: step[2], // type
+						i: step[3] == undefined ? 0 : step[3] // optional idgPHPcode
+					}));
 					
 					// Special remove button:
 					if( code == "c-last") li.className = "red";

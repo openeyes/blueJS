@@ -75,7 +75,6 @@
 			}
 		
 			if( pathSteps.findIndex( ps => ps.getCode() == "Waiting") > 0){
-				console.log('return', 'long-wait');
 				return "long-wait";
 			}
 			

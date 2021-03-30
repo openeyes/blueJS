@@ -73,7 +73,7 @@
 			setStatus( val ){
 				// valid status settings
 				const valid = ['config', 'todo', 'todo-next', 'active', 'done', 'buff'].find( test => test == val );
-				if( !valid ) throw new Error(`PathStep: invaild status: "${val}"`);
+				if( !valid ) throw new Error(`PathStep: invaild status: "${val}".`);
 				
 				this.status = val;
 				this.render();
@@ -125,6 +125,8 @@
 			prevState(){
 				let newStatus = false;
 				switch( this.status ){
+					case 'todo': newStatus = 'config'; 
+					break;
 					case 'active': newStatus = 'todo'; 
 					break;
 				}
