@@ -1226,7 +1226,7 @@ const bluejay = (function () {
 	};
 	
 	const demoChoosePathway = ( args ) => {
-		const href = '/oe-portal/';
+		const href = '/ERS/';
 		const btn = document.querySelector( args.btn );
 		const group = `idg-radio-g-${args.group}`;
 		const paths = args.paths; 		

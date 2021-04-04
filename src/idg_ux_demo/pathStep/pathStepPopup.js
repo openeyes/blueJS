@@ -102,7 +102,7 @@
 			
 			popup.style.left = ( rect.right - cssWidth ) + 'px'; 
 			
-			if( rect.bottom < (winH * 0.7)){
+			if( rect.bottom < (winH * 0.6)){
 				popup.style.top = rect.bottom + slightGap + 'px';
 				popup.style.bottom = 'auto';
 				popup.classList.add('arrow-t');

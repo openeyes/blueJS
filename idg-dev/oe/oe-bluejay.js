@@ -10925,6 +10925,31 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	  
 
 })( bluejay, bluejay.namespace('clinic')); 
+(function( bj ){
+
+	'use strict';	
+	
+	if( document.getElementById('js-clinic-manager') === null ) return;
+	
+	// demo some quick and dirty popup content 
+	
+	// Fields custom settinsg
+	
+	document.addEventListener('change', (ev) => {
+		if( ev.target.matches('input[name="idg-radio-g-fields-custom"]')){
+			const custom = document.querySelector('.js-idg-ps-field-custom');
+			if( ev.target.value == 3 ){
+				bj.show( custom );
+			} else {
+				bj.hide( custom );
+			}
+		}
+	}); 
+
+
+	
+
+})( bluejay ); 
 (function( bj, clinic ){
 
 	'use strict';	
@@ -11622,15 +11647,16 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				'<div class="patient-name">',
 					'<a href="/v3-SEM/patient-overview">',
 						'<span class="patient-surname">{{lastname}}</span>, ',
-						'<span class="patient-firstname">{{{firstname}}}',
-						'{{#duplicate}}<i class="oe-i exclamation-orange small pad-left js-has-tooltip" data-tt-type="basic" data-tooltip-content="Double check details. More than one {{lastname}} in clinic"></i>{{/duplicate}}',
-						'</span>',
+						'<span class="patient-firstname">{{{firstname}}}</span>',
 					'</a>',
+					'{{#duplicate}}',
+					'<div class="patient-icons"><i class="oe-i exclamation-orange small pad-left js-has-tooltip" data-tt-type="basic" data-tooltip-content="Double check details. More than one {{lastname}} in clinic"></i></div>',
+					'{{/duplicate}}',
 				'</div>',
 				'<div class="patient-details">',
 					'<div class="nhs-number"><span>NHS</span>{{nhs}}</div>',
-					'<div class="patient-gender"><span>Gen</span>{{gender}}</div>',
-					'<div class="patient-age"><span>Born</span> {{dob}} <span class="yrs">{{age}}</span></div>',
+					'<div class="gender">{{gender}}</div>',
+					'<div class="patient-age"><em>Born</em> {{dob}} <span class="yrs">{{age}}</span></div>',
 				'</div>',
 			'</div>'
 		].join('');
@@ -12249,7 +12275,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			popup.style.left = ( rect.right - cssWidth ) + 'px'; 
 			
-			if( rect.bottom < (winH * 0.7)){
+			if( rect.bottom < (winH * 0.6)){
 				popup.style.top = rect.bottom + slightGap + 'px';
 				popup.style.bottom = 'auto';
 				popup.classList.add('arrow-t');
