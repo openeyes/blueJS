@@ -75,7 +75,7 @@
 	
 	const logo = navSlidePanel({
 		btn: document.querySelector( logoBtn ),
-		panel: document.querySelector('.oe-portal-info'),
+		panel: document.querySelector('.openers-info'),
 		open: false,
 	});
 	

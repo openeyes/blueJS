@@ -11656,7 +11656,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				'<div class="patient-details">',
 					'<div class="nhs-number"><span>NHS</span>{{nhs}}</div>',
 					'<div class="gender">{{gender}}</div>',
-					'<div class="patient-age"><em>Born</em> {{dob}} <span class="yrs">{{age}}</span></div>',
+					'<div class="patient-age"><em>dob</em> {{dob}} <span class="yrs">{{age}}</span></div>',
 				'</div>',
 			'</div>'
 		].join('');
