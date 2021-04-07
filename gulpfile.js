@@ -1,18 +1,20 @@
 /**
-BlueJS (bluejay) builds the following JS for production distribution
+BlueJS (bluejay) 
+Builds the following JS for production distribution
 
-dist -|- oe -|- oe-bluejay.min.js
-      |      |- oe-bluejay.js
-      |
-      |- openERS -|- bj-openers.min.js
-                  |- bj-openers.js
- 
- 
-It also creates JS for IDG, for testing and developement
-IDG contains ALL JS modules (production, UX demos and in development)
+-----------------------
+* OpenEyes JS UI layer:
+./dist -|- oe -|- oe-bluejay.min.js
+               |- oe-bluejay.js
+  
+----------------------------------             
+* OpenERS JS UI layer (into Bloom)
+../bloom -|- dist -|- js -|- bloomjay.min.js
+                          |- bloomjay.js
 
-idg-dev -|- idg-bluejay.min.js
-         |- idg-openers.min.js
+----------------------------------
+* iDG also runs off all blueJS but it needs ALL modules
+./idg-dev -|- idg-bluejay.min.js
     
 */
 
@@ -21,13 +23,14 @@ Modules
 */
 const modules = {
 	base: [
-		'./src/polyfills/*.js',			// to ensure concat order is correct
-		'./src/app/app.js',				// load in the app file first
-		'./src/app/*.js',				// other app parts, then modules... 
+		'./src/polyfills/*.js', // to ensure concat order is correct
+		'./src/app/app.js', // load in the app file first
+		'./src/app/*.js', // other app parts, then modules... 
 	],
-	// OpenEyes
+	
+	// OpenEyes, for dist and iDG
 	oe: {
-		build: './src/build/**/*.js', // OE distribution modules
+		build: './src/build/**/*.js', // OE distribution modules (note: included in iDG build)
 		idg: [
 			'./src/idg_ux_demo/add-select-insert/_init.js', // this needs rebuilding but for now make sure this loads first
 			'./src/idg_ui/**/*.js', // ready for build
@@ -35,21 +38,21 @@ const modules = {
 			'./src/idg_dirty/*.js',	// quick and dirty demos
 		]
 	},
-	// openERS 
-	ers: {
-		build: './src/openERS/build/*.js', // OE Portal modules
-		idg: './src/openERS/idg/*.js'
-	},
-	// oePlot 
+	
+	// oePlot (plotly abstract)
 	oePlot:  [
 		'./src/oePlot/_oePlot.js',		
 		'./src/oePlot/*.js',		
 		'./src/oePlot/layouts/*.js',
-	]	
-	  
+	],
+	
+	// openERS - for Bloom
+	ers: {
+		build: './src/openERS/**/*.js', // OpenERS (bloom JS UI layer)
+	}	  
 }
 
-// Ready state loaded last
+// Ready state always loaded last
 const bjReady = ['./src/app/_last/ready.js'] 
 
 /*
@@ -59,29 +62,22 @@ const paths = {
 	// OpenEyes
 	oe: {	
 		input: modules.base.concat( modules.oePlot, modules.oe.build, bjReady ), 
-		output:	'./dist/oe/',
+		output:	'./dist/',
 		prefix: 'oe-bluejay'
 	},
-	// openERS
-	ers: {
-		input: modules.base.concat( modules.ers.build, bjReady ),
-		output:	'./dist/openERS/',
-		prefix: 'bj-openers'
-	},
-	
 	// builds: for IDG, all Modules
 	idg: {
-		oe: {
-			input: modules.base.concat( modules.oePlot, modules.oe.build, modules.oe.idg, bjReady ),
-			output:	'./idg-dev/oe/',
-			prefix: 'oe-bluejay'
-		}, 
-		ers: {
-			input: modules.base.concat( modules.ers.build, modules.ers.idg, bjReady ),
-			output:	'./idg-dev/openERS/',
-			prefix: 'bj-openers'
-		}	
+		input: modules.base.concat( modules.oePlot, modules.oe.build, modules.oe.idg, bjReady ),
+		output:	'./idg-dev/',
+		prefix: 'idg-bluejay'	
 	}, 
+	// openERS
+	// output into bloom!
+	ers: {
+		input: modules.base.concat( modules.ers.build, bjReady ),
+		output:	'../bloom/dist/js/', 
+		prefix: 'bloomjay'
+	},
 };
 
 /*
@@ -134,16 +130,16 @@ OpenEyes
 */
 const oe_clean = ( done ) => {
 	del.sync([ paths.oe.output ]);
-	del.sync([ paths.idg.oe.output ]);
+	del.sync([ paths.idg.output ]);
 	done();
 }
 
-const oe_lint = () => lintScripts( paths.idg.oe.input );
-const oe_build_idg = () => buildScripts( paths.idg.oe );
+const oe_lint = () => lintScripts( paths.idg.input );
+const oe_build_idg = () => buildScripts( paths.idg );
 const oe_build_dist = () => buildScripts( paths.oe );
 
 const watch_oe = ( done ) => {
-	watch( paths.idg.oe.input, series( oe_lint, oe_build_idg, oe_build_dist ));
+	watch( paths.idg.input, series( oe_lint, oe_build_idg, oe_build_dist ));
 	done();
 };
 
@@ -152,18 +148,11 @@ const watch_oe = ( done ) => {
 openERS - (was portal)
 -----------------------------
 */
-const ers_clean = ( done ) => {
-	del.sync([ paths.ers.output ]);
-	del.sync([ paths.idg.ers.output ]);
-	done();
-}
-
-const ers_lint = () => lintScripts( paths.idg.ers.input );
-const ers_build_idg = () => buildScripts( paths.idg.ers);
+const ers_lint = () => lintScripts( paths.ers.input );
 const ers_build_dist = () => buildScripts( paths.ers );
 
 const watch_ers = ( done ) => {
-	watch( paths.idg.ers.input, series( ers_lint, ers_build_idg, ers_build_dist ));
+	watch( paths.ers.input, series( ers_lint, ers_build_dist ));
 	done();
 };
 
@@ -173,24 +162,9 @@ Export Tasks
 -----------------------------
 */
 // turned off cleaning for openers because it was wiping IDG file for Mike (see down!)
-exports.openers = series( series( ers_lint, ers_build_idg, ers_build_dist ), watch_ers );
+exports.bloom = series( series( ers_lint, ers_build_dist ), watch_ers );
 exports.default = series( oe_clean, series( oe_lint, oe_build_idg, oe_build_dist ), watch_oe );
 
-/*
------------------------------
-IDG UI for OpenERS skin of OpenEyes
-This is for the quick demo. Provide
-a cut down version of IDG for openERS
-skin job...
------------------------------
-*/
-exports.openersIDG = () => buildScripts({ 
-	prefix: 'bj-oe-idg-ui',
-	input:  modules.base.concat( modules.oe.build, [
-		'./src/idg_ui/**/*.js', // ready for build
-		'./src/idg_ux_demo/**/*.js', // UX demos
-	], bjReady ),
-	output: paths.ers.output,
-});
+
 
 

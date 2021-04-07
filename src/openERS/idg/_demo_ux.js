@@ -2,6 +2,10 @@
 
 	'use strict';	
 	
+	/**
+	iDG UIX prototype helpers
+	**/
+	
 	const demoPath = ( btnID, groupName, pathChoice ) => {
 		const btn = document.querySelector( btnID );
 		btn.disabled = true;
