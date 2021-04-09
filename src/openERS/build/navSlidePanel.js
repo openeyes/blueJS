@@ -106,7 +106,7 @@
 	// Events
 	bj.userDown( menuBtn, () => menu.change());			
 	bj.userEnter( menuBtn, () => menu.show());
-	bj.userLeave('.portal-menu', () => menu.hide());
+	bj.userLeave('.menu', () => menu.hide());
 	
 
 })( bluejay ); 
