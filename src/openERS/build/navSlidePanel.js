@@ -80,7 +80,7 @@
 	});
 	
 	// A little Bling: on Login page pop in the panel
-	if( document.querySelector('.oe-login') !== null && window.innerWidth > 800 ){
+	if( document.querySelector('.js-theme-help') !== null && window.innerWidth > 800 ){
 		setTimeout( () => logo.show(), 1000 );	
 	}
 	

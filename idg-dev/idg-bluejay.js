@@ -12948,7 +12948,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const resetCanvas = ( img, w, h ) => {
 			canvas.clear();
 			
-			const canvasMaxWidth = annotate.offsetWidth - 160; // allow for the toolbox
+			const canvasMaxWidth = annotate.offsetWidth - 170; // allow for the toolbox
 			const imgScale = canvasMaxWidth / w;
 			// update canvase size
 			canvas.setHeight( h * imgScale );
@@ -13138,16 +13138,22 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const selectImage = document.getElementById('js-idg-annotate-image');
 		const imageOptions = selectImage.options;
-		selectImage.addEventListener('change', () => {
-			const optionSelected = imageOptions[ imageOptions.selectedIndex ];
+		
+		const canvasOptionImg = ( n ) => {
+			const optionSelected = imageOptions[ n ];
 			const imgSize = ( JSON.parse(optionSelected.dataset.idg) );
 			resetCanvas( optionSelected.value, imgSize.w, imgSize.h );
+		}
+		
+		
+		selectImage.addEventListener('change', () => {
+			canvasOptionImg( imageOptions.selectedIndex );
 		}, false);
 		
 		/*
 		Quick init
 		*/
-		resetCanvas('face-muscles', 1280, 720 );
+		canvasOptionImg( 0 );
 		toolChange( document.querySelector('.js-tool-btn[name="freedraw"]'));
 	};
 	
