@@ -31,7 +31,7 @@
 		} else {
 			nav.classList.add('show');
 		}
-	}
+	};
 
 	// Events
 	bj.userDown( '.sidebar-expander-btn', change );
