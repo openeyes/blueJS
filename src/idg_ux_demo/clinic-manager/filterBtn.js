@@ -20,7 +20,17 @@
 		// build btn and add to <ul> header
 		(() => {
 			const div = bj.div('filter');
-			div.innerHTML = `<div class="name">${props.name}</div>`;
+			// risk icon?
+			if( props.name.startsWith('-r')){
+				// string pattern is '-rN'
+				const num = parseInt( props.name.charAt(2), 10);
+				const colors = ['grey','red','amber','green'];
+				div.innerHTML = `<div class="name"><i class="oe-i triangle-${colors[ num ]} medium no-click"></div>`;
+			} else {
+				div.innerHTML = `<div class="name">${props.name}</div>`;
+			}
+			
+			
 			div.append( count );	
 			li.append( div );
 			ul.append( li );
@@ -29,10 +39,11 @@
 		/**
 		* Update
 		* On any updates to clinic need to update the filter count
-		* @param {Array} status - all status setting for all patients
+		* @param {Array} status - Patient row status
+		* @param {Array} risks - Patient risk num
 		* @param {String} currentFilter - current filter for the clinic list
 		*/	
-		const update = ( status, currentFilter ) => {
+		const update = ( status, risks, currentFilter ) => {
 			let num = 0;
 			
 			if( filter == "all"){
@@ -41,6 +52,12 @@
 				// work out the counts per filter.
 				num = status.reduce(( acc, val ) => {
 					if( val != "done" && val != 'later' ) return acc + 1; 
+					return acc;
+				}, 0 );
+			} else if ( filter.startsWith('-r')){
+				// work out the counts per filter.
+				num = risks.reduce(( acc, val ) => {
+					if( val == filter ) return acc + 1; 
 					return acc;
 				}, 0 );
 			} else {

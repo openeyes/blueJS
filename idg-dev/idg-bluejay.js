@@ -430,9 +430,9 @@ const bluejay = (function () {
 	* @param {DOMString} html
 	* @returns {Element} new DOM
 	*/
-	const dom = ( domElement, className, html = false ) => {
+	const dom = ( domElement, className = false, html = false ) => {
 		const el = document.createElement( domElement );
-		el.className = className;
+		if( className )el.className = className;
 		if( html ) el.innerHTML = html;
 		return el;
 	};
@@ -615,10 +615,12 @@ const bluejay = (function () {
 	* @returns {Object} width and height as {w:w,h:h}
 	*/
 	const getHiddenElemSize = ( el ) => {
+		const inDOM = el.parentNode !== null ? true : false; 
+		
 		// need to render with all the right CSS being applied
 		// displayed but hidden...
 		el.style.visibility = 'hidden';
-		el.style.display = ''; // this assumes that a display is set on CSS (or by default on the DOM)
+		el.style.display = ''; // use the CSS display (or default display)
 			
 		// get props...
 		let props = {	
@@ -7106,9 +7108,9 @@ Updated to Vanilla JS for IDG
 			contentID: 'js-nav-shortcuts-subnav',
 		}, 
 		{ // Nav, (was worklist button)
-			btn: 'js-nav-patientgroups-btn',
-			wrapper: 'js-patientgroups-panel-wrapper',
-			contentID: 'js-patientgroups-panel',
+			btn: 'js-nav-patientlist-btn',
+			wrapper: 'js-patientlist-panel-wrapper',
+			contentID: 'js-patientlist-panel',
 		},
 		{ // Print Event options
 			btn: 'js-header-print-dropdown-btn',
@@ -10423,8 +10425,20 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			});
 		});
 		
+		/**
+		Each Worklist requires a "group". The Group has a "header". 
+		The header shows the name of the Worklist (+ date, this added automatically by OE)
+		It also allows collapsing and removing from the view. 
+		Adding new worklists to view will be controlled from the OE main header
+		*/
+		const group = bj.dom('section', 'clinic-group');
+		const header = bj.dom('header',false,'Worklist • Day PM • Clinic 1 : Date');
+		// use PHP to get the date: 
+		const today = document.documentElement.getAttribute('data-today');
+		header.innerHTML = `<h3 class="worklist">Accident &amp; Emergency : ${today}</h3><div class="remove-hide"><!-- viewing a single clinic so these are disabled --></div>`;
+		
 		/*
-		Only <tr> in <tbody> need managing, may as well build the rest of the DOM immediately	
+		Only <tr> in the <tbody> need managing, may as well build the rest of the DOM here	
 		*/
 		const table = bj.dom('table', 'oe-clinic-list');
 		table.innerHTML = Mustache.render([
@@ -10438,19 +10452,26 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				'',
 				'Pathway',
 				'<label class="patient-checkbox"><input class="js-check-patient" value="all" type="checkbox"><div class="checkbox-btn"></div></label>', 
-				'<i class="oe-i flag no-click small"></i>',
+				'<i class="oe-i triangle-grey no-click small"></i>',
 				'<i class="oe-i comments no-click small"></i>',
 				'Wait hours', 
 				''
 			]
 		});
 		
-		document.getElementById('js-clinic-manager').appendChild( table );
+		/** 
+		Build the Node tree
+		*/
+		group.append( header, table );
+		
+		// update the DOM
+		document.getElementById('js-clinic-manager').append( group );
 		
 		/* 
 		OK, ready to run this app, lets go!
 		*/
 		loading.remove();
+		// state app
 		clinic.app( table.querySelector('tbody'), patientsJSON );
 	};
 	
@@ -10545,8 +10566,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const updateFilters = () => {
 			const status = [];
-			patients.forEach( patient => status.push( patient.getStatus()));
-			filters.forEach( filter => filter.update( status, model.filter ));
+			const risks = [];
+			patients.forEach( patient => {
+				status.push( patient.getStatus());
+				risks.push( '-r' + patient.getRisk()); // create filter code
+			});
+			filters.forEach( filter => filter.update( status, risks, model.filter ));
 		};
 		
 		model.views.add( updateFilters );
@@ -10713,13 +10738,17 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			// Filter Btns - [ Name, filter ]
 			[
-				['In Clinic','clinic'], 
 				['All','all'],
+				['Scheduled','later'], // not needed for A&E
+				['Arrived','clinic'],
+				['-r1','-r1'], 
+				['-r2','-r2'],
+				['-r3','-r3'],
 				['Active','active'],
 				['Waiting','waiting'],
 				['Delayed','long-wait'],
 				['No path','stuck'],
-				['Scheduled','later'], // not needed for A&E
+				
 				['Completed','done'],
 			].forEach( btn => {
 				filters.add( clinic.filterBtn({
@@ -10734,19 +10763,23 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			searchFilters.innerHTML = Mustache.render( [
 				`<input class="search" type="text" placeholder="Patient name or number">`,
+				
 				`<div class="group"><select>{{#age}}<option>{{.}}</option>{{/age}}</select></div>`,
 				`<div class="group"><select>{{#wait}}<option>{{.}}</option>{{/wait}}</select></div>`,
 				`<div class="group"><select>{{#step}}<option>{{.}}</option>{{/step}}</select></div>`,
 				`<div class="group"><select>{{#assigned}}<option>{{.}}</option>{{/assigned}}</select></div>`,
 				`<div class="group"><select>{{#flags}}<option>{{.}}</option>{{/flags}}</select></div>`,
+				//`<div class="group"><select>{{#risks}}<option>{{.}}</option>{{/risks}}</select></div>`,
 				`<div class="group"><select>{{#states}}<option>{{.}}</option>{{/states}}</select></div>`,
 			].join(''), {
 				age: ['All ages', '0 - 16y Paeds', '16y+ Adults'],
 				wait: ['Wait - all', '0 - 1hr', '2hr - 3hr', '3hr - 4rh', '4hr +'],
 				step: ['Steps - all', 'Visual acuity', 'Fields', 'Colour photos', 'OCT', 'Dilate'],
 				assigned: ['People - all', 'Unassigned', 'Nurse', 'Dr', 'Dr Georg Joseph Beer', 'Dr George Bartischy', 'Mr Michael Morgan', 'Sushruta', 'Dr Zofia Falkowska'],
-				flags: ['Flags - all', 'Red Flags', 'Amber Flags', 'Green Flags', 'Unflagged'],
-				states: ['in Clinic', 'Waiting', 'Delayed', 'No path', 'Scheduled', 'Completed'],
+				flags: ['Flags - All', 'Red: Change in puplis', 'Red: Systemically unwell', 'Green: Children', 'Unflagged'],
+				risks: ['Priority - All', 'Immediate', 'Urgent', 'Standard', 'Low' ],
+				
+				states: ['in Clinic', 'Scheduled', 'All'],
 			});
 			
 			
@@ -11006,7 +11039,17 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		// build btn and add to <ul> header
 		(() => {
 			const div = bj.div('filter');
-			div.innerHTML = `<div class="name">${props.name}</div>`;
+			// risk icon?
+			if( props.name.startsWith('-r')){
+				// string pattern is '-rN'
+				const num = parseInt( props.name.charAt(2), 10);
+				const colors = ['grey','red','amber','green'];
+				div.innerHTML = `<div class="name"><i class="oe-i triangle-${colors[ num ]} medium no-click"></div>`;
+			} else {
+				div.innerHTML = `<div class="name">${props.name}</div>`;
+			}
+			
+			
 			div.append( count );	
 			li.append( div );
 			ul.append( li );
@@ -11015,10 +11058,11 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		/**
 		* Update
 		* On any updates to clinic need to update the filter count
-		* @param {Array} status - all status setting for all patients
+		* @param {Array} status - Patient row status
+		* @param {Array} risks - Patient risk num
 		* @param {String} currentFilter - current filter for the clinic list
 		*/	
-		const update = ( status, currentFilter ) => {
+		const update = ( status, risks, currentFilter ) => {
 			let num = 0;
 			
 			if( filter == "all"){
@@ -11027,6 +11071,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				// work out the counts per filter.
 				num = status.reduce(( acc, val ) => {
 					if( val != "done" && val != 'later' ) return acc + 1; 
+					return acc;
+				}, 0 );
+			} else if ( filter.startsWith('-r')){
+				// work out the counts per filter.
+				num = risks.reduce(( acc, val ) => {
+					if( val == filter ) return acc + 1; 
 					return acc;
 				}, 0 );
 			} else {
@@ -11355,7 +11405,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const td = {
 			path: document.createElement('td'),
 			addIcon: document.createElement('td'),
-			flags: document.createElement('td'),
+			risks: document.createElement('td'),
 			notes: document.createElement('td'),
 			complete: document.createElement('td'),
 		};
@@ -11378,7 +11428,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const model = Object.assign({
 			uid: props.uid,
 			_status: null, // "todo", "active", "complete", etc!
-			_assigned: false,
+			risk: null, // "-r1", "-r3", "-r3" etc 
 	
 			get status(){
 				return this._status;
@@ -11392,14 +11442,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				this._status = val; 
 				this.views.notify();
 				bj.customEvent('onClinicPatientStatusChange', model.status ); // App is listening!
-			},
-			get assigned(){
-				return this._assigned; 
-			},	
-			set assigned( val ){
-				this._assigned = val;
-				this.views.notify();	
-			},
+			}
 		}, bj.ModelViews());
 		
 		/**
@@ -11434,14 +11477,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		model.views.add( onChangeComplete );
 		
-		/** 
-		* VIEW: Update Buffer
-		*/
-		const onUpdateOwner = () => {
-			if( model.assigned ) psOwner.setCode( model.assigned );
-		};
-		
-		model.views.add( onUpdateOwner );
 		
 		/**
 		* @callback for PathStep change
@@ -11555,14 +11590,23 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		};
 		
 		/**
-		* set Flags
+		* set Priority
+		* MEH has "priority"
 		*/
-		const flag = ( arr ) => {
-			if( arr == undefined ) return; 
-			let [ cn, tip ] = arr;
-			const colors = ['grey','red','orange','green'];
-			const icon = colors[ cn ];
-			td.flags.innerHTML = `<i class="oe-i flag-${icon} small-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
+		const setRisk = ( num ) => {
+			if( num == undefined ) return; 
+			
+			const colors = ['grey','red','amber','green'];
+			const icon = colors[ num ];
+			let tip = "Low";
+			switch( num ){
+				case 3: tip = 'Standard'; break;
+				case 2: tip = 'Urgent'; break;
+				case 1: tip = 'Immediate'; break;
+			}
+			
+			td.risks.innerHTML = `<i class="oe-i triangle-${icon} small-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
+			model.risk = num;
 		};
 		
 		/**
@@ -11577,9 +11621,18 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				return tr;
 			}
 			
+			// "clinic" is code for "in clinic", which then became "arrived", 
+			// conceptually it's any state that isn't "done" or "later"
 			if( filter == "clinic"){
 				return 	status == 'done' ? null : 
 						status == 'later' ? null : tr;
+			}
+			
+			// is the filter a risk?
+			// this is a bit different: 
+			if( filter.startsWith('-r')){
+				const r = parseInt( filter.charAt(2), 10);
+				return r == model.risk ? tr : null;
 			}
 			
 			// default if it status matches filter
@@ -11598,10 +11651,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			td.addIcon.innerHTML = `<label class="patient-checkbox"><input class="js-check-patient" value="${model.uid}" type="checkbox"><div class="checkbox-btn"></div></label>`;
 			
 			// set Flag (if there is one)
-			flag( props.f );
+			setRisk( props.risk );
 			
 			// notes
-			
 			const psOwner = gui.pathStep({
 				shortcode: 'i-Comments',
 				status: 'buff',
@@ -11612,11 +11664,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			td.notes.append( psOwner.render());
 			
-			// Set patient status this will trigger VIEWs:
+			// Set patient status this will trigger VIEW notifications (an iDG hack!)
 			model.status = props.status == 'fake-done' ? 'done' : props.status; 
-			
-			// Pathway ownder
-			model.assigned = props.assigned;
 		
 			// build <tr>
 			tr.setAttribute( 'data-timestamp', props.bookedTimestamp );
@@ -11628,7 +11677,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			tr.append( clinic.patientQuickView( props ));
 			tr.append( td.path );
 			tr.append( td.addIcon );
-			tr.append( td.flags );
+			tr.append( td.risks );
 			tr.append( td.notes );	
 			tr.append( waitDuration.render( model.status )); // returns a <td>
 			tr.append( td.complete );	
@@ -11643,8 +11692,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			onDNA, 
 			onComplete, 
 			getID: () => model.uid, 
-			getStatus: () => model.status, 
-			setAssigned: ( val ) => model.assigned = val, 
+			getStatus: () => model.status,
+			getRisk: () => model.risk, 
 			render, 
 			addPathStep, 
 			removePathStep, 
@@ -11683,9 +11732,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 						'<span class="patient-surname">{{lastname}}</span>, ',
 						'<span class="patient-firstname">{{{firstname}}}</span>',
 					'</a>',
-					'{{#duplicate}}',
-					'<div class="patient-icons"><i class="oe-i exclamation-orange small pad-left js-has-tooltip" data-tt-type="basic" data-tooltip-content="Double check details. More than one {{lastname}} in clinic"></i></div>',
-					'{{/duplicate}}',
+					'<div class="patient-icons">',
+					'{{#duplicate}}<i class="oe-i exclamation-orange small pad js-has-tooltip" data-tt-type="basic" data-tooltip-content="Double check details. More than one {{lastname}} in clinic"></i>{{/duplicate}}',
+					'{{#flag}}<i class="oe-i flag-{{flag.type}} small pad js-has-tooltip" data-tt-type="basic" data-tooltip-content="{{flag.msg}}"></i>{{/flag}}',
+					'</div>',
 				'</div>',
 				'<div class="patient-details">',
 					'<div class="nhs-number"><span>NHS</span>{{nhs}}</div>',

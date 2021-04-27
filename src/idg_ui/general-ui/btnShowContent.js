@@ -16,9 +16,9 @@
 			contentID: 'js-nav-shortcuts-subnav',
 		}, 
 		{ // Nav, (was worklist button)
-			btn: 'js-nav-patientgroups-btn',
-			wrapper: 'js-patientgroups-panel-wrapper',
-			contentID: 'js-patientgroups-panel',
+			btn: 'js-nav-patientlist-btn',
+			wrapper: 'js-patientlist-panel-wrapper',
+			contentID: 'js-patientlist-panel',
 		},
 		{ // Print Event options
 			btn: 'js-header-print-dropdown-btn',

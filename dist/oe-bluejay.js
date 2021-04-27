@@ -430,9 +430,9 @@ const bluejay = (function () {
 	* @param {DOMString} html
 	* @returns {Element} new DOM
 	*/
-	const dom = ( domElement, className, html = false ) => {
+	const dom = ( domElement, className = false, html = false ) => {
 		const el = document.createElement( domElement );
-		el.className = className;
+		if( className )el.className = className;
 		if( html ) el.innerHTML = html;
 		return el;
 	};
@@ -615,10 +615,12 @@ const bluejay = (function () {
 	* @returns {Object} width and height as {w:w,h:h}
 	*/
 	const getHiddenElemSize = ( el ) => {
+		const inDOM = el.parentNode !== null ? true : false; 
+		
 		// need to render with all the right CSS being applied
 		// displayed but hidden...
 		el.style.visibility = 'hidden';
-		el.style.display = ''; // this assumes that a display is set on CSS (or by default on the DOM)
+		el.style.display = ''; // use the CSS display (or default display)
 			
 		// get props...
 		let props = {	

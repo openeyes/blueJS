@@ -48,9 +48,9 @@
 	* @param {DOMString} html
 	* @returns {Element} new DOM
 	*/
-	const dom = ( domElement, className, html = false ) => {
+	const dom = ( domElement, className = false, html = false ) => {
 		const el = document.createElement( domElement );
-		el.className = className;
+		if( className )el.className = className;
 		if( html ) el.innerHTML = html;
 		return el;
 	};

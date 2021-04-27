@@ -17,7 +17,7 @@
 		const td = {
 			path: document.createElement('td'),
 			addIcon: document.createElement('td'),
-			flags: document.createElement('td'),
+			risks: document.createElement('td'),
 			notes: document.createElement('td'),
 			complete: document.createElement('td'),
 		};
@@ -40,7 +40,7 @@
 		const model = Object.assign({
 			uid: props.uid,
 			_status: null, // "todo", "active", "complete", etc!
-			_assigned: false,
+			risk: null, // "-r1", "-r3", "-r3" etc 
 	
 			get status(){
 				return this._status;
@@ -54,14 +54,7 @@
 				this._status = val; 
 				this.views.notify();
 				bj.customEvent('onClinicPatientStatusChange', model.status ); // App is listening!
-			},
-			get assigned(){
-				return this._assigned; 
-			},	
-			set assigned( val ){
-				this._assigned = val;
-				this.views.notify();	
-			},
+			}
 		}, bj.ModelViews());
 		
 		/**
@@ -96,14 +89,6 @@
 		
 		model.views.add( onChangeComplete );
 		
-		/** 
-		* VIEW: Update Buffer
-		*/
-		const onUpdateOwner = () => {
-			if( model.assigned ) psOwner.setCode( model.assigned );
-		};
-		
-		model.views.add( onUpdateOwner );
 		
 		/**
 		* @callback for PathStep change
@@ -217,14 +202,23 @@
 		};
 		
 		/**
-		* set Flags
+		* set Priority
+		* MEH has "priority"
 		*/
-		const flag = ( arr ) => {
-			if( arr == undefined ) return; 
-			let [ cn, tip ] = arr;
-			const colors = ['grey','red','orange','green'];
-			const icon = colors[ cn ];
-			td.flags.innerHTML = `<i class="oe-i flag-${icon} small-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
+		const setRisk = ( num ) => {
+			if( num == undefined ) return; 
+			
+			const colors = ['grey','red','amber','green'];
+			const icon = colors[ num ];
+			let tip = "Low";
+			switch( num ){
+				case 3: tip = 'Standard'; break;
+				case 2: tip = 'Urgent'; break;
+				case 1: tip = 'Immediate'; break;
+			}
+			
+			td.risks.innerHTML = `<i class="oe-i triangle-${icon} small-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
+			model.risk = num;
 		};
 		
 		/**
@@ -239,9 +233,18 @@
 				return tr;
 			}
 			
+			// "clinic" is code for "in clinic", which then became "arrived", 
+			// conceptually it's any state that isn't "done" or "later"
 			if( filter == "clinic"){
 				return 	status == 'done' ? null : 
 						status == 'later' ? null : tr;
+			}
+			
+			// is the filter a risk?
+			// this is a bit different: 
+			if( filter.startsWith('-r')){
+				const r = parseInt( filter.charAt(2), 10);
+				return r == model.risk ? tr : null;
 			}
 			
 			// default if it status matches filter
@@ -260,10 +263,9 @@
 			td.addIcon.innerHTML = `<label class="patient-checkbox"><input class="js-check-patient" value="${model.uid}" type="checkbox"><div class="checkbox-btn"></div></label>`;
 			
 			// set Flag (if there is one)
-			flag( props.f );
+			setRisk( props.risk );
 			
 			// notes
-			
 			const psOwner = gui.pathStep({
 				shortcode: 'i-Comments',
 				status: 'buff',
@@ -274,11 +276,8 @@
 			
 			td.notes.append( psOwner.render());
 			
-			// Set patient status this will trigger VIEWs:
+			// Set patient status this will trigger VIEW notifications (an iDG hack!)
 			model.status = props.status == 'fake-done' ? 'done' : props.status; 
-			
-			// Pathway ownder
-			model.assigned = props.assigned;
 		
 			// build <tr>
 			tr.setAttribute( 'data-timestamp', props.bookedTimestamp );
@@ -290,7 +289,7 @@
 			tr.append( clinic.patientQuickView( props ));
 			tr.append( td.path );
 			tr.append( td.addIcon );
-			tr.append( td.flags );
+			tr.append( td.risks );
 			tr.append( td.notes );	
 			tr.append( waitDuration.render( model.status )); // returns a <td>
 			tr.append( td.complete );	
@@ -305,8 +304,8 @@
 			onDNA, 
 			onComplete, 
 			getID: () => model.uid, 
-			getStatus: () => model.status, 
-			setAssigned: ( val ) => model.assigned = val, 
+			getStatus: () => model.status,
+			getRisk: () => model.risk, 
 			render, 
 			addPathStep, 
 			removePathStep, 

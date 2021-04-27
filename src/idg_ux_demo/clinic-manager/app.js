@@ -87,8 +87,12 @@
 		*/
 		const updateFilters = () => {
 			const status = [];
-			patients.forEach( patient => status.push( patient.getStatus()));
-			filters.forEach( filter => filter.update( status, model.filter ));
+			const risks = [];
+			patients.forEach( patient => {
+				status.push( patient.getStatus());
+				risks.push( '-r' + patient.getRisk()); // create filter code
+			});
+			filters.forEach( filter => filter.update( status, risks, model.filter ));
 		};
 		
 		model.views.add( updateFilters );
@@ -255,13 +259,17 @@
 			
 			// Filter Btns - [ Name, filter ]
 			[
-				['In Clinic','clinic'], 
 				['All','all'],
+				['Scheduled','later'], // not needed for A&E
+				['Arrived','clinic'],
+				['-r1','-r1'], 
+				['-r2','-r2'],
+				['-r3','-r3'],
 				['Active','active'],
 				['Waiting','waiting'],
 				['Delayed','long-wait'],
 				['No path','stuck'],
-				['Scheduled','later'], // not needed for A&E
+				
 				['Completed','done'],
 			].forEach( btn => {
 				filters.add( clinic.filterBtn({
@@ -276,19 +284,23 @@
 			
 			searchFilters.innerHTML = Mustache.render( [
 				`<input class="search" type="text" placeholder="Patient name or number">`,
+				
 				`<div class="group"><select>{{#age}}<option>{{.}}</option>{{/age}}</select></div>`,
 				`<div class="group"><select>{{#wait}}<option>{{.}}</option>{{/wait}}</select></div>`,
 				`<div class="group"><select>{{#step}}<option>{{.}}</option>{{/step}}</select></div>`,
 				`<div class="group"><select>{{#assigned}}<option>{{.}}</option>{{/assigned}}</select></div>`,
 				`<div class="group"><select>{{#flags}}<option>{{.}}</option>{{/flags}}</select></div>`,
+				//`<div class="group"><select>{{#risks}}<option>{{.}}</option>{{/risks}}</select></div>`,
 				`<div class="group"><select>{{#states}}<option>{{.}}</option>{{/states}}</select></div>`,
 			].join(''), {
 				age: ['All ages', '0 - 16y Paeds', '16y+ Adults'],
 				wait: ['Wait - all', '0 - 1hr', '2hr - 3hr', '3hr - 4rh', '4hr +'],
 				step: ['Steps - all', 'Visual acuity', 'Fields', 'Colour photos', 'OCT', 'Dilate'],
 				assigned: ['People - all', 'Unassigned', 'Nurse', 'Dr', 'Dr Georg Joseph Beer', 'Dr George Bartischy', 'Mr Michael Morgan', 'Sushruta', 'Dr Zofia Falkowska'],
-				flags: ['Flags - all', 'Red Flags', 'Amber Flags', 'Green Flags', 'Unflagged'],
-				states: ['in Clinic', 'Waiting', 'Delayed', 'No path', 'Scheduled', 'Completed'],
+				flags: ['Flags - All', 'Red: Change in puplis', 'Red: Systemically unwell', 'Green: Children', 'Unflagged'],
+				risks: ['Priority - All', 'Immediate', 'Urgent', 'Standard', 'Low' ],
+				
+				states: ['in Clinic', 'Scheduled', 'All'],
 			});
 			
 			

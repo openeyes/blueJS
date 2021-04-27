@@ -74,8 +74,20 @@
 			});
 		});
 		
+		/**
+		Each Worklist requires a "group". The Group has a "header". 
+		The header shows the name of the Worklist (+ date, this added automatically by OE)
+		It also allows collapsing and removing from the view. 
+		Adding new worklists to view will be controlled from the OE main header
+		*/
+		const group = bj.dom('section', 'clinic-group');
+		const header = bj.dom('header',false,'Worklist • Day PM • Clinic 1 : Date');
+		// use PHP to get the date: 
+		const today = document.documentElement.getAttribute('data-today');
+		header.innerHTML = `<h3 class="worklist">Accident &amp; Emergency : ${today}</h3><div class="remove-hide"><!-- viewing a single clinic so these are disabled --></div>`;
+		
 		/*
-		Only <tr> in <tbody> need managing, may as well build the rest of the DOM immediately	
+		Only <tr> in the <tbody> need managing, may as well build the rest of the DOM here	
 		*/
 		const table = bj.dom('table', 'oe-clinic-list');
 		table.innerHTML = Mustache.render([
@@ -89,19 +101,26 @@
 				'',
 				'Pathway',
 				'<label class="patient-checkbox"><input class="js-check-patient" value="all" type="checkbox"><div class="checkbox-btn"></div></label>', 
-				'<i class="oe-i flag no-click small"></i>',
+				'<i class="oe-i triangle-grey no-click small"></i>',
 				'<i class="oe-i comments no-click small"></i>',
 				'Wait hours', 
 				''
 			]
 		});
 		
-		document.getElementById('js-clinic-manager').appendChild( table );
+		/** 
+		Build the Node tree
+		*/
+		group.append( header, table );
+		
+		// update the DOM
+		document.getElementById('js-clinic-manager').append( group );
 		
 		/* 
 		OK, ready to run this app, lets go!
 		*/
 		loading.remove();
+		// state app
 		clinic.app( table.querySelector('tbody'), patientsJSON );
 	};
 	
