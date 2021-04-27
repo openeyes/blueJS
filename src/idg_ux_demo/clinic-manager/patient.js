@@ -217,7 +217,7 @@
 				case 1: tip = 'Immediate'; break;
 			}
 			
-			td.risks.innerHTML = `<i class="oe-i triangle-${icon} small-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
+			td.risks.innerHTML = `<i class="oe-i triangle-${icon} js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
 			model.risk = num;
 		};
 		

@@ -261,7 +261,7 @@
 			[
 				['All','all'],
 				['Scheduled','later'], // not needed for A&E
-				['Arrived','clinic'],
+				['In Clinic','clinic'],
 				['-r1','-r1'], 
 				['-r2','-r2'],
 				['-r3','-r3'],
