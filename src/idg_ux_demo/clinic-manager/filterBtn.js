@@ -20,12 +20,12 @@
 		// build btn and add to <ul> header
 		(() => {
 			const div = bj.div('filter');
-			// risk icon?
-			if( props.name.startsWith('-r')){
+			// red flagged filter?
+			if( props.name.startsWith('-f')){
 				// string pattern is '-rN'
-				const num = parseInt( props.name.charAt(2), 10);
-				const colors = ['grey','red','amber','green'];
-				div.innerHTML = `<div class="name"><i class="oe-i triangle-${colors[ num ]} medium no-click"></div>`;
+				// const num = parseInt( props.name.charAt(2), 10);
+				// const colors = ['grey','red','amber','green'];
+				div.innerHTML = `<div class="name"><i class="oe-i flag-red medium-icon no-click"></div>`;
 			} else {
 				div.innerHTML = `<div class="name">${props.name}</div>`;
 			}
@@ -50,6 +50,7 @@
 			} else if ( filter == "clinic"){
 				num = status.reduce(( acc, val ) => (val != "done" && val != 'later') ? acc + 1 : acc, 0 );
 			} else {
+				
 				const arr = filter.startsWith('-r') ? risks : status;
 				num = arr.reduce(( acc, val ) => val == filter ? acc + 1 : acc, 0 );
 			}

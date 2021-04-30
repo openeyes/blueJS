@@ -48,6 +48,7 @@
 			isRendered: false,
 			_status: null, // "todo", "active", "complete", etc!
 			risk: null, // "-r1", "-r3", "-r3" etc 
+			redFlagged: false,
 			
 			get status(){
 				return this._status;
@@ -132,6 +133,10 @@
 		*/
 		const addPathStep = ( step ) => {
 			if( model.status == "done") return; // not active
+			
+			if( step.shortcode == 'i-RedFlag'){
+				model.redFlagged = true;
+			}
 			
 			/*
 			From adder user can add "todo" or "config" or "auto-finish" steps. 
@@ -335,7 +340,8 @@
 			onComplete, 
 			getID(){ return model.uid; }, 
 			getStatus(){ return model.status; },
-			getRisk(){ return model.risk; }, 
+			getRisk(){ return model.risk; },
+			getFlagged(){ return model.redFlagged },
 			render, 
 			addPathStep, 
 			removePathStep,

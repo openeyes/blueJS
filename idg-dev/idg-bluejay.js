@@ -10765,12 +10765,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		// build btn and add to <ul> header
 		(() => {
 			const div = bj.div('filter');
-			// risk icon?
-			if( props.name.startsWith('-r')){
+			// red flagged filter?
+			if( props.name.startsWith('-f')){
 				// string pattern is '-rN'
-				const num = parseInt( props.name.charAt(2), 10);
-				const colors = ['grey','red','amber','green'];
-				div.innerHTML = `<div class="name"><i class="oe-i triangle-${colors[ num ]} medium no-click"></div>`;
+				// const num = parseInt( props.name.charAt(2), 10);
+				// const colors = ['grey','red','amber','green'];
+				div.innerHTML = `<div class="name"><i class="oe-i flag-red medium-icon no-click"></div>`;
 			} else {
 				div.innerHTML = `<div class="name">${props.name}</div>`;
 			}
@@ -10795,6 +10795,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			} else if ( filter == "clinic"){
 				num = status.reduce(( acc, val ) => (val != "done" && val != 'later') ? acc + 1 : acc, 0 );
 			} else {
+				
 				const arr = filter.startsWith('-r') ? risks : status;
 				num = arr.reduce(( acc, val ) => val == filter ? acc + 1 : acc, 0 );
 			}
@@ -10850,9 +10851,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			['All','all'],
 			['Scheduled','later'], // not needed for A&E
 			['In Clinic','clinic'],
-			['-r1','-r1'], 
-			['-r2','-r2'],
-			['-r3','-r3'],
+			['-f','-f'], 
+			//['-r2','-r2'],
+			//['-r3','-r3'],
 			['Active','active'],
 			['Waiting','waiting'],
 			['Delayed','long-wait'],
@@ -11259,6 +11260,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			isRendered: false,
 			_status: null, // "todo", "active", "complete", etc!
 			risk: null, // "-r1", "-r3", "-r3" etc 
+			redFlagged: false,
 			
 			get status(){
 				return this._status;
@@ -11343,6 +11345,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const addPathStep = ( step ) => {
 			if( model.status == "done") return; // not active
+			
+			if( step.shortcode == 'i-RedFlag'){
+				model.redFlagged = true;
+			}
 			
 			/*
 			From adder user can add "todo" or "config" or "auto-finish" steps. 
@@ -11546,7 +11552,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			onComplete, 
 			getID(){ return model.uid; }, 
 			getStatus(){ return model.status; },
-			getRisk(){ return model.risk; }, 
+			getRisk(){ return model.risk; },
+			getFlagged(){ return model.redFlagged },
 			render, 
 			addPathStep, 
 			removePathStep,
@@ -11667,7 +11674,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					'</a>',
 					'<div class="patient-icons">',
 					'{{#duplicate}}<i class="oe-i exclamation-orange small pad js-has-tooltip" data-tt-type="basic" data-tooltip-content="Double check details. More than one {{lastname}} in clinic"></i>{{/duplicate}}',
-					'{{#flag}}<i class="oe-i flag-{{flag.type}} small pad js-has-tooltip" data-tt-type="basic" data-tooltip-content="{{flag.msg}}"></i>{{/flag}}',
 					'</div>',
 				'</div>',
 				'<div class="patient-details">',
@@ -12135,7 +12141,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			*/
 			setType( val ){
 				// valid types
-				const valid = ['none', 'person', 'process', 'wait', 'wait long', 'arrive', 'auto-finish', 'finish', 'comments', 'comments added'].find( test => test == val );
+				const valid = ['none', 'person', 'process', 'wait', 'wait long', 'arrive', 'red-flag', 'auto-finish', 'finish', 'comments', 'comments added'].find( test => test == val );
 				if( !valid ) throw new Error(`PathStep: invaild type: "${val}"`);
 				
 				this.type = val;

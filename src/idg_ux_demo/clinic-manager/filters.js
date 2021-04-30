@@ -26,9 +26,9 @@
 			['All','all'],
 			['Scheduled','later'], // not needed for A&E
 			['In Clinic','clinic'],
-			['-r1','-r1'], 
-			['-r2','-r2'],
-			['-r3','-r3'],
+			['-f','-f'], 
+			//['-r2','-r2'],
+			//['-r3','-r3'],
 			['Active','active'],
 			['Waiting','waiting'],
 			['Delayed','long-wait'],

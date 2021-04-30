@@ -27,7 +27,6 @@
 					'</a>',
 					'<div class="patient-icons">',
 					'{{#duplicate}}<i class="oe-i exclamation-orange small pad js-has-tooltip" data-tt-type="basic" data-tooltip-content="Double check details. More than one {{lastname}} in clinic"></i>{{/duplicate}}',
-					'{{#flag}}<i class="oe-i flag-{{flag.type}} small pad js-has-tooltip" data-tt-type="basic" data-tooltip-content="{{flag.msg}}"></i>{{/flag}}',
 					'</div>',
 				'</div>',
 				'<div class="patient-details">',
