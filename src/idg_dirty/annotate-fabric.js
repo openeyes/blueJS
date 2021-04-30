@@ -251,7 +251,7 @@
 			const optionSelected = imageOptions[ n ];
 			const imgSize = ( JSON.parse(optionSelected.dataset.idg) );
 			resetCanvas( optionSelected.value, imgSize.w, imgSize.h );
-		}
+		};
 		
 		
 		selectImage.addEventListener('change', () => {

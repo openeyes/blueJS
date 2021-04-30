@@ -4,19 +4,19 @@
 	
 	/**
 	* Clinic clock
+	* @param {Element} tbody - Each "clock" needs linking to it's own table
 	*/
-	const showClock = () => {
+	const showClock = ( tbody ) => {
 		const div = bj.div('oe-clinic-clock');
-		div.textContent = "";
 		div.style.top = "100%"; // move offscreen
-		document.body.appendChild( div );
+		document.body.append( div );
 		
 		/**
 		* @callback for setInvterval
 		*/
 		const updateClock = () => {
 			let top = "100%";
-			const tableRows = bj.nodeArray( document.querySelectorAll('table.oe-clinic-list tbody tr'));
+			const tableRows = bj.nodeArray( tbody.querySelectorAll('tr'));
 			
 			// check there are rows...
 			if( ! tableRows.length ){

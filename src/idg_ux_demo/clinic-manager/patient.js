@@ -32,6 +32,12 @@
 		*/
 		const waitDuration = clinic.waitDuration( props.uid );
 		
+		/**
+		* input[type=checkbox] ( UI is "+" icon)
+		*/
+		const tick = bj.dom('input', 'js-check-patient');
+		tick.setAttribute('type', 'checkbox');
+		
 
 		/** 
 		* Model
@@ -39,9 +45,10 @@
 		*/
 		const model = Object.assign({
 			uid: props.uid,
+			isRendered: false,
 			_status: null, // "todo", "active", "complete", etc!
 			risk: null, // "-r1", "-r3", "-r3" etc 
-	
+			
 			get status(){
 				return this._status;
 			},
@@ -89,7 +96,6 @@
 		
 		model.views.add( onChangeComplete );
 		
-		
 		/**
 		* @callback for PathStep change
 		* need to know if a pathStep changes state
@@ -117,8 +123,10 @@
 			// update patient status based on pathway
 			model.status = pathway.getStatus();
 		};
+			
 		
 		/**
+		* @method
 		* Add PathStep to patient pathway
 		* @param {Object} step
 		*/
@@ -150,6 +158,7 @@
 		};
 		
 		/**
+		* @method
 		* Remove last PathStep from pathway 
 		* @param {Object} step
 		*/
@@ -161,7 +170,82 @@
 		
 		
 		/**
-		* @callbacks from App - User Events
+		* Set Priority (A&E has priority)
+		* uses "circle" icons
+		* @param {Number} num - level
+		*/
+		const setRisk = ( num ) => {
+			if( num == undefined ) return; 
+			
+			const colors = ['grey','red','amber','green'];
+			const icon = colors[ num ];
+			let tip = "None";
+			switch( num ){
+				case 3: tip = 'Standard'; break;
+				case 2: tip = 'Urgent'; break;
+				case 1: tip = 'Immediate'; break;
+			}
+			
+			td.risks.innerHTML = `<i class="oe-i circle-${icon} medium-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="Priority: ${tip}"></i>`;
+			model.risk = num;
+		};
+
+		
+		/**
+		* Initiate inital patient state from JSON	
+		* and build the <tr> DOM
+		*/
+		(() => {
+			// build pathway steps
+			props.pathway.forEach( step => addPathStep( step ));
+			
+			// Add patient select checkbox ("tick")
+			// CSS styles this to look like a "+" icon
+			// build node tree
+			tick.setAttribute('value', `${model.uid}`);
+			
+			const label = bj.dom('label', 'patient-checkbox');
+			const checkboxBtn = bj.div('checkbox-btn');
+			label.append( tick, checkboxBtn );
+			td.addIcon.append( label );
+			
+			// set Flag (if there is one)
+			setRisk( props.risk );
+			
+			// notes
+			const psOwner = gui.pathStep({
+				shortcode: 'i-Comments',
+				status: 'buff',
+				type: props.notes ? 'comments added' : 'comments',
+				info: props.notes ? 'clock' : '&nbsp;', 
+				idgPopupCode: props.notes ? false : 'i-comments-none'
+			}, false );
+			
+			td.notes.append( psOwner.render());
+			
+			// Set patient status this will trigger VIEW notifications (an iDG hack!)
+			model.status = props.status == 'fake-done' ? 'done' : props.status; 
+		
+			// build <tr>
+			tr.setAttribute( 'data-timestamp', props.bookedTimestamp );
+			tr.insertAdjacentHTML('beforeend', `<td>${props.time}</td>`);
+			tr.insertAdjacentHTML('beforeend', `<td><div class="speciality">${props.clinic[0]}</div><small class="type">${props.clinic[1]}</small></td>`);
+			
+			// slightly more complex Elements and dynamic areas...
+			tr.append( clinic.patientMeta( props ));
+			tr.append( clinic.patientQuickView( props ));
+			tr.append( td.path );
+			tr.append( td.addIcon );
+			tr.append( td.risks );
+			tr.append( td.notes );	
+			tr.append( waitDuration.render( model.status )); // returns a <td>
+			tr.append( td.complete );	
+			
+		})();
+		
+		
+		/**
+		* @methods
 		* Update Pathway with appropriate steps
 		* {shortcode, status, type, info = (timestamp or mins), idgPopupCode}
 		*/
@@ -202,113 +286,61 @@
 		};
 		
 		/**
-		* set Priority
-		* MEH has "priority"
+		* @method 
+		* Users can select all or none of currently viewed patients
+		* @param {Boolean} b 
 		*/
-		const setRisk = ( num ) => {
-			if( num == undefined ) return; 
-			
-			const colors = ['grey','red','amber','green'];
-			const icon = colors[ num ];
-			let tip = "Low";
-			switch( num ){
-				case 3: tip = 'Standard'; break;
-				case 2: tip = 'Urgent'; break;
-				case 1: tip = 'Immediate'; break;
-			}
-			
-			td.risks.innerHTML = `<i class="oe-i triangle-${icon} js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
-			model.risk = num;
-		};
+		const setTicked = ( b ) => {
+			if( model.status == "done") return;
+			if( !model.isRendered && b ) return;
+			tick.checked = b;	
+		}; 
 		
 		/**
-		* Render Patient <tr>
-		* @params {String} filter - filter buttons set this
+		* @returns {Boolean} - checkbox state
+		*/
+		const isTicked = () => tick.checked;
+		
+		/**
+		* @method
+		* Render Patient <tr> if it matches filter
+		* @params {String} filter - header filter buttons set this
 		* @returns {Element} (if covered by filter option)	
 		*/
 		const render = ( filter ) => {
-			const status = model.status;
-			
+			let renderDOM = false;
+	
 			if( filter == "all" ){
-				return tr;
+				renderDOM = true;
+			} else if( filter == "clinic") {
+				renderDOM = !( model.status == 'done' || model.status == 'later');
+			} else {
+				// risk filter? this is a bit different: 
+				if( filter.startsWith('-r')){
+					const r = parseInt( filter.charAt(2), 10);
+					renderDOM = ( r == model.risk );
+				} else {
+					renderDOM = ( model.status == filter );
+				}
 			}
 			
-			// "clinic" is code for "in clinic", which then became "arrived", 
-			// conceptually it's any state that isn't "done" or "later"
-			if( filter == "clinic"){
-				return 	status == 'done' ? null : 
-						status == 'later' ? null : tr;
-			}
+			model.isRendered = renderDOM;
+			return renderDOM ? tr : null;
+		};	
 			
-			// is the filter a risk?
-			// this is a bit different: 
-			if( filter.startsWith('-r')){
-				const r = parseInt( filter.charAt(2), 10);
-				return r == model.risk ? tr : null;
-			}
-			
-			// default if it status matches filter
-			return status == filter ? tr : null;
-		};
-		
-		/**
-		* Initiate inital patient state from JSON	
-		* and build the <tr> DOM
-		*/
-		(() => {
-			// build pathway steps
-			props.pathway.forEach( step => addPathStep( step ));
-			
-			// patient select checkbox
-			td.addIcon.innerHTML = `<label class="patient-checkbox"><input class="js-check-patient" value="${model.uid}" type="checkbox"><div class="checkbox-btn"></div></label>`;
-			
-			// set Flag (if there is one)
-			setRisk( props.risk );
-			
-			// notes
-			const psOwner = gui.pathStep({
-				shortcode: 'i-Comments',
-				status: 'buff',
-				type: props.notes ? 'comments added' : 'comments',
-				info: props.notes ? 'clock' : '&nbsp;', 
-				idgPopupCode: props.notes ? false : 'i-comments-none'
-			}, false );
-			
-			td.notes.append( psOwner.render());
-			
-			// Set patient status this will trigger VIEW notifications (an iDG hack!)
-			model.status = props.status == 'fake-done' ? 'done' : props.status; 
-		
-			// build <tr>
-			tr.setAttribute( 'data-timestamp', props.bookedTimestamp );
-			tr.insertAdjacentHTML('beforeend', `<td>${props.time}</td>`);
-			tr.insertAdjacentHTML('beforeend', `<td><div class="speciality">${props.clinic[0]}</div><small class="type">${props.clinic[1]}</small></td>`);
-			
-			// slightly more complex Elements and dynamic areas...
-			tr.append( clinic.patientMeta( props ));
-			tr.append( clinic.patientQuickView( props ));
-			tr.append( td.path );
-			tr.append( td.addIcon );
-			tr.append( td.risks );
-			tr.append( td.notes );	
-			tr.append( waitDuration.render( model.status )); // returns a <td>
-			tr.append( td.complete );	
-			
-		})();
-			
-		/**
-		* API
-		*/
+		/* API */
 		return { 
 			onArrived, 
 			onDNA, 
 			onComplete, 
-			getID: () => model.uid, 
-			getStatus: () => model.status,
-			getRisk: () => model.risk, 
+			getID(){ return model.uid; }, 
+			getStatus(){ return model.status; },
+			getRisk(){ return model.risk; }, 
 			render, 
 			addPathStep, 
-			removePathStep, 
+			removePathStep,
+			setTicked,
+			isTicked 
 		};
 	};
 	

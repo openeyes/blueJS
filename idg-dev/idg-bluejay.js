@@ -10349,150 +10349,31 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 })(bluejay); 
 
-(function( bj, clinic ){
+(function( bj, clinic, gui ){
 
 	'use strict';	
 	
 	bj.addModule('clinicManager');
 	
-	/*
-	Check we are on IDG Clinic Manager page... 
-	*/
-	if( document.getElementById('js-clinic-manager') === null ) return;
-	
-	/*
-	Fake a small loading delay, gives the impression it's doing something important
-	and demonstrates how to do the loader...
-	*/
-	const loading = bj.div('oe-popup-wrap', '<div class="spinner"></div><div class="spinner-message">Loading...</div>');
-	document.body.append( loading );
-	setTimeout(() => initClinicApp(), 500 );
+	// Check we are on IDG Clinic Manager page... I expect a certain DOM
+	const oeClinic = document.getElementById('js-clinic-manager');
+	if( oeClinic === null ) return;
 	
 	/**
-	* Init the Clinic Manager SPA
-	* Broadcast to all listeners that React is now available to use for building elements
+	* @callback
+	* Init the Clinic Manager SPA - called by loading timeout.
 	*/
-	const initClinicApp = () => {
-		bj.log('[Clinic Manager] - intialising');
-		
-		/*
-		As times are relative to 'now', make sure later appointments 
-		always appeared scheduled on whole 5 minutes: 
-		*/
-		const fiveMinAppointments = ( booked ) => {
-			const appointment = new Date( Date.now() + ( booked * 60000 )); 
-			const offsetFive = appointment.getMinutes() % 5; 
-			appointment.setMinutes( appointment.getMinutes() - offsetFive );
-			return appointment.getTime();
-		};
-		
-		
-		/*
-		To make the IDG UX prototype easier to test an initial state JSON is provided by PHP.
-		The demo times are set in RELATIVE minutes, which are updated to full timestamps
-		*/
-		const patientsJSON = JSON.parse( phpClinicDemoJSON );
-		patientsJSON.forEach(( patient, i ) => {
-			
-			// Unique ID for each patient
-			patient.uid = bj.getToken(); 
-			
-			const booked = Date.now() + ( patient.booked * 60000 );
-			patient.bookedTimestamp = booked;
-			
-			// convert to booked time to human time
-			patient.time = bj.clock24( new Date( booked ));
-			
-			/*
-			Step Pathway is multi-dimensional array.
-			Convert each step into an Object and add other useful info here. 
-			timestamp and mins are NOT used by PathStep either of these is
-			used for the "info"
-			*/		
-			patient.pathway.forEach(( step, i, thisArr ) => {
-				const obj = {
-					shortcode: step[0],
-					timestamp: Date.now() + ( step[1] * 60000 ), 
-					mins: step[1],
-					status: step[2],
-					type: step[3],
-				};
-				
-				if( step[4] ) obj.idgPopupCode = step[4]; // demo iDG popup content
-								
-				// update the nested step array to an Object
-				thisArr[i] = obj;
-			});
-		});
+	const init = () => {
+		bj.log('[Clinic] - intialising');
 		
 		/**
-		Each Worklist requires a "group". The Group has a "header". 
-		The header shows the name of the Worklist (+ date, this added automatically by OE)
-		It also allows collapsing and removing from the view. 
-		Adding new worklists to view will be controlled from the OE main header
+		A&E was set up as a single list
+		but need to test with multiple worklists
 		*/
-		const group = bj.dom('section', 'clinic-group');
-		const header = bj.dom('header',false,'Worklist • Day PM • Clinic 1 : Date');
-		// use PHP to get the date: 
-		const today = document.documentElement.getAttribute('data-today');
-		header.innerHTML = `<h3 class="worklist">Accident &amp; Emergency : ${today}</h3><div class="remove-hide"><!-- viewing a single clinic so these are disabled --></div>`;
-		
-		/*
-		Only <tr> in the <tbody> need managing, may as well build the rest of the DOM here	
-		*/
-		const table = bj.dom('table', 'oe-clinic-list');
-		table.innerHTML = Mustache.render([
-			'<thead><tr>{{#th}}<th>{{{.}}}</th>{{/th}}</tr></thead>',
-			'<tbody></tbody>'
-		].join(''), {
-			"th": [
-				'Arr.',
-				'Clinic',
-				'Patient', 
-				'',
-				'Pathway',
-				'<label class="patient-checkbox"><input class="js-check-patient" value="all" type="checkbox"><div class="checkbox-btn"></div></label>', 
-				'<i class="oe-i triangle-grey no-click small"></i>',
-				'<i class="oe-i comments no-click small"></i>',
-				'Wait hours', 
-				''
-			]
-		});
-		
-		/** 
-		Build the Node tree
-		*/
-		group.append( header, table );
-		
-		// update the DOM
-		document.getElementById('js-clinic-manager').append( group );
-		
-		/* 
-		OK, ready to run this app, lets go!
-		*/
-		loading.remove();
-		// state app
-		clinic.app( table.querySelector('tbody'), patientsJSON );
-	};
-	
-})( bluejay, bluejay.namespace('clinic')); 
-
-(function( bj, clinic, gui ){
-
-	'use strict';	
-	
-	/**
-	* App
-	* @param {Element} tbody = <tbody>
-	* @param {JSON} json - data to initiate with
-	*/
-	const app = ( tbody, json ) => {
-		
-		const root = document.querySelector('.oe-clinic');
-		const patients = new Map();
-		const filters = new Set();
+		const worklists = new Map(); 
+		const filters = clinic.filters(); 
 		const adder = clinic.adder();
-	
+		
 		/** 
 		* Model
 		* Extended with views
@@ -10506,306 +10387,151 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			},
 			set filter( val ){
 				this._filter = val; 
-				this.views.notify();
+				this.renderLists();
+				filters.selected( model.filter );	
 			},
 			
 			/**
-			* Updating the Filters
+			* Updating clinic, the issue here is if the view is filtered
+			* and the user changes a state of patient in view it will instantly 
+			* vanish if it doesn't match the current filter... this stops that happening.
 			* 1. Delay the view filters updates (allow the user to see what happened)
 			* 2. Only update if Users are not working on things
 			*/
-			updateFilterView(){
+			updateView(){
 				if( this.delayID ) clearTimeout( this.delayID );
 				this.delayID = setTimeout(() => {
 					if( document.querySelector('.oe-pathstep-popup') == null && 
-						adder.isOpen() == false ){						
-						this.views.notify(); // OK to update views
+						adder.isOpen() == false ){
+						// render lists...							
+						this.renderLists();	
 					}
 					this.delayID = null;
 				}, 1750 );
+			}, 
+			
+			renderLists(){
+				worklists.forEach( list => list.render( this._filter ));
 			}
 			
 		}, bj.ModelViews());
-
+		
 		/**
-		* VIEW
-		* Filter Patients in Clinic and render DOM 
+		* Update Filters btn count
+		* Whenever a patient changes status the count needs updating
 		*/
-		const onFilterPatients = () => {
-			// build new <tbody>
-			const fragment = new DocumentFragment();
-			
-			// Patients decide if they match the filter
-			// if so, show in the DOM and update the filterPatients set
-			patients.forEach( patient => {
-				const tr = patient.render( model.filter );
-				if( tr != null ){
-					fragment.appendChild( tr );
-				}
+		const updateFilterBtns = () => {
+			// gather all the patient data and pass to filterBtns
+			let status = [];
+			let risks = [];
+			worklists.forEach( list => {
+				const patientFilters = list.getPatientFilterState();
+				status = status.concat( patientFilters.status );
+				risks = risks.concat( patientFilters.risks );
 			});
 			
-			// update <tbody>
-			bj.empty( tbody );
-			tbody.append( fragment );
-			
-			// if there aren't any rows
-			if( tbody.rows.length === 0 ){
-				const tr = bj.dom('tr','no-results', `<td></td><td colspan='9' style="padding:20px 0" class="fade">No patients found that match filter</div></td>`);
-				tbody.append( tr );
-			}
-			
+			filters.updateCount( status, risks );
+			model.updateView();
 		};
-		
-		model.views.add( onFilterPatients );
-		
+	
 		/**
-		* VIEW
-		* Update Filter Buttons
-		* Loop through patients and get their status
-		* Filter btns will figure out their count
+		* @Event
+		* Select or deselect all Patients; checkbox in <thead> (UI is '+' icons)
 		*/
-		const updateFilters = () => {
-			const status = [];
-			const risks = [];
-			patients.forEach( patient => {
-				status.push( patient.getStatus());
-				risks.push( '-r' + patient.getRisk()); // create filter code
-			});
-			filters.forEach( filter => filter.update( status, risks, model.filter ));
-		};
-		
-		model.views.add( updateFilters );
-
-		/**
-		* Add steps to patients
-		* Insert step option is pressed. Update selected patients
-		* @param {Object} dataset from <li>
-		*/
-		const handleAddStepToPatients = ( json ) => {
-			const { c:code, s:status, t:type, i:idg } = ( JSON.parse(json) );
-			// get the IDs for the checked patients
-			const patientIDs = getAllSelectedPatients();
-			
-			// add to pathways...
-			patientIDs.forEach( key => {
-				const patient = patients.get( key );
-				
-				if( code == 'c-last' ){
-					// Remove last step button
-					patient.removePathStep( code );
-				} else {
-					patient.addPathStep({
-						shortcode: code, // pass in code
-						status,
-						type, 
-						timestamp: Date.now(),
-						idgPopupCode: idg ? idg : false,
-					});
-				}	
-			});
-		};
-		
-		/**
-		* Patient select checkboxes
-		* select all/none (tick in <th>) 
-		*/
-		const selectAllPatients = ( checked) => {
-			const allTicks = bj.nodeArray( root.querySelectorAll('input.js-check-patient'));
-			allTicks.forEach(( tick, index ) => {
-				if( index ) tick.checked = checked; // ignore the "all" tick in <th>
-			});
-		};
-		
-		/**
-		* Deselect and remove the adder 
-		*/
-		const deselectAllPatients = () => {
-			const allTicks = bj.nodeArray( root.querySelectorAll('input.js-check-patient'));
-			allTicks.forEach( tick => tick.checked = false );
-			adder.hide();
-			model.updateFilterView();
-		};
-		
-		/**
-		* Get all the selected patients (ticked)
-		* get ids from the value
-		* @returns {Set} ids
-		*/
-		const getAllSelectedPatients = () => {
-			const ids = new Set();
-			const allTicks = bj.nodeArray( root.querySelectorAll('input.js-check-patient'));
-			allTicks.forEach(( tick, index ) => {
-				if( index && tick.checked ) ids.add( tick.value); // ignore the "all" tick
-			});
-			
-			return ids;
-		};
-		
-		/**
-		* Event delegation
-		*/
-		
-		// Button: "Arrived"
-		bj.userClick('.js-idg-clinic-btn-arrived', ( ev ) => {
-			patients.get( ev.target.dataset.patient ).onArrived();
-			model.updateFilterView();
-		});
-		
-		// Button: "DNA"
-		bj.userClick('.js-idg-clinic-btn-DNA', ( ev ) => {
-			patients.get( ev.target.dataset.patient ).onDNA();
-		});
-		
-		// Icon: "tick" (completed)
-		bj.userDown('.js-idg-clinic-icon-complete', ( ev ) => {
-			patients.get( ev.target.dataset.patient ).onComplete();
-			model.updateFilterView();
-		});
-		
-		// Filter button (in header bar)
-		bj.userDown('.js-idg-clinic-btn-filter', ( ev ) => {
-			deselectAllPatients();
-			gui.pathStepPopup.remove();
-			model.filter = ev.target.dataset.filter;
-		});
-		
-		/*
-		* Advanced search filter in header
-		* Not doing anything - just show/hide it
-		*/
-		bj.userDown('button.search-all', ( ev ) => {
-			const btn = ev.target;
-			const quick = document.querySelector('.clinic-filters ul.quick-filters');
-			const search = document.querySelector('.clinic-filters .search-filters');
-			
-			if( btn.classList.contains('close')){
-				btn.classList.remove('close');
-				bj.hide( search );
-				bj.show( quick );
-			} else {
-				btn.classList.add('close');
-				bj.hide( quick );
-				bj.show( search );
-			}
-		});
-		
-		/*
-		* Adder 
-		* User clicks on a step to add it to patients
-		*/
-		bj.userDown('.oe-clinic-adder .insert-steps li', ( ev ) => {
-			handleAddStepToPatients( ev.target.dataset.idg );
-		});
-		
-		// Adder close btn
-		bj.userDown('.oe-clinic-adder .close-btn', () => {
-			deselectAllPatients(); 
-		});
-		
-		/*
-		* Patient select checkboxes 
-		* anytime any is checked show the adder
-		*/
-		root.addEventListener('change', ev => {
-			ev.stopPropagation();
+		oeClinic.addEventListener('change', ev => {
 			const input = ev.target;
-			if( input.matches('.js-check-patient')){
-				if( input.checked ){
-					adder.show();
-				}
-				if( input.value == "all"){
-					selectAllPatients( input.checked );
-				}
+			if( input.matches('.js-check-patient') &&
+				input.checked ){
+				
+				adder.show();
 			}
 		}, { useCapture:true });
 		
 		/**
-		* Init Patients and set an inital state from the JSON	
-		* Add filters in the header bar
+		* @Events
+		* Filter button (in header bar) 
 		*/
-		(() => {
-			/**
-			* Build patients (<tr>)
-			* and build Map
-			*/
-			json.forEach( patient => patients.set( patient.uid, clinic.patient( patient )));
-			
-			/**
-			* Filters in header
-			*/
-			const div = document.getElementById('js-clinic-filters'); // option-right area in in the <header>
-			const ul = bj.dom('ul', "quick-filters" ); // Quick filters based on patient status
-			
-			// Filter Btns - [ Name, filter ]
-			[
-				['All','all'],
-				['Scheduled','later'], // not needed for A&E
-				['In Clinic','clinic'],
-				['-r1','-r1'], 
-				['-r2','-r2'],
-				['-r3','-r3'],
-				['Active','active'],
-				['Waiting','waiting'],
-				['Delayed','long-wait'],
-				['No path','stuck'],
-				
-				['Completed','done'],
-			].forEach( btn => {
-				filters.add( clinic.filterBtn({
-					name: btn[0],
-					filter: btn[1],
-				}, ul ));
-			});
-			
-			const searchBtn = bj.dom('button', 'search-all');
-			const searchFilters = bj.div('search-filters');
-			searchFilters.style.display = "none";
-			
-			searchFilters.innerHTML = Mustache.render( [
-				`<input class="search" type="text" placeholder="Patient name or number">`,
-				
-				`<div class="group"><select>{{#age}}<option>{{.}}</option>{{/age}}</select></div>`,
-				`<div class="group"><select>{{#wait}}<option>{{.}}</option>{{/wait}}</select></div>`,
-				`<div class="group"><select>{{#step}}<option>{{.}}</option>{{/step}}</select></div>`,
-				`<div class="group"><select>{{#assigned}}<option>{{.}}</option>{{/assigned}}</select></div>`,
-				`<div class="group"><select>{{#flags}}<option>{{.}}</option>{{/flags}}</select></div>`,
-				//`<div class="group"><select>{{#risks}}<option>{{.}}</option>{{/risks}}</select></div>`,
-				`<div class="group"><select>{{#states}}<option>{{.}}</option>{{/states}}</select></div>`,
-			].join(''), {
-				age: ['All ages', '0 - 16y Paeds', '16y+ Adults'],
-				wait: ['Wait - all', '0 - 1hr', '2hr - 3hr', '3hr - 4rh', '4hr +'],
-				step: ['Steps - all', 'Visual acuity', 'Fields', 'Colour photos', 'OCT', 'Dilate'],
-				assigned: ['People - all', 'Unassigned', 'Nurse', 'Dr', 'Dr Georg Joseph Beer', 'Dr George Bartischy', 'Mr Michael Morgan', 'Sushruta', 'Dr Zofia Falkowska'],
-				flags: ['Flags - All', 'Red: Change in puplis', 'Red: Systemically unwell', 'Green: Children', 'Unflagged'],
-				risks: ['Priority - All', 'Immediate', 'Urgent', 'Standard', 'Low' ],
-				
-				states: ['in Clinic', 'Scheduled', 'All'],
-			});
-			
-			
-			// build DOM
-			div.append( ul, searchFilters, searchBtn );
-
-			// set up Clinic filter default
-			model.filter = "clinic";
-			
-			/**
-			* Custom Event: If a patient changes it status
-			*/
-			document.addEventListener('onClinicPatientStatusChange', ( ev ) => {
-				model.updateFilterView();
-			});
+		bj.userDown('.js-idg-clinic-btn-filter', ( ev ) => {
+			gui.pathStepPopup.remove(); // if there is a popup open remove it
+			worklists.forEach( list => list.untickPatients());
+			model.filter = ev.target.dataset.filter;
+		});
 		
-			// and the clock is running! 
-			clinic.clock();
-			
-		})();
+		/*
+		*  @Events for Adder 
+		* - User clicks on a step to add it to patients
+		* - (Or closes the adder)
+		*/
+		bj.userDown('.oe-clinic-adder .insert-steps li', ( ev ) => {
+			worklists.forEach( list => list.addStepsToPatients( ev.target.dataset.idg ));
+		});
+		
+		bj.userDown('.oe-clinic-adder .close-btn', () => {
+			worklists.forEach( list => list.untickPatients());
+			adder.hide(); 
+		});
+		
+		/**
+		* @Events for Patient 
+		* Button: "Arrived"
+		* Button "DNA"
+		* Button "Complete" 
+		*/
+		bj.userClick('.js-idg-clinic-btn-arrived', ( ev ) => {
+			patients.get( ev.target.dataset.patient ).onArrived();
+		});
+		
+		bj.userClick('.js-idg-clinic-btn-DNA', ( ev ) => {
+			patients.get( ev.target.dataset.patient ).onDNA();
+		});
+		
+		bj.userDown('.js-idg-clinic-icon-complete', ( ev ) => {
+			patients.get( ev.target.dataset.patient ).onComplete();
+		});
+
+		// Patient changes it status
+		document.addEventListener('onClinicPatientStatusChange', ( ev ) => updateFilterBtns());
+		
+		/**
+		* Initialise App
+		*	
+		* Build the Worklists
+		* iDG demo can handle multple Worklits (or "Clinics")
+		* PHP will provide an array of the different Worklists.	
+		* loop through the global array and build the demo Worklists
+		*/
+		const fragment = new DocumentFragment();
+		
+		iDG_ClinicListDemo.forEach( list => {
+			// add new Worklist
+			const uid = bj.getToken();
+			// Add new list and initalise the worklist DOM
+			worklists.set( uid, clinic.addList( list, uid, fragment ));
+		});
+		
+		oeClinic.append( fragment );
+		
+		// default clinic filter
+		model.filter = "clinic"; 
+		
+		// update filter buttons count
+		updateFilterBtns();
+		
+		// OK, ready to run this app, lets go!
+		loading.remove();
 	};
-
-	// add to namespace
-	clinic.app = app;			
-
+	
+	/*
+	Fake a small loading delay, gives the impression it's doing something important
+	and demonstrates how to do the loader...
+	*/
+	const loading = bj.div('oe-popup-wrap', '<div class="spinner"></div><div class="spinner-message">Loading...</div>');
+	document.body.append( loading );
+	setTimeout(() => init(), 500 ); // ... now initate! ;) 
+	
+	
 })( bluejay, bluejay.namespace('clinic'), bluejay.namespace('gui')); 
+
 (function( bj, clinic ){
 
 	'use strict';	
@@ -10942,19 +10668,19 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	
 	/**
 	* Clinic clock
+	* @param {Element} tbody - Each "clock" needs linking to it's own table
 	*/
-	const showClock = () => {
+	const showClock = ( tbody ) => {
 		const div = bj.div('oe-clinic-clock');
-		div.textContent = "";
 		div.style.top = "100%"; // move offscreen
-		document.body.appendChild( div );
+		document.body.append( div );
 		
 		/**
 		* @callback for setInvterval
 		*/
 		const updateClock = () => {
 			let top = "100%";
-			const tableRows = bj.nodeArray( document.querySelectorAll('table.oe-clinic-list tbody tr'));
+			const tableRows = bj.nodeArray( tbody.querySelectorAll('tr'));
 			
 			// check there are rows...
 			if( ! tableRows.length ){
@@ -11048,60 +10774,157 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			} else {
 				div.innerHTML = `<div class="name">${props.name}</div>`;
 			}
-			
-			
+
 			div.append( count );	
 			li.append( div );
 			ul.append( li );
 		})();
 		
 		/**
-		* Update
+		* updateCount
 		* On any updates to clinic need to update the filter count
 		* @param {Array} status - Patient row status
 		* @param {Array} risks - Patient risk num
-		* @param {String} currentFilter - current filter for the clinic list
 		*/	
-		const update = ( status, risks, currentFilter ) => {
+		const updateCount = ( status, risks  ) => {
 			let num = 0;
-			
+	
+			// work out the counts per filter.
 			if( filter == "all"){
 				num = status.length;
 			} else if ( filter == "clinic"){
-				// work out the counts per filter.
-				num = status.reduce(( acc, val ) => {
-					if( val != "done" && val != 'later' ) return acc + 1; 
-					return acc;
-				}, 0 );
-			} else if ( filter.startsWith('-r')){
-				// work out the counts per filter.
-				num = risks.reduce(( acc, val ) => {
-					if( val == filter ) return acc + 1; 
-					return acc;
-				}, 0 );
+				num = status.reduce(( acc, val ) => (val != "done" && val != 'later') ? acc + 1 : acc, 0 );
 			} else {
-				// work out the counts per filter.
-				num = status.reduce(( acc, val ) => {
-					if( val == filter ) return acc + 1; 
-					return acc;
-				}, 0 );
+				const arr = filter.startsWith('-r') ? risks : status;
+				num = arr.reduce(( acc, val ) => val == filter ? acc + 1 : acc, 0 );
 			}
 			
-			// update DOM
+			// update DOM text
 			count.textContent = num;
-			
-			if( currentFilter === filter ){
+		};
+		
+		/**
+		* Set selected btn
+		* @param {String} clinicFilter - current filter for the clinic list
+		*/
+		const selected = ( clinicFilter ) => {
+			if( clinicFilter === filter ){
 				li.classList.add('selected');	
 			} else {
 				li.classList.remove('selected');
 			}
 		};
 		
-		return { update };	
+		return { updateCount, selected };	
 	};
 	
 	// make component available to Clinic SPA	
 	clinic.filterBtn = filterBtn;			
+  
+})( bluejay, bluejay.namespace('clinic')); 
+(function( bj, clinic ){
+
+	'use strict';	
+	
+	/**
+	* Filters
+	*/
+	const filters = () => {
+
+		const mode = "clinic";
+		
+		// Filter btns in the <header>
+		const filters = new Set();
+		
+		/**
+		Add Filter btns to <header> - these apply to all Worklists
+		*/		
+		const quickFilters = bj.dom('ul', "quick-filters");
+		const searchFilters = bj.div('search-filters');
+		const searchBtn = bj.dom('button', 'search-all');
+		
+		bj.hide( searchFilters );
+
+		// Quick filter Btns - [ Name, filter ]
+		[
+			['All','all'],
+			['Scheduled','later'], // not needed for A&E
+			['In Clinic','clinic'],
+			['-r1','-r1'], 
+			['-r2','-r2'],
+			['-r3','-r3'],
+			['Active','active'],
+			['Waiting','waiting'],
+			['Delayed','long-wait'],
+			['No path','stuck'],
+			['Completed','done'],
+		].forEach( btn => {
+			filters.add( clinic.filterBtn({
+				name: btn[0],
+				filter: btn[1],
+			}, quickFilters ));
+		});
+		
+		// Advanced search complex filters (not working in iDG)
+		searchFilters.innerHTML = Mustache.render( [
+			`<input class="search" type="text" placeholder="Patient name or number">`,	
+			`<div class="group"><select>{{#age}}<option>{{.}}</option>{{/age}}</select></div>`,
+			`<div class="group"><select>{{#wait}}<option>{{.}}</option>{{/wait}}</select></div>`,
+			`<div class="group"><select>{{#step}}<option>{{.}}</option>{{/step}}</select></div>`,
+			`<div class="group"><select>{{#assigned}}<option>{{.}}</option>{{/assigned}}</select></div>`,
+			`<div class="group"><select>{{#flags}}<option>{{.}}</option>{{/flags}}</select></div>`,
+			`<div class="group"><select>{{#states}}<option>{{.}}</option>{{/states}}</select></div>`,
+		].join(''), {
+			age: ['All ages', '0 - 16y Paeds', '16y+ Adults'],
+			wait: ['Wait - all', '0 - 1hr', '2hr - 3hr', '3hr - 4rh', '4hr +'],
+			step: ['Steps - all', 'Visual acuity', 'Fields', 'Colour photos', 'OCT', 'Dilate'],
+			assigned: ['People - all', 'Unassigned', 'Nurse', 'Dr', 'Dr Georg Joseph Beer', 'Dr George Bartischy', 'Mr Michael Morgan', 'Sushruta', 'Dr Zofia Falkowska'],
+			flags: ['Flags - All', 'Red: Change in puplis', 'Red: Systemically unwell', 'Green: Children', 'Unflagged'],
+			risks: ['Priority - All', 'Immediate', 'Urgent', 'Standard', 'Low' ],
+			states: ['in Clinic', 'Scheduled', 'All'],
+		});
+		
+		document.getElementById('js-clinic-filters').append( quickFilters, searchFilters, searchBtn );
+		
+		/*
+		* Advanced search filter in header
+		* Not doing anything - just show/hide it
+		*/
+		bj.userDown('button.search-all', ( ev ) => {
+			const btn = ev.target;
+			const quick = document.querySelector('.clinic-filters ul.quick-filters');
+			
+			if( btn.classList.contains('close')){
+				btn.classList.remove('close');
+				bj.hide( searchFilters );
+				bj.show( quickFilters );
+			} else {
+				btn.classList.add('close');
+				bj.hide( quickFilters );
+				bj.show( searchFilters );
+			}
+		});
+		
+		/**
+		* @method
+		* Everytime a patient changes state or the view filter mode
+		* is updated we need to update all the filter btns.
+		* @param {Array} status 
+		* @param {Array} risks 
+		*/
+		const updateCount = ( ...args ) => {
+			filters.forEach( btn => btn.updateCount( ...args ));
+		};
+		
+		const selected = ( filter ) => {
+			filters.forEach( btn => btn.selected( filter ));
+		};
+		
+		return { updateCount, selected };	
+	};
+	
+	// make component available to Clinic SPA	
+	clinic.filters = filters;			
   
 })( bluejay, bluejay.namespace('clinic')); 
 (function( bj, clinic, gui ){
@@ -11420,6 +11243,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const waitDuration = clinic.waitDuration( props.uid );
 		
+		/**
+		* input[type=checkbox] ( UI is "+" icon)
+		*/
+		const tick = bj.dom('input', 'js-check-patient');
+		tick.setAttribute('type', 'checkbox');
+		
 
 		/** 
 		* Model
@@ -11427,9 +11256,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const model = Object.assign({
 			uid: props.uid,
+			isRendered: false,
 			_status: null, // "todo", "active", "complete", etc!
 			risk: null, // "-r1", "-r3", "-r3" etc 
-	
+			
 			get status(){
 				return this._status;
 			},
@@ -11477,7 +11307,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		model.views.add( onChangeComplete );
 		
-		
 		/**
 		* @callback for PathStep change
 		* need to know if a pathStep changes state
@@ -11505,8 +11334,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// update patient status based on pathway
 			model.status = pathway.getStatus();
 		};
+			
 		
 		/**
+		* @method
 		* Add PathStep to patient pathway
 		* @param {Object} step
 		*/
@@ -11538,6 +11369,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		};
 		
 		/**
+		* @method
 		* Remove last PathStep from pathway 
 		* @param {Object} step
 		*/
@@ -11549,7 +11381,82 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		
 		/**
-		* @callbacks from App - User Events
+		* Set Priority (A&E has priority)
+		* uses "circle" icons
+		* @param {Number} num - level
+		*/
+		const setRisk = ( num ) => {
+			if( num == undefined ) return; 
+			
+			const colors = ['grey','red','amber','green'];
+			const icon = colors[ num ];
+			let tip = "None";
+			switch( num ){
+				case 3: tip = 'Standard'; break;
+				case 2: tip = 'Urgent'; break;
+				case 1: tip = 'Immediate'; break;
+			}
+			
+			td.risks.innerHTML = `<i class="oe-i circle-${icon} medium-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="Priority: ${tip}"></i>`;
+			model.risk = num;
+		};
+
+		
+		/**
+		* Initiate inital patient state from JSON	
+		* and build the <tr> DOM
+		*/
+		(() => {
+			// build pathway steps
+			props.pathway.forEach( step => addPathStep( step ));
+			
+			// Add patient select checkbox ("tick")
+			// CSS styles this to look like a "+" icon
+			// build node tree
+			tick.setAttribute('value', `${model.uid}`);
+			
+			const label = bj.dom('label', 'patient-checkbox');
+			const checkboxBtn = bj.div('checkbox-btn');
+			label.append( tick, checkboxBtn );
+			td.addIcon.append( label );
+			
+			// set Flag (if there is one)
+			setRisk( props.risk );
+			
+			// notes
+			const psOwner = gui.pathStep({
+				shortcode: 'i-Comments',
+				status: 'buff',
+				type: props.notes ? 'comments added' : 'comments',
+				info: props.notes ? 'clock' : '&nbsp;', 
+				idgPopupCode: props.notes ? false : 'i-comments-none'
+			}, false );
+			
+			td.notes.append( psOwner.render());
+			
+			// Set patient status this will trigger VIEW notifications (an iDG hack!)
+			model.status = props.status == 'fake-done' ? 'done' : props.status; 
+		
+			// build <tr>
+			tr.setAttribute( 'data-timestamp', props.bookedTimestamp );
+			tr.insertAdjacentHTML('beforeend', `<td>${props.time}</td>`);
+			tr.insertAdjacentHTML('beforeend', `<td><div class="speciality">${props.clinic[0]}</div><small class="type">${props.clinic[1]}</small></td>`);
+			
+			// slightly more complex Elements and dynamic areas...
+			tr.append( clinic.patientMeta( props ));
+			tr.append( clinic.patientQuickView( props ));
+			tr.append( td.path );
+			tr.append( td.addIcon );
+			tr.append( td.risks );
+			tr.append( td.notes );	
+			tr.append( waitDuration.render( model.status )); // returns a <td>
+			tr.append( td.complete );	
+			
+		})();
+		
+		
+		/**
+		* @methods
 		* Update Pathway with appropriate steps
 		* {shortcode, status, type, info = (timestamp or mins), idgPopupCode}
 		*/
@@ -11590,113 +11497,61 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		};
 		
 		/**
-		* set Priority
-		* MEH has "priority"
+		* @method 
+		* Users can select all or none of currently viewed patients
+		* @param {Boolean} b 
 		*/
-		const setRisk = ( num ) => {
-			if( num == undefined ) return; 
-			
-			const colors = ['grey','red','amber','green'];
-			const icon = colors[ num ];
-			let tip = "Low";
-			switch( num ){
-				case 3: tip = 'Standard'; break;
-				case 2: tip = 'Urgent'; break;
-				case 1: tip = 'Immediate'; break;
-			}
-			
-			td.risks.innerHTML = `<i class="oe-i triangle-${icon} js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
-			model.risk = num;
-		};
+		const setTicked = ( b ) => {
+			if( model.status == "done") return;
+			if( !model.isRendered && b ) return;
+			tick.checked = b;	
+		}; 
 		
 		/**
-		* Render Patient <tr>
-		* @params {String} filter - filter buttons set this
+		* @returns {Boolean} - checkbox state
+		*/
+		const isTicked = () => tick.checked;
+		
+		/**
+		* @method
+		* Render Patient <tr> if it matches filter
+		* @params {String} filter - header filter buttons set this
 		* @returns {Element} (if covered by filter option)	
 		*/
 		const render = ( filter ) => {
-			const status = model.status;
-			
+			let renderDOM = false;
+	
 			if( filter == "all" ){
-				return tr;
+				renderDOM = true;
+			} else if( filter == "clinic") {
+				renderDOM = !( model.status == 'done' || model.status == 'later');
+			} else {
+				// risk filter? this is a bit different: 
+				if( filter.startsWith('-r')){
+					const r = parseInt( filter.charAt(2), 10);
+					renderDOM = ( r == model.risk );
+				} else {
+					renderDOM = ( model.status == filter );
+				}
 			}
 			
-			// "clinic" is code for "in clinic", which then became "arrived", 
-			// conceptually it's any state that isn't "done" or "later"
-			if( filter == "clinic"){
-				return 	status == 'done' ? null : 
-						status == 'later' ? null : tr;
-			}
+			model.isRendered = renderDOM;
+			return renderDOM ? tr : null;
+		};	
 			
-			// is the filter a risk?
-			// this is a bit different: 
-			if( filter.startsWith('-r')){
-				const r = parseInt( filter.charAt(2), 10);
-				return r == model.risk ? tr : null;
-			}
-			
-			// default if it status matches filter
-			return status == filter ? tr : null;
-		};
-		
-		/**
-		* Initiate inital patient state from JSON	
-		* and build the <tr> DOM
-		*/
-		(() => {
-			// build pathway steps
-			props.pathway.forEach( step => addPathStep( step ));
-			
-			// patient select checkbox
-			td.addIcon.innerHTML = `<label class="patient-checkbox"><input class="js-check-patient" value="${model.uid}" type="checkbox"><div class="checkbox-btn"></div></label>`;
-			
-			// set Flag (if there is one)
-			setRisk( props.risk );
-			
-			// notes
-			const psOwner = gui.pathStep({
-				shortcode: 'i-Comments',
-				status: 'buff',
-				type: props.notes ? 'comments added' : 'comments',
-				info: props.notes ? 'clock' : '&nbsp;', 
-				idgPopupCode: props.notes ? false : 'i-comments-none'
-			}, false );
-			
-			td.notes.append( psOwner.render());
-			
-			// Set patient status this will trigger VIEW notifications (an iDG hack!)
-			model.status = props.status == 'fake-done' ? 'done' : props.status; 
-		
-			// build <tr>
-			tr.setAttribute( 'data-timestamp', props.bookedTimestamp );
-			tr.insertAdjacentHTML('beforeend', `<td>${props.time}</td>`);
-			tr.insertAdjacentHTML('beforeend', `<td><div class="speciality">${props.clinic[0]}</div><small class="type">${props.clinic[1]}</small></td>`);
-			
-			// slightly more complex Elements and dynamic areas...
-			tr.append( clinic.patientMeta( props ));
-			tr.append( clinic.patientQuickView( props ));
-			tr.append( td.path );
-			tr.append( td.addIcon );
-			tr.append( td.risks );
-			tr.append( td.notes );	
-			tr.append( waitDuration.render( model.status )); // returns a <td>
-			tr.append( td.complete );	
-			
-		})();
-			
-		/**
-		* API
-		*/
+		/* API */
 		return { 
 			onArrived, 
 			onDNA, 
 			onComplete, 
-			getID: () => model.uid, 
-			getStatus: () => model.status,
-			getRisk: () => model.risk, 
+			getID(){ return model.uid; }, 
+			getStatus(){ return model.status; },
+			getRisk(){ return model.risk; }, 
 			render, 
 			addPathStep, 
-			removePathStep, 
+			removePathStep,
+			setTicked,
+			isTicked 
 		};
 	};
 	
@@ -11705,6 +11560,84 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	
 
 })( bluejay, bluejay.namespace('clinic'), bluejay.namespace('gui')); 
+(function( bj, clinic ){
+
+	'use strict';	
+	
+	/**
+	* @helper
+	* As times are relative to 'now', this helper will round to 5min intervals. 
+	* @returns {Timestamp} 
+	*/
+	const everyFiveMins = ( booked ) => {
+		let appointment = new Date( Date.now() + ( booked * 60000 )); 
+		let offset = appointment.getMinutes() % 5; 
+		appointment.setMinutes( appointment.getMinutes() - offset );
+		
+		// rounded to 5mins
+		return appointment.getTime();
+	};	
+	
+	/**
+	* Process the patient JSON from the PHP
+	* @param {JSON} json
+	* @returns {Map} of patients
+	*/
+	clinic.patientJSON = ( json ) => {
+		/*
+		To make the IDG UX prototype easier to test an initial state JSON is provided by PHP.
+		The demo times are set in RELATIVE minutes, which are updated to full timestamps
+		*/
+		const patientsJSON = JSON.parse( json );
+		
+		patientsJSON.forEach(( patient ) => {
+			
+			// Unique ID for each patient
+			patient.uid = bj.getToken(); 
+			
+			const booked = Date.now() + ( patient.booked * 60000 );
+			patient.bookedTimestamp = booked;
+			
+			// convert to booked time to human time
+			patient.time = bj.clock24( new Date( booked ));
+			
+			/*
+			Step Pathway is multi-dimensional array.
+			Convert each step into an Object and add other useful info here. 
+			timestamp and mins are NOT used by PathStep either of these is
+			used for the "info"
+			*/		
+			patient.pathway.forEach(( step, i, thisArr ) => {
+				const obj = {
+					shortcode: step[0],
+					timestamp: Date.now() + ( step[1] * 60000 ), 
+					mins: step[1],
+					status: step[2],
+					type: step[3],
+				};
+				
+				if( step[4] ) obj.idgPopupCode = step[4]; // demo iDG popup content
+								
+				// update the nested step array to an Object
+				thisArr[i] = obj;
+			});
+		});
+		
+		/**
+		After processing the JSON
+		Set up patients
+		*/
+		const patients = new Map();
+		
+		patientsJSON.forEach( patient => {
+			patients.set( patient.uid, clinic.patient( patient ));
+		});
+		
+		return patients;
+	};
+
+
+})( bluejay, bluejay.namespace('clinic')); 
 (function( bj, clinic ){
 
 	'use strict';	
@@ -11932,6 +11865,185 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	
 
 })( bluejay, bluejay.namespace('clinic') ); 
+(function( bj, clinic ){
+
+	'use strict';
+	
+	/**
+	* build Group
+	* @param {Element} group - parentNode;
+	* @param {String} title
+	* return {Element}
+	*/
+	const buildDOM = ( group, title ) => {
+		/**
+		Each Worklist requires a "group". The Group has a "header". 
+		The header shows the name of the Worklist (+ date, this will be added automatically by OE)
+		It also allows removing from the view (if not in single mode)
+		*/
+		const header = bj.dom('header', false, [
+			 `<h3 class="worklist">${ title }</h3>`,
+			 `<div class="list-group-actions"><!-- viewing a single clinic so these are disabled --></div>`
+		].join('')); 
+		
+		const table = bj.dom('table', 'oe-clinic-list');
+		table.innerHTML = Mustache.render([
+			'<thead><tr>{{#th}}<th>{{{.}}}</th>{{/th}}</tr></thead>',
+			'<tbody></tbody>'
+		].join(''), {
+			"th": [ 
+				'Time', 
+				'Clinic', 
+				'Patient', 
+				'<!-- meta icon -->', 
+				'Pathway',
+				'<label class="patient-checkbox"><input class="js-check-patient" value="all" type="checkbox"><div class="checkbox-btn"></div></label>', 
+				'<i class="oe-i circle-grey no-click small"></i>',
+				'<i class="oe-i comments no-click small"></i>',
+				'Wait hours', 
+				'<!-- complete icon -->'
+			]
+		});
+		
+		group.append( header, table );
+	};
+	
+	
+	/**
+	* Initalise Worklist
+	* @param {*} list 
+	* list.title { String }
+	* list.json {JSON} - all patient data
+	* list.fiveMinBookings {Boolean}, 
+	* @param {String} id - unique ID 'bj1'
+	* @param {Fragment} fragment - inital DOM build	
+	*/
+	const init = ( list, id, fragment ) => {
+		
+		/**
+		* Process the patient JSON
+		* @returns {Map} - key: uid, value: new Patient
+		*/
+		const patients = clinic.patientJSON( list.json );
+		
+		// build the static DOM
+		const group = bj.dom('section', 'clinic-group');
+		group.id = `idg-list-${id}`;
+		group.setAttribute('data-id', id );
+		
+		buildDOM( group, list.title );
+		fragment.append( group );
+		
+		// Only <tr> in the <tbody> need re-rendering
+		const tbody = group.querySelector('tbody');
+		
+		// add list clock
+		clinic.clock( tbody );
+		
+		/**
+		* @Event
+		* + icon in <thead>, select/deselect all patients
+		* all this does is toggle all patient + icons
+		*/
+		group.addEventListener('change', ev => {
+			const input = ev.target;
+			if( input.matches('.js-check-patient') && 
+				input.value == "all" ){
+				patients.forEach( patient  => patient.setTicked( input.checked ));
+			}
+		},{ useCapture:true });
+		
+		
+		/**
+		* Add steps to patients
+		* Insert step option is pressed. Update selected patients
+		* @param {Object} dataset from <li>
+		*/
+		const addStepsToPatients = ( json ) => {
+			const { c:code, s:status, t:type, i:idg } = ( JSON.parse(json) );
+			
+			patients.forEach( patient => {
+				if( patient.isTicked()){
+					if( code == 'c-last'){
+						patient.removePathStep( code ); // Remove last step button
+					} else {
+						patient.addPathStep({
+							shortcode: code, // pass in code
+							status,
+							type, 
+							timestamp: Date.now(),
+							idgPopupCode: idg ? idg : false,
+						});
+					}	
+				}
+			});
+		};
+		
+		/**
+		* Untick all patients AND tick (+) in <thead>
+		*/
+		const untickPatients = () => {
+			patients.forEach( patient => patient.setTicked( false ));
+			// and deselect the <thead> + icon
+			group.querySelector('thead .js-check-patient').checked = false;
+		};
+		
+		/**
+		* Loop through patients and get their status
+		* Filter btns will figure out their count
+		* @returns {*}
+		*/
+		const getPatientFilterState = () => {
+			const status = [];
+			const risks = [];
+			patients.forEach( patient => {
+				status.push( patient.getStatus());
+				risks.push( '-r' + patient.getRisk()); // create filter code
+			});
+			
+			return { status, risks };
+		};
+		
+		/**
+		* Render Patients in list based on Filter
+		* @param {String} filter - the selected filter
+		*/
+		const render = ( filter ) => {
+			// build new <tbody>
+			const fragment = new DocumentFragment();
+			
+			// Patients decide if they match the filter
+			// if so, show in the DOM and update the filterPatients set
+			patients.forEach( patient => {
+				const tr = patient.render( filter );
+				if( tr != null ){
+					fragment.append( tr );
+				}
+			});
+			
+			// update <tbody>
+			bj.empty( tbody );
+			tbody.append( fragment );
+			
+			// if there aren't any patient rows
+			if( tbody.rows.length === 0 ){
+				const tr = bj.dom('tr','no-results', `<td><!-- padding --></td><td colspan='9' style="padding:20px 0" class="fade">No patients found</div></td>`);
+				tbody.append( tr );
+			}
+		};
+
+		return {
+			render,
+			addStepsToPatients,
+			getPatientFilterState,
+			untickPatients,
+		};
+	};
+
+	// add to namespace
+	clinic.addList = init;			
+
+})( bluejay, bluejay.namespace('clinic')); 
 (function( bj, gui ){
 
 	'use strict';	
@@ -13193,7 +13305,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			const optionSelected = imageOptions[ n ];
 			const imgSize = ( JSON.parse(optionSelected.dataset.idg) );
 			resetCanvas( optionSelected.value, imgSize.w, imgSize.h );
-		}
+		};
 		
 		
 		selectImage.addEventListener('change', () => {
@@ -13499,7 +13611,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		checkBoxes.forEach( input => {
 			input.checked = mode === "all" ? true : false;
 		});
-	}
+	};
 	
 	const userSelectsList = ( inputTarget ) => {
 		if( mode == "single"){
@@ -13508,7 +13620,11 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				if( input !== inputTarget ) input.checked = false;
 			});
 		}
-	}
+		if( mode == "all"){
+			modeBtns[0].className = "";
+			modeBtns[2].className = "selected";
+		}
+	};
 	
 	// list to the input checkboxes (only thing that changes)
 	listManager.addEventListener('change', ev => {

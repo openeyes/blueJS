@@ -31,7 +31,7 @@
 		checkBoxes.forEach( input => {
 			input.checked = mode === "all" ? true : false;
 		});
-	}
+	};
 	
 	const userSelectsList = ( inputTarget ) => {
 		if( mode == "single"){
@@ -40,7 +40,11 @@
 				if( input !== inputTarget ) input.checked = false;
 			});
 		}
-	}
+		if( mode == "all"){
+			modeBtns[0].className = "";
+			modeBtns[2].className = "selected";
+		}
+	};
 	
 	// list to the input checkboxes (only thing that changes)
 	listManager.addEventListener('change', ev => {

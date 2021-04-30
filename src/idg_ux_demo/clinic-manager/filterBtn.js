@@ -29,56 +29,48 @@
 			} else {
 				div.innerHTML = `<div class="name">${props.name}</div>`;
 			}
-			
-			
+
 			div.append( count );	
 			li.append( div );
 			ul.append( li );
 		})();
 		
 		/**
-		* Update
+		* updateCount
 		* On any updates to clinic need to update the filter count
 		* @param {Array} status - Patient row status
 		* @param {Array} risks - Patient risk num
-		* @param {String} currentFilter - current filter for the clinic list
 		*/	
-		const update = ( status, risks, currentFilter ) => {
+		const updateCount = ( status, risks  ) => {
 			let num = 0;
-			
+	
+			// work out the counts per filter.
 			if( filter == "all"){
 				num = status.length;
 			} else if ( filter == "clinic"){
-				// work out the counts per filter.
-				num = status.reduce(( acc, val ) => {
-					if( val != "done" && val != 'later' ) return acc + 1; 
-					return acc;
-				}, 0 );
-			} else if ( filter.startsWith('-r')){
-				// work out the counts per filter.
-				num = risks.reduce(( acc, val ) => {
-					if( val == filter ) return acc + 1; 
-					return acc;
-				}, 0 );
+				num = status.reduce(( acc, val ) => (val != "done" && val != 'later') ? acc + 1 : acc, 0 );
 			} else {
-				// work out the counts per filter.
-				num = status.reduce(( acc, val ) => {
-					if( val == filter ) return acc + 1; 
-					return acc;
-				}, 0 );
+				const arr = filter.startsWith('-r') ? risks : status;
+				num = arr.reduce(( acc, val ) => val == filter ? acc + 1 : acc, 0 );
 			}
 			
-			// update DOM
+			// update DOM text
 			count.textContent = num;
-			
-			if( currentFilter === filter ){
+		};
+		
+		/**
+		* Set selected btn
+		* @param {String} clinicFilter - current filter for the clinic list
+		*/
+		const selected = ( clinicFilter ) => {
+			if( clinicFilter === filter ){
 				li.classList.add('selected');	
 			} else {
 				li.classList.remove('selected');
 			}
 		};
 		
-		return { update };	
+		return { updateCount, selected };	
 	};
 	
 	// make component available to Clinic SPA	
