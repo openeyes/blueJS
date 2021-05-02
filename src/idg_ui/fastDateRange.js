@@ -3,14 +3,13 @@
 	
 	bj.addModule('fastDateRange');	
 
-	const fastDateRange = document.querySelector('.fast-date-range');
+	const div = document.querySelector('.set-date-range');
 	
-	if( fastDateRange == null ) return;
+	if( div == null ) return;
 	
 	// DOM elements
-	const inputTo = document.querySelector('.js-filter-date-to');
-	const inputFrom = document.querySelector('.js-filter-date-from');
-	const allDates = document.getElementsByName('show-all-date-range')[0]; // nodelist!
+	const inputTo = div.querySelector('.js-filter-date-to');
+	const inputFrom = div.querySelector('.js-filter-date-from');
 	
 	/* 
 	values in milliseconds 
@@ -37,7 +36,6 @@
 	const setDateRange = ( dateTo, dateFrom ) => {	
 		inputTo.value = oeDate( dateTo ); 
 		inputFrom.value = oeDate( dateFrom );
-		allDates.checked = false; // unclick "all dates"
 	};
 	
 	/**
@@ -80,18 +78,21 @@
 	* Handle user event
 	* @param {Event} ev (div.range)
 	*/
-	const userClicks = ( ev ) => {
-		const div = ev.target;
-		if( !div.hasAttribute('data-range')) return;
-		
-		const range = div.getAttribute('data-range');
-	
+	const userClicks = ( range ) => {
 		switch( range ){
 			case 'yesterday': singleDay( new Date( now - day ));
 			break;
 			case 'today': singleDay( today );
 			break; 
 			case 'tomorrow': singleDay( new Date( now + day ));
+			break;
+			
+			case 'next-4-days': 
+			case 'next-7-days': 
+			case 'next-12-days': 
+				const days = range.split('-')[1];
+				const add = parseInt( days , 10 );
+				setDateRange( today, new Date( now + ( day * add )));
 			break; 
 			
 			case 'last-week': weekRange( -7 );		
@@ -115,6 +116,8 @@
 	/*
 	Events	
 	*/
-	bj.userDown('.fast-date-range .range', userClicks );
+	div.addEventListener('change', ev => {
+		userClicks( ev.target.value );
+	});
 		
 })( bluejay ); 

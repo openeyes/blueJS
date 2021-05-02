@@ -5,21 +5,23 @@
 	/**
 	* build Group
 	* @param {Element} group - parentNode;
-	* @param {String} title
+	* @param {*} list
 	* return {Element}
 	*/
-	const buildDOM = ( group, title ) => {
+	const buildDOM = ( group, list ) => {
+		const riskIcon = list.usesPriority ? 'circle' : 'triangle';
+		
 		/**
 		Each Worklist requires a "group". The Group has a "header". 
 		The header shows the name of the Worklist (+ date, this will be added automatically by OE)
 		It also allows removing from the view (if not in single mode)
 		*/
 		const header = bj.dom('header', false, [
-			 `<h3 class="worklist">${ title }</h3>`,
-			 `<div class="list-group-actions"><!-- viewing a single clinic so these are disabled --></div>`
+			 `<div class="favourite"><i class="oe-i starline medium pad js-has-tooltip" data-tt-type="basic" data-tooltip-content="Add to worklist favourites"></i></div>`,
+			 `<h3>${ list.title }</h3>`
 		].join('')); 
-		
-		const table = bj.dom('table', 'oe-clinic-list');
+
+		const table = bj.dom('table', 'oec-patients');
 		table.innerHTML = Mustache.render([
 			'<thead><tr>{{#th}}<th>{{{.}}}</th>{{/th}}</tr></thead>',
 			'<tbody></tbody>'
@@ -31,7 +33,7 @@
 				'<!-- meta icon -->', 
 				'Pathway',
 				'<label class="patient-checkbox"><input class="js-check-patient" value="all" type="checkbox"><div class="checkbox-btn"></div></label>', 
-				'<i class="oe-i circle-grey no-click small"></i>',
+				`<i class="oe-i ${riskIcon}-grey no-click small"></i>`,
 				'<i class="oe-i comments no-click small"></i>',
 				'Wait hours', 
 				'<!-- complete icon -->'
@@ -57,14 +59,14 @@
 		* Process the patient JSON
 		* @returns {Map} - key: uid, value: new Patient
 		*/
-		const patients = clinic.patientJSON( list.json );
+		const patients = clinic.patientJSON( list.json, list.usesPriority );
 		
 		// build the static DOM
-		const group = bj.dom('section', 'clinic-group');
+		const group = bj.dom('section', 'oec-group');
 		group.id = `idg-list-${id}`;
 		group.setAttribute('data-id', id );
 		
-		buildDOM( group, list.title );
+		buildDOM( group, list );
 		fragment.append( group );
 		
 		// Only <tr> in the <tbody> need re-rendering
@@ -88,13 +90,38 @@
 		
 		
 		/**
+		* @Event - Patient actiions outside of pathway
+		*/
+		
+		// for scheduled patients
+		const patientArrived = ( patientID ) => {
+			if( patients.has( patientID )){
+				patients.get( patientID ).onArrived();
+			}
+		};
+		
+		// for scheduled patients
+		const patientDNA = ( patientID ) => {
+			if( patients.has( patientID )){
+				patients.get( patientID ).onDNA();
+			}
+		};
+		
+		// manually finish the pathway
+		const patientComplete = ( patientID ) => {
+			if( patients.has( patientID )){
+				patients.get( patientID ).onComplete();
+			}
+		};
+			
+		/**
 		* Add steps to patients
 		* Insert step option is pressed. Update selected patients
 		* @param {Object} dataset from <li>
 		*/
 		const addStepsToPatients = ( json ) => {
 			const { c:code, s:status, t:type, i:idg } = ( JSON.parse(json) );
-			
+
 			patients.forEach( patient => {
 				if( patient.isTicked()){
 					if( code == 'c-last'){
@@ -128,13 +155,13 @@
 		*/
 		const getPatientFilterState = () => {
 			const status = [];
-			const risks = [];
+			const redflagged = [];
 			patients.forEach( patient => {
 				status.push( patient.getStatus());
-				risks.push( '-r' + patient.getRisk()); // create filter code
+				redflagged.push( patient.getRedFlagged());
 			});
 			
-			return { status, risks };
+			return { status, redflagged };
 		};
 		
 		/**
@@ -170,6 +197,9 @@
 			addStepsToPatients,
 			getPatientFilterState,
 			untickPatients,
+			patientArrived,
+			patientDNA,
+			patientComplete
 		};
 	};
 

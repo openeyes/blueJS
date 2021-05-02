@@ -19,9 +19,10 @@
 	/**
 	* Process the patient JSON from the PHP
 	* @param {JSON} json
+	* @param {Boolean} usesPriority - risks use triangles, priorities uses circles.
 	* @returns {Map} of patients
 	*/
-	clinic.patientJSON = ( json ) => {
+	clinic.patientJSON = ( json, usesPriority = false ) => {
 		/*
 		To make the IDG UX prototype easier to test an initial state JSON is provided by PHP.
 		The demo times are set in RELATIVE minutes, which are updated to full timestamps
@@ -68,7 +69,7 @@
 		const patients = new Map();
 		
 		patientsJSON.forEach( patient => {
-			patients.set( patient.uid, clinic.patient( patient ));
+			patients.set( patient.uid, clinic.patient( patient, usesPriority ));
 		});
 		
 		return patients;

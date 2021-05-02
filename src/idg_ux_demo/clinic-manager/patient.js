@@ -5,9 +5,10 @@
 	/**
 	* Patient (<tr>)
 	* @param {*} props
+	* @param {Boolean} usesPriority - Risk icon is triangle / Priority is circle
 	* @returns {*} public methods
 	*/
-	const patient = ( props ) => {
+	const patient = ( props, usesPriority = false ) => {
 		
 		/**
 		* Patient UI is a table row <tr>
@@ -182,16 +183,18 @@
 		const setRisk = ( num ) => {
 			if( num == undefined ) return; 
 			
-			const colors = ['grey','red','amber','green'];
-			const icon = colors[ num ];
-			let tip = "None";
+			const icon = usesPriority ? 'circle' : 'triangle';
+			const size = usesPriority ? 'medium-icon' : '';
+			const color = ['grey','red','amber','green'][ num ];
+			
+			let tip = "{{tip}}";
 			switch( num ){
-				case 3: tip = 'Standard'; break;
-				case 2: tip = 'Urgent'; break;
-				case 1: tip = 'Immediate'; break;
+				case 3: tip = usesPriority ? 'Priority: Standard' : 'Patient Risk: 2 (Low)'; break;
+				case 2: tip = usesPriority ? 'Priority: Urgent' : 'Patient Risk: 2 (Medium)'; break;
+				case 1: tip = usesPriority ? 'Priority: Immediate' : 'Patient Risk: 1 (High)'; break;
 			}
 			
-			td.risks.innerHTML = `<i class="oe-i circle-${icon} medium-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="Priority: ${tip}"></i>`;
+			td.risks.innerHTML = `<i class="oe-i ${icon}-${color} ${size} js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
 			model.risk = num;
 		};
 
@@ -320,10 +323,9 @@
 			} else if( filter == "clinic") {
 				renderDOM = !( model.status == 'done' || model.status == 'later');
 			} else {
-				// risk filter? this is a bit different: 
-				if( filter.startsWith('-r')){
-					const r = parseInt( filter.charAt(2), 10);
-					renderDOM = ( r == model.risk );
+				// red flagged? 
+				if( filter.startsWith('-f')){
+					renderDOM = model.redFlagged;
 				} else {
 					renderDOM = ( model.status == filter );
 				}
@@ -340,8 +342,8 @@
 			onComplete, 
 			getID(){ return model.uid; }, 
 			getStatus(){ return model.status; },
-			getRisk(){ return model.risk; },
-			getFlagged(){ return model.redFlagged },
+			//getRisk(){ return model.risk; },
+			getRedFlagged(){ return model.redFlagged; },
 			render, 
 			addPathStep, 
 			removePathStep,

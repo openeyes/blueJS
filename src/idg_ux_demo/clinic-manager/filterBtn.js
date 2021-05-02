@@ -22,9 +22,6 @@
 			const div = bj.div('filter');
 			// red flagged filter?
 			if( props.name.startsWith('-f')){
-				// string pattern is '-rN'
-				// const num = parseInt( props.name.charAt(2), 10);
-				// const colors = ['grey','red','amber','green'];
 				div.innerHTML = `<div class="name"><i class="oe-i flag-red medium-icon no-click"></div>`;
 			} else {
 				div.innerHTML = `<div class="name">${props.name}</div>`;
@@ -39,9 +36,9 @@
 		* updateCount
 		* On any updates to clinic need to update the filter count
 		* @param {Array} status - Patient row status
-		* @param {Array} risks - Patient risk num
+		* @param {Array} redflagged - 
 		*/	
-		const updateCount = ( status, risks  ) => {
+		const updateCount = ( status, redflagged  ) => {
 			let num = 0;
 	
 			// work out the counts per filter.
@@ -49,10 +46,10 @@
 				num = status.length;
 			} else if ( filter == "clinic"){
 				num = status.reduce(( acc, val ) => (val != "done" && val != 'later') ? acc + 1 : acc, 0 );
+			} else if( filter.startsWith('-f')) {
+				num = redflagged.reduce(( acc, val ) => val ? acc + 1 : acc, 0 );
 			} else {
-				
-				const arr = filter.startsWith('-r') ? risks : status;
-				num = arr.reduce(( acc, val ) => val == filter ? acc + 1 : acc, 0 );
+				num = status.reduce(( acc, val ) => val == filter ? acc + 1 : acc, 0 );
 			}
 			
 			// update DOM text

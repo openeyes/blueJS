@@ -72,14 +72,14 @@
 		const updateFilterBtns = () => {
 			// gather all the patient data and pass to filterBtns
 			let status = [];
-			let risks = [];
+			let redflagged = [];
 			worklists.forEach( list => {
 				const patientFilters = list.getPatientFilterState();
 				status = status.concat( patientFilters.status );
-				risks = risks.concat( patientFilters.risks );
+				redflagged = redflagged.concat( patientFilters.redflagged );
 			});
 			
-			filters.updateCount( status, risks );
+			filters.updateCount( status, redflagged );
 			model.updateView();
 		};
 	
@@ -111,11 +111,11 @@
 		* - User clicks on a step to add it to patients
 		* - (Or closes the adder)
 		*/
-		bj.userDown('.oe-clinic-adder .insert-steps li', ( ev ) => {
+		bj.userDown('div.oec-adder .insert-steps li', ( ev ) => {
 			worklists.forEach( list => list.addStepsToPatients( ev.target.dataset.idg ));
 		});
 		
-		bj.userDown('.oe-clinic-adder .close-btn', () => {
+		bj.userDown('div.oec-adder .close-btn', () => {
 			worklists.forEach( list => list.untickPatients());
 			adder.hide(); 
 		});
@@ -127,15 +127,15 @@
 		* Button "Complete" 
 		*/
 		bj.userClick('.js-idg-clinic-btn-arrived', ( ev ) => {
-			patients.get( ev.target.dataset.patient ).onArrived();
+			worklists.forEach( list => list.patientArrived( ev.target.dataset.patient ));
 		});
 		
 		bj.userClick('.js-idg-clinic-btn-DNA', ( ev ) => {
-			patients.get( ev.target.dataset.patient ).onDNA();
+			worklists.forEach( list => list.patientDNA( ev.target.dataset.patient ));
 		});
 		
 		bj.userDown('.js-idg-clinic-icon-complete', ( ev ) => {
-			patients.get( ev.target.dataset.patient ).onComplete();
+			worklists.forEach( list => list.patientComplete( ev.target.dataset.patient ));
 		});
 
 		// Patient changes it status
@@ -146,11 +146,12 @@
 		*	
 		* Build the Worklists
 		* iDG demo can handle multple Worklits (or "Clinics")
-		* PHP will provide an array of the different Worklists.	
-		* loop through the global array and build the demo Worklists
+		* PHP builds the JS array of the different Worklists.	
+		* loop through the Global and build the demo Worklists
 		*/
 		const fragment = new DocumentFragment();
 		
+		// Global!
 		iDG_ClinicListDemo.forEach( list => {
 			// add new Worklist
 			const uid = bj.getToken();

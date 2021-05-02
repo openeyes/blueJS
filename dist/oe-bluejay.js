@@ -227,7 +227,7 @@ const bluejay = (function () {
 	* @param {String} details
 	*/
 	const myEvent = ( eventType, eventDetail ) => {
-		// bluejay.log('[Custom Event] - "'+eventType+'"');
+		//bluejay.log('[Custom Event] - "'+eventType+'"');
 		const event = new CustomEvent(eventType, {detail: eventDetail});
 		document.dispatchEvent(event);
 	};

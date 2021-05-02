@@ -227,7 +227,7 @@ const bluejay = (function () {
 	* @param {String} details
 	*/
 	const myEvent = ( eventType, eventDetail ) => {
-		// bluejay.log('[Custom Event] - "'+eventType+'"');
+		//bluejay.log('[Custom Event] - "'+eventType+'"');
 		const event = new CustomEvent(eventType, {detail: eventDetail});
 		document.dispatchEvent(event);
 	};
@@ -5492,14 +5492,13 @@ Updated to Vanilla JS for IDG
 	
 	bj.addModule('fastDateRange');	
 
-	const fastDateRange = document.querySelector('.fast-date-range');
+	const div = document.querySelector('.set-date-range');
 	
-	if( fastDateRange == null ) return;
+	if( div == null ) return;
 	
 	// DOM elements
-	const inputTo = document.querySelector('.js-filter-date-to');
-	const inputFrom = document.querySelector('.js-filter-date-from');
-	const allDates = document.getElementsByName('show-all-date-range')[0]; // nodelist!
+	const inputTo = div.querySelector('.js-filter-date-to');
+	const inputFrom = div.querySelector('.js-filter-date-from');
 	
 	/* 
 	values in milliseconds 
@@ -5526,7 +5525,6 @@ Updated to Vanilla JS for IDG
 	const setDateRange = ( dateTo, dateFrom ) => {	
 		inputTo.value = oeDate( dateTo ); 
 		inputFrom.value = oeDate( dateFrom );
-		allDates.checked = false; // unclick "all dates"
 	};
 	
 	/**
@@ -5569,18 +5567,21 @@ Updated to Vanilla JS for IDG
 	* Handle user event
 	* @param {Event} ev (div.range)
 	*/
-	const userClicks = ( ev ) => {
-		const div = ev.target;
-		if( !div.hasAttribute('data-range')) return;
-		
-		const range = div.getAttribute('data-range');
-	
+	const userClicks = ( range ) => {
 		switch( range ){
 			case 'yesterday': singleDay( new Date( now - day ));
 			break;
 			case 'today': singleDay( today );
 			break; 
 			case 'tomorrow': singleDay( new Date( now + day ));
+			break;
+			
+			case 'next-4-days': 
+			case 'next-7-days': 
+			case 'next-12-days': 
+				const days = range.split('-')[1];
+				const add = parseInt( days , 10 );
+				setDateRange( today, new Date( now + ( day * add )));
 			break; 
 			
 			case 'last-week': weekRange( -7 );		
@@ -5604,7 +5605,9 @@ Updated to Vanilla JS for IDG
 	/*
 	Events	
 	*/
-	bj.userDown('.fast-date-range .range', userClicks );
+	div.addEventListener('change', ev => {
+		userClicks( ev.target.value );
+	});
 		
 })( bluejay ); 
 
@@ -5714,7 +5717,10 @@ Updated to Vanilla JS for IDG
 		* Hotlist can be quickly viewed or 'locked' open
 		*/
 		changeState:function(){
-			if( this.isFixed ) return;
+			if( this.isFixed ){
+				bj.customEvent('idg:hotlistViewFixed');// navWorklists needs this
+				return;
+			}
 			if( !this.open ){
 				this.makeLocked();
 				this.over();
@@ -5759,6 +5765,7 @@ Updated to Vanilla JS for IDG
 		makeLocked: function(){
 			this.isLocked = true; 
 			this.btn.classList.add( cssOpen );
+			bj.customEvent('idg:hotlistLockedOpen'); // navWorklists needs this
 		}
 	});
 	
@@ -5929,6 +5936,49 @@ Updated to Vanilla JS for IDG
 	bj.userLeave( wrapper, () => oelogo.hide());
 	
 })( bluejay) ; 
+(function( bj ){
+
+	'use strict';	
+	
+	bj.addModule('navWorklists');
+	
+	const worklistsPanel = document.getElementById('js-worklists-panel');
+	if( worklistsPanel === null ) return;
+	
+	const btn = document.getElementById('js-nav-worklists-btn');
+	let open = false;
+	
+	const show = () => {
+		bj.show( worklistsPanel, 'block');
+		btn.classList.add('active');
+		open = true;
+	};
+	
+	const hide = () => {
+		bj.hide( worklistsPanel );
+		btn.classList.remove('active');
+		open = false;
+	};
+
+	/*
+	Events
+	*/
+	bj.userDown('#js-nav-worklists-btn', () => open ? hide() : show() );	
+	
+	
+	/**
+	Worklist panel completely obscures the hotlist.
+	therefore if the User clicks on the hotlist make sure
+	worklist panel hides otherwise they can't see the 
+	the hotlist!
+	*/
+	document.addEventListener('idg:hotlistLockedOpen', hide );
+	
+	// user clicks on hotlist icon (it's fixed but they can't see it)
+	document.addEventListener('idg:hotlistViewFixed', hide );
+
+
+})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';	
@@ -7107,11 +7157,6 @@ Updated to Vanilla JS for IDG
 			wrapper: 'js-nav-shortcuts',
 			contentID: 'js-nav-shortcuts-subnav',
 		}, 
-		{ // Nav, (was worklist button)
-			btn: 'js-nav-patientlist-btn',
-			wrapper: 'js-patientlist-panel-wrapper',
-			contentID: 'js-patientlist-panel',
-		},
 		{ // Print Event options
 			btn: 'js-header-print-dropdown-btn',
 			wrapper: 'js-header-print-dropdown',
@@ -10423,14 +10468,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const updateFilterBtns = () => {
 			// gather all the patient data and pass to filterBtns
 			let status = [];
-			let risks = [];
+			let redflagged = [];
 			worklists.forEach( list => {
 				const patientFilters = list.getPatientFilterState();
 				status = status.concat( patientFilters.status );
-				risks = risks.concat( patientFilters.risks );
+				redflagged = redflagged.concat( patientFilters.redflagged );
 			});
 			
-			filters.updateCount( status, risks );
+			filters.updateCount( status, redflagged );
 			model.updateView();
 		};
 	
@@ -10462,11 +10507,11 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* - User clicks on a step to add it to patients
 		* - (Or closes the adder)
 		*/
-		bj.userDown('.oe-clinic-adder .insert-steps li', ( ev ) => {
+		bj.userDown('div.oec-adder .insert-steps li', ( ev ) => {
 			worklists.forEach( list => list.addStepsToPatients( ev.target.dataset.idg ));
 		});
 		
-		bj.userDown('.oe-clinic-adder .close-btn', () => {
+		bj.userDown('div.oec-adder .close-btn', () => {
 			worklists.forEach( list => list.untickPatients());
 			adder.hide(); 
 		});
@@ -10478,15 +10523,15 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* Button "Complete" 
 		*/
 		bj.userClick('.js-idg-clinic-btn-arrived', ( ev ) => {
-			patients.get( ev.target.dataset.patient ).onArrived();
+			worklists.forEach( list => list.patientArrived( ev.target.dataset.patient ));
 		});
 		
 		bj.userClick('.js-idg-clinic-btn-DNA', ( ev ) => {
-			patients.get( ev.target.dataset.patient ).onDNA();
+			worklists.forEach( list => list.patientDNA( ev.target.dataset.patient ));
 		});
 		
 		bj.userDown('.js-idg-clinic-icon-complete', ( ev ) => {
-			patients.get( ev.target.dataset.patient ).onComplete();
+			worklists.forEach( list => list.patientComplete( ev.target.dataset.patient ));
 		});
 
 		// Patient changes it status
@@ -10497,11 +10542,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*	
 		* Build the Worklists
 		* iDG demo can handle multple Worklits (or "Clinics")
-		* PHP will provide an array of the different Worklists.	
-		* loop through the global array and build the demo Worklists
+		* PHP builds the JS array of the different Worklists.	
+		* loop through the Global and build the demo Worklists
 		*/
 		const fragment = new DocumentFragment();
 		
+		// Global!
 		iDG_ClinicListDemo.forEach( list => {
 			// add new Worklist
 			const uid = bj.getToken();
@@ -10538,7 +10584,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	
 	const adder = () => {
 		
-		const div = bj.div('oe-clinic-adder');
+		const div = bj.div('oec-adder');
 		let open = false;
 		
 		/**
@@ -10671,46 +10717,64 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	* @param {Element} tbody - Each "clock" needs linking to it's own table
 	*/
 	const showClock = ( tbody ) => {
-		const div = bj.div('oe-clinic-clock');
-		div.style.top = "100%"; // move offscreen
-		document.body.append( div );
+		const div = bj.div('oec-clock');
+		bj.hide( div );
+		
+		// find the worklist group 
+		const group = bj.getParent( tbody, '.oec-group');
+		group.append( div );
+		
 		
 		/**
 		* @callback for setInvterval
 		*/
 		const updateClock = () => {
-			let top = "100%";
 			const tableRows = bj.nodeArray( tbody.querySelectorAll('tr'));
 			
 			// check there are rows...
 			if( ! tableRows.length ){
-				div.style.top = top; // move offscreen if all TRs are in the "past".
+				bj.hide( div );
 				return;
-			}
+			} 
+			
+			// assume last table row as default
+			let clockRow = tableRows[ tableRows.length - 1];
 			
 			// table TRs have a timestamp on them, use this to position clock
 			const now = Date.now();
 			
-			// end row position 
-			top = ( tableRows[ tableRows.length-1 ].getBoundingClientRect().bottom - 9 ) + 'px'; 
-			
-			// but see if there are later times and adjust
+			// if there are later times than "now" change tr.
 			tableRows.find( tr  => {
 				if( tr.dataset.timestamp > now ){
-					top = ( tr.getBoundingClientRect().top - 9 ) + 'px';
+					clockRow = tr;
 					return true;
 				}
 			});
 			
+			// get the position:
+			const top = clockRow.getBoundingClientRect().bottom;
+			
+			if( top < 160 ){
+				bj.hide( div ); // offscreen!
+			} else {
+				bj.show( div );
+			}
+			
 			// update clock time and position
-			div.style.top = top;
+			div.style.top = `${ top  }px`;
 			div.textContent = bj.clock24( new Date( now ));
 		};
 		
 		/**
 		* Check and update every half second
 		*/
-		setInterval( updateClock, 500 );
+		setTimeout(() => {
+			// set top here otherwise it flickers in
+			// need to allow time for the <tbody> render
+			div.style.top = `${ tbody.getBoundingClientRect().bottom  }px`;
+			setInterval( updateClock, 500 );
+		}, 1000 );
+		
 	};
 	
 	// make component available to Clinic SPA	
@@ -10767,9 +10831,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			const div = bj.div('filter');
 			// red flagged filter?
 			if( props.name.startsWith('-f')){
-				// string pattern is '-rN'
-				// const num = parseInt( props.name.charAt(2), 10);
-				// const colors = ['grey','red','amber','green'];
 				div.innerHTML = `<div class="name"><i class="oe-i flag-red medium-icon no-click"></div>`;
 			} else {
 				div.innerHTML = `<div class="name">${props.name}</div>`;
@@ -10784,9 +10845,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* updateCount
 		* On any updates to clinic need to update the filter count
 		* @param {Array} status - Patient row status
-		* @param {Array} risks - Patient risk num
+		* @param {Array} redflagged - 
 		*/	
-		const updateCount = ( status, risks  ) => {
+		const updateCount = ( status, redflagged  ) => {
 			let num = 0;
 	
 			// work out the counts per filter.
@@ -10794,10 +10855,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				num = status.length;
 			} else if ( filter == "clinic"){
 				num = status.reduce(( acc, val ) => (val != "done" && val != 'later') ? acc + 1 : acc, 0 );
+			} else if( filter.startsWith('-f')) {
+				num = redflagged.reduce(( acc, val ) => val ? acc + 1 : acc, 0 );
 			} else {
-				
-				const arr = filter.startsWith('-r') ? risks : status;
-				num = arr.reduce(( acc, val ) => val == filter ? acc + 1 : acc, 0 );
+				num = status.reduce(( acc, val ) => val == filter ? acc + 1 : acc, 0 );
 			}
 			
 			// update DOM text
@@ -10874,14 +10935,15 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			`<div class="group"><select>{{#step}}<option>{{.}}</option>{{/step}}</select></div>`,
 			`<div class="group"><select>{{#assigned}}<option>{{.}}</option>{{/assigned}}</select></div>`,
 			`<div class="group"><select>{{#flags}}<option>{{.}}</option>{{/flags}}</select></div>`,
+			`<div class="group"><select>{{#risks}}<option>{{.}}</option>{{/risks}}</select></div>`,
 			`<div class="group"><select>{{#states}}<option>{{.}}</option>{{/states}}</select></div>`,
 		].join(''), {
 			age: ['All ages', '0 - 16y Paeds', '16y+ Adults'],
-			wait: ['Wait - all', '0 - 1hr', '2hr - 3hr', '3hr - 4rh', '4hr +'],
-			step: ['Steps - all', 'Visual acuity', 'Fields', 'Colour photos', 'OCT', 'Dilate'],
-			assigned: ['People - all', 'Unassigned', 'Nurse', 'Dr', 'Dr Georg Joseph Beer', 'Dr George Bartischy', 'Mr Michael Morgan', 'Sushruta', 'Dr Zofia Falkowska'],
-			flags: ['Flags - All', 'Red: Change in puplis', 'Red: Systemically unwell', 'Green: Children', 'Unflagged'],
-			risks: ['Priority - All', 'Immediate', 'Urgent', 'Standard', 'Low' ],
+			wait: ['Wait', '0 - 1hr', '2hr - 3hr', '3hr - 4rh', '4hr +'],
+			step: ['Location', 'Visual acuity', 'Fields', 'Colour photos', 'OCT', 'Dilate'],
+			assigned: ['People', 'Unassigned', 'Nurse', 'Dr', 'Dr Georg Joseph Beer', 'Dr George Bartischy', 'Mr Michael Morgan', 'Sushruta', 'Dr Zofia Falkowska'],
+			flags: ['Flagged', 'Change in puplis', 'Systemically unwell', 'etc..', 'Not flagged'],
+			risks: ['Risks/Priortiy', 'High/Immediate', 'Medium/Urgent', 'Low/Standard' ],
 			states: ['in Clinic', 'Scheduled', 'All'],
 		});
 		
@@ -11217,9 +11279,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	/**
 	* Patient (<tr>)
 	* @param {*} props
+	* @param {Boolean} usesPriority - Risk icon is triangle / Priority is circle
 	* @returns {*} public methods
 	*/
-	const patient = ( props ) => {
+	const patient = ( props, usesPriority = false ) => {
 		
 		/**
 		* Patient UI is a table row <tr>
@@ -11394,16 +11457,18 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const setRisk = ( num ) => {
 			if( num == undefined ) return; 
 			
-			const colors = ['grey','red','amber','green'];
-			const icon = colors[ num ];
-			let tip = "None";
+			const icon = usesPriority ? 'circle' : 'triangle';
+			const size = usesPriority ? 'medium-icon' : '';
+			const color = ['grey','red','amber','green'][ num ];
+			
+			let tip = "{{tip}}";
 			switch( num ){
-				case 3: tip = 'Standard'; break;
-				case 2: tip = 'Urgent'; break;
-				case 1: tip = 'Immediate'; break;
+				case 3: tip = usesPriority ? 'Priority: Standard' : 'Patient Risk: 2 (Low)'; break;
+				case 2: tip = usesPriority ? 'Priority: Urgent' : 'Patient Risk: 2 (Medium)'; break;
+				case 1: tip = usesPriority ? 'Priority: Immediate' : 'Patient Risk: 1 (High)'; break;
 			}
 			
-			td.risks.innerHTML = `<i class="oe-i circle-${icon} medium-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="Priority: ${tip}"></i>`;
+			td.risks.innerHTML = `<i class="oe-i ${icon}-${color} ${size} js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
 			model.risk = num;
 		};
 
@@ -11532,10 +11597,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			} else if( filter == "clinic") {
 				renderDOM = !( model.status == 'done' || model.status == 'later');
 			} else {
-				// risk filter? this is a bit different: 
-				if( filter.startsWith('-r')){
-					const r = parseInt( filter.charAt(2), 10);
-					renderDOM = ( r == model.risk );
+				// red flagged? 
+				if( filter.startsWith('-f')){
+					renderDOM = model.redFlagged;
 				} else {
 					renderDOM = ( model.status == filter );
 				}
@@ -11552,8 +11616,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			onComplete, 
 			getID(){ return model.uid; }, 
 			getStatus(){ return model.status; },
-			getRisk(){ return model.risk; },
-			getFlagged(){ return model.redFlagged },
+			//getRisk(){ return model.risk; },
+			getRedFlagged(){ return model.redFlagged; },
 			render, 
 			addPathStep, 
 			removePathStep,
@@ -11588,9 +11652,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	/**
 	* Process the patient JSON from the PHP
 	* @param {JSON} json
+	* @param {Boolean} usesPriority - risks use triangles, priorities uses circles.
 	* @returns {Map} of patients
 	*/
-	clinic.patientJSON = ( json ) => {
+	clinic.patientJSON = ( json, usesPriority = false ) => {
 		/*
 		To make the IDG UX prototype easier to test an initial state JSON is provided by PHP.
 		The demo times are set in RELATIVE minutes, which are updated to full timestamps
@@ -11637,7 +11702,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const patients = new Map();
 		
 		patientsJSON.forEach( patient => {
-			patients.set( patient.uid, clinic.patient( patient ));
+			patients.set( patient.uid, clinic.patient( patient, usesPriority ));
 		});
 		
 		return patients;
@@ -11878,21 +11943,23 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	/**
 	* build Group
 	* @param {Element} group - parentNode;
-	* @param {String} title
+	* @param {*} list
 	* return {Element}
 	*/
-	const buildDOM = ( group, title ) => {
+	const buildDOM = ( group, list ) => {
+		const riskIcon = list.usesPriority ? 'circle' : 'triangle';
+		
 		/**
 		Each Worklist requires a "group". The Group has a "header". 
 		The header shows the name of the Worklist (+ date, this will be added automatically by OE)
 		It also allows removing from the view (if not in single mode)
 		*/
 		const header = bj.dom('header', false, [
-			 `<h3 class="worklist">${ title }</h3>`,
-			 `<div class="list-group-actions"><!-- viewing a single clinic so these are disabled --></div>`
+			 `<div class="favourite"><i class="oe-i starline medium pad js-has-tooltip" data-tt-type="basic" data-tooltip-content="Add to worklist favourites"></i></div>`,
+			 `<h3>${ list.title }</h3>`
 		].join('')); 
-		
-		const table = bj.dom('table', 'oe-clinic-list');
+
+		const table = bj.dom('table', 'oec-patients');
 		table.innerHTML = Mustache.render([
 			'<thead><tr>{{#th}}<th>{{{.}}}</th>{{/th}}</tr></thead>',
 			'<tbody></tbody>'
@@ -11904,7 +11971,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				'<!-- meta icon -->', 
 				'Pathway',
 				'<label class="patient-checkbox"><input class="js-check-patient" value="all" type="checkbox"><div class="checkbox-btn"></div></label>', 
-				'<i class="oe-i circle-grey no-click small"></i>',
+				`<i class="oe-i ${riskIcon}-grey no-click small"></i>`,
 				'<i class="oe-i comments no-click small"></i>',
 				'Wait hours', 
 				'<!-- complete icon -->'
@@ -11930,14 +11997,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* Process the patient JSON
 		* @returns {Map} - key: uid, value: new Patient
 		*/
-		const patients = clinic.patientJSON( list.json );
+		const patients = clinic.patientJSON( list.json, list.usesPriority );
 		
 		// build the static DOM
-		const group = bj.dom('section', 'clinic-group');
+		const group = bj.dom('section', 'oec-group');
 		group.id = `idg-list-${id}`;
 		group.setAttribute('data-id', id );
 		
-		buildDOM( group, list.title );
+		buildDOM( group, list );
 		fragment.append( group );
 		
 		// Only <tr> in the <tbody> need re-rendering
@@ -11961,13 +12028,38 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		
 		/**
+		* @Event - Patient actiions outside of pathway
+		*/
+		
+		// for scheduled patients
+		const patientArrived = ( patientID ) => {
+			if( patients.has( patientID )){
+				patients.get( patientID ).onArrived();
+			}
+		};
+		
+		// for scheduled patients
+		const patientDNA = ( patientID ) => {
+			if( patients.has( patientID )){
+				patients.get( patientID ).onDNA();
+			}
+		};
+		
+		// manually finish the pathway
+		const patientComplete = ( patientID ) => {
+			if( patients.has( patientID )){
+				patients.get( patientID ).onComplete();
+			}
+		};
+			
+		/**
 		* Add steps to patients
 		* Insert step option is pressed. Update selected patients
 		* @param {Object} dataset from <li>
 		*/
 		const addStepsToPatients = ( json ) => {
 			const { c:code, s:status, t:type, i:idg } = ( JSON.parse(json) );
-			
+
 			patients.forEach( patient => {
 				if( patient.isTicked()){
 					if( code == 'c-last'){
@@ -12001,13 +12093,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const getPatientFilterState = () => {
 			const status = [];
-			const risks = [];
+			const redflagged = [];
 			patients.forEach( patient => {
 				status.push( patient.getStatus());
-				risks.push( '-r' + patient.getRisk()); // create filter code
+				redflagged.push( patient.getRedFlagged());
 			});
 			
-			return { status, risks };
+			return { status, redflagged };
 		};
 		
 		/**
@@ -12043,6 +12135,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			addStepsToPatients,
 			getPatientFilterState,
 			untickPatients,
+			patientArrived,
+			patientDNA,
+			patientComplete
 		};
 	};
 

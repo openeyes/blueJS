@@ -49,14 +49,15 @@
 			`<div class="group"><select>{{#step}}<option>{{.}}</option>{{/step}}</select></div>`,
 			`<div class="group"><select>{{#assigned}}<option>{{.}}</option>{{/assigned}}</select></div>`,
 			`<div class="group"><select>{{#flags}}<option>{{.}}</option>{{/flags}}</select></div>`,
+			`<div class="group"><select>{{#risks}}<option>{{.}}</option>{{/risks}}</select></div>`,
 			`<div class="group"><select>{{#states}}<option>{{.}}</option>{{/states}}</select></div>`,
 		].join(''), {
 			age: ['All ages', '0 - 16y Paeds', '16y+ Adults'],
-			wait: ['Wait - all', '0 - 1hr', '2hr - 3hr', '3hr - 4rh', '4hr +'],
-			step: ['Steps - all', 'Visual acuity', 'Fields', 'Colour photos', 'OCT', 'Dilate'],
-			assigned: ['People - all', 'Unassigned', 'Nurse', 'Dr', 'Dr Georg Joseph Beer', 'Dr George Bartischy', 'Mr Michael Morgan', 'Sushruta', 'Dr Zofia Falkowska'],
-			flags: ['Flags - All', 'Red: Change in puplis', 'Red: Systemically unwell', 'Green: Children', 'Unflagged'],
-			risks: ['Priority - All', 'Immediate', 'Urgent', 'Standard', 'Low' ],
+			wait: ['Wait', '0 - 1hr', '2hr - 3hr', '3hr - 4rh', '4hr +'],
+			step: ['Location', 'Visual acuity', 'Fields', 'Colour photos', 'OCT', 'Dilate'],
+			assigned: ['People', 'Unassigned', 'Nurse', 'Dr', 'Dr Georg Joseph Beer', 'Dr George Bartischy', 'Mr Michael Morgan', 'Sushruta', 'Dr Zofia Falkowska'],
+			flags: ['Flagged', 'Change in puplis', 'Systemically unwell', 'etc..', 'Not flagged'],
+			risks: ['Risks/Priortiy', 'High/Immediate', 'Medium/Urgent', 'Low/Standard' ],
 			states: ['in Clinic', 'Scheduled', 'All'],
 		});
 		

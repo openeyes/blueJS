@@ -33,7 +33,10 @@
 		* Hotlist can be quickly viewed or 'locked' open
 		*/
 		changeState:function(){
-			if( this.isFixed ) return;
+			if( this.isFixed ){
+				bj.customEvent('idg:hotlistViewFixed');// navWorklists needs this
+				return;
+			}
 			if( !this.open ){
 				this.makeLocked();
 				this.over();
@@ -78,6 +81,7 @@
 		makeLocked: function(){
 			this.isLocked = true; 
 			this.btn.classList.add( cssOpen );
+			bj.customEvent('idg:hotlistLockedOpen'); // navWorklists needs this
 		}
 	});
 	
