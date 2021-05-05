@@ -89,7 +89,7 @@
 			*/
 			setType( val ){
 				// valid types
-				const valid = ['none', 'person', 'process', 'wait', 'wait long', 'arrive', 'red-flag', 'auto-finish', 'finish', 'comments', 'comments added'].find( test => test == val );
+				const valid = ['none', 'person', 'process', 'wait', 'wait long', 'arrive', 'red-flag', 'fork', 'auto-finish', 'finish', 'comments', 'comments added'].find( test => test == val );
 				if( !valid ) throw new Error(`PathStep: invaild type: "${val}"`);
 				
 				this.type = val;
@@ -219,7 +219,8 @@
 				if( this.status == 'todo' || 
 					this.status == 'todo-next' ||
 					this.status == 'config' || 
-					this.shortcode == 'i-Stop' ){
+					this.shortcode == 'i-Stop' ||
+					this.shortcode == 'i-Fork' ){
 					this.info.classList.add('invisible'); // need the DOM to keep the height consistent
 				} else {
 					this.info.classList.remove('invisible');

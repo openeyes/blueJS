@@ -33,16 +33,21 @@
 	* @param {Date} dateTo
 	* @param {Date} dateFrom
 	*/
-	const setDateRange = ( dateTo, dateFrom ) => {	
-		inputTo.value = oeDate( dateTo ); 
-		inputFrom.value = oeDate( dateFrom );
+	const setDateRange = ( dateFrom, dateTo ) => {	
+		inputFrom.value = oeDate( dateFrom ); 
+		if( dateTo ){
+			inputTo.value = oeDate( dateTo );
+		} else {
+			inputTo.value = "";
+		}
+		
 	};
 	
 	/**
 	* Single day
 	* @param {Date} day
 	*/
-	const singleDay = day => setDateRange( day, day );
+	const singleDay = day => setDateRange( day, false );
 	
 	/**
 	* Week: Mon to Fri
@@ -52,7 +57,7 @@
 		let dayNum = today.getDay();
 		let monday = now + ( day * (1 - dayNum ));
 		let weekStart = monday + ( day * offset);
-		setDateRange( new Date( weekStart ), new Date( weekStart + ( day * 4 )));
+		setDateRange( new Date( weekStart ), new Date( weekStart + ( day * 6 )));
 	};
 	
 	/**
@@ -111,13 +116,42 @@
 
 			default: bj.log('[fastDateRange] unknown range request: ' +  range );
 		}
+	
 	};
+	
+	// If this is being used on the new worklist page, create a quick iDG UIX demo: 
+	const setHeaderDateRange = ( msg ) => {
+		const showDate = document.querySelector('.clinic-context .date-range');
+		if( showDate == null ) return; 
+	
+		showDate.textContent = msg == "custom" ? 
+			`${inputFrom.value} - ${inputTo.value}`: 
+			msg;
+	};
+	
+	/*
+	Initiate date range based on the checked date selector
+	*/
+	(() => {
+		const checkedSelector = div.querySelector('input:checked');
+		if( checkedSelector != null ){
+			userClicks( checkedSelector.value );
+		}
+	})();
+	
 
 	/*
 	Events	
 	*/
 	div.addEventListener('change', ev => {
 		userClicks( ev.target.value );
+		setHeaderDateRange( ev.target.nextSibling.textContent );
+	});
+	
+	// if the use clicks on the DatePicker this means 
+	// it's now a custom date range
+	document.addEventListener('idg:DatePickerChange', ev => {
+		setHeaderDateRange( "custom" );
 	});
 		
 })( bluejay ); 

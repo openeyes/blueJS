@@ -5461,6 +5461,8 @@ Updated to Vanilla JS for IDG
 			model.date.setDate( date );
 			input.value = oeDate( model.date );
 			
+			bj.customEvent('idg:DatePickerChange', model.date );
+			
 			remove(); // done! 
 		};
 		
@@ -5522,16 +5524,21 @@ Updated to Vanilla JS for IDG
 	* @param {Date} dateTo
 	* @param {Date} dateFrom
 	*/
-	const setDateRange = ( dateTo, dateFrom ) => {	
-		inputTo.value = oeDate( dateTo ); 
-		inputFrom.value = oeDate( dateFrom );
+	const setDateRange = ( dateFrom, dateTo ) => {	
+		inputFrom.value = oeDate( dateFrom ); 
+		if( dateTo ){
+			inputTo.value = oeDate( dateTo );
+		} else {
+			inputTo.value = "";
+		}
+		
 	};
 	
 	/**
 	* Single day
 	* @param {Date} day
 	*/
-	const singleDay = day => setDateRange( day, day );
+	const singleDay = day => setDateRange( day, false );
 	
 	/**
 	* Week: Mon to Fri
@@ -5541,7 +5548,7 @@ Updated to Vanilla JS for IDG
 		let dayNum = today.getDay();
 		let monday = now + ( day * (1 - dayNum ));
 		let weekStart = monday + ( day * offset);
-		setDateRange( new Date( weekStart ), new Date( weekStart + ( day * 4 )));
+		setDateRange( new Date( weekStart ), new Date( weekStart + ( day * 6 )));
 	};
 	
 	/**
@@ -5600,13 +5607,42 @@ Updated to Vanilla JS for IDG
 
 			default: bj.log('[fastDateRange] unknown range request: ' +  range );
 		}
+	
 	};
+	
+	// If this is being used on the new worklist page, create a quick iDG UIX demo: 
+	const setHeaderDateRange = ( msg ) => {
+		const showDate = document.querySelector('.clinic-context .date-range');
+		if( showDate == null ) return; 
+	
+		showDate.textContent = msg == "custom" ? 
+			`${inputFrom.value} - ${inputTo.value}`: 
+			msg;
+	};
+	
+	/*
+	Initiate date range based on the checked date selector
+	*/
+	(() => {
+		const checkedSelector = div.querySelector('input:checked');
+		if( checkedSelector != null ){
+			userClicks( checkedSelector.value );
+		}
+	})();
+	
 
 	/*
 	Events	
 	*/
 	div.addEventListener('change', ev => {
 		userClicks( ev.target.value );
+		setHeaderDateRange( ev.target.nextSibling.textContent );
+	});
+	
+	// if the use clicks on the DatePicker this means 
+	// it's now a custom date range
+	document.addEventListener('idg:DatePickerChange', ev => {
+		setHeaderDateRange( "custom" );
 	});
 		
 })( bluejay ); 
@@ -11511,7 +11547,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// build <tr>
 			tr.setAttribute( 'data-timestamp', props.bookedTimestamp );
 			tr.insertAdjacentHTML('beforeend', `<td>${props.time}</td>`);
-			tr.insertAdjacentHTML('beforeend', `<td><div class="speciality">${props.clinic[0]}</div><small class="type">${props.clinic[1]}</small></td>`);
+			tr.insertAdjacentHTML('beforeend', `<td><div class="list-name">${props.clinic[0]}</div><div class="code">${props.clinic[1]}</div></td>`);
 			
 			// slightly more complex Elements and dynamic areas...
 			tr.append( clinic.patientMeta( props ));
@@ -12236,7 +12272,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			*/
 			setType( val ){
 				// valid types
-				const valid = ['none', 'person', 'process', 'wait', 'wait long', 'arrive', 'red-flag', 'auto-finish', 'finish', 'comments', 'comments added'].find( test => test == val );
+				const valid = ['none', 'person', 'process', 'wait', 'wait long', 'arrive', 'red-flag', 'fork', 'auto-finish', 'finish', 'comments', 'comments added'].find( test => test == val );
 				if( !valid ) throw new Error(`PathStep: invaild type: "${val}"`);
 				
 				this.type = val;
@@ -12366,7 +12402,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				if( this.status == 'todo' || 
 					this.status == 'todo-next' ||
 					this.status == 'config' || 
-					this.shortcode == 'i-Stop' ){
+					this.shortcode == 'i-Stop' ||
+					this.shortcode == 'i-Fork' ){
 					this.info.classList.add('invisible'); // need the DOM to keep the height consistent
 				} else {
 					this.info.classList.remove('invisible');
@@ -13679,66 +13716,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	
 		
 })( bluejay ); 
-(function( bj ) {
-
-	'use strict';
-	
-	const listManager = document.getElementById('js-worklist-manager');
-
-	if( listManager === null ) return;
-	
-	/*
-	List mode: button names: "all" / "single" / "multi"
-	iDG will set up a default state	
-	*/
-	const modeBtns = bj.nodeArray( listManager.getElementsByTagName('button'));
-	const checkBoxes = bj.nodeArray( listManager.querySelectorAll('input[type=checkbox]'));
-	
-	// work out the mode from the default selected button
-	let mode = listManager.querySelector('button.selected').name;
-	
-	// User changes mode
-	const changeMode = ( btnTarget ) => {
-		modeBtns.forEach( btn => {
-			if( btn == btnTarget ){
-				btn.className = "selected";
-				mode = btn.name; 
-			} else {
-				btn.className = "";
-			}
-		});
-		
-		// set up all the list states based on the mode selection
-		checkBoxes.forEach( input => {
-			input.checked = mode === "all" ? true : false;
-		});
-	};
-	
-	const userSelectsList = ( inputTarget ) => {
-		if( mode == "single"){
-			// make it like a radio
-			checkBoxes.forEach( input => {
-				if( input !== inputTarget ) input.checked = false;
-			});
-		}
-		if( mode == "all"){
-			modeBtns[0].className = "";
-			modeBtns[2].className = "selected";
-		}
-	};
-	
-	// list to the input checkboxes (only thing that changes)
-	listManager.addEventListener('change', ev => {
-		userSelectsList( ev.target );
-	});
-	
-
-	bj.userDown('div.list-mode button', ev => {
-		changeMode( ev.target );
-	});
-	
-	
-})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';
@@ -14731,6 +14708,69 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	
 			
 })(bluejay); 
+(function( bj ) {
+
+	'use strict';
+	
+	const listManager = document.getElementById('js-worklist-manager');
+
+	if( listManager === null ) return;
+	
+	return;
+	
+	/*
+	List mode: button names: "all" / "single" / "multi"
+	iDG will set up a default state	
+	*/
+	const allBtn = listManager.querySelector('button[name=all]');
+	const checkBoxes = bj.nodeArray( listManager.querySelectorAll('input[type=checkbox]'));
+	
+	// work out the mode from the default selected button
+	// "All" or "Favourites"
+	let mode = listManager.querySelector('button.selected').name;
+	
+	// User changes mode
+	const changeMode = ( btnTarget ) => {
+		modeBtns.forEach( btn => {
+			if( btn == btnTarget ){
+				btn.className = "selected";
+				mode = btn.name; 
+			} else {
+				btn.className = "";
+			}
+		});
+		
+		// set up all the list states based on the mode selection
+		checkBoxes.forEach( input => {
+			input.checked = mode === "all" ? true : false;
+		});
+	};
+	
+	const userSelectsList = ( inputTarget ) => {
+		if( mode == "single"){
+			// make it like a radio
+			checkBoxes.forEach( input => {
+				if( input !== inputTarget ) input.checked = false;
+			});
+		}
+		if( mode == "all"){
+			modeBtns[0].className = "";
+			modeBtns[2].className = "selected";
+		}
+	};
+	
+	// list to the input checkboxes (only thing that changes)
+	listManager.addEventListener('change', ev => {
+		userSelectsList( ev.target );
+	});
+	
+
+	bj.userDown('div.list-mode button', ev => {
+		changeMode( ev.target );
+	});
+	
+	
+})( bluejay ); 
 /**
 * Last loaded
 */

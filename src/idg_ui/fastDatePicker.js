@@ -485,6 +485,8 @@
 			model.date.setDate( date );
 			input.value = oeDate( model.date );
 			
+			bj.customEvent('idg:DatePickerChange', model.date );
+			
 			remove(); // done! 
 		};
 		

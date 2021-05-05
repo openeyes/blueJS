@@ -237,7 +237,7 @@
 			// build <tr>
 			tr.setAttribute( 'data-timestamp', props.bookedTimestamp );
 			tr.insertAdjacentHTML('beforeend', `<td>${props.time}</td>`);
-			tr.insertAdjacentHTML('beforeend', `<td><div class="speciality">${props.clinic[0]}</div><small class="type">${props.clinic[1]}</small></td>`);
+			tr.insertAdjacentHTML('beforeend', `<td><div class="list-name">${props.clinic[0]}</div><div class="code">${props.clinic[1]}</div></td>`);
 			
 			// slightly more complex Elements and dynamic areas...
 			tr.append( clinic.patientMeta( props ));
