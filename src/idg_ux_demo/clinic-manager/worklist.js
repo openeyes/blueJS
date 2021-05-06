@@ -117,11 +117,11 @@
 		/**
 		* Add steps to patients
 		* Insert step option is pressed. Update selected patients
-		* @param {Object} dataset from <li>
+		* @param {Object} dataObj
 		*/
-		const addStepsToPatients = ( json ) => {
-			const { c:code, s:status, t:type, i:idg } = ( JSON.parse(json) );
-
+		const addStepsToPatients = ( dataObj ) => {
+			const { c:code, s:status, t:type, i:idg } = dataObj;
+			
 			patients.forEach( patient => {
 				if( patient.isTicked()){
 					if( code == 'c-last'){

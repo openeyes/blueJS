@@ -10446,6 +10446,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	*/
 	const init = () => {
 		bj.log('[Clinic] - intialising');
+	
 		
 		/**
 		A&E was set up as a single list
@@ -10544,12 +10545,27 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* - (Or closes the adder)
 		*/
 		bj.userDown('div.oec-adder .insert-steps li', ( ev ) => {
-			worklists.forEach( list => list.addStepsToPatients( ev.target.dataset.idg ));
+			const data = JSON.parse( ev.target.dataset.idg );
+			// check if configurable. if show a popup
+			if( data.s == "popup"){
+				clinic.configPopup( data.c );
+				data.s = "todo";
+				
+			}
+			worklists.forEach( list => list.addStepsToPatients( data ));
 		});
 		
 		bj.userDown('div.oec-adder .close-btn', () => {
 			worklists.forEach( list => list.untickPatients());
 			adder.hide(); 
+		});
+		
+		// a bit of hack to fake some UIX, cancelling a popup needs 
+		// to remove the steps added
+		bj.userClick('.oe-popup button.js-cancel-popup-steps', ev => {
+			const wrap = bj.getParent( ev.target, '.oe-popup-wrap');
+			wrap.remove();
+			worklists.forEach( list => list.addStepsToPatients( { c:"c-last" }));	
 		});
 		
 		/**
@@ -10676,11 +10692,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			full.set('Img', ['Imaging', 'todo', 'process']);
 			full.set('VisAcu', ['Visual Acuity', 'todo', 'process']);
 			full.set('Orth', ['Orthoptics', 'todo', 'process']);
-			full.set('Fields', ['Visual Fields', 'config', 'process']);
 			full.set('Ref', ['Refraction', 'todo', 'process']);
 			
-			full.set('PSD', ['Patient Specific Directive', 'todo', 'process']);
-			full.set('PGD', ['Patient Group Directive', 'todo', 'process']);
+			full.set('Fields', ['Visual Fields', 'popup', 'process']);
+			full.set('i-drug-admin', ['Drug Administration Preset Order', 'popup', 'process']);
 			
 			full.set('c-last', ['Remove last pathway step']);
 				
@@ -10722,7 +10737,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				inserts.append( group );
 			};
 		
-			buildGroup( 'Common', ['Colour','Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort());
+			buildGroup( 'Common', ['Colour','Dilate', 'VisAcu', 'Orth', 'Ref', 'Img' ].sort());
+			buildGroup( 'Configurable', ['i-drug-admin', 'Fields']);
 			buildGroup('People', ['Mr MM', 'Dr GJB', 'Dr GP', 'Su', 'Dr ZF','Nurse'].sort());
 			// remove button
 			buildGroup('Remove "todo" steps from selected patient', ['c-last'], 'removeTodos' );
@@ -10817,6 +10833,48 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	clinic.clock = showClock;
 	  
 
+})( bluejay, bluejay.namespace('clinic')); 
+(function( bj, clinic ){
+
+	'use strict';	
+	
+	/**
+	* Adder configurable popup step
+	*/
+	const popup = ( stepCode ) => {
+		// keeping this pretty basic to demo the UIX concept
+		let php; 
+		switch( stepCode ){
+			case 'i-drug-admin': php = "drugadmin-preset-orders.php";
+			break;
+			default: php = `${ stepCode}.php`;
+		}
+
+		// xhr returns a Promise... 
+		bj.xhr('/idg-php/load/pathstep-configurable/' + php)
+			.then( xreq => {
+				const div = document.createElement('div');
+				div.className = "oe-popup-wrap";
+				div.innerHTML = xreq.html;
+				// reflow DOM
+				document.body.append( div );
+				
+				// fake a click through
+				// steps are already added (config makes no difference but shows the UIX)
+				div.querySelector('.js-fake-add')
+					.addEventListener("mousedown", (ev) => {
+						ev.stopPropagation();
+						bj.remove(div);
+					},{ once:true });
+					
+				// cancel is handled by the Clinic app
+			})
+			.catch(e => console.log('overlayPopupJSON: Failed to load',e));  // maybe output this to UI at somepoint, but for now...	
+	};
+	
+	// make component available to Clinic SPA	
+	clinic.configPopup = popup;			
+  
 })( bluejay, bluejay.namespace('clinic')); 
 (function( bj ){
 
@@ -12091,11 +12149,11 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		/**
 		* Add steps to patients
 		* Insert step option is pressed. Update selected patients
-		* @param {Object} dataset from <li>
+		* @param {Object} dataObj
 		*/
-		const addStepsToPatients = ( json ) => {
-			const { c:code, s:status, t:type, i:idg } = ( JSON.parse(json) );
-
+		const addStepsToPatients = ( dataObj ) => {
+			const { c:code, s:status, t:type, i:idg } = dataObj;
+			
 			patients.forEach( patient => {
 				if( patient.isTicked()){
 					if( code == 'c-last'){
@@ -14716,57 +14774,35 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 
 	if( listManager === null ) return;
 	
-	return;
-	
 	/*
-	List mode: button names: "all" / "single" / "multi"
+	List mode: button names: "all"
 	iDG will set up a default state	
 	*/
-	const allBtn = listManager.querySelector('button[name=all]');
 	const checkBoxes = bj.nodeArray( listManager.querySelectorAll('input[type=checkbox]'));
-	
-	// work out the mode from the default selected button
-	// "All" or "Favourites"
-	let mode = listManager.querySelector('button.selected').name;
-	
+	const allBtn = listManager.querySelector('button[name=all]');
+
 	// User changes mode
-	const changeMode = ( btnTarget ) => {
-		modeBtns.forEach( btn => {
-			if( btn == btnTarget ){
-				btn.className = "selected";
-				mode = btn.name; 
-			} else {
-				btn.className = "";
-			}
-		});
-		
+	const checkAll = ( b ) => {
 		// set up all the list states based on the mode selection
-		checkBoxes.forEach( input => {
-			input.checked = mode === "all" ? true : false;
-		});
-	};
-	
-	const userSelectsList = ( inputTarget ) => {
-		if( mode == "single"){
-			// make it like a radio
-			checkBoxes.forEach( input => {
-				if( input !== inputTarget ) input.checked = false;
-			});
-		}
-		if( mode == "all"){
-			modeBtns[0].className = "";
-			modeBtns[2].className = "selected";
-		}
+		checkBoxes.forEach( input => input.checked = b );
 	};
 	
 	// list to the input checkboxes (only thing that changes)
 	listManager.addEventListener('change', ev => {
-		userSelectsList( ev.target );
+		allBtn.classList.remove('selected');
 	});
 	
 
-	bj.userDown('div.list-mode button', ev => {
-		changeMode( ev.target );
+	allBtn.addEventListener('mousedown', ev => {
+		if( allBtn.classList.contains("selected")){
+			checkAll( false );
+			allBtn.classList.remove('selected');
+			setTimeout(() => allBtn.blur(), 100);
+		} else {
+			checkAll( true ); 
+			
+			allBtn.classList.add('selected');
+		}
 	});
 	
 	

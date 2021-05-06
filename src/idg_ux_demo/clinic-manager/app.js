@@ -14,6 +14,7 @@
 	*/
 	const init = () => {
 		bj.log('[Clinic] - intialising');
+	
 		
 		/**
 		A&E was set up as a single list
@@ -112,12 +113,27 @@
 		* - (Or closes the adder)
 		*/
 		bj.userDown('div.oec-adder .insert-steps li', ( ev ) => {
-			worklists.forEach( list => list.addStepsToPatients( ev.target.dataset.idg ));
+			const data = JSON.parse( ev.target.dataset.idg );
+			// check if configurable. if show a popup
+			if( data.s == "popup"){
+				clinic.configPopup( data.c );
+				data.s = "todo";
+				
+			}
+			worklists.forEach( list => list.addStepsToPatients( data ));
 		});
 		
 		bj.userDown('div.oec-adder .close-btn', () => {
 			worklists.forEach( list => list.untickPatients());
 			adder.hide(); 
+		});
+		
+		// a bit of hack to fake some UIX, cancelling a popup needs 
+		// to remove the steps added
+		bj.userClick('.oe-popup button.js-cancel-popup-steps', ev => {
+			const wrap = bj.getParent( ev.target, '.oe-popup-wrap');
+			wrap.remove();
+			worklists.forEach( list => list.addStepsToPatients( { c:"c-last" }));	
 		});
 		
 		/**

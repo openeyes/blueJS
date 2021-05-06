@@ -60,11 +60,10 @@
 			full.set('Img', ['Imaging', 'todo', 'process']);
 			full.set('VisAcu', ['Visual Acuity', 'todo', 'process']);
 			full.set('Orth', ['Orthoptics', 'todo', 'process']);
-			full.set('Fields', ['Visual Fields', 'config', 'process']);
 			full.set('Ref', ['Refraction', 'todo', 'process']);
 			
-			full.set('PSD', ['Patient Specific Directive', 'todo', 'process']);
-			full.set('PGD', ['Patient Group Directive', 'todo', 'process']);
+			full.set('Fields', ['Visual Fields', 'popup', 'process']);
+			full.set('i-drug-admin', ['Drug Administration Preset Order', 'popup', 'process']);
 			
 			full.set('c-last', ['Remove last pathway step']);
 				
@@ -106,7 +105,8 @@
 				inserts.append( group );
 			};
 		
-			buildGroup( 'Common', ['Colour','Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Fields' ].sort());
+			buildGroup( 'Common', ['Colour','Dilate', 'VisAcu', 'Orth', 'Ref', 'Img' ].sort());
+			buildGroup( 'Configurable', ['i-drug-admin', 'Fields']);
 			buildGroup('People', ['Mr MM', 'Dr GJB', 'Dr GP', 'Su', 'Dr ZF','Nurse'].sort());
 			// remove button
 			buildGroup('Remove "todo" steps from selected patient', ['c-last'], 'removeTodos' );
