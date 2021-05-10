@@ -7577,6 +7577,39 @@ Updated to Vanilla JS for IDG
 	
 		
 })(bluejay); 
+(function( bj ) {
+
+	'use strict';	
+	
+	bj.addModule('autoCompleteInput');
+
+	const autoComplete = input => {
+		const rect = input.getBoundingClientRect();
+		
+		// build a demo autocomplete
+		const ul = bj.dom('ul', 'oe-autocomplete');
+		ul.innerHTML = [
+			`<li>Example of an autocomplete</li>`,
+			`<li>Another longer example of an autocomplete suggestion</li>`,
+			`<li>Abnormal communication between pericardial sac and peritoneal cavity</li>`
+		].join('');
+		
+		ul.style.top = (rect.top + rect.height) + 'px';
+		ul.style.left = rect.left + 'px';
+		
+		document.body.append( ul );
+		
+		document.addEventListener('focusout', ev => {
+			ul.remove();
+		}, { once: true });
+		
+	}
+	
+	
+	
+	bj.userDown('.js-idg-demo-autocomplete', ev => autoComplete( ev.target ));	
+	
+})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';	
@@ -11023,7 +11056,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		// Advanced search complex filters (not working in iDG)
 		searchFilters.innerHTML = Mustache.render( [
-			`<input class="search" type="text" placeholder="Patient name or number">`,	
+			`<input class="search" type="text" placeholder="Patient or number">`,	
 			`<div class="group"><select>{{#age}}<option>{{.}}</option>{{/age}}</select></div>`,
 			`<div class="group"><select>{{#wait}}<option>{{.}}</option>{{/wait}}</select></div>`,
 			`<div class="group"><select>{{#step}}<option>{{.}}</option>{{/step}}</select></div>`,
@@ -11033,8 +11066,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			`<div class="group"><select>{{#states}}<option>{{.}}</option>{{/states}}</select></div>`,
 		].join(''), {
 			age: ['All ages', '0 - 16y Paeds', '16y+ Adults'],
-			wait: ['Wait', '0 - 1hr', '2hr - 3hr', '3hr - 4rh', '4hr +'],
-			step: ['Location', 'Visual acuity', 'Fields', 'Colour photos', 'OCT', 'Dilate'],
+			wait: ['Wait time', '0 - 1hr', '2hr - 3hr', '3hr - 4rh', '4hr +'],
+			step: ['Location/Waiting for', 'Visual acuity', 'Fields', 'Colour photos', 'OCT', 'Dilate'],
 			assigned: ['People', 'Unassigned', 'Nurse', 'Dr', 'Dr Georg Joseph Beer', 'Dr George Bartischy', 'Mr Michael Morgan', 'Sushruta', 'Dr Zofia Falkowska'],
 			flags: ['Flagged', 'Change in puplis', 'Systemically unwell', 'etc..', 'Not flagged'],
 			risks: ['Risks/Priortiy', 'High/Immediate', 'Medium/Urgent', 'Low/Standard' ],
