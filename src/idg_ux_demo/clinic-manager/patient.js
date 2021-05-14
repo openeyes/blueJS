@@ -90,7 +90,7 @@
 		const onChangeComplete = () => {
 			const completeHTML = model.status == "done" ?
 				'<small class="fade">Done</small>' :
-				`<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model.uid}"></i>`;
+				`<i class="oe-i finish medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Finish pathway" data-patient="${model.uid}"></i>`;
 
 			// update DOM
 			td.complete.innerHTML = model.status == "later" ?  "" : completeHTML;					

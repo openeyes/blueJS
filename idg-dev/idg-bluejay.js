@@ -11491,7 +11491,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const onChangeComplete = () => {
 			const completeHTML = model.status == "done" ?
 				'<small class="fade">Done</small>' :
-				`<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Patient pathway finished" data-patient="${model.uid}"></i>`;
+				`<i class="oe-i finish medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Finish pathway" data-patient="${model.uid}"></i>`;
 
 			// update DOM
 			td.complete.innerHTML = model.status == "later" ?  "" : completeHTML;					
@@ -12363,7 +12363,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			*/
 			setType( val ){
 				// valid types
-				const valid = ['none', 'person', 'process', 'wait', 'wait long', 'arrive', 'red-flag', 'fork', 'auto-finish', 'finish', 'comments', 'comments added'].find( test => test == val );
+				const valid = ['none', 'person', 'process', 'wait', 'wait long', 'arrive', 'red-flag', 'fork', 'break', 'auto-finish', 'finish', 'comments', 'comments added'].find( test => test == val );
 				if( !valid ) throw new Error(`PathStep: invaild type: "${val}"`);
 				
 				this.type = val;
@@ -13528,23 +13528,31 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		provide a dropdown to switch the image in the canvas to test different sizes... 
 		*/
 		const selectImage = document.getElementById('js-idg-annotate-image');
-		const imageOptions = selectImage.options;
 		
-		const canvasOptionImg = ( n ) => {
-			const optionSelected = imageOptions[ n ];
-			const imgSize = ( JSON.parse(optionSelected.dataset.idg) );
-			resetCanvas( optionSelected.value, imgSize.w, imgSize.h );
-		};
+		// Freehand Draw element for MEH just demos a single image:
+		if( selectImage != null ){
+			const imageOptions = selectImage.options;
 		
-		
-		selectImage.addEventListener('change', () => {
-			canvasOptionImg( imageOptions.selectedIndex );
-		}, false);
+			const canvasOptionImg = ( n ) => {
+				const optionSelected = imageOptions[ n ];
+				const imgSize = ( JSON.parse(optionSelected.dataset.idg) );
+				resetCanvas( optionSelected.value, imgSize.w, imgSize.h );
+			};
+			
+			selectImage.addEventListener('change', () => {
+				canvasOptionImg( imageOptions.selectedIndex );
+			}, false);
+			
+			canvasOptionImg( 0 );
+			
+		} else {
+			// just load in an Image to draw on
+			resetCanvas('widefield', 1392, 1010 );
+		}
 		
 		/*
 		Quick init
 		*/
-		canvasOptionImg( 0 );
 		toolChange( document.querySelector('.js-tool-btn[name="freedraw"]'));
 	};
 	

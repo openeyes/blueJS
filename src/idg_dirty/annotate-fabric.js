@@ -245,23 +245,31 @@
 		provide a dropdown to switch the image in the canvas to test different sizes... 
 		*/
 		const selectImage = document.getElementById('js-idg-annotate-image');
-		const imageOptions = selectImage.options;
 		
-		const canvasOptionImg = ( n ) => {
-			const optionSelected = imageOptions[ n ];
-			const imgSize = ( JSON.parse(optionSelected.dataset.idg) );
-			resetCanvas( optionSelected.value, imgSize.w, imgSize.h );
-		};
+		// Freehand Draw element for MEH just demos a single image:
+		if( selectImage != null ){
+			const imageOptions = selectImage.options;
 		
-		
-		selectImage.addEventListener('change', () => {
-			canvasOptionImg( imageOptions.selectedIndex );
-		}, false);
+			const canvasOptionImg = ( n ) => {
+				const optionSelected = imageOptions[ n ];
+				const imgSize = ( JSON.parse(optionSelected.dataset.idg) );
+				resetCanvas( optionSelected.value, imgSize.w, imgSize.h );
+			};
+			
+			selectImage.addEventListener('change', () => {
+				canvasOptionImg( imageOptions.selectedIndex );
+			}, false);
+			
+			canvasOptionImg( 0 );
+			
+		} else {
+			// just load in an Image to draw on
+			resetCanvas('widefield', 1392, 1010 );
+		}
 		
 		/*
 		Quick init
 		*/
-		canvasOptionImg( 0 );
 		toolChange( document.querySelector('.js-tool-btn[name="freedraw"]'));
 	};
 	
