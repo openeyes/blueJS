@@ -141,6 +141,28 @@
 		};
 		
 		/**
+		* Shift step position 
+		* this is only for "todo" steps 
+		* @param {Number} direction - 'c-last' (c-all not using)
+		*/
+		const shiftStep = ( direction ) => {
+			if( !pathSteps.length ) return;
+ 			
+			if( code == 'c-last' ){
+				const last = pathSteps[ pathSteps.length - 1 ];
+				const status = last.getStatus();
+				
+				// check ok to remove
+				if( status == "todo" ||  
+					status == "config"){
+						
+					last.remove();
+					pathSteps.splice( -1, 1 );
+				}
+			}
+		};
+		
+		/**
 		* User has removed a step directly update the pathway array
 		* Patient gets a callback from PathStep on any change.
 		* Find the PathStep and remove it from the Virtual pathway

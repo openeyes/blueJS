@@ -27,7 +27,7 @@
 				gui.pathStepPopup.hide();
 			}
 		});
-		
+	
 		const _render = () => ({
 			/**
 			* Update the DOM CSS
@@ -37,7 +37,7 @@
 				this.span.className = [ selector, this.status, this.type ].join(' ');
 				this.displayInfo();
 				return this.span;
-			}
+			},
 		});
 		
 		const _setters = () => ({
@@ -136,8 +136,9 @@
 			
 			changeState( newStatus ){
 				this.setStatus( newStatus );
-				// internal change - patient needs to know:
-				if( this.callback ) this.callback( this );
+				console.log( `Change status: ${this.shortcode}, newStatus: ${newStatus}`);
+				
+				bj.customEvent('idg:pathStepChange', this );
 				
 				if( newStatus == 'done'){
 					gui.pathStepPopup.remove();
@@ -152,14 +153,6 @@
 			*/
 			setIdgPopupCode( val ){
 				this.idgCode = val;
-			},
-			
-			/**
-			* IDG specific hack to provide a specific code for demo popups
-			* @param {Function} func
-			*/
-			setCallback( func ){
-				this.callback = func;
 			}
 			
 		});
@@ -201,8 +194,7 @@
 							this.info.textContent = mins; 
 							if( mins > 59 && this.shortcode !== 'Waiting' ){
 								this.setCode('Waiting');
-								// internal change - patient needs to know:
-								if( this.callback ) this.callback( this );
+								bj.customEvent('idg:pathStepChange', this );
 							}
 							this.countWaitMins(); // keep counting the mins?
 						}, 60000 );
@@ -242,7 +234,7 @@
 			userRemove(){
 				this.remove();
 				this.status = "userRemoved";
-				if( this.callback ) this.callback( this );
+				bj.customEvent('idg:pathStepChange', this );
 			}
 		});
 		
@@ -279,10 +271,10 @@
 		* API - add new PathStep to DOM
 		* @param {Object} step properties
 		* @param {DOM} parentNode 
-		* @param {Function} cb - Callback - CM Patient needs to know of any changes
+		* @param {String} UID token - Patient Pathway UID, need this for Event listener
 		* @returns {PathStep}
 		*/
-		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, parentNode, cb = false ) => {
+		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, parentNode, pathwayID = null ) => {
 			
 			// new DOM element, check for icons
 			const stepName = shortcode.startsWith('i-') ? 
@@ -295,6 +287,7 @@
 			ps.setStatus( status );
 			ps.setType( type );
 			ps.setInfo( info );
+			ps.pathwayID = pathwayID;
 			
 			// render DOM
 			const spanDOM = ps.render();
@@ -307,9 +300,6 @@
 		
 			// add to a parentNode DOM?
 			if( parentNode ) parentNode.append( spanDOM );
-			
-			// patient callback?
-			if( cb ) ps.setCallback( cb );
 			
 			return ps; // return new PathStep
 		};

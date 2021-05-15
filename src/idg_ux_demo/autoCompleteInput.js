@@ -24,9 +24,7 @@
 			ul.remove();
 		}, { once: true });
 		
-	}
-	
-	
+	};
 	
 	bj.userDown('.js-idg-demo-autocomplete', ev => autoComplete( ev.target ));	
 	

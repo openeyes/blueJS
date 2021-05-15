@@ -7282,98 +7282,6 @@ Updated to Vanilla JS for IDG
 		
 
 })( bluejay ); 
-(function( bj ) {
-
-	'use strict';	
-	
-	if( document.querySelector('.openers-menu') === null ) return;
-
-	
-	/**
-	Behaviour for the Logo Panel and the Menu Panel
-	is identical, however the Menu isn't included on 
-	the Login page
-	*/
-
-	const css = {
-		btnActive: 'active',
-		panelShow: 'show'
-	};
-
-	/*
-	Methods	
-	*/
-	const _change = () => ({
-		/**
-		* Callback for 'down'
-		*/
-		change: function(){
-			if(this.open)	this.hide();
-			else			this.show();
-		}
-	});
-	
-	const _show = () => ({
-		/**
-		* Callback for 'enter'
-		*/
-		show:function(){
-			if(this.open) return;
-			this.open = true;
-			this.btn.classList.add( css.btnActive );
-			
-			// panel needs a bit of work
-			//clearTimeout( this.hideTimerID ); 
-			this.panel.classList.add( css.panelShow );
-			this.panel.style.pointerEvents = "auto";
-		}	
-	});
-	
-	const _hide = () => ({
-		/**
-		* Callback for 'leave'
-		*/
-		hide:function(){
-			if(this.open === false) return;
-			this.open = false;
-			this.btn.classList.remove( css.btnActive );
-			this.panel.classList.remove( css.panelShow );
-			this.panel.style.pointerEvents = "none";
-			
-		}
-	});
-	
-	/**
-	* navSlidePanel.
-	* Pattern is the same for Logo and Menu
-	* @param {Object} me - setup object
-	* @returns navSlidePanel instance
-	*/
-	const navSlidePanel = ( me ) => {
-		return Object.assign( me, _change(), _show(), _hide() );
-	};
-	
-	
-	/**
-	Init - Menu
-	*/
-	const menuBtn = '#js-openers-menu-btn';
-	
-	if( document.querySelector( menuBtn ) === null ) return; // login page
-	
-	const menu = navSlidePanel({
-		btn: document.querySelector( menuBtn ),
-		panel: document.querySelector('.menu-info'),
-		open: false,
-	});
-	
-	// Events
-	bj.userDown( menuBtn, () => menu.change());			
-	bj.userEnter( menuBtn, () => menu.show());
-	bj.userLeave('.openers-menu', () => menu.hide());
-	
-
-})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';
@@ -7603,9 +7511,7 @@ Updated to Vanilla JS for IDG
 			ul.remove();
 		}, { once: true });
 		
-	}
-	
-	
+	};
 	
 	bj.userDown('.js-idg-demo-autocomplete', ev => autoComplete( ev.target ));	
 	
@@ -11038,7 +10944,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		[
 			['All','all'],
 			['Scheduled','later'], // not needed for A&E
-			['In Clinic','clinic'],
+			['Arrived','clinic'],
 			['-f','-f'], 
 			//['-r2','-r2'],
 			//['-r3','-r3'],
@@ -11243,6 +11149,28 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* @param {String} code - 'c-last' (c-all not using)
 		*/
 		const removeStep = ( code ) => {
+			if( !pathSteps.length ) return;
+ 			
+			if( code == 'c-last' ){
+				const last = pathSteps[ pathSteps.length - 1 ];
+				const status = last.getStatus();
+				
+				// check ok to remove
+				if( status == "todo" ||  
+					status == "config"){
+						
+					last.remove();
+					pathSteps.splice( -1, 1 );
+				}
+			}
+		};
+		
+		/**
+		* Shift step position 
+		* this is only for "todo" steps 
+		* @param {Number} direction - 'c-last' (c-all not using)
+		*/
+		const shiftStep = ( direction ) => {
 			if( !pathSteps.length ) return;
  			
 			if( code == 'c-last' ){
@@ -11500,11 +11428,15 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		model.views.add( onChangeComplete );
 		
 		/**
-		* @callback for PathStep change
+		* @listen for PathStep change
 		* need to know if a pathStep changes state
-		* @param {PathStep} pathStep - ps new status
 		*/
-		const onPathStepChange = ( pathStep ) => {
+		document.addEventListener('idg:pathStepChange', ev => {
+			const pathStep = ev.detail;
+			
+			// only interested in PathSteps events for my pathway!
+			if( pathStep.pathwayID != model.uid ) return;
+			
 			switch( pathStep.getStatus()){
 				case "active": 
 					pathway.stopWaiting();
@@ -11525,8 +11457,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			// update patient status based on pathway
 			model.status = pathway.getStatus();
-		};
 			
+		}, { capture: true });	
 		
 		/**
 		* @method
@@ -11558,7 +11490,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				step.info = bj.clock24( new Date ( step.timestamp ));
 			}
 			// add step to pathway, along with the callback
-			pathway.addStep( gui.pathStep( step, null, onPathStepChange ));
+			pathway.addStep( gui.pathStep( step, null, model.uid ));
 			
 			// update patient status based on pathway
 			model.status = pathway.getStatus();
@@ -12301,7 +12233,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				gui.pathStepPopup.hide();
 			}
 		});
-		
+	
 		const _render = () => ({
 			/**
 			* Update the DOM CSS
@@ -12311,7 +12243,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				this.span.className = [ selector, this.status, this.type ].join(' ');
 				this.displayInfo();
 				return this.span;
-			}
+			},
 		});
 		
 		const _setters = () => ({
@@ -12410,8 +12342,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			changeState( newStatus ){
 				this.setStatus( newStatus );
-				// internal change - patient needs to know:
-				if( this.callback ) this.callback( this );
+				console.log( `Change status: ${this.shortcode}, newStatus: ${newStatus}`);
+				
+				bj.customEvent('idg:pathStepChange', this );
 				
 				if( newStatus == 'done'){
 					gui.pathStepPopup.remove();
@@ -12426,14 +12359,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			*/
 			setIdgPopupCode( val ){
 				this.idgCode = val;
-			},
-			
-			/**
-			* IDG specific hack to provide a specific code for demo popups
-			* @param {Function} func
-			*/
-			setCallback( func ){
-				this.callback = func;
 			}
 			
 		});
@@ -12475,8 +12400,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 							this.info.textContent = mins; 
 							if( mins > 59 && this.shortcode !== 'Waiting' ){
 								this.setCode('Waiting');
-								// internal change - patient needs to know:
-								if( this.callback ) this.callback( this );
+								bj.customEvent('idg:pathStepChange', this );
 							}
 							this.countWaitMins(); // keep counting the mins?
 						}, 60000 );
@@ -12516,7 +12440,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			userRemove(){
 				this.remove();
 				this.status = "userRemoved";
-				if( this.callback ) this.callback( this );
+				bj.customEvent('idg:pathStepChange', this );
 			}
 		});
 		
@@ -12553,10 +12477,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* API - add new PathStep to DOM
 		* @param {Object} step properties
 		* @param {DOM} parentNode 
-		* @param {Function} cb - Callback - CM Patient needs to know of any changes
+		* @param {String} UID token - Patient Pathway UID, need this for Event listener
 		* @returns {PathStep}
 		*/
-		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, parentNode, cb = false ) => {
+		const addPathStep = ({ shortcode, status, type, info, idgPopupCode }, parentNode, pathwayID = null ) => {
 			
 			// new DOM element, check for icons
 			const stepName = shortcode.startsWith('i-') ? 
@@ -12569,6 +12493,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			ps.setStatus( status );
 			ps.setType( type );
 			ps.setInfo( info );
+			ps.pathwayID = pathwayID;
 			
 			// render DOM
 			const spanDOM = ps.render();
@@ -12581,9 +12506,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 			// add to a parentNode DOM?
 			if( parentNode ) parentNode.append( spanDOM );
-			
-			// patient callback?
-			if( cb ) ps.setCallback( cb );
 			
 			return ps; // return new PathStep
 		};
@@ -12712,6 +12634,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			// update DOM
 			document.body.append( popup );
+			
+			/**
+			* Users scrolls main window, this will disconnect the popup from the step
+			* this is a bit hack but it demo's the UIX behaviour!
+			*/
+			document.body.querySelector('main').addEventListener('scroll', ev => {
+				removeReset();
+			}, { capture:true,  once:true });
 		};
 		
 		/**
@@ -12761,6 +12691,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			removeReset();
 		};
 		
+		
 		/*
 		Event delegation
 		*/
@@ -12785,6 +12716,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				break;
 			}
 		});
+		
+		
+		
 	    
 	    // API 
 	    return { full, quick, hide, remove:removeReset };

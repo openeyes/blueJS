@@ -99,11 +99,15 @@
 		model.views.add( onChangeComplete );
 		
 		/**
-		* @callback for PathStep change
+		* @listen for PathStep change
 		* need to know if a pathStep changes state
-		* @param {PathStep} pathStep - ps new status
 		*/
-		const onPathStepChange = ( pathStep ) => {
+		document.addEventListener('idg:pathStepChange', ev => {
+			const pathStep = ev.detail;
+			
+			// only interested in PathSteps events for my pathway!
+			if( pathStep.pathwayID != model.uid ) return;
+			
 			switch( pathStep.getStatus()){
 				case "active": 
 					pathway.stopWaiting();
@@ -124,8 +128,8 @@
 			
 			// update patient status based on pathway
 			model.status = pathway.getStatus();
-		};
 			
+		}, { capture: true });	
 		
 		/**
 		* @method
@@ -157,7 +161,7 @@
 				step.info = bj.clock24( new Date ( step.timestamp ));
 			}
 			// add step to pathway, along with the callback
-			pathway.addStep( gui.pathStep( step, null, onPathStepChange ));
+			pathway.addStep( gui.pathStep( step, null, model.uid ));
 			
 			// update patient status based on pathway
 			model.status = pathway.getStatus();

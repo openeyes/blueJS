@@ -25,7 +25,7 @@
 		[
 			['All','all'],
 			['Scheduled','later'], // not needed for A&E
-			['In Clinic','clinic'],
+			['Arrived','clinic'],
 			['-f','-f'], 
 			//['-r2','-r2'],
 			//['-r3','-r3'],

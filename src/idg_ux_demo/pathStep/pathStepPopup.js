@@ -114,6 +114,14 @@
 			
 			// update DOM
 			document.body.append( popup );
+			
+			/**
+			* Users scrolls main window, this will disconnect the popup from the step
+			* this is a bit hack but it demo's the UIX behaviour!
+			*/
+			document.body.querySelector('main').addEventListener('scroll', ev => {
+				removeReset();
+			}, { capture:true,  once:true });
 		};
 		
 		/**
@@ -163,6 +171,7 @@
 			removeReset();
 		};
 		
+		
 		/*
 		Event delegation
 		*/
@@ -187,6 +196,9 @@
 				break;
 			}
 		});
+		
+		
+		
 	    
 	    // API 
 	    return { full, quick, hide, remove:removeReset };
