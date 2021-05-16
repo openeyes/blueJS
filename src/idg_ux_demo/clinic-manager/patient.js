@@ -99,39 +99,6 @@
 		model.views.add( onChangeComplete );
 		
 		/**
-		* @listen for PathStep change
-		* need to know if a pathStep changes state
-		*/
-		document.addEventListener('idg:pathStepChange', ev => {
-			const pathStep = ev.detail;
-			
-			// only interested in PathSteps events for my pathway!
-			if( pathStep.pathwayID != model.uid ) return;
-			
-			switch( pathStep.getStatus()){
-				case "active": 
-					pathway.stopWaiting();
-				break;
-				case "done":
-					/*
-					Add a waiting step, however if pathway 
-					hits an 'auto-finish', it returns False.
-					*/
-					if( pathway.addWaiting() == false ){
-						onComplete( true ); // auto-finish!
-					}
-				break;
-				case "userRemoved":
-					pathway.deleteRemovedStep( pathStep.key ); // User deleted through PathStepPopup
-				break;
-			}
-			
-			// update patient status based on pathway
-			model.status = pathway.getStatus();
-			
-		}, { capture: true });	
-		
-		/**
 		* @method
 		* Add PathStep to patient pathway
 		* @param {Object} step
@@ -178,7 +145,55 @@
 			model.status = pathway.getStatus();
 		};
 		
+		/**
+		* @listener: PathStep change
+		* need to know if a pathStep changes state / or if the
+		* user has shifted the position.
+		*/
+		document.addEventListener('idg:pathStepChange', ev => {
+			const pathStep = ev.detail;
+			
+			// only interested in PathSteps events for my pathway!
+			if( pathStep.pathwayID != model.uid ) return;
+			
+			switch( pathStep.getStatus()){
+				case "active": 
+					pathway.stopWaiting();
+				break;
+				case "done":
+					/*
+					Add a waiting step, however if pathway 
+					hits an 'auto-finish', it returns False.
+					*/
+					if( pathway.addWaiting() == false ){
+						onComplete( true ); // auto-finish!
+					}
+				break;
+				case "userRemoved":
+					pathway.deleteRemovedStep( pathStep.key ); // User deleted through PathStepPopup
+				break;
+			}
+			
+			// update patient status based on pathway
+			model.status = pathway.getStatus();
+			
+		}, { capture: true });
 		
+		/**
+		* @listener: PathStep shift position in pathway
+		* This comes directly from the PathStepPopup
+		*/
+		document.addEventListener('idg:pathStepShift', ev => {
+			const pathStep = ev.detail.pathStep;
+			const direction = ev.detail.shift;
+			
+			// only interested in PathSteps events for my pathway!
+			if( pathStep.pathwayID != model.uid ) return;
+			
+			pathway.shiftStepPos( pathStep, direction );
+			
+		}, { capture: true });
+
 		/**
 		* Set Priority (A&E has priority)
 		* uses "circle" icons

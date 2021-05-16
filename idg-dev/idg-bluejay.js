@@ -11153,12 +11153,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
  			
 			if( code == 'c-last' ){
 				const last = pathSteps[ pathSteps.length - 1 ];
-				const status = last.getStatus();
-				
 				// check ok to remove
-				if( status == "todo" ||  
-					status == "config"){
-						
+				if( last.isRemovable()){
 					last.remove();
 					pathSteps.splice( -1, 1 );
 				}
@@ -11166,24 +11162,24 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		};
 		
 		/**
-		* Shift step position 
-		* this is only for "todo" steps 
-		* @param {Number} direction - 'c-last' (c-all not using)
+		* Shift step position - only "todo" steps have these buttons
+		* This comes from the PathStepPopup
+		* @param {*} PathStep
+		* @param {Number} direction - either 1 or -1 (right / left)
 		*/
-		const shiftStep = ( direction ) => {
-			if( !pathSteps.length ) return;
- 			
-			if( code == 'c-last' ){
-				const last = pathSteps[ pathSteps.length - 1 ];
-				const status = last.getStatus();
-				
-				// check ok to remove
-				if( status == "todo" ||  
-					status == "config"){
-						
-					last.remove();
-					pathSteps.splice( -1, 1 );
-				}
+		const shiftStepPos = ( ps, direction ) => {
+			// find step in the pathway
+			const stepIndex = pathSteps.findIndex( el => el == ps );
+			// now, can I shift it?
+			if( stepIndex ){
+				const swapIndex = stepIndex + direction;
+				const swap = pathSteps[ swapIndex ];
+				if( swap && swap.isRemovable()){
+					swapSteps( stepIndex, swapIndex );
+					renderPathway();
+					// this will cause the popup to reposition.
+					ps.renderPopup();
+				}	
 			}
 		};
 		
@@ -11314,6 +11310,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			getStatus,
 			addStep,
 			removeStep,
+			shiftStepPos,
 			deleteRemovedStep,
 			stopWaiting,
 			addWaiting, 
@@ -11428,39 +11425,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		model.views.add( onChangeComplete );
 		
 		/**
-		* @listen for PathStep change
-		* need to know if a pathStep changes state
-		*/
-		document.addEventListener('idg:pathStepChange', ev => {
-			const pathStep = ev.detail;
-			
-			// only interested in PathSteps events for my pathway!
-			if( pathStep.pathwayID != model.uid ) return;
-			
-			switch( pathStep.getStatus()){
-				case "active": 
-					pathway.stopWaiting();
-				break;
-				case "done":
-					/*
-					Add a waiting step, however if pathway 
-					hits an 'auto-finish', it returns False.
-					*/
-					if( pathway.addWaiting() == false ){
-						onComplete( true ); // auto-finish!
-					}
-				break;
-				case "userRemoved":
-					pathway.deleteRemovedStep( pathStep.key ); // User deleted through PathStepPopup
-				break;
-			}
-			
-			// update patient status based on pathway
-			model.status = pathway.getStatus();
-			
-		}, { capture: true });	
-		
-		/**
 		* @method
 		* Add PathStep to patient pathway
 		* @param {Object} step
@@ -11507,7 +11471,55 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			model.status = pathway.getStatus();
 		};
 		
+		/**
+		* @listener: PathStep change
+		* need to know if a pathStep changes state / or if the
+		* user has shifted the position.
+		*/
+		document.addEventListener('idg:pathStepChange', ev => {
+			const pathStep = ev.detail;
+			
+			// only interested in PathSteps events for my pathway!
+			if( pathStep.pathwayID != model.uid ) return;
+			
+			switch( pathStep.getStatus()){
+				case "active": 
+					pathway.stopWaiting();
+				break;
+				case "done":
+					/*
+					Add a waiting step, however if pathway 
+					hits an 'auto-finish', it returns False.
+					*/
+					if( pathway.addWaiting() == false ){
+						onComplete( true ); // auto-finish!
+					}
+				break;
+				case "userRemoved":
+					pathway.deleteRemovedStep( pathStep.key ); // User deleted through PathStepPopup
+				break;
+			}
+			
+			// update patient status based on pathway
+			model.status = pathway.getStatus();
+			
+		}, { capture: true });
 		
+		/**
+		* @listener: PathStep shift position in pathway
+		* This comes directly from the PathStepPopup
+		*/
+		document.addEventListener('idg:pathStepShift', ev => {
+			const pathStep = ev.detail.pathStep;
+			const direction = ev.detail.shift;
+			
+			// only interested in PathSteps events for my pathway!
+			if( pathStep.pathwayID != model.uid ) return;
+			
+			pathway.shiftStepPos( pathStep, direction );
+			
+		}, { capture: true });
+
 		/**
 		* Set Priority (A&E has priority)
 		* uses "circle" icons
@@ -12288,6 +12300,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			getStatus(){
 				return this.status;	
 			},
+			
+			isRemovable(){
+				return (
+					this.status == 'config' ||
+					this.status == "todo" ||
+					this.status == "todo-next"
+				);
+			},
 						
 			/**
 			* Type
@@ -12307,7 +12327,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			},
 			
 			/**
-			* pathStepPopup move pathStep on to next state
+			* @method - Move PathStep onto next state
+			* PathStep popup action buttons use this
 			* @param {String} status - next is default
 			*/
 			nextState(){
@@ -12328,6 +12349,11 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				if( newStatus ) this.changeState( newStatus );
 			},
 			
+			/**
+			* @method - Move PathStep back a state
+			* PathStep popup action buttons use this
+			* @param {String} status - next is default
+			*/
 			prevState(){
 				let newStatus = false;
 				switch( this.status ){
@@ -12342,8 +12368,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			changeState( newStatus ){
 				this.setStatus( newStatus );
-				console.log( `Change status: ${this.shortcode}, newStatus: ${newStatus}`);
-				
 				bj.customEvent('idg:pathStepChange', this );
 				
 				if( newStatus == 'done'){
@@ -12351,6 +12375,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				} else {
 					gui.pathStepPopup.full( this, true );
 				}
+			},
+			
+			renderPopup(){
+				gui.pathStepPopup.full( this, true );
 			},
 			 
 			/**
@@ -12639,9 +12667,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			* Users scrolls main window, this will disconnect the popup from the step
 			* this is a bit hack but it demo's the UIX behaviour!
 			*/
-			document.body.querySelector('main').addEventListener('scroll', ev => {
-				removeReset();
-			}, { capture:true,  once:true });
+			document.body.querySelector('main').addEventListener('scroll', removeReset, { capture:true,  once:true });
 		};
 		
 		/**
@@ -12714,6 +12740,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				case 'prev':
 					pathStep.prevState();
 				break;
+				case "left":
+				case "right":
+					// pathway position shift. This has to be managed by
+					// the pathway that contains the pathStep.
+					bj.customEvent('idg:pathStepShift', { pathStep, shift: userRequest == "right" ? 1 : -1 });
+				break;
+				default: bj.log('PathStepPopup: Unknown request state');
 			}
 		});
 		

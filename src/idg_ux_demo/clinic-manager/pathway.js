@@ -128,12 +128,8 @@
  			
 			if( code == 'c-last' ){
 				const last = pathSteps[ pathSteps.length - 1 ];
-				const status = last.getStatus();
-				
 				// check ok to remove
-				if( status == "todo" ||  
-					status == "config"){
-						
+				if( last.isRemovable()){
 					last.remove();
 					pathSteps.splice( -1, 1 );
 				}
@@ -141,24 +137,24 @@
 		};
 		
 		/**
-		* Shift step position 
-		* this is only for "todo" steps 
-		* @param {Number} direction - 'c-last' (c-all not using)
+		* Shift step position - only "todo" steps have these buttons
+		* This comes from the PathStepPopup
+		* @param {*} PathStep
+		* @param {Number} direction - either 1 or -1 (right / left)
 		*/
-		const shiftStep = ( direction ) => {
-			if( !pathSteps.length ) return;
- 			
-			if( code == 'c-last' ){
-				const last = pathSteps[ pathSteps.length - 1 ];
-				const status = last.getStatus();
-				
-				// check ok to remove
-				if( status == "todo" ||  
-					status == "config"){
-						
-					last.remove();
-					pathSteps.splice( -1, 1 );
-				}
+		const shiftStepPos = ( ps, direction ) => {
+			// find step in the pathway
+			const stepIndex = pathSteps.findIndex( el => el == ps );
+			// now, can I shift it?
+			if( stepIndex ){
+				const swapIndex = stepIndex + direction;
+				const swap = pathSteps[ swapIndex ];
+				if( swap && swap.isRemovable()){
+					swapSteps( stepIndex, swapIndex );
+					renderPathway();
+					// this will cause the popup to reposition.
+					ps.renderPopup();
+				}	
 			}
 		};
 		
@@ -289,6 +285,7 @@
 			getStatus,
 			addStep,
 			removeStep,
+			shiftStepPos,
 			deleteRemovedStep,
 			stopWaiting,
 			addWaiting, 

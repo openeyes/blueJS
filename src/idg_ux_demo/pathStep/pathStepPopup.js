@@ -119,9 +119,7 @@
 			* Users scrolls main window, this will disconnect the popup from the step
 			* this is a bit hack but it demo's the UIX behaviour!
 			*/
-			document.body.querySelector('main').addEventListener('scroll', ev => {
-				removeReset();
-			}, { capture:true,  once:true });
+			document.body.querySelector('main').addEventListener('scroll', removeReset, { capture:true,  once:true });
 		};
 		
 		/**
@@ -194,6 +192,13 @@
 				case 'prev':
 					pathStep.prevState();
 				break;
+				case "left":
+				case "right":
+					// pathway position shift. This has to be managed by
+					// the pathway that contains the pathStep.
+					bj.customEvent('idg:pathStepShift', { pathStep, shift: userRequest == "right" ? 1 : -1 });
+				break;
+				default: bj.log('PathStepPopup: Unknown request state');
 			}
 		});
 		

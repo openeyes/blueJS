@@ -82,6 +82,14 @@
 			getStatus(){
 				return this.status;	
 			},
+			
+			isRemovable(){
+				return (
+					this.status == 'config' ||
+					this.status == "todo" ||
+					this.status == "todo-next"
+				);
+			},
 						
 			/**
 			* Type
@@ -101,7 +109,8 @@
 			},
 			
 			/**
-			* pathStepPopup move pathStep on to next state
+			* @method - Move PathStep onto next state
+			* PathStep popup action buttons use this
 			* @param {String} status - next is default
 			*/
 			nextState(){
@@ -122,6 +131,11 @@
 				if( newStatus ) this.changeState( newStatus );
 			},
 			
+			/**
+			* @method - Move PathStep back a state
+			* PathStep popup action buttons use this
+			* @param {String} status - next is default
+			*/
 			prevState(){
 				let newStatus = false;
 				switch( this.status ){
@@ -136,8 +150,6 @@
 			
 			changeState( newStatus ){
 				this.setStatus( newStatus );
-				console.log( `Change status: ${this.shortcode}, newStatus: ${newStatus}`);
-				
 				bj.customEvent('idg:pathStepChange', this );
 				
 				if( newStatus == 'done'){
@@ -145,6 +157,10 @@
 				} else {
 					gui.pathStepPopup.full( this, true );
 				}
+			},
+			
+			renderPopup(){
+				gui.pathStepPopup.full( this, true );
 			},
 			 
 			/**
