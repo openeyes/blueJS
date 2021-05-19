@@ -108,9 +108,10 @@
 			const div = bj.div();
 			
 			switch( status ){
+				case "discharged":
 				case "done": 
-					div.className = 'wait-duration';
-					div.appendChild( waitMins( false ));
+					div.className = 'wait-duration stopped';
+					div.append( waitMins( false ));
 				break;
 				case "later":
 					div.className = 'flex';
@@ -121,8 +122,7 @@
 				break;
 				default: 
 					div.className = 'wait-duration';
-					div.appendChild( svgCircles());
-					div.appendChild( waitMins( true ));
+					div.append( svgCircles(), waitMins( true ));
 			}
 			
 			bj.empty( td );

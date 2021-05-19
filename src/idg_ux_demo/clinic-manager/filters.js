@@ -25,7 +25,7 @@
 		[
 			['All','all'],
 			['Scheduled','later'], // not needed for A&E
-			['Arrived','clinic'],
+			['Started','clinic'],
 			['-f','-f'], 
 			//['-r2','-r2'],
 			//['-r3','-r3'],
@@ -33,6 +33,7 @@
 			['Waiting','waiting'],
 			['Delayed','long-wait'],
 			['No path','stuck'],
+			['Break', 'break'],
 			['Completed','done'],
 		].forEach( btn => {
 			filters.add( clinic.filterBtn({

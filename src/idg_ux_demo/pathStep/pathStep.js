@@ -56,7 +56,7 @@
 					stepName.className = `step`;
 					stepName.textContent = code;
 					
-					if( code == "Waiting") this.type += ' long';
+					if( code == "Delayed") this.type += ' long';
 				}
 				
 				this.render();
@@ -83,21 +83,13 @@
 				return this.status;	
 			},
 			
-			isRemovable(){
-				return (
-					this.status == 'config' ||
-					this.status == "todo" ||
-					this.status == "todo-next"
-				);
-			},
-						
 			/**
 			* Type
 			* @param {String} val
 			*/
 			setType( val ){
 				// valid types
-				const valid = ['none', 'person', 'process', 'wait', 'wait long', 'arrive', 'red-flag', 'fork', 'break', 'auto-finish', 'finish', 'comments', 'comments added'].find( test => test == val );
+				const valid = ['none', 'person', 'process', 'wait', 'wait long', 'arrive', 'red-flag', 'fork', 'break', 'break-back', 'auto-finish', 'finish', 'comments', 'comments added'].find( test => test == val );
 				if( !valid ) throw new Error(`PathStep: invaild type: "${val}"`);
 				
 				this.type = val;
@@ -106,6 +98,29 @@
 			
 			getType(){
 				return this.type;
+			},
+			
+			/**
+			* In pathway can a step be bulk removed?
+			*/
+			isRemovable(){
+				let removable = (
+					this.status == 'config' ||
+					this.status == "todo" ||
+					this.status == "todo-next" ||
+					this.status == "buff"
+				);
+				
+				// but don't remove these:
+				if( this.status == "buff" ){
+					removable = !(
+						this.type == "wait" || 
+						this.type == "wait long" ||
+						this.type == "break"
+					);	
+				}
+				
+				return removable;
 			},
 			
 			/**
@@ -126,7 +141,20 @@
 						// may not have any info DOM...
 						if( this.info ) this.info.textContent = bj.clock24( new Date( Date.now())); 
 					break;
+					case "buff":
+						if( this.type == "break"){
+							// no longer a break (blue), patient is back
+							
+							this.type = "break-back"; 
+							this.render();
+							this.renderPopup();
+							bj.customEvent('idg:pathStepChange', this );
+						}
+					break;
 				}
+				
+				
+				
 				
 				if( newStatus ) this.changeState( newStatus );
 			},
@@ -155,7 +183,7 @@
 				if( newStatus == 'done'){
 					gui.pathStepPopup.remove();
 				} else {
-					gui.pathStepPopup.full( this, true );
+					this.renderPopup();
 				}
 			},
 			
@@ -194,8 +222,8 @@
 					// append
 					this.span.append( this.info );
 					
-					if( this.shortcode == 'i-Wait' || 
-						this.shortcode == 'Waiting'){
+					if( this.shortcode == 'i-wait' || 
+						this.shortcode == 'Delayed'){
 							this.countWaitMins();
 						}
 					
@@ -203,13 +231,13 @@
 			}, 
 			
 			countWaitMins(){
-				if( this.shortcode == 'i-Wait' || 
-					this.shortcode == 'Waiting'){
+				if( this.shortcode == 'i-wait' || 
+					this.shortcode == 'Delayed'){
 						setTimeout(() => {
 							const mins = parseInt( this.info.textContent, 10 ) + 1;
 							this.info.textContent = mins; 
-							if( mins > 59 && this.shortcode !== 'Waiting' ){
-								this.setCode('Waiting');
+							if( mins > 59 && this.shortcode !== 'Delayed' ){
+								this.setCode('Delayed');
 								bj.customEvent('idg:pathStepChange', this );
 							}
 							this.countWaitMins(); // keep counting the mins?
@@ -227,8 +255,8 @@
 				if( this.status == 'todo' || 
 					this.status == 'todo-next' ||
 					this.status == 'config' || 
-					this.shortcode == 'i-Stop' ||
-					this.shortcode == 'i-Fork' ){
+					this.shortcode == 'i-stop' ||
+					this.shortcode == 'i-fork' ){
 					this.info.classList.add('invisible'); // need the DOM to keep the height consistent
 				} else {
 					this.info.classList.remove('invisible');

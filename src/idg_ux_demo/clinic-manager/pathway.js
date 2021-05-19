@@ -17,11 +17,7 @@
 		* Using the array to re-order the pathway
 		*/ 
 		const pathSteps = [];
-		
-		/**
-		* Autostop is a unique step, must always be last in the pathway
-		*/
-		let autoStop = null;
+		let isDischarged = false;
 		
 		/**
 		* Helpers.
@@ -45,11 +41,9 @@
 		
 		/**
 		* Render pathway
-		* if auto-finish (autoStop) push to last
 		*/
 		const renderPathway = () => {
 			pathSteps.forEach( ps => div.append( ps.render()));
-			if( autoStop ) div.append( autoStop.render());
 		};
 		
 		/**
@@ -66,16 +60,27 @@
 			// work through the Rules
 			const lastCode = pathSteps[ pathSteps.length - 1 ].getCode();
 			
-			if( lastCode == 'i-Fin' ){
+			if( lastCode == 'i-fin' ){
 				return 'done';
 			}
 			
-			if( lastCode == "i-Wait" || lastCode == "Waiting" ){
+			if( isDischarged ){
+				return 'discharged';
+			}
+			
+			if( lastCode == "i-wait" || lastCode == "Delayed" ){
 				return "stuck";
 			}
 		
-			if( pathSteps.findIndex( ps => ps.getCode() == "Waiting") > 0){
+			if( pathSteps.findIndex( ps => ps.getCode() == "Delayed") > 0 ){
 				return "long-wait";
+			}
+			
+			const breakIndex = pathSteps.findIndex( ps => ps.getCode() == "i-break");
+			
+			if( breakIndex > 0 ){
+				const breakStep = pathSteps[ breakIndex ];
+				if( breakStep.getType() == "break" ) return "break"; 
 			}
 			
 			if( findFirstIndex('active') > 0){
@@ -92,10 +97,11 @@
 		*/	
 		const addStep = ( newStep ) => {
 			switch( newStep.getCode()){
-				case 'i-Arr':
+				case 'i-arr':
 					pathSteps.splice(0, 0, newStep );
 				break;
-				case 'i-Wait':
+				case 'i-break':
+				case 'i-wait':
 					/* 
 					if a pathway is build before a patient arrives
 					when they arrive a "i-Wait" is automatically added as well.
@@ -108,9 +114,6 @@
 					} else {
 						pathSteps.splice( todoIndex, 0, newStep ); // Position in pathway and add to array
 					}
-				break;
-				case 'i-Stop': 
-					autoStop = newStep; // Automatic stop must alway be last.
 				break;
 				default:
 					pathSteps.push( newStep );
@@ -129,7 +132,7 @@
 			if( code == 'c-last' ){
 				const last = pathSteps[ pathSteps.length - 1 ];
 				// check ok to remove
-				if( last.isRemovable()){
+				if( last.isRemovable() && pathSteps.length > 1){
 					last.remove();
 					pathSteps.splice( -1, 1 );
 				}
@@ -183,7 +186,7 @@
 			let waitingIndex = false;
 			pathSteps.forEach(( ps, index ) => {
 				const code = ps.getCode();
-				if( code == 'i-Wait' || code == "Waiting"){
+				if( code == 'i-wait' || code == "Delayed"){
 					ps.remove();
 					waitingIndex = index;
 				}
@@ -195,13 +198,33 @@
 			// activate step needs moving to the left of all "todo" steps
 			const todoIndex = findFirstIndex('todo', 'config');
 			const activeIndex = findLastIndex('active');
-	
-			if( activeIndex > todoIndex ){
-				// swap positions and re-render
-				swapSteps( activeIndex, todoIndex );
+			
+			if( todoIndex > 0 && activeIndex > todoIndex  ){
+				// active could be anywhere so remove it and
+				// insert it before the first todo step
+				const newActiveStep = pathSteps.splice( activeIndex, 1 )[0] // Array! 
+				pathSteps.splice( todoIndex, 0, newActiveStep );
 				renderPathway();
 			}
 		};
+		
+		
+		/**
+		* Discharge (Patient has left BUT the pathway may still be active!)
+		*/
+		const discharged = () => {
+			isDischarged = true;
+		};
+		
+		const canComplete = () => {
+			if( isDischarged ){
+				if( findFirstIndex('todo', 'config') == -1 ){
+					return true;
+				}
+			} 
+			
+			return false;
+		}
 		
 		/**
 		* User/or auto completed
@@ -215,8 +238,8 @@
 				const code = ps.getCode();
 				const status = ps.getStatus();
 				
-				if( code == "i-Wait" ||
-					code == "Waiting" ||
+				if( code == "i-wait" ||
+					code == "Delayed" ||
 					status == "todo" ||
 					status == "config" ){
 					ps.remove();
@@ -229,17 +252,18 @@
 		/**
 		* User has completed a PathStep.
 		* Patient requests to add Waiting. Pathway checks to see 
-		* if this the right thing to do or not.
-		* @returns {Boolean} - false means pathway
+		* if this the right thing to do or not
 		*/
 		const addWaiting = () => {
+			if( isDischarged ) return; 
+			
 			const activeIndex = findFirstIndex('active');
 			
 			if( activeIndex == -1 ){
 				// No other active steps in pathway
 				
 				const waitStep = gui.pathStep({
-					shortcode: 'i-Wait',
+					shortcode: 'i-wait',
 					info: 0,
 					status: 'buff',
 					type: 'wait',
@@ -249,15 +273,7 @@
 				const todoIndex = findFirstIndex('todo', 'config');
 				if( todoIndex == -1 ){
 					// No, end of pathway, auto-finish or stuck?
-					if( autoStop ){
-						autoStop.remove();
-						autoStop = null;
-						
-						return false; // pathway needs auto-completing.
-						
-					} else {
-						pathSteps.push( waitStep );
-					}
+					pathSteps.push( waitStep );
 				} else {
 					// Yes, other todo/config steps
 					pathSteps.splice( todoIndex, 0, waitStep );
@@ -274,7 +290,6 @@
 			}
 			// update DOM
 			renderPathway();
-			return true;
 		};
 		
 		/**
@@ -288,8 +303,10 @@
 			shiftStepPos,
 			deleteRemovedStep,
 			stopWaiting,
-			addWaiting, 
-			completed
+			addWaiting,
+			discharged,
+			canComplete, 
+			completed,
 		};
 			
 	};

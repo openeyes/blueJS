@@ -62,8 +62,16 @@
 			full.set('Orth', ['Orthoptics', 'todo', 'process']);
 			full.set('Ref', ['Refraction', 'todo', 'process']);
 			
+			full.set('Letter', ['Send letter', 'todo', 'process']);
+			full.set('Blood', ['Blood tests', 'todo', 'process']);
+			full.set('MRI', ['MRI tests', 'todo', 'process']);
+			
 			full.set('Fields', ['Visual Fields', 'popup', 'process']);
 			full.set('i-drug-admin', ['Drug Administration Preset Order', 'popup', 'process']);
+			
+			full.set('i-fork', ['Decision', 'buff', 'fork']);
+			full.set('i-break', ['Break in pathway', 'buff', 'break']);
+			full.set('i-discharge', ['Discharge', 'todo', 'process']);
 			
 			full.set('c-last', ['Remove last pathway step']);
 				
@@ -105,11 +113,13 @@
 				inserts.append( group );
 			};
 		
+			buildGroup( 'Patient', ['i-fork', 'i-discharge', 'i-break' ].sort());
 			buildGroup( 'Common', ['Colour','Dilate', 'VisAcu', 'Orth', 'Ref', 'Img' ].sort());
 			buildGroup( 'Configurable', ['i-drug-admin', 'Fields']);
-			buildGroup('People', ['Mr MM', 'Dr GJB', 'Dr GP', 'Su', 'Dr ZF','Nurse'].sort());
+			buildGroup( 'People', ['Mr MM', 'Dr GJB', 'Dr GP', 'Su', 'Dr ZF','Nurse'].sort());
+			buildGroup( 'Post-tasks', ['Letter','Blood','MRI'].sort());
 			// remove button
-			buildGroup('Remove "todo" steps from selected patient', ['c-last'], 'removeTodos' );
+			buildGroup('Remove "todo" steps from selected patient', ['c-last']);
 
 			// build div
 			div.append( bj.div('close-btn'), inserts );

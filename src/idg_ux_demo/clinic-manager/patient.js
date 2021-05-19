@@ -38,7 +38,6 @@
 		*/
 		const tick = bj.dom('input', 'js-check-patient');
 		tick.setAttribute('type', 'checkbox');
-		
 
 		/** 
 		* Model
@@ -56,13 +55,13 @@
 			},
 			set status( val ){
 				// 'fake-done', allows iDG to set up a completed pathway
-				// it's changed back to "done" when "i-Fin" is pathstep is added
-				const validStatus = ['fake-done', 'done', 'waiting', 'long-wait', 'active', 'stuck', 'later'].find( test => test == val );
+				// it's changed back to "done" when "i-fin" is pathstep is added
+				const validStatus = ['fake-done', 'done', 'waiting', 'long-wait', 'active', 'stuck', 'later', 'break','discharged'].find( test => test == val );
 				if( !validStatus ) throw new Error(`Clinic: invaild Patient status: "${val}"`);
 				
 				this._status = val; 
 				this.views.notify();
-				bj.customEvent('onClinicPatientStatusChange', model.status ); // App is listening!
+				bj.customEvent('idg:PatientStatusChange', model.status ); // App is listening!
 			}
 		}, bj.ModelViews());
 		
@@ -76,7 +75,7 @@
 			waitDuration.render( model.status );
 			
 			if( model.status == "done" ){
-				td.addIcon.innerHTML = "<!-- completed pathway -->";
+				td.addIcon.innerHTML = "<!-- pathway done -->";
 			}
 			
 		};
@@ -84,16 +83,24 @@
 		model.views.add( onChangeStatus );
 		
 		/**
-		* VIEW: Pathway Completed
-		* complete (tick icon) / done?
+		* VIEW: Pathway complete btn
+		* Pathways can only be complete based on the pathway state
+		* complete (tick icon)
 		*/
 		const onChangeComplete = () => {
-			const completeHTML = model.status == "done" ?
-				'<small class="fade">Done</small>' :
-				`<i class="oe-i finish medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tt-type="basic" data-tooltip-content="Finish pathway" data-patient="${model.uid}"></i>`;
-
+			let html = "";
+			if( model.status == "done"){
+				html = `<i class="oe-i tick small-icon pad"></i>`;
+			} else {
+				// check with pathway
+				html = pathway.canComplete() ? 
+					`<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tooltip-content="Finish pathway" data-patient="${model.uid}"></i>` :
+					`<i class="oe-i no-permissions small-icon pad js-has-tooltip" data-tooltip-content="Patient not discharged<br>Steps still to do."></i>`;
+			}
+			
+			
 			// update DOM
-			td.complete.innerHTML = model.status == "later" ?  "" : completeHTML;					
+			td.complete.innerHTML = html;					
 		};
 		
 		model.views.add( onChangeComplete );
@@ -106,7 +113,7 @@
 		const addPathStep = ( step ) => {
 			if( model.status == "done") return; // not active
 			
-			if( step.shortcode == 'i-RedFlag'){
+			if( step.shortcode == 'i-redflag'){
 				model.redFlagged = true;
 			}
 			
@@ -114,15 +121,23 @@
 			From adder user can add "todo" or "config" or "auto-finish" steps. 
 			Pathway state could be: "waiting", "long-wait", "stuck" or "active" 
 			*/
-			if( step.shortcode == 'i-Arr' ) waitDuration.arrived( step.timestamp );
-			if( step.shortcode == 'i-Fin' ){
+			if( step.shortcode == 'i-arr' ){
+				waitDuration.arrived( step.timestamp );
+			}
+			
+			if( step.shortcode == 'i-fin' ){
 				waitDuration.finished( step.timestamp );
 				pathway.completed();
 			}
 			
+			if( step.shortcode == 'i-break'){
+				pathway.stopWaiting();
+			}
+			
+			
 			// if it's a wait it's counting the mins
-			if( step.shortcode == 'i-Wait' || 
-				step.shortcode == 'Waiting' ){
+			if( step.shortcode == 'i-wait' || 
+				step.shortcode == 'Delayed' ){
 				step.info = step.mins;	
 			} else {
 				step.info = bj.clock24( new Date ( step.timestamp ));
@@ -161,17 +176,28 @@
 					pathway.stopWaiting();
 				break;
 				case "done":
-					/*
-					Add a waiting step, however if pathway 
-					hits an 'auto-finish', it returns False.
+					/* 
+					Patient is discharge. However, their pathway may 
+					still have tasks to do. e.g. Letter, blood, ect
 					*/
-					if( pathway.addWaiting() == false ){
-						onComplete( true ); // auto-finish!
+					if( pathStep.getCode() == "i-discharge"){
+						waitDuration.finished( Date.now());
+						pathway.discharged();
+					} else {
+						pathway.addWaiting()
+					}
+					
+				break;
+				case "buff": 
+					// "break" is over?
+					if( pathStep.getType() == "break-back"){
+						pathway.addWaiting();
 					}
 				break;
 				case "userRemoved":
 					pathway.deleteRemovedStep( pathStep.key ); // User deleted through PathStepPopup
 				break;
+				
 			}
 			
 			// update patient status based on pathway
@@ -217,7 +243,6 @@
 			model.risk = num;
 		};
 
-		
 		/**
 		* Initiate inital patient state from JSON	
 		* and build the <tr> DOM
@@ -241,7 +266,7 @@
 			
 			// notes
 			const psOwner = gui.pathStep({
-				shortcode: 'i-Comments',
+				shortcode: 'i-comments',
 				status: 'buff',
 				type: props.notes ? 'comments added' : 'comments',
 				info: props.notes ? 'clock' : '&nbsp;', 
@@ -278,14 +303,14 @@
 		*/
 		const onArrived = () => {
 			addPathStep({
-				shortcode: 'i-Arr',
+				shortcode: 'i-arr',
 				status: 'buff',
 				type: 'arrive',
 				timestamp: Date.now(),
 				idgPopupCode: 'arrive-basic',
 			});
 			addPathStep({
-				shortcode: 'i-Wait',
+				shortcode: 'i-wait',
 				status: 'buff',
 				type: 'wait',
 				mins: 0,
@@ -301,11 +326,11 @@
 			});
 		};
 		
-		const onComplete = ( autostop = false ) => {
-			if( model.status == "active" && !autostop) return;
+		const onComplete = () => {
+			if( model.status == "active" ) return;
 			
 			addPathStep({
-				shortcode: 'i-Fin',
+				shortcode: 'i-fin',
 				status: 'buff',
 				type: 'finish',
 				timestamp: Date.now(),
@@ -322,11 +347,6 @@
 			if( !model.isRendered && b ) return;
 			tick.checked = b;	
 		}; 
-		
-		/**
-		* @returns {Boolean} - checkbox state
-		*/
-		const isTicked = () => tick.checked;
 		
 		/**
 		* @method
@@ -367,7 +387,7 @@
 			addPathStep, 
 			removePathStep,
 			setTicked,
-			isTicked 
+			isTicked(){ return tick.checked } 
 		};
 	};
 	

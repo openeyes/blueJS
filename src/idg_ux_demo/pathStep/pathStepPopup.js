@@ -34,15 +34,14 @@
 		* @params {String} status - 'todo', 'active', 'etc'...
 		* @params {Boolean} full - full view (or the quickview)
 		*/
-		const loadContent = ( shortcode, status, full ) => {
+		const loadContent = ( shortcode, status, type, full ) => {
 			/*
 			Async.
 			Use the pathStepKey for the token check
 			*/
-			if( shortcode === '?' ) shortcode = "config-who";
 			const urlShortCode = shortcode.replace(' ','-'); // watch out for "Dr XY";
 			
-			const phpCode = `${urlShortCode}.${status}`.toLowerCase();
+			const phpCode = `${urlShortCode}.${status}.${type}`.toLowerCase();
 			bj.xhr(`/idg-php/load/pathstep/_ps.php?full=${full}&code=${phpCode}`, pathStepKey )
 				.then( xreq => {
 					if( pathStepKey != xreq.token ) return;
@@ -54,7 +53,8 @@
 					popup.append( div, closeBtn( full ));
 					// CSS has a default height of 50px.. expand heightto show content
 					// CSS will handle animation
-					popup.style.height = (div.scrollHeight + 20) + 'px'; 
+					// 22px = 10px padding + 1px border!
+					popup.style.height = (div.scrollHeight + 22) + 'px'; 
 					
 					
 				})
@@ -88,7 +88,7 @@
 			// iDG loads PHP to demo content.
 			// either a basic demo based on the shortcode
 			// or using an iDG code to demo specific content
-			loadContent(useCode , status, full );
+			loadContent(useCode, status, type, full );
 			
 			/*
 			Position popup to PathStep (span)

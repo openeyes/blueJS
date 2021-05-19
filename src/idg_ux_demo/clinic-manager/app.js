@@ -155,7 +155,7 @@
 		});
 
 		// Patient changes it status
-		document.addEventListener('onClinicPatientStatusChange', ( ev ) => updateFilterBtns());
+		document.addEventListener('idg:PatientStatusChange', ( ev ) => updateFilterBtns());
 		
 		/**
 		* Initialise App
@@ -193,7 +193,7 @@
 	*/
 	const loading = bj.div('oe-popup-wrap', '<div class="spinner"></div><div class="spinner-message">Loading...</div>');
 	document.body.append( loading );
-	setTimeout(() => init(), 500 ); // ... now initate! ;) 
+	setTimeout(() => init(), 400 ); // ... now initate! ;) 
 	
 	
 })( bluejay, bluejay.namespace('clinic'), bluejay.namespace('gui')); 
