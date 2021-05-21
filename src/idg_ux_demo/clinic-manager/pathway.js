@@ -202,7 +202,7 @@
 			if( todoIndex > 0 && activeIndex > todoIndex  ){
 				// active could be anywhere so remove it and
 				// insert it before the first todo step
-				const newActiveStep = pathSteps.splice( activeIndex, 1 )[0] // Array! 
+				const newActiveStep = pathSteps.splice( activeIndex, 1 )[0]; // Array! 
 				pathSteps.splice( todoIndex, 0, newActiveStep );
 				renderPathway();
 			}
@@ -211,20 +211,24 @@
 		
 		/**
 		* Discharge (Patient has left BUT the pathway may still be active!)
+		* @returns Boolean;
 		*/
 		const discharged = () => {
 			isDischarged = true;
 		};
 		
+		/**
+		* Can User complete pathway (i.e. show the tick button)
+		* this depends on the pathway
+		* @returns Boolean;
+		*/
 		const canComplete = () => {
 			if( isDischarged ){
-				if( findFirstIndex('todo', 'config') == -1 ){
-					return true;
-				}
-			} 
-			
+				// Any todo / config steps?
+				return ( findFirstIndex('todo', 'config') == -1 ); 
+			} 	
 			return false;
-		}
+		};
 		
 		/**
 		* User/or auto completed

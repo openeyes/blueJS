@@ -116,11 +116,26 @@
 			const data = JSON.parse( ev.target.dataset.idg );
 			// check if configurable. if show a popup
 			if( data.s == "popup"){
+				console.log( data );
 				clinic.configPopup( data.c );
 				data.s = "todo";
 				
 			}
-			worklists.forEach( list => list.addStepsToPatients( data ));
+			// demo a preset pathway
+			if( data.c == "Pathways"){
+				[
+					{c:'Dilate', s:'todo', t:'process'},
+					{c:'Nurse', s:'todo', t:'process'},
+					{c:'i-fork', s:'buff', t:'fork'},
+				].forEach( data => {
+					worklists.forEach( list => list.addStepsToPatients( data ));
+				});
+			} else {
+				worklists.forEach( list => list.addStepsToPatients( data ));
+			}
+			
+			
+			
 		});
 		
 		bj.userDown('div.oec-adder .close-btn', () => {

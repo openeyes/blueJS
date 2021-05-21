@@ -184,7 +184,7 @@
 						waitDuration.finished( Date.now());
 						pathway.discharged();
 					} else {
-						pathway.addWaiting()
+						pathway.addWaiting();
 					}
 					
 				break;
@@ -356,18 +356,28 @@
 		*/
 		const render = ( filter ) => {
 			let renderDOM = false;
-	
-			if( filter == "all" ){
-				renderDOM = true;
-			} else if( filter == "clinic") {
-				renderDOM = !( model.status == 'done' || model.status == 'later');
-			} else {
-				// red flagged? 
-				if( filter.startsWith('-f')){
-					renderDOM = model.redFlagged;
-				} else {
-					renderDOM = ( model.status == filter );
-				}
+			
+			console.log( filter );
+			
+			switch( filter ){
+				case "all": renderDOM = true;
+				break; 
+				case "clinic": 
+					renderDOM = !( 
+						model.status == 'done' || 
+						model.status == 'later'
+					);
+				break;
+				case "-f": renderDOM = model.redFlagged;
+				break;
+				case "waiting": 
+					renderDOM = ( 
+						model.status == 'waiting' || 
+						model.status == 'long-wait' || 
+						model.status == 'stuck' 
+					);
+				break;
+				default: renderDOM = ( model.status == filter );
 			}
 			
 			model.isRendered = renderDOM;
@@ -387,7 +397,7 @@
 			addPathStep, 
 			removePathStep,
 			setTicked,
-			isTicked(){ return tick.checked } 
+			isTicked(){ return tick.checked; } 
 		};
 	};
 	

@@ -10487,11 +10487,26 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			const data = JSON.parse( ev.target.dataset.idg );
 			// check if configurable. if show a popup
 			if( data.s == "popup"){
+				console.log( data );
 				clinic.configPopup( data.c );
 				data.s = "todo";
 				
 			}
-			worklists.forEach( list => list.addStepsToPatients( data ));
+			// demo a preset pathway
+			if( data.c == "Pathways"){
+				[
+					{c:'Dilate', s:'todo', t:'process'},
+					{c:'Nurse', s:'todo', t:'process'},
+					{c:'i-fork', s:'buff', t:'fork'},
+				].forEach( data => {
+					worklists.forEach( list => list.addStepsToPatients( data ));
+				});
+			} else {
+				worklists.forEach( list => list.addStepsToPatients( data ));
+			}
+			
+			
+			
 		});
 		
 		bj.userDown('div.oec-adder .close-btn', () => {
@@ -10616,15 +10631,17 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			* In iDG that is in the PHP, however we also have to show 
 			* it here where the user has to select a step.
 			*/
+			const icon = i => `<i class="oe-i ${i} small pad-right"></i>`;
+			
 			const full = new Map();	
 			full.set('i-Stop', ['Auto-complete after last completed step', 'buff']);
 			
-			full.set('Mr MM', ['Mr Michael Morgan', 'todo', 'person']);
-			full.set('Dr GJB', ['Dr Georg Joseph Beer', 'todo', 'person']);
-			full.set('Dr GP', ['Dr George Bartischy', 'todo', 'person']);
-			full.set('Su', ['Sushruta', 'todo', 'person']);
-			full.set('Dr ZF', ['Dr Zofia Falkowska', 'todo', 'person']); 
-			full.set('Nurse', ['Nurse', 'todo', 'person']);
+			full.set('Mr MM', [ icon('person') + 'Mr Michael Morgan', 'todo', 'person']);
+			full.set('Dr GJB', [ icon('person') + 'Dr Georg Joseph Beer', 'todo', 'person']);
+			full.set('Dr GP', [ icon('person') + 'Dr George Bartischy', 'todo', 'person']);
+			full.set('Su', [ icon('person') + 'Sushruta', 'todo', 'person']);
+			full.set('Dr ZF', [ icon('person') +'Dr Zofia Falkowska', 'todo', 'person']); 
+			full.set('Nurse', [ icon('person') + 'Nurse', 'todo', 'person']);
 			
 			full.set('Dilate', ['Dilate', 'todo', 'process']);
 			full.set('Colour', ['Colour', 'todo', 'process']);
@@ -10638,13 +10655,15 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			full.set('MRI', ['MRI tests', 'todo', 'process']);
 			
 			full.set('Fields', ['Visual Fields', 'popup', 'process']);
-			full.set('i-drug-admin', ['Drug Administration Preset Order', 'popup', 'process']);
+			full.set('i-drug-admin', [ icon('drop') + 'Drug Administration Preset Order', 'popup', 'process']);
 			
-			full.set('i-fork', ['Decision', 'buff', 'fork']);
-			full.set('i-break', ['Break in pathway', 'buff', 'break']);
-			full.set('i-discharge', ['Discharge', 'todo', 'process']);
+			full.set('Pathways', ['Preset pathways', 'popup', 'process']);
 			
-			full.set('c-last', ['Remove last pathway step']);
+			full.set('i-fork', [ icon('fork') + 'Decision', 'buff', 'fork']);
+			full.set('i-break', [ icon('path-break') + 'Break in pathway', 'buff', 'break']);
+			full.set('i-discharge', [ icon('stop') + 'Patient can leave', 'todo', 'process']);
+			
+			full.set('c-last', [ 'Remove last pathway step']);
 				
 			/*
 			* Element for all inserts
@@ -10684,11 +10703,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				inserts.append( group );
 			};
 		
-			buildGroup( 'Patient', ['i-fork', 'i-discharge', 'i-break' ].sort());
-			buildGroup( 'Common', ['Colour','Dilate', 'VisAcu', 'Orth', 'Ref', 'Img' ].sort());
-			buildGroup( 'Configurable', ['i-drug-admin', 'Fields']);
-			buildGroup( 'People', ['Mr MM', 'Dr GJB', 'Dr GP', 'Su', 'Dr ZF','Nurse'].sort());
-			buildGroup( 'Post-tasks', ['Letter','Blood','MRI'].sort());
+			buildGroup('Patient', ['i-fork', 'i-break', 'i-discharge']);
+			buildGroup('Pathways', ['Pathways']);
+			buildGroup('Common', ['Colour','Dilate', 'VisAcu', 'Orth', 'Ref', 'Img' ].sort());
+			buildGroup('Configurable', ['i-drug-admin', 'Fields']);
+			buildGroup('People', ['Mr MM', 'Dr GJB', 'Dr GP', 'Su', 'Dr ZF','Nurse'].sort());
+			buildGroup('Post-discharge tasks', ['Letter','Blood','MRI'].sort());
 			// remove button
 			buildGroup('Remove "todo" steps from selected patient', ['c-last']);
 
@@ -10892,16 +10912,20 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/	
 		const updateCount = ( status, redflagged  ) => {
 			let num = 0;
-	
-			// work out the counts per filter.
-			if( filter == "all"){
-				num = status.length;
-			} else if ( filter == "clinic"){
-				num = status.reduce(( acc, val ) => (val != "done" && val != 'later') ? acc + 1 : acc, 0 );
-			} else if( filter.startsWith('-f')) {
-				num = redflagged.reduce(( acc, val ) => val ? acc + 1 : acc, 0 );
-			} else {
-				num = status.reduce(( acc, val ) => val == filter ? acc + 1 : acc, 0 );
+			
+			switch( filter ){
+				case "all": num = status.length;
+				break; 
+				case "clinic": 
+					num = status.reduce(( acc, val ) => (val != "done" && val != 'later') ? acc + 1 : acc, 0 );
+				break;
+				case "-f": 
+					num = redflagged.reduce(( acc, val ) => val ? acc + 1 : acc, 0 );
+				break;
+				case "waiting": 
+					num = status.reduce(( acc, val ) => (val == "waiting" || val == 'long-wait' || val == 'stuck' ) ? acc + 1 : acc, 0 );
+				break;
+				default: num = status.reduce(( acc, val ) => val == filter ? acc + 1 : acc, 0 );
 			}
 			
 			// update DOM text
@@ -11238,7 +11262,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			if( todoIndex > 0 && activeIndex > todoIndex  ){
 				// active could be anywhere so remove it and
 				// insert it before the first todo step
-				const newActiveStep = pathSteps.splice( activeIndex, 1 )[0] // Array! 
+				const newActiveStep = pathSteps.splice( activeIndex, 1 )[0]; // Array! 
 				pathSteps.splice( todoIndex, 0, newActiveStep );
 				renderPathway();
 			}
@@ -11247,20 +11271,24 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		/**
 		* Discharge (Patient has left BUT the pathway may still be active!)
+		* @returns Boolean;
 		*/
 		const discharged = () => {
 			isDischarged = true;
 		};
 		
+		/**
+		* Can User complete pathway (i.e. show the tick button)
+		* this depends on the pathway
+		* @returns Boolean;
+		*/
 		const canComplete = () => {
 			if( isDischarged ){
-				if( findFirstIndex('todo', 'config') == -1 ){
-					return true;
-				}
-			} 
-			
+				// Any todo / config steps?
+				return ( findFirstIndex('todo', 'config') == -1 ); 
+			} 	
 			return false;
-		}
+		};
 		
 		/**
 		* User/or auto completed
@@ -11538,7 +11566,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 						waitDuration.finished( Date.now());
 						pathway.discharged();
 					} else {
-						pathway.addWaiting()
+						pathway.addWaiting();
 					}
 					
 				break;
@@ -11710,18 +11738,28 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const render = ( filter ) => {
 			let renderDOM = false;
-	
-			if( filter == "all" ){
-				renderDOM = true;
-			} else if( filter == "clinic") {
-				renderDOM = !( model.status == 'done' || model.status == 'later');
-			} else {
-				// red flagged? 
-				if( filter.startsWith('-f')){
-					renderDOM = model.redFlagged;
-				} else {
-					renderDOM = ( model.status == filter );
-				}
+			
+			console.log( filter );
+			
+			switch( filter ){
+				case "all": renderDOM = true;
+				break; 
+				case "clinic": 
+					renderDOM = !( 
+						model.status == 'done' || 
+						model.status == 'later'
+					);
+				break;
+				case "-f": renderDOM = model.redFlagged;
+				break;
+				case "waiting": 
+					renderDOM = ( 
+						model.status == 'waiting' || 
+						model.status == 'long-wait' || 
+						model.status == 'stuck' 
+					);
+				break;
+				default: renderDOM = ( model.status == filter );
 			}
 			
 			model.isRendered = renderDOM;
@@ -11741,7 +11779,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			addPathStep, 
 			removePathStep,
 			setTicked,
-			isTicked(){ return tick.checked } 
+			isTicked(){ return tick.checked; } 
 		};
 	};
 	

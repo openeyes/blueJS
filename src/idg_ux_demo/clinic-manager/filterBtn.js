@@ -40,16 +40,20 @@
 		*/	
 		const updateCount = ( status, redflagged  ) => {
 			let num = 0;
-	
-			// work out the counts per filter.
-			if( filter == "all"){
-				num = status.length;
-			} else if ( filter == "clinic"){
-				num = status.reduce(( acc, val ) => (val != "done" && val != 'later') ? acc + 1 : acc, 0 );
-			} else if( filter.startsWith('-f')) {
-				num = redflagged.reduce(( acc, val ) => val ? acc + 1 : acc, 0 );
-			} else {
-				num = status.reduce(( acc, val ) => val == filter ? acc + 1 : acc, 0 );
+			
+			switch( filter ){
+				case "all": num = status.length;
+				break; 
+				case "clinic": 
+					num = status.reduce(( acc, val ) => (val != "done" && val != 'later') ? acc + 1 : acc, 0 );
+				break;
+				case "-f": 
+					num = redflagged.reduce(( acc, val ) => val ? acc + 1 : acc, 0 );
+				break;
+				case "waiting": 
+					num = status.reduce(( acc, val ) => (val == "waiting" || val == 'long-wait' || val == 'stuck' ) ? acc + 1 : acc, 0 );
+				break;
+				default: num = status.reduce(( acc, val ) => val == filter ? acc + 1 : acc, 0 );
 			}
 			
 			// update DOM text
