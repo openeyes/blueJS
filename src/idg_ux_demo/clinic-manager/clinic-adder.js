@@ -57,6 +57,7 @@
 			full.set('Dr ZF', [ icon('person') +'Dr Zofia Falkowska', 'todo', 'person']); 
 			full.set('Nurse', [ icon('person') + 'Nurse', 'todo', 'person']);
 			
+			full.set('Triage', ['Triage', 'todo', 'process']);
 			full.set('Dilate', ['Dilate', 'todo', 'process']);
 			full.set('Colour', ['Colour', 'todo', 'process']);
 			full.set('Img', ['Imaging', 'todo', 'process']);
@@ -119,7 +120,7 @@
 		
 			buildGroup('Patient', ['i-fork', 'i-break', 'i-discharge']);
 			buildGroup('Pathways', ['Pathways']);
-			buildGroup('Common', ['Colour','Dilate', 'VisAcu', 'Orth', 'Ref', 'Img' ].sort());
+			buildGroup('Common', ['Colour','Dilate', 'VisAcu', 'Orth', 'Ref', 'Img', 'Triage' ].sort());
 			buildGroup('Configurable', ['i-drug-admin', 'Fields']);
 			buildGroup('People', ['Mr MM', 'Dr GJB', 'Dr GP', 'Su', 'Dr ZF','Nurse'].sort());
 			buildGroup('Post-discharge tasks', ['Letter','Blood','MRI'].sort());

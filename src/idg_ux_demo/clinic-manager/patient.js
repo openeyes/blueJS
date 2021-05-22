@@ -95,7 +95,7 @@
 				// check with pathway
 				html = pathway.canComplete() ? 
 					`<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tooltip-content="Finish pathway" data-patient="${model.uid}"></i>` :
-					`<i class="oe-i no-permissions small-icon pad js-has-tooltip" data-tooltip-content="Patient not discharged<br>Steps still to do."></i>`;
+					`<i class="oe-i no-permissions small-icon pad js-has-tooltip" data-tooltip-content="Patient still in attendence.<br>Steps incomplete."></i>`;
 			}
 			
 			
