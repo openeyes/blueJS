@@ -43,7 +43,7 @@
 			status: 'buff', 
 			type: 'comments',
 			info: '&nbsp;',
-			idgPopupCode: 'i-comments-none',
+			idgPopupCode: 'i-comments-none', 
 		}, commentTD );
 		
 		
@@ -105,16 +105,13 @@
 			info: 'clock',
 		}, pathway );
 		
-	}
+	};
 	
-	
-	
-		
 	
 	const show = () => {
 		div = bj.div('pathway-in-event');
 		div.innerHTML = [
-			`<div class="close-icon-btn"><i class="oe-i remove-circle"></i></div>`,
+			`<div class="close-icon-btn"><i class="oe-i remove-circle small-icon"></i></div>`,
 			`<div class="clinic-pathway"><i class="spinner as-icon"></i></div>`
 		].join('');
 		
@@ -136,7 +133,7 @@
 		
 		// update sidebar btn
 		sidebarBtn.classList.remove('active');
-	}
+	};
 	
 	
 /*

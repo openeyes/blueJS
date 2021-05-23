@@ -93,9 +93,13 @@
 				html = `<i class="oe-i tick small-icon pad"></i>`;
 			} else {
 				// check with pathway
+				const buildIcon = ( i, hook, tip ) => {
+					return `<i class="oe-i ${i} medium-icon pad js-has-tooltip ${hook}" data-tooltip-content="${tip}" data-patient="${model.uid}"></i>`;
+				};
+				
 				html = pathway.canComplete() ? 
-					`<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tooltip-content="Finish pathway" data-patient="${model.uid}"></i>` :
-					`<i class="oe-i no-permissions small-icon pad js-has-tooltip" data-tooltip-content="Patient still in attendence.<br>Steps incomplete."></i>`;
+					buildIcon('save', 'js-idg-clinic-icon-complete', 'Pathway completed') :
+					buildIcon('finish', 'js-idg-clinic-icon-finish', 'Quick complete pathway');
 			}
 			
 			

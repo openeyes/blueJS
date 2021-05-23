@@ -7561,7 +7561,7 @@ Updated to Vanilla JS for IDG
 			status: 'buff', 
 			type: 'comments',
 			info: '&nbsp;',
-			idgPopupCode: 'i-comments-none',
+			idgPopupCode: 'i-comments-none', 
 		}, commentTD );
 		
 		
@@ -7623,16 +7623,13 @@ Updated to Vanilla JS for IDG
 			info: 'clock',
 		}, pathway );
 		
-	}
+	};
 	
-	
-	
-		
 	
 	const show = () => {
 		div = bj.div('pathway-in-event');
 		div.innerHTML = [
-			`<div class="close-icon-btn"><i class="oe-i remove-circle"></i></div>`,
+			`<div class="close-icon-btn"><i class="oe-i remove-circle small-icon"></i></div>`,
 			`<div class="clinic-pathway"><i class="spinner as-icon"></i></div>`
 		].join('');
 		
@@ -7654,7 +7651,7 @@ Updated to Vanilla JS for IDG
 		
 		// update sidebar btn
 		sidebarBtn.classList.remove('active');
-	}
+	};
 	
 	
 /*
@@ -10648,10 +10645,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			const data = JSON.parse( ev.target.dataset.idg );
 			// check if configurable. if show a popup
 			if( data.s == "popup"){
-				console.log( data );
-				clinic.configPopup( data.c );
+				clinic.pathwayPopup( data.c );
 				data.s = "todo";
-				
 			}
 			// demo a preset pathway
 			if( data.c == "Pathways"){
@@ -10699,6 +10694,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		bj.userDown('.js-idg-clinic-icon-complete', ( ev ) => {
 			worklists.forEach( list => list.patientComplete( ev.target.dataset.patient ));
+		});
+		
+		bj.userDown('.js-idg-clinic-icon-finish', ( ev ) => {
+			// this doesn't work! but I need to demo the UIX concept with a popup
+			clinic.pathwayPopup('quick-finish');
+			
 		});
 
 		// Patient changes it status
@@ -10965,48 +10966,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	  
 
 })( bluejay, bluejay.namespace('clinic')); 
-(function( bj, clinic ){
-
-	'use strict';	
-	
-	/**
-	* Adder configurable popup step
-	*/
-	const popup = ( stepCode ) => {
-		// keeping this pretty basic to demo the UIX concept
-		let php; 
-		switch( stepCode ){
-			case 'i-drug-admin': php = "drugadmin-preset-orders.php";
-			break;
-			default: php = `${ stepCode}.php`;
-		}
-
-		// xhr returns a Promise... 
-		bj.xhr('/idg-php/load/pathstep-configurable/' + php)
-			.then( xreq => {
-				const div = document.createElement('div');
-				div.className = "oe-popup-wrap";
-				div.innerHTML = xreq.html;
-				// reflow DOM
-				document.body.append( div );
-				
-				// fake a click through
-				// steps are already added (config makes no difference but shows the UIX)
-				div.querySelector('.js-fake-add')
-					.addEventListener("mousedown", (ev) => {
-						ev.stopPropagation();
-						bj.remove(div);
-					},{ once:true });
-					
-				// cancel is handled by the Clinic app
-			})
-			.catch(e => console.log('overlayPopupJSON: Failed to load',e));  // maybe output this to UI at somepoint, but for now...	
-	};
-	
-	// make component available to Clinic SPA	
-	clinic.configPopup = popup;			
-  
-})( bluejay, bluejay.namespace('clinic')); 
 (function( bj ){
 
 	'use strict';	
@@ -11218,6 +11177,48 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	
 	// make component available to Clinic SPA	
 	clinic.filters = filters;			
+  
+})( bluejay, bluejay.namespace('clinic')); 
+(function( bj, clinic ){
+
+	'use strict';	
+	
+	/**
+	* Adder configurable popup step
+	*/
+	const popup = ( stepCode ) => {
+		// keeping this pretty basic to demo the UIX concept
+		let php; 
+		switch( stepCode ){
+			case 'i-drug-admin': php = "drugadmin-preset-orders.php";
+			break;
+			default: php = `${ stepCode}.php`;
+		}
+
+		// xhr returns a Promise... 
+		bj.xhr('/idg-php/load/pathway-popups/' + php)
+			.then( xreq => {
+				const div = document.createElement('div');
+				div.className = "oe-popup-wrap";
+				div.innerHTML = xreq.html;
+				// reflow DOM
+				document.body.append( div );
+				
+				// fake a click through
+				// steps are already added (config makes no difference but shows the UIX)
+				div.querySelector('.js-fake-add')
+					.addEventListener("mousedown", (ev) => {
+						ev.stopPropagation();
+						bj.remove(div);
+					},{ once:true });
+					
+				// cancel is handled by the Clinic app
+			})
+			.catch(e => console.log('overlayPopupJSON: Failed to load',e));  // maybe output this to UI at somepoint, but for now...	
+	};
+	
+	// make component available to Clinic SPA	
+	clinic.pathwayPopup = popup;			
   
 })( bluejay, bluejay.namespace('clinic')); 
 (function( bj, clinic, gui ){
@@ -11637,9 +11638,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				html = `<i class="oe-i tick small-icon pad"></i>`;
 			} else {
 				// check with pathway
+				const buildIcon = ( i, hook, tip ) => {
+					return `<i class="oe-i ${i} medium-icon pad js-has-tooltip ${hook}" data-tooltip-content="${tip}" data-patient="${model.uid}"></i>`;
+				};
+				
 				html = pathway.canComplete() ? 
-					`<i class="oe-i save medium-icon pad js-has-tooltip js-idg-clinic-icon-complete" data-tooltip-content="Finish pathway" data-patient="${model.uid}"></i>` :
-					`<i class="oe-i no-permissions small-icon pad js-has-tooltip" data-tooltip-content="Patient still in attendence.<br>Steps incomplete."></i>`;
+					buildIcon('save', 'js-idg-clinic-icon-complete', 'Pathway completed') :
+					buildIcon('finish', 'js-idg-clinic-icon-finish', 'Quick complete pathway');
 			}
 			
 			

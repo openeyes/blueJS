@@ -116,10 +116,8 @@
 			const data = JSON.parse( ev.target.dataset.idg );
 			// check if configurable. if show a popup
 			if( data.s == "popup"){
-				console.log( data );
-				clinic.configPopup( data.c );
+				clinic.pathwayPopup( data.c );
 				data.s = "todo";
-				
 			}
 			// demo a preset pathway
 			if( data.c == "Pathways"){
@@ -167,6 +165,12 @@
 		
 		bj.userDown('.js-idg-clinic-icon-complete', ( ev ) => {
 			worklists.forEach( list => list.patientComplete( ev.target.dataset.patient ));
+		});
+		
+		bj.userDown('.js-idg-clinic-icon-finish', ( ev ) => {
+			// this doesn't work! but I need to demo the UIX concept with a popup
+			clinic.pathwayPopup('quick-finish');
+			
 		});
 
 		// Patient changes it status

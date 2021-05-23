@@ -15,7 +15,7 @@
 		}
 
 		// xhr returns a Promise... 
-		bj.xhr('/idg-php/load/pathstep-configurable/' + php)
+		bj.xhr('/idg-php/load/pathway-popups/' + php)
 			.then( xreq => {
 				const div = document.createElement('div');
 				div.className = "oe-popup-wrap";
@@ -37,6 +37,6 @@
 	};
 	
 	// make component available to Clinic SPA	
-	clinic.configPopup = popup;			
+	clinic.pathwayPopup = popup;			
   
 })( bluejay, bluejay.namespace('clinic')); 
