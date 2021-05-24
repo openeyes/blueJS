@@ -97,9 +97,15 @@
 					return `<i class="oe-i ${i} medium-icon pad js-has-tooltip ${hook}" data-tooltip-content="${tip}" data-patient="${model.uid}"></i>`;
 				};
 				
-				html = pathway.canComplete() ? 
-					buildIcon('save', 'js-idg-clinic-icon-complete', 'Pathway completed') :
-					buildIcon('finish', 'js-idg-clinic-icon-finish', 'Quick complete pathway');
+				if( pathway.canComplete()){
+					html = buildIcon('save', 'js-idg-clinic-icon-complete', 'Pathway completed');
+				} else {
+					html = model.status == "discharged" ? 
+						buildIcon('save-blue', 'js-idg-clinic-icon-finish', 'Quick complete pathway'):
+						buildIcon('finish', 'js-idg-clinic-icon-finish', 'Patient has left<br/>Quick complete pathway');
+				}
+				
+				
 			}
 			
 			
@@ -255,6 +261,12 @@
 			// build pathway steps
 			props.pathway.forEach( step => addPathStep( step ));
 			
+			// set any discharged states: 
+			if( props.status == "discharged" ){
+				pathway.discharged();
+			}
+			
+			
 			// Add patient select checkbox ("tick")
 			// CSS styles this to look like a "+" icon
 			// build node tree
@@ -360,8 +372,6 @@
 		*/
 		const render = ( filter ) => {
 			let renderDOM = false;
-			
-			console.log( filter );
 			
 			switch( filter ){
 				case "all": renderDOM = true;
