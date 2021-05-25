@@ -55,8 +55,6 @@
 				} else {
 					stepName.className = `step`;
 					stepName.textContent = code;
-					
-					if( code == "Delayed") this.type += ' long';
 				}
 				
 				this.render();
@@ -89,7 +87,7 @@
 			*/
 			setType( val ){
 				// valid types
-				const valid = ['none', 'person', 'process', 'wait', 'wait long', 'arrive', 'red-flag', 'fork', 'break', 'break-back', 'auto-finish', 'finish', 'comments', 'comments added'].find( test => test == val );
+				const valid = ['none', 'person', 'process', 'wait', 'delayed-wait', 'arrive', 'red-flag', 'fork', 'break', 'break-back', 'auto-finish', 'finish', 'comments', 'comments added'].find( test => test == val );
 				if( !valid ) throw new Error(`PathStep: invaild type: "${val}"`);
 				
 				this.type = val;
@@ -223,7 +221,7 @@
 					this.span.append( this.info );
 					
 					if( this.shortcode == 'i-wait' || 
-						this.shortcode == 'Delayed'){
+						this.shortcode == 'i-delayed'){
 							this.countWaitMins();
 						}
 					
@@ -232,12 +230,13 @@
 			
 			countWaitMins(){
 				if( this.shortcode == 'i-wait' || 
-					this.shortcode == 'Delayed'){
+					this.shortcode == 'i-delayed'){
 						setTimeout(() => {
 							const mins = parseInt( this.info.textContent, 10 ) + 1;
 							this.info.textContent = mins; 
-							if( mins > 59 && this.shortcode !== 'Delayed' ){
-								this.setCode('Delayed');
+							if( mins > 59 && this.shortcode == 'i-wait' ){
+								this.setType('delayed-wait');
+								this.setCode('i-delayed');
 								bj.customEvent('idg:pathStepChange', this );
 							}
 							this.countWaitMins(); // keep counting the mins?
@@ -252,14 +251,12 @@
 			displayInfo(){
 				if( !this.info  ) return; 
 				
-				if( this.status == 'todo' || 
-					this.status == 'todo-next' ||
-					this.status == 'config' || 
-					this.shortcode == 'i-stop' ||
-					this.shortcode == 'i-fork' ){
-					this.info.classList.add('invisible'); // need the DOM to keep the height consistent
+				if( this.status == 'active' ||
+					this.shortcode == 'i-arr' ||
+					this.shortcode == 'i-fin' ){
+					bj.show( this.info );
 				} else {
-					this.info.classList.remove('invisible');
+					bj.hide( this.info );
 				}
 			}
 		});

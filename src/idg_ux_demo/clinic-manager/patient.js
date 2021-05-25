@@ -147,7 +147,7 @@
 			
 			// if it's a wait it's counting the mins
 			if( step.shortcode == 'i-wait' || 
-				step.shortcode == 'Delayed' ){
+				step.shortcode == 'i-delayed' ){
 				step.info = step.mins;	
 			} else {
 				step.info = bj.clock24( new Date ( step.timestamp ));
