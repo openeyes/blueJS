@@ -24,6 +24,7 @@
 			if( props.name.startsWith('-f')){
 				div.innerHTML = `<div class="name"><i class="oe-i flag-red medium-icon no-click"></div>`;
 			} else {
+				// change some to icons: 
 				div.innerHTML = `<div class="name">${props.name}</div>`;
 			}
 
@@ -52,6 +53,9 @@
 				break;
 				case "waiting": 
 					num = status.reduce(( acc, val ) => (val == "waiting" || val == 'long-wait' || val == 'stuck' ) ? acc + 1 : acc, 0 );
+				break;
+				case "issues":
+					num = status.reduce(( acc, val ) => (val == "break" || val == 'long-wait' || val == 'stuck' ) ? acc + 1 : acc, 0 );
 				break;
 				default: num = status.reduce(( acc, val ) => val == filter ? acc + 1 : acc, 0 );
 			}

@@ -16,10 +16,7 @@
 		The header shows the name of the Worklist (+ date, this will be added automatically by OE)
 		It also allows removing from the view (if not in single mode)
 		*/
-		const header = bj.dom('header', false, [
-			 `<div class="favourite"><i class="oe-i starline medium pad js-has-tooltip" data-tt-type="basic" data-tooltip-content="Add to worklist favourites"></i></div>`,
-			 `<h3>${ list.title }</h3>`
-		].join('')); 
+		const header = bj.dom('header', false, `<h3>${ list.title }</h3>`); 
 
 		const table = bj.dom('table', 'oec-patients');
 		table.innerHTML = Mustache.render([

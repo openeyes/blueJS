@@ -86,7 +86,7 @@
 	
 		/**
 		* @Event
-		* Select or deselect all Patients; checkbox in <thead> (UI is '+' icons)
+		* Show the adder if ANY patient is checked!
 		*/
 		oeClinic.addEventListener('change', ev => {
 			const input = ev.target;
@@ -95,6 +95,11 @@
 				
 				adder.show();
 			}
+			
+			// how many patients are checked?
+			const selectedPatients = oeClinic.querySelectorAll('tbody .js-check-patient:checked');
+			adder.tickCount( selectedPatients.length );
+			
 		}, { useCapture:true });
 		
 		/**
@@ -130,6 +135,7 @@
 				});
 			} else {
 				worklists.forEach( list => list.addStepsToPatients( data ));
+				adder.addSuccess();
 			}
 			
 			

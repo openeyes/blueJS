@@ -189,6 +189,9 @@
 				case 'next':
 					pathStep.nextState();
 				break;
+				case 'done':
+					pathStep.jumpState( userRequest );
+				break;
 				case 'prev':
 					pathStep.prevState();
 				break;

@@ -263,6 +263,7 @@
 			
 			// set any discharged states: 
 			if( props.status == "discharged" ){
+				waitDuration.finished( Date.now());
 				pathway.discharged();
 			}
 			
@@ -391,6 +392,15 @@
 						model.status == 'stuck' 
 					);
 				break;
+				case "issues": 
+					renderDOM = ( 
+						model.status == 'break' || 
+						model.status == 'long-wait' || 
+						model.status == 'stuck' 
+					);
+				break;
+				
+				
 				default: renderDOM = ( model.status == filter );
 			}
 			

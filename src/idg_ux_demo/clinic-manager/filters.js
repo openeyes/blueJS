@@ -22,15 +22,18 @@
 		* Quick filter Btns - [ Name, filter ]
 		*/
 		[
+			['Assigned to me', 'user'], // Not working, but capturing the UIX concept
 			['All','all'],
 			['Scheduled','later'], // not needed for A&E?!
 			['Started','clinic'],
 			['-f','-f'], 
-			['Active','active'],
+			//['Active','active'],
 			['Waiting','waiting'],
-			['Delayed','long-wait'],
-			['No path','stuck'],
-			['Break', 'break'],
+			['Issues','issues'], // groups the 3 below!
+			// ['Delayed','long-wait'],
+			// ['No path','stuck'],
+			// ['Break', 'break'],
+			['Incomplete','discharged'], // BUT patient is checked out but still has "todo"s
 			['Completed','done'],
 		].forEach( btn => {
 			filters.add( clinic.filterBtn({

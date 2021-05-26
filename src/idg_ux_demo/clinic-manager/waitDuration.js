@@ -116,7 +116,7 @@
 				case "later":
 					div.className = 'flex';
 					div.innerHTML = [
-						`<button class="cols-7 blue hint js-idg-clinic-btn-arrived" data-patient="${patientID}">Arrived</button>`,
+						`<button class="cols-7 blue hint js-idg-clinic-btn-arrived" data-patient="${patientID}">Check-in</button>`,
 						`<button class="cols-4 js-idg-clinic-btn-DNA" data-patient="${patientID}">DNA</button>`
 					].join('');
 				break;

@@ -122,6 +122,14 @@
 			},
 			
 			/**
+			* @method - Jump to a pathstate
+			*/
+			jumpState( newStatus ){
+				this.changeState( newStatus );
+			},
+			
+			
+			/**
 			* @method - Move PathStep onto next state
 			* PathStep popup action buttons use this
 			* @param {String} status - next is default
@@ -253,7 +261,9 @@
 				
 				if( this.status == 'active' ||
 					this.shortcode == 'i-arr' ||
-					this.shortcode == 'i-fin' ){
+					this.shortcode == 'i-fin' ||
+					this.shortcode == 'i-wait' ||
+					this.shortcode == 'i-delayed' ){
 					bj.show( this.info );
 				} else {
 					bj.hide( this.info );
