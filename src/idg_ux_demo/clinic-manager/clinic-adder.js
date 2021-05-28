@@ -30,7 +30,7 @@
 			setTimeout(() => {
 				addTo.classList.remove('success');
 			}, 1200 );	
-		}
+		};
 
 		
 		/**
@@ -89,9 +89,11 @@
 			btn('Biometry');
 			btn('Colour');
 			btn('Img', 'Imaging');
-			btn('VisAcu', 'Visual Acuity');
+			btn('VA', 'Visual Acuity');
 			btn('Orth', 'Orthoptics');
 			btn('Ref', 'Refraction');
+			btn('CDU', 'Clinical decision unit');
+			
 			
 			btn('DrugAdmin', icon('drop') + 'Drug Administration Preset Order', 'i-drug-admin', 'popup' );
 			btn('VisFields', 'Visual Fields', 'Fields', 'popup');
@@ -148,7 +150,7 @@
 		
 			buildGroup('Patient', ['i-fork', 'i-break', 'i-discharge']);
 			buildGroup('Pathways', ['Pathways']);
-			buildGroup('Tasks', ['Biometry','Triage','Colour','Img','VisAcu','Orth','Ref','DrugAdmin','VisFields'].sort());
+			buildGroup('Tasks', ['Biometry','Triage','Colour','Img','VA','Orth','Ref','DrugAdmin','VisFields', 'CDU'].sort());
 			buildGroup('People', ['Doctor','Nurse', 'HCA']);
 			buildGroup('Post check out', ['Letter','Blood','MRI'].sort());
 			// remove button

@@ -16,7 +16,7 @@
 		The header shows the name of the Worklist (+ date, this will be added automatically by OE)
 		It also allows removing from the view (if not in single mode)
 		*/
-		const header = bj.dom('header', false, `<h3>${ list.title }</h3>`); 
+		const header = bj.dom('header', false, `<h3>${list.title} : ${list.date}</h3>`); 
 
 		const table = bj.dom('table', 'oec-patients');
 		table.innerHTML = Mustache.render([
@@ -62,6 +62,7 @@
 		const group = bj.dom('section', 'oec-group');
 		group.id = `idg-list-${id}`;
 		group.setAttribute('data-id', id );
+		group.setAttribute('data-title', `${list.title}`);
 		
 		buildDOM( group, list );
 		fragment.append( group );
@@ -188,6 +189,18 @@
 				tbody.append( tr );
 			}
 		};
+		
+		/**
+		* User can hide show lists from the worklist panel
+		* @param {Set} - view list ids
+		*/
+		const showList = ( ids ) => {
+			if( ids.has( id )){
+				bj.show( group );
+			} else {
+				bj.hide( group );
+			}
+		};
 
 		return {
 			render,
@@ -196,7 +209,8 @@
 			untickPatients,
 			patientArrived,
 			patientDNA,
-			patientComplete
+			patientComplete, 
+			showList,
 		};
 	};
 

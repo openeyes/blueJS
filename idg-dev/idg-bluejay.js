@@ -10619,9 +10619,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		oeClinic.addEventListener('change', ev => {
 			const input = ev.target;
-			if( input.matches('.js-check-patient') &&
-				input.checked ){
-				
+			if( input.matches('.js-check-patient') && input.checked ){
 				adder.show();
 			}
 			
@@ -10739,6 +10737,18 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		// OK, ready to run this app, lets go!
 		loading.remove();
+		
+		// set up worklist Nav panel buttons to allow show/hide of lists!
+		const noLists = bj.dom('div', 'alert-box info row', 'Please select a list to view');
+		const updateListView = ( idSet ) => {
+			worklists.forEach( list => list.showList( idSet ));
+			if( !idSet.size ){
+				oeClinic.append( noLists );
+			} else {
+				noLists.remove();
+			}
+		}; 
+		clinic.navPanelListBtns( updateListView );
 	};
 	
 	/*
@@ -10784,7 +10794,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			setTimeout(() => {
 				addTo.classList.remove('success');
 			}, 1200 );	
-		}
+		};
 
 		
 		/**
@@ -10843,9 +10853,11 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			btn('Biometry');
 			btn('Colour');
 			btn('Img', 'Imaging');
-			btn('VisAcu', 'Visual Acuity');
+			btn('VA', 'Visual Acuity');
 			btn('Orth', 'Orthoptics');
 			btn('Ref', 'Refraction');
+			btn('CDU', 'Clinical decision unit');
+			
 			
 			btn('DrugAdmin', icon('drop') + 'Drug Administration Preset Order', 'i-drug-admin', 'popup' );
 			btn('VisFields', 'Visual Fields', 'Fields', 'popup');
@@ -10902,7 +10914,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 			buildGroup('Patient', ['i-fork', 'i-break', 'i-discharge']);
 			buildGroup('Pathways', ['Pathways']);
-			buildGroup('Tasks', ['Biometry','Triage','Colour','Img','VisAcu','Orth','Ref','DrugAdmin','VisFields'].sort());
+			buildGroup('Tasks', ['Biometry','Triage','Colour','Img','VA','Orth','Ref','DrugAdmin','VisFields', 'CDU'].sort());
 			buildGroup('People', ['Doctor','Nurse', 'HCA']);
 			buildGroup('Post check out', ['Letter','Blood','MRI'].sort());
 			// remove button
@@ -11192,6 +11204,104 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	'use strict';	
 	
 	/**
+	* Nav worklist panel
+	* Link up the buttons to the actual lists in the DOM
+	* Also demo switching to "No context"
+	*/
+	
+	const listPanel = document.getElementById('js-worklists-panel');
+	if( listPanel === null ) return;
+	
+	/**
+	* @param {Method} appViewChange - callback 
+	*/
+	const setup = ( appViewChange ) => {
+		const listManager = listPanel.querySelector('.list-manager');
+		const worklists = listManager.querySelector('.worklists');
+		/*
+		Build the button list from DOM
+		*/
+		const fieldset = bj.dom('fieldset');
+		const frag = new DocumentFragment();
+		document.querySelectorAll('.oec-group').forEach( group => {
+			const label = bj.dom('label');
+			label.innerHTML = `<input type="checkbox" value="${group.dataset.id}" checked><span class="btn">${group.dataset.title}</span>`;
+			frag.append( label );
+		});
+		
+		// build the button DOMs
+		bj.empty( worklists );
+		fieldset.append( frag );
+		worklists.append( fieldset );
+		
+		/*
+		Set up list mode. 
+		And show/hide lists based on user selection
+		*/
+		
+		const checkBoxes = bj.nodeArray( worklists.querySelectorAll('input[type=checkbox]'));
+		const allBtn = listManager.querySelector('button[name=all]');
+		
+		// lists always start as "All" selected
+		allBtn.classList.add('selected');
+	
+	
+		const updateClinicView = () => {
+			const ids = new Set();
+			checkBoxes.forEach( btn => {
+				if( btn.checked ){
+					ids.add( btn.value );
+				} 
+			});
+			
+			const lists = ids.size > 1 ? 'lists' : 'list';
+			const text = ids.size ? 
+				`<b>${ ids.size }</b> ${ lists }` : 
+				'<b>0</b>';
+
+			document.querySelector('.clinic-context .lists').innerHTML = text;
+			
+			// App will listen for this
+			appViewChange( ids );
+		};	
+			
+		// init	
+		updateClinicView();
+		
+		// list to the input checkboxes (only thing that changes)
+		worklists.addEventListener('change', ev => {
+			allBtn.classList.remove('selected');
+			updateClinicView();
+		});
+		
+		// set checked state for all worklists
+		const checkAll = ( b ) => {
+			checkBoxes.forEach( input => input.checked = b );
+			updateClinicView();
+		};
+		
+		// select or deselect all lists
+		allBtn.addEventListener('mousedown', ev => {
+			if( allBtn.classList.contains("selected")){
+				checkAll( false );
+				allBtn.classList.remove('selected');
+				setTimeout(() => allBtn.blur(), 100);
+			} else {
+				checkAll( true ); 
+				allBtn.classList.add('selected');
+			}
+		});
+	};
+
+	clinic.navPanelListBtns = setup;
+				
+  
+})( bluejay, bluejay.namespace('clinic')); 
+(function( bj, clinic ){
+
+	'use strict';	
+	
+	/**
 	* Adder configurable popup step
 	*/
 	const popup = ( stepCode ) => {
@@ -11299,11 +11409,11 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				return 'discharged';
 			}
 			
-			if( lastCode == "i-wait" || lastCode == "Delayed" ){
+			if( lastCode == "i-wait" || lastCode == "i-delayed" ){
 				return "stuck";
 			}
 		
-			if( pathSteps.findIndex( ps => ps.getCode() == "Delayed") > 0 ){
+			if( pathSteps.findIndex( ps => ps.getCode() == "i-delayed") > 0 ){
 				return "long-wait";
 			}
 			
@@ -12306,7 +12416,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		The header shows the name of the Worklist (+ date, this will be added automatically by OE)
 		It also allows removing from the view (if not in single mode)
 		*/
-		const header = bj.dom('header', false, `<h3>${ list.title }</h3>`); 
+		const header = bj.dom('header', false, `<h3>${list.title} : ${list.date}</h3>`); 
 
 		const table = bj.dom('table', 'oec-patients');
 		table.innerHTML = Mustache.render([
@@ -12352,6 +12462,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const group = bj.dom('section', 'oec-group');
 		group.id = `idg-list-${id}`;
 		group.setAttribute('data-id', id );
+		group.setAttribute('data-title', `${list.title}`);
 		
 		buildDOM( group, list );
 		fragment.append( group );
@@ -12478,6 +12589,18 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				tbody.append( tr );
 			}
 		};
+		
+		/**
+		* User can hide show lists from the worklist panel
+		* @param {Set} - view list ids
+		*/
+		const showList = ( ids ) => {
+			if( ids.has( id )){
+				bj.show( group );
+			} else {
+				bj.hide( group );
+			}
+		};
 
 		return {
 			render,
@@ -12486,7 +12609,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			untickPatients,
 			patientArrived,
 			patientDNA,
-			patientComplete
+			patientComplete, 
+			showList,
 		};
 	};
 
@@ -15093,39 +15217,20 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 (function( bj ) {
 
 	'use strict';
-	
-	const listManager = document.getElementById('js-worklist-manager');
 
-	if( listManager === null ) return;
-	
 	/*
-	List mode: button names: "all"
-	iDG will set up a default state	
+	Demo the expand / collapse 
+	these are also on a demo home hub!
 	*/
-	const checkBoxes = bj.nodeArray( listManager.querySelectorAll('input[type=checkbox]'));
-	const allBtn = listManager.querySelector('button[name=all]');
-
-	// User changes mode
-	const checkAll = ( b ) => {
-		// set up all the list states based on the mode selection
-		checkBoxes.forEach( input => input.checked = b );
-	};
-	
-	// list to the input checkboxes (only thing that changes)
-	listManager.addEventListener('change', ev => {
-		allBtn.classList.remove('selected');
-	});
-	
-
-	allBtn.addEventListener('mousedown', ev => {
-		if( allBtn.classList.contains("selected")){
-			checkAll( false );
-			allBtn.classList.remove('selected');
-			setTimeout(() => allBtn.blur(), 100);
+	bj.userDown('.js-idg-fav-demo .expand-fav i', ( ev ) => {
+		const icon = ev.target;
+		const fav = bj.getParent( icon, '.fav');
+		if( icon.classList.contains('expand')){
+			icon.classList.replace('expand','collapse');
+			bj.show( fav.querySelector('.js-full-details'));
 		} else {
-			checkAll( true ); 
-			
-			allBtn.classList.add('selected');
+			icon.classList.replace('collapse','expand');
+			bj.hide( fav.querySelector('.js-full-details'));
 		}
 	});
 	

@@ -68,11 +68,11 @@
 				return 'discharged';
 			}
 			
-			if( lastCode == "i-wait" || lastCode == "Delayed" ){
+			if( lastCode == "i-wait" || lastCode == "i-delayed" ){
 				return "stuck";
 			}
 		
-			if( pathSteps.findIndex( ps => ps.getCode() == "Delayed") > 0 ){
+			if( pathSteps.findIndex( ps => ps.getCode() == "i-delayed") > 0 ){
 				return "long-wait";
 			}
 			

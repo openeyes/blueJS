@@ -90,9 +90,7 @@
 		*/
 		oeClinic.addEventListener('change', ev => {
 			const input = ev.target;
-			if( input.matches('.js-check-patient') &&
-				input.checked ){
-				
+			if( input.matches('.js-check-patient') && input.checked ){
 				adder.show();
 			}
 			
@@ -210,6 +208,18 @@
 		
 		// OK, ready to run this app, lets go!
 		loading.remove();
+		
+		// set up worklist Nav panel buttons to allow show/hide of lists!
+		const noLists = bj.dom('div', 'alert-box info row', 'Please select a list to view');
+		const updateListView = ( idSet ) => {
+			worklists.forEach( list => list.showList( idSet ));
+			if( !idSet.size ){
+				oeClinic.append( noLists );
+			} else {
+				noLists.remove();
+			}
+		}; 
+		clinic.navPanelListBtns( updateListView );
 	};
 	
 	/*
