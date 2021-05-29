@@ -57,6 +57,7 @@
 		* @returns {Map} - key: uid, value: new Patient
 		*/
 		const patients = clinic.patientJSON( list.json, list.usesPriority );
+		let usingList = true; // users can select what lists they want to use from the Nav panel
 		
 		// build the static DOM
 		const group = bj.dom('section', 'oec-group');
@@ -154,11 +155,13 @@
 		const getPatientFilterState = () => {
 			const status = [];
 			const redflagged = [];
-			patients.forEach( patient => {
-				status.push( patient.getStatus());
-				redflagged.push( patient.getRedFlagged());
-			});
-			
+			// only count IF user is using this list
+			if( usingList ){
+				patients.forEach( patient => {
+					status.push( patient.getStatus());
+					redflagged.push( patient.getRedFlagged());
+				});
+			}
 			return { status, redflagged };
 		};
 		
@@ -191,14 +194,16 @@
 		};
 		
 		/**
-		* User can hide show lists from the worklist panel
-		* @param {Set} - view list ids
+		* User can hide show lists from the worklist panel btn list
+		* @param {Set} - view list to show
 		*/
 		const showList = ( ids ) => {
 			if( ids.has( id )){
 				bj.show( group );
+				usingList = true;
 			} else {
 				bj.hide( group );
+				usingList = false;
 			}
 		};
 

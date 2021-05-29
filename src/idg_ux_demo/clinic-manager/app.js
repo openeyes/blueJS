@@ -209,8 +209,12 @@
 		// OK, ready to run this app, lets go!
 		loading.remove();
 		
-		// set up worklist Nav panel buttons to allow show/hide of lists!
+		/**
+		Init the Nav worklist panel and provide a
+		callback for any view changes.
+		*/
 		const noLists = bj.dom('div', 'alert-box info row', 'Please select a list to view');
+		
 		const updateListView = ( idSet ) => {
 			worklists.forEach( list => list.showList( idSet ));
 			if( !idSet.size ){
@@ -218,7 +222,9 @@
 			} else {
 				noLists.remove();
 			}
+			updateFilterBtns();
 		}; 
+		
 		clinic.navPanelListBtns( updateListView );
 	};
 	

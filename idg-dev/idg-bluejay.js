@@ -10738,8 +10738,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		// OK, ready to run this app, lets go!
 		loading.remove();
 		
-		// set up worklist Nav panel buttons to allow show/hide of lists!
+		/**
+		Init the Nav worklist panel and provide a
+		callback for any view changes.
+		*/
 		const noLists = bj.dom('div', 'alert-box info row', 'Please select a list to view');
+		
 		const updateListView = ( idSet ) => {
 			worklists.forEach( list => list.showList( idSet ));
 			if( !idSet.size ){
@@ -10747,7 +10751,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			} else {
 				noLists.remove();
 			}
+			updateFilterBtns();
 		}; 
+		
 		clinic.navPanelListBtns( updateListView );
 	};
 	
@@ -11140,14 +11146,15 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/		
 		const quickFilters = bj.dom('ul', "quick-filters");
 		const searchBtn = bj.dom('button', 'filter-all');
+		const waitingFor = bj.dom('button', 'waiting-for', 'Waiting for...');
 		
 		/**
 		* Quick filter Btns - [ Name, filter ]
 		*/
 		[
-			['Assigned to me', 'user'], // Not working, but capturing the UIX concept
+			['For me', 'user'], // Not working, but capturing the UIX concept
 			['All','all'],
-			['Scheduled','later'], // not needed for A&E?!
+			['Booked','later'], // not needed for A&E?!
 			['Started','clinic'],
 			['-f','-f'], 
 			//['Active','active'],
@@ -11167,7 +11174,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 
 		const filtersHook = document.getElementById('js-clinic-filters');
 		filtersHook.innerHTML = '<input class="search" type="text" placeholder="Patient">';
-		filtersHook.append( quickFilters, searchBtn );
+		filtersHook.append( quickFilters, waitingFor, searchBtn );
 		
 		/*
 		* Advanced search filter in header
@@ -11175,6 +11182,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		bj.userDown('button.filter-all', ( ev ) => {
 			clinic.pathwayPopup('advanced-filter');
+		});
+		
+		bj.userDown('button.waiting-for', ( ev ) => {
+			clinic.pathwayPopup('waiting-for');
 		});
 		
 		/**
@@ -11527,7 +11538,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			let waitingIndex = false;
 			pathSteps.forEach(( ps, index ) => {
 				const code = ps.getCode();
-				if( code == 'i-wait' || code == "Delayed"){
+				if( code == 'i-wait' || code == "i-delayed"){
 					ps.remove();
 					waitingIndex = index;
 				}
@@ -12457,6 +12468,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* @returns {Map} - key: uid, value: new Patient
 		*/
 		const patients = clinic.patientJSON( list.json, list.usesPriority );
+		let usingList = true; // users can select what lists they want to use from the Nav panel
 		
 		// build the static DOM
 		const group = bj.dom('section', 'oec-group');
@@ -12554,11 +12566,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const getPatientFilterState = () => {
 			const status = [];
 			const redflagged = [];
-			patients.forEach( patient => {
-				status.push( patient.getStatus());
-				redflagged.push( patient.getRedFlagged());
-			});
-			
+			// only count IF user is using this list
+			if( usingList ){
+				patients.forEach( patient => {
+					status.push( patient.getStatus());
+					redflagged.push( patient.getRedFlagged());
+				});
+			}
 			return { status, redflagged };
 		};
 		
@@ -12591,14 +12605,16 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		};
 		
 		/**
-		* User can hide show lists from the worklist panel
-		* @param {Set} - view list ids
+		* User can hide show lists from the worklist panel btn list
+		* @param {Set} - view list to show
 		*/
 		const showList = ( ids ) => {
 			if( ids.has( id )){
 				bj.show( group );
+				usingList = true;
 			} else {
 				bj.hide( group );
+				usingList = false;
 			}
 		};
 

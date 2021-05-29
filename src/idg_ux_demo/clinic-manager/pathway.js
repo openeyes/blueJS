@@ -186,7 +186,7 @@
 			let waitingIndex = false;
 			pathSteps.forEach(( ps, index ) => {
 				const code = ps.getCode();
-				if( code == 'i-wait' || code == "Delayed"){
+				if( code == 'i-wait' || code == "i-delayed"){
 					ps.remove();
 					waitingIndex = index;
 				}

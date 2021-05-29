@@ -17,14 +17,15 @@
 		*/		
 		const quickFilters = bj.dom('ul', "quick-filters");
 		const searchBtn = bj.dom('button', 'filter-all');
+		const waitingFor = bj.dom('button', 'waiting-for', 'Waiting for...');
 		
 		/**
 		* Quick filter Btns - [ Name, filter ]
 		*/
 		[
-			['Assigned to me', 'user'], // Not working, but capturing the UIX concept
+			['For me', 'user'], // Not working, but capturing the UIX concept
 			['All','all'],
-			['Scheduled','later'], // not needed for A&E?!
+			['Booked','later'], // not needed for A&E?!
 			['Started','clinic'],
 			['-f','-f'], 
 			//['Active','active'],
@@ -44,7 +45,7 @@
 
 		const filtersHook = document.getElementById('js-clinic-filters');
 		filtersHook.innerHTML = '<input class="search" type="text" placeholder="Patient">';
-		filtersHook.append( quickFilters, searchBtn );
+		filtersHook.append( quickFilters, waitingFor, searchBtn );
 		
 		/*
 		* Advanced search filter in header
@@ -52,6 +53,10 @@
 		*/
 		bj.userDown('button.filter-all', ( ev ) => {
 			clinic.pathwayPopup('advanced-filter');
+		});
+		
+		bj.userDown('button.waiting-for', ( ev ) => {
+			clinic.pathwayPopup('waiting-for');
 		});
 		
 		/**
