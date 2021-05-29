@@ -22,7 +22,7 @@
 	* @param {Boolean} usesPriority - risks use triangles, priorities uses circles.
 	* @returns {Map} of patients
 	*/
-	clinic.patientJSON = ( json, usesPriority = false ) => {
+	clinic.patientJSON = ( json, usesPriority=false, fiveMinBookings=false ) => {
 		/*
 		To make the IDG UX prototype easier to test an initial state JSON is provided by PHP.
 		The demo times are set in RELATIVE minutes, which are updated to full timestamps
@@ -34,11 +34,16 @@
 			// Unique ID for each patient
 			patient.uid = bj.getToken(); 
 			
-			const booked = Date.now() + ( patient.booked * 60000 );
-			patient.bookedTimestamp = booked;
+			// round up booked time to 5mins?
+			const booked = fiveMinBookings ? 
+				everyFiveMins( patient.booked ) :
+				Date.now() + ( patient.booked * 60000 );
 			
 			// convert to booked time to human time
 			patient.time = bj.clock24( new Date( booked ));
+			
+			// save the timestamp
+			patient.bookedTimestamp = booked;
 			
 			/*
 			Step Pathway is multi-dimensional array.

@@ -86,7 +86,7 @@
 			btn('HCA', icon('person') + 'HCA');
 			
 			btn('Triage');
-			btn('Biometry');
+			btn('Bio', 'Biometry');
 			btn('Colour');
 			btn('Img', 'Imaging');
 			btn('VA', 'Visual Acuity');
@@ -150,7 +150,7 @@
 		
 			buildGroup('Patient', ['i-fork', 'i-break', 'i-discharge']);
 			buildGroup('Pathways', ['Pathways']);
-			buildGroup('Tasks', ['Biometry','Triage','Colour','Img','VA','Orth','Ref','DrugAdmin','VisFields', 'CDU'].sort());
+			buildGroup('Tasks', ['Bio','Triage','Colour','Img','VA','Orth','Ref','DrugAdmin','VisFields', 'CDU'].sort());
 			buildGroup('People', ['Doctor','Nurse', 'HCA']);
 			buildGroup('Post check out', ['Letter','Blood','MRI'].sort());
 			// remove button

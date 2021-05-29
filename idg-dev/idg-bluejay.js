@@ -10856,7 +10856,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			btn('HCA', icon('person') + 'HCA');
 			
 			btn('Triage');
-			btn('Biometry');
+			btn('Bio', 'Biometry');
 			btn('Colour');
 			btn('Img', 'Imaging');
 			btn('VA', 'Visual Acuity');
@@ -10920,7 +10920,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 			buildGroup('Patient', ['i-fork', 'i-break', 'i-discharge']);
 			buildGroup('Pathways', ['Pathways']);
-			buildGroup('Tasks', ['Biometry','Triage','Colour','Img','VA','Orth','Ref','DrugAdmin','VisFields', 'CDU'].sort());
+			buildGroup('Tasks', ['Bio','Triage','Colour','Img','VA','Orth','Ref','DrugAdmin','VisFields', 'CDU'].sort());
 			buildGroup('People', ['Doctor','Nurse', 'HCA']);
 			buildGroup('Post check out', ['Letter','Blood','MRI'].sort());
 			// remove button
@@ -10975,19 +10975,19 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// assume last table row as default
 			let clockRow = tableRows[ tableRows.length - 1];
 			
+			// get the position:
+			let top = clockRow.getBoundingClientRect().bottom;
+			
 			// table TRs have a timestamp on them, use this to position clock
 			const now = Date.now();
 			
 			// if there are later times than "now" change tr.
 			tableRows.find( tr  => {
 				if( tr.dataset.timestamp > now ){
-					clockRow = tr;
+					top = tr.getBoundingClientRect().top - 1; // above this one!
 					return true;
 				}
 			});
-			
-			// get the position:
-			const top = clockRow.getBoundingClientRect().bottom;
 			
 			if( top < 160 ){
 				bj.hide( div ); // offscreen!
@@ -12128,7 +12128,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	* @param {Boolean} usesPriority - risks use triangles, priorities uses circles.
 	* @returns {Map} of patients
 	*/
-	clinic.patientJSON = ( json, usesPriority = false ) => {
+	clinic.patientJSON = ( json, usesPriority=false, fiveMinBookings=false ) => {
 		/*
 		To make the IDG UX prototype easier to test an initial state JSON is provided by PHP.
 		The demo times are set in RELATIVE minutes, which are updated to full timestamps
@@ -12140,11 +12140,16 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// Unique ID for each patient
 			patient.uid = bj.getToken(); 
 			
-			const booked = Date.now() + ( patient.booked * 60000 );
-			patient.bookedTimestamp = booked;
+			// round up booked time to 5mins?
+			const booked = fiveMinBookings ? 
+				everyFiveMins( patient.booked ) :
+				Date.now() + ( patient.booked * 60000 );
 			
 			// convert to booked time to human time
 			patient.time = bj.clock24( new Date( booked ));
+			
+			// save the timestamp
+			patient.bookedTimestamp = booked;
 			
 			/*
 			Step Pathway is multi-dimensional array.
@@ -12467,7 +12472,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* Process the patient JSON
 		* @returns {Map} - key: uid, value: new Patient
 		*/
-		const patients = clinic.patientJSON( list.json, list.usesPriority );
+		const patients = clinic.patientJSON( list.json, list.usesPriority, list.fiveMinBookings );
 		let usingList = true; // users can select what lists they want to use from the Nav panel
 		
 		// build the static DOM

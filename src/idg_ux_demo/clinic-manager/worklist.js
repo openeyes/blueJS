@@ -56,7 +56,7 @@
 		* Process the patient JSON
 		* @returns {Map} - key: uid, value: new Patient
 		*/
-		const patients = clinic.patientJSON( list.json, list.usesPriority );
+		const patients = clinic.patientJSON( list.json, list.usesPriority, list.fiveMinBookings );
 		let usingList = true; // users can select what lists they want to use from the Nav panel
 		
 		// build the static DOM

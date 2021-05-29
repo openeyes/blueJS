@@ -30,19 +30,19 @@
 			// assume last table row as default
 			let clockRow = tableRows[ tableRows.length - 1];
 			
+			// get the position:
+			let top = clockRow.getBoundingClientRect().bottom;
+			
 			// table TRs have a timestamp on them, use this to position clock
 			const now = Date.now();
 			
 			// if there are later times than "now" change tr.
 			tableRows.find( tr  => {
 				if( tr.dataset.timestamp > now ){
-					clockRow = tr;
+					top = tr.getBoundingClientRect().top - 1; // above this one!
 					return true;
 				}
 			});
-			
-			// get the position:
-			const top = clockRow.getBoundingClientRect().bottom;
 			
 			if( top < 160 ){
 				bj.hide( div ); // offscreen!
