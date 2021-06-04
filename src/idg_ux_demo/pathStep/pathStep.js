@@ -260,7 +260,6 @@
 				if( !this.info  ) return; 
 				
 				if( this.status == 'active' ||
-					this.shortcode == 'i-arr' ||
 					this.shortcode == 'i-fin' ||
 					this.shortcode == 'i-wait' ||
 					this.shortcode == 'i-delayed' ){
@@ -268,6 +267,12 @@
 				} else {
 					bj.hide( this.info );
 				}
+				
+				if( this.shortcode == 'i-arr' &&
+					this.status == 'done'){
+					bj.show( this.info );		
+				}
+				
 			}
 		});
 		

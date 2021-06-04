@@ -16,26 +16,26 @@
 		Add Filter btns to <header> - these apply to all Worklists
 		*/		
 		const quickFilters = bj.dom('ul', "quick-filters");
-		const searchBtn = bj.dom('button', 'filter-all');
-		const waitingFor = bj.dom('button', 'waiting-for', 'Waiting for...');
+		const sortBtn = bj.dom('button', 'table-sort', '<i class="oe-i downup small pad-right"></i>Time');
+		const waitingFor = bj.dom('button', 'waiting-for', 'To-do ...');
 		
 		/**
 		* Quick filter Btns - [ Name, filter ]
 		*/
 		[
-			['For me', 'user'], // Not working, but capturing the UIX concept
+			//['For me', 'user'], // Not working, but capturing the UIX concept
 			['All','all'],
-			['Booked','later'], // not needed for A&E?!
-			['Started','clinic'],
-			['-f','-f'], 
+			//['Booked','later'], // not needed for A&E?!
+			['Checked in','clinic'],
+			//['-f','-f'], 
 			//['Active','active'],
-			['Waiting','waiting'],
+			//['Waiting','waiting'],
+			['Checked out','discharged'], // BUT patient is checked out but still has "todo"s
 			['Issues','issues'], // groups the 3 below!
 			// ['Delayed','long-wait'],
 			// ['No path','stuck'],
 			// ['Break', 'break'],
-			['Incomplete','discharged'], // BUT patient is checked out but still has "todo"s
-			['Completed','done'],
+			//['Completed','done'],
 		].forEach( btn => {
 			filters.add( clinic.filterBtn({
 				name: btn[0],
@@ -44,19 +44,27 @@
 		});
 
 		const filtersHook = document.getElementById('js-clinic-filters');
-		filtersHook.innerHTML = '<input class="search" type="text" placeholder="Patient">';
-		filtersHook.append( quickFilters, waitingFor, searchBtn );
+		const patientSearch = bj.dom('input', 'search');
+		patientSearch.setAttribute('type', 'text');
+		patientSearch.setAttribute('placeholder', 'Patient');
+		filtersHook.append( patientSearch, sortBtn, quickFilters, waitingFor );
 		
 		/*
 		* Advanced search filter in header
 		* Not doing anything - just show/hide it
 		*/
+/*
 		bj.userDown('button.filter-all', ( ev ) => {
 			clinic.pathwayPopup('advanced-filter');
 		});
+*/
 		
-		bj.userDown('button.waiting-for', ( ev ) => {
+		bj.userDown('#js-clinic-filters button.waiting-for', ( ev ) => {
 			clinic.pathwayPopup('waiting-for');
+		});
+		
+		bj.userDown('#js-clinic-filters button.table-sort', ( ev ) => {
+			clinic.pathwayPopup('table-sort');
 		});
 		
 		/**

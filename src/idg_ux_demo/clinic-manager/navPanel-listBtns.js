@@ -15,14 +15,19 @@
 	* @param {Method} appViewChange - callback 
 	*/
 	const setup = ( appViewChange ) => {
-		const listManager = listPanel.querySelector('.list-manager');
+		const listManager = listPanel.querySelector('.list-view');
 		const worklists = listManager.querySelector('.worklists');
 		/*
 		Build the button list from DOM
 		*/
 		const fieldset = bj.dom('fieldset');
 		const frag = new DocumentFragment();
-		document.querySelectorAll('.oec-group').forEach( group => {
+		
+		// Only show the list view manager if there are more than 1 list!
+		const oecGroups = document.querySelectorAll('.oec-group');
+		if( oecGroups.length < 2) return; // --------------------------------  Exit!
+		
+		oecGroups.forEach( group => {
 			const label = bj.dom('label');
 			label.innerHTML = `<input type="checkbox" value="${group.dataset.id}" checked><span class="btn">${group.dataset.title}</span>`;
 			frag.append( label );
@@ -32,6 +37,9 @@
 		bj.empty( worklists );
 		fieldset.append( frag );
 		worklists.append( fieldset );
+		
+		// List view is hidden by default: 
+		bj.show( listManager );
 		
 		/*
 		Set up list mode. 

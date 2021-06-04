@@ -11145,26 +11145,26 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		Add Filter btns to <header> - these apply to all Worklists
 		*/		
 		const quickFilters = bj.dom('ul', "quick-filters");
-		const searchBtn = bj.dom('button', 'filter-all');
-		const waitingFor = bj.dom('button', 'waiting-for', 'Waiting for...');
+		const sortBtn = bj.dom('button', 'table-sort', '<i class="oe-i downup small pad-right"></i>Time');
+		const waitingFor = bj.dom('button', 'waiting-for', 'To-do ...');
 		
 		/**
 		* Quick filter Btns - [ Name, filter ]
 		*/
 		[
-			['For me', 'user'], // Not working, but capturing the UIX concept
+			//['For me', 'user'], // Not working, but capturing the UIX concept
 			['All','all'],
-			['Booked','later'], // not needed for A&E?!
-			['Started','clinic'],
-			['-f','-f'], 
+			//['Booked','later'], // not needed for A&E?!
+			['Checked in','clinic'],
+			//['-f','-f'], 
 			//['Active','active'],
-			['Waiting','waiting'],
+			//['Waiting','waiting'],
+			['Checked out','discharged'], // BUT patient is checked out but still has "todo"s
 			['Issues','issues'], // groups the 3 below!
 			// ['Delayed','long-wait'],
 			// ['No path','stuck'],
 			// ['Break', 'break'],
-			['Incomplete','discharged'], // BUT patient is checked out but still has "todo"s
-			['Completed','done'],
+			//['Completed','done'],
 		].forEach( btn => {
 			filters.add( clinic.filterBtn({
 				name: btn[0],
@@ -11173,19 +11173,27 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		});
 
 		const filtersHook = document.getElementById('js-clinic-filters');
-		filtersHook.innerHTML = '<input class="search" type="text" placeholder="Patient">';
-		filtersHook.append( quickFilters, waitingFor, searchBtn );
+		const patientSearch = bj.dom('input', 'search');
+		patientSearch.setAttribute('type', 'text');
+		patientSearch.setAttribute('placeholder', 'Patient');
+		filtersHook.append( patientSearch, sortBtn, quickFilters, waitingFor );
 		
 		/*
 		* Advanced search filter in header
 		* Not doing anything - just show/hide it
 		*/
+/*
 		bj.userDown('button.filter-all', ( ev ) => {
 			clinic.pathwayPopup('advanced-filter');
 		});
+*/
 		
-		bj.userDown('button.waiting-for', ( ev ) => {
+		bj.userDown('#js-clinic-filters button.waiting-for', ( ev ) => {
 			clinic.pathwayPopup('waiting-for');
+		});
+		
+		bj.userDown('#js-clinic-filters button.table-sort', ( ev ) => {
+			clinic.pathwayPopup('table-sort');
 		});
 		
 		/**
@@ -11227,14 +11235,19 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	* @param {Method} appViewChange - callback 
 	*/
 	const setup = ( appViewChange ) => {
-		const listManager = listPanel.querySelector('.list-manager');
+		const listManager = listPanel.querySelector('.list-view');
 		const worklists = listManager.querySelector('.worklists');
 		/*
 		Build the button list from DOM
 		*/
 		const fieldset = bj.dom('fieldset');
 		const frag = new DocumentFragment();
-		document.querySelectorAll('.oec-group').forEach( group => {
+		
+		// Only show the list view manager if there are more than 1 list!
+		const oecGroups = document.querySelectorAll('.oec-group');
+		if( oecGroups.length < 2) return; // --------------------------------  Exit!
+		
+		oecGroups.forEach( group => {
 			const label = bj.dom('label');
 			label.innerHTML = `<input type="checkbox" value="${group.dataset.id}" checked><span class="btn">${group.dataset.title}</span>`;
 			frag.append( label );
@@ -11244,6 +11257,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		bj.empty( worklists );
 		fieldset.append( frag );
 		worklists.append( fieldset );
+		
+		// List view is hidden by default: 
+		bj.show( listManager );
 		
 		/*
 		Set up list mode. 
@@ -11308,6 +11324,40 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				
   
 })( bluejay, bluejay.namespace('clinic')); 
+(function( bj ){
+
+	'use strict';	
+	
+	/**
+	* Nav worklist panel
+	* Link up the buttons to the actual lists in the DOM
+	* Also demo switching to "No context"
+	*/
+	
+	const listPanel = document.getElementById('js-worklists-panel');
+	if( listPanel === null ) return;
+	
+	
+	const lists = document.getElementById("js-idg-worklist-panel-lists");
+	const favourites = document.getElementById("js-idg-worklist-panel-favourites");
+
+	bj.userDown('#js-idg-worklist-tab-btns > button', ev => {
+		listPanel.querySelector('#js-idg-worklist-tab-btns > button.selected').classList.remove('selected');
+		
+		const btn = ev.target;
+		btn.classList.add("selected");
+		
+		if( btn.name == "lists" ){
+			bj.show( lists );
+			bj.hide( favourites );
+		} else {
+			bj.hide( lists );
+			bj.show( favourites );;
+		}
+	});			
+			
+  
+})( bluejay ); 
 (function( bj, clinic ){
 
 	'use strict';	
@@ -12448,7 +12498,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				'<label class="patient-checkbox"><input class="js-check-patient" value="all" type="checkbox"><div class="checkbox-btn"></div></label>', 
 				`<i class="oe-i ${riskIcon}-grey no-click small"></i>`,
 				'<i class="oe-i comments no-click small"></i>',
-				'Wait hours', 
+				'Total duration', 
 				'<!-- complete icon -->'
 			]
 		});
@@ -12901,7 +12951,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				if( !this.info  ) return; 
 				
 				if( this.status == 'active' ||
-					this.shortcode == 'i-arr' ||
 					this.shortcode == 'i-fin' ||
 					this.shortcode == 'i-wait' ||
 					this.shortcode == 'i-delayed' ){
@@ -12909,6 +12958,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				} else {
 					bj.hide( this.info );
 				}
+				
+				if( this.shortcode == 'i-arr' &&
+					this.status == 'done'){
+					bj.show( this.info );		
+				}
+				
 			}
 		});
 		
