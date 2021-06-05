@@ -88,29 +88,25 @@
 		* complete (tick icon)
 		*/
 		const onChangeComplete = () => {
-			let html = "";
-			if( model.status == "done"){
-				html = `<i class="oe-i tick small-icon pad"></i>`;
+			const buildIcon = ( i, size, hook, tip ) => {
+				td.complete.innerHTML = [
+					`<i class="oe-i ${i} ${size}-icon pad js-has-tooltip ${hook}"`,
+					`data-tooltip-content="${tip}"`, 
+					`data-patient="${model.uid}"></i>`
+				].join(' ');
+			};
+			
+			if( model.status == 'later' ){
+				buildIcon('no-permissions', 'small', '', 'Pathway not started');
+			} else if ( model.status == 'later' ){
+				buildIcon('tick', 'small', '', 'Pathway not started');
+			} else if( pathway.canComplete()){
+				buildIcon('save', 'medium', 'js-idg-clinic-icon-complete', 'Pathway completed');
+			} else if ( model.status == "discharged") {
+				buildIcon('save-blue', 'medium', 'js-idg-clinic-icon-finish', 'Quick complete pathway');
 			} else {
-				// check with pathway
-				const buildIcon = ( i, hook, tip ) => {
-					return `<i class="oe-i ${i} medium-icon pad js-has-tooltip ${hook}" data-tooltip-content="${tip}" data-patient="${model.uid}"></i>`;
-				};
-				
-				if( pathway.canComplete()){
-					html = buildIcon('save', 'js-idg-clinic-icon-complete', 'Pathway completed');
-				} else {
-					html = model.status == "discharged" ? 
-						buildIcon('save-blue', 'js-idg-clinic-icon-finish', 'Quick complete pathway'):
-						buildIcon('finish', 'js-idg-clinic-icon-finish', 'Patient has left<br/>Quick complete pathway');
-				}
-				
-				
-			}
-			
-			
-			// update DOM
-			td.complete.innerHTML = html;					
+				buildIcon('finish', 'medium', 'js-idg-clinic-icon-finish', 'Patient has left<br/>Quick complete pathway');
+			}				
 		};
 		
 		model.views.add( onChangeComplete );
@@ -127,11 +123,9 @@
 				model.redFlagged = true;
 			}
 			
-			/*
-			From adder user can add "todo" or "config" or "auto-finish" steps. 
-			Pathway state could be: "waiting", "long-wait", "stuck" or "active" 
-			*/
-			if( step.shortcode == 'i-arr' ){
+			// check against "props" because arr block exists in "later"
+			// pathways...
+			if( step.shortcode == 'i-arr' && props.status != 'later'){
 				waitDuration.arrived( step.timestamp );
 			}
 			
@@ -143,7 +137,6 @@
 			if( step.shortcode == 'i-break'){
 				pathway.stopWaiting();
 			}
-			
 			
 			// if it's a wait it's counting the mins
 			if( step.shortcode == 'i-wait' || 

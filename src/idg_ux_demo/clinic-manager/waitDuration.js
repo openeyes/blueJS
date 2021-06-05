@@ -114,11 +114,14 @@
 					div.append( waitMins( false ));
 				break;
 				case "later":
+					/*
+					Check-in and DNA moved into the Arrived step (or PAS automatically done)
 					div.className = 'flex';
 					div.innerHTML = [
 						`<button class="cols-7 blue hint js-idg-clinic-btn-arrived" data-patient="${patientID}">Check-in</button>`,
 						`<button class="cols-4 js-idg-clinic-btn-DNA" data-patient="${patientID}">DNA</button>`
 					].join('');
+					*/
 				break;
 				default: 
 					div.className = 'wait-duration';

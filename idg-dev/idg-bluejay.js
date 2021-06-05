@@ -10730,7 +10730,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		oeClinic.append( fragment );
 		
 		// default clinic filter
-		model.filter = "clinic"; 
+		model.filter = "all"; 
 		
 		// update filter buttons count
 		updateFilterBtns();
@@ -11145,8 +11145,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		Add Filter btns to <header> - these apply to all Worklists
 		*/		
 		const quickFilters = bj.dom('ul', "quick-filters");
-		const sortBtn = bj.dom('button', 'table-sort', '<i class="oe-i downup small pad-right"></i>Time');
-		const waitingFor = bj.dom('button', 'waiting-for', 'To-do ...');
+		const sortBtn = bj.dom('button', 'table-sort', 'Time');
+		const waitingFor = bj.dom('button', 'to-do', 'To-do ...');
 		
 		/**
 		* Quick filter Btns - [ Name, filter ]
@@ -11175,7 +11175,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const filtersHook = document.getElementById('js-clinic-filters');
 		const patientSearch = bj.dom('input', 'search');
 		patientSearch.setAttribute('type', 'text');
-		patientSearch.setAttribute('placeholder', 'Patient');
+		patientSearch.setAttribute('placeholder', 'Name filter');
 		filtersHook.append( patientSearch, sortBtn, quickFilters, waitingFor );
 		
 		/*
@@ -11188,8 +11188,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		});
 */
 		
-		bj.userDown('#js-clinic-filters button.waiting-for', ( ev ) => {
-			clinic.pathwayPopup('waiting-for');
+		bj.userDown('#js-clinic-filters button.to-do', ( ev ) => {
+			clinic.pathwayPopup('to-do');
 		});
 		
 		bj.userDown('#js-clinic-filters button.table-sort', ( ev ) => {
@@ -11235,7 +11235,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	* @param {Method} appViewChange - callback 
 	*/
 	const setup = ( appViewChange ) => {
-		const listManager = listPanel.querySelector('.list-view');
+		const listManager = listPanel.querySelector('.js-idg-demo-list-view');
+		if( listManager == null ) return; // temporarily disabled, but may be needed in the future
+		
 		const worklists = listManager.querySelector('.worklists');
 		/*
 		Build the button list from DOM
@@ -11337,23 +11339,23 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	const listPanel = document.getElementById('js-worklists-panel');
 	if( listPanel === null ) return;
 	
-	
-	const lists = document.getElementById("js-idg-worklist-panel-lists");
-	const favourites = document.getElementById("js-idg-worklist-panel-favourites");
+	// Lists / Favourites / Recents
+	const tabPanels = document.querySelectorAll('.js-idg-tab-panel');
 
 	bj.userDown('#js-idg-worklist-tab-btns > button', ev => {
 		listPanel.querySelector('#js-idg-worklist-tab-btns > button.selected').classList.remove('selected');
 		
+		// flag the clicked one
 		const btn = ev.target;
 		btn.classList.add("selected");
 		
-		if( btn.name == "lists" ){
-			bj.show( lists );
-			bj.hide( favourites );
-		} else {
-			bj.hide( lists );
-			bj.show( favourites );;
-		}
+		tabPanels.forEach( panel => {
+			if( panel.classList.contains( btn.name )){
+				bj.show( panel );
+			} else {
+				bj.hide( panel );
+			}
+		});
 	});			
 			
   
@@ -11812,29 +11814,25 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* complete (tick icon)
 		*/
 		const onChangeComplete = () => {
-			let html = "";
-			if( model.status == "done"){
-				html = `<i class="oe-i tick small-icon pad"></i>`;
+			const buildIcon = ( i, size, hook, tip ) => {
+				td.complete.innerHTML = [
+					`<i class="oe-i ${i} ${size}-icon pad js-has-tooltip ${hook}"`,
+					`data-tooltip-content="${tip}"`, 
+					`data-patient="${model.uid}"></i>`
+				].join(' ');
+			};
+			
+			if( model.status == 'later' ){
+				buildIcon('no-permissions', 'small', '', 'Pathway not started');
+			} else if ( model.status == 'later' ){
+				buildIcon('tick', 'small', '', 'Pathway not started');
+			} else if( pathway.canComplete()){
+				buildIcon('save', 'medium', 'js-idg-clinic-icon-complete', 'Pathway completed');
+			} else if ( model.status == "discharged") {
+				buildIcon('save-blue', 'medium', 'js-idg-clinic-icon-finish', 'Quick complete pathway');
 			} else {
-				// check with pathway
-				const buildIcon = ( i, hook, tip ) => {
-					return `<i class="oe-i ${i} medium-icon pad js-has-tooltip ${hook}" data-tooltip-content="${tip}" data-patient="${model.uid}"></i>`;
-				};
-				
-				if( pathway.canComplete()){
-					html = buildIcon('save', 'js-idg-clinic-icon-complete', 'Pathway completed');
-				} else {
-					html = model.status == "discharged" ? 
-						buildIcon('save-blue', 'js-idg-clinic-icon-finish', 'Quick complete pathway'):
-						buildIcon('finish', 'js-idg-clinic-icon-finish', 'Patient has left<br/>Quick complete pathway');
-				}
-				
-				
-			}
-			
-			
-			// update DOM
-			td.complete.innerHTML = html;					
+				buildIcon('finish', 'medium', 'js-idg-clinic-icon-finish', 'Patient has left<br/>Quick complete pathway');
+			}				
 		};
 		
 		model.views.add( onChangeComplete );
@@ -11851,11 +11849,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				model.redFlagged = true;
 			}
 			
-			/*
-			From adder user can add "todo" or "config" or "auto-finish" steps. 
-			Pathway state could be: "waiting", "long-wait", "stuck" or "active" 
-			*/
-			if( step.shortcode == 'i-arr' ){
+			// check against "props" because arr block exists in "later"
+			// pathways...
+			if( step.shortcode == 'i-arr' && props.status != 'later'){
 				waitDuration.arrived( step.timestamp );
 			}
 			
@@ -11867,7 +11863,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			if( step.shortcode == 'i-break'){
 				pathway.stopWaiting();
 			}
-			
 			
 			// if it's a wait it's counting the mins
 			if( step.shortcode == 'i-wait' || 
@@ -12438,11 +12433,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					div.append( waitMins( false ));
 				break;
 				case "later":
+					/*
+					Check-in and DNA moved into the Arrived step (or PAS automatically done)
 					div.className = 'flex';
 					div.innerHTML = [
 						`<button class="cols-7 blue hint js-idg-clinic-btn-arrived" data-patient="${patientID}">Check-in</button>`,
 						`<button class="cols-4 js-idg-clinic-btn-DNA" data-patient="${patientID}">DNA</button>`
 					].join('');
+					*/
 				break;
 				default: 
 					div.className = 'wait-duration';

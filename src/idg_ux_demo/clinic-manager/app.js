@@ -201,7 +201,7 @@
 		oeClinic.append( fragment );
 		
 		// default clinic filter
-		model.filter = "clinic"; 
+		model.filter = "all"; 
 		
 		// update filter buttons count
 		updateFilterBtns();

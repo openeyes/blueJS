@@ -15,7 +15,9 @@
 	* @param {Method} appViewChange - callback 
 	*/
 	const setup = ( appViewChange ) => {
-		const listManager = listPanel.querySelector('.list-view');
+		const listManager = listPanel.querySelector('.js-idg-demo-list-view');
+		if( listManager == null ) return; // temporarily disabled, but may be needed in the future
+		
 		const worklists = listManager.querySelector('.worklists');
 		/*
 		Build the button list from DOM

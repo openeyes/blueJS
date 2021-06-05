@@ -16,8 +16,8 @@
 		Add Filter btns to <header> - these apply to all Worklists
 		*/		
 		const quickFilters = bj.dom('ul', "quick-filters");
-		const sortBtn = bj.dom('button', 'table-sort', '<i class="oe-i downup small pad-right"></i>Time');
-		const waitingFor = bj.dom('button', 'waiting-for', 'To-do ...');
+		const sortBtn = bj.dom('button', 'table-sort', 'Time');
+		const waitingFor = bj.dom('button', 'to-do', 'To-do ...');
 		
 		/**
 		* Quick filter Btns - [ Name, filter ]
@@ -46,7 +46,7 @@
 		const filtersHook = document.getElementById('js-clinic-filters');
 		const patientSearch = bj.dom('input', 'search');
 		patientSearch.setAttribute('type', 'text');
-		patientSearch.setAttribute('placeholder', 'Patient');
+		patientSearch.setAttribute('placeholder', 'Name filter');
 		filtersHook.append( patientSearch, sortBtn, quickFilters, waitingFor );
 		
 		/*
@@ -59,8 +59,8 @@
 		});
 */
 		
-		bj.userDown('#js-clinic-filters button.waiting-for', ( ev ) => {
-			clinic.pathwayPopup('waiting-for');
+		bj.userDown('#js-clinic-filters button.to-do', ( ev ) => {
+			clinic.pathwayPopup('to-do');
 		});
 		
 		bj.userDown('#js-clinic-filters button.table-sort', ( ev ) => {
