@@ -87,7 +87,7 @@
 			*/
 			setType( val ){
 				// valid types
-				const valid = ['none', 'person', 'process', 'wait', 'delayed-wait', 'arrive', 'red-flag', 'fork', 'break', 'break-back', 'auto-finish', 'finish', 'comments', 'comments added'].find( test => test == val );
+				const valid = ['none', 'process', 'person', 'wait', 'delayed-wait', 'arrive', 'red-flag', 'fork', 'break', 'break-back', 'finish', 'comments', 'comments-added'].find( test => test == val );
 				if( !valid ) throw new Error(`PathStep: invaild type: "${val}"`);
 				
 				this.type = val;

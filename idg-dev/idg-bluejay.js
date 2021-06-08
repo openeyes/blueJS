@@ -408,6 +408,7 @@ const bluejay = (function () {
 	* @param {DOM Element} el
 	*/
 	const remove = ( el ) => {
+		console.log( el );
 		el.parentNode.removeChild( el );
 	};
 	
@@ -5999,7 +6000,10 @@ Updated to Vanilla JS for IDG
 	/*
 	Events
 	*/
-	bj.userDown('#js-nav-worklists-btn', () => open ? hide() : show() );	
+	bj.userDown('#js-nav-worklists-btn', () => open ? hide() : show());	
+	
+	// OEC landing page needs to pop this open!
+	bj.extend('openNavWorklistPanel', show );
 	
 	
 	/**
@@ -11145,26 +11149,24 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		Add Filter btns to <header> - these apply to all Worklists
 		*/		
 		const quickFilters = bj.dom('ul', "quick-filters");
-		const sortBtn = bj.dom('button', 'table-sort', 'Time');
-		const waitingFor = bj.dom('button', 'to-do', 'To-do ...');
 		
 		/**
 		* Quick filter Btns - [ Name, filter ]
 		*/
 		[
-			//['For me', 'user'], // Not working, but capturing the UIX concept
 			['All','all'],
+			['Me', 'user'], // Not working, but capturing the UIX concept
 			//['Booked','later'], // not needed for A&E?!
-			['Checked in','clinic'],
+			['Arrived','clinic'],
 			//['-f','-f'], 
 			//['Active','active'],
 			//['Waiting','waiting'],
-			['Checked out','discharged'], // BUT patient is checked out but still has "todo"s
 			['Issues','issues'], // groups the 3 below!
 			// ['Delayed','long-wait'],
 			// ['No path','stuck'],
 			// ['Break', 'break'],
-			//['Completed','done'],
+			['Departed','discharged'], // BUT patient is still active out but still has "todo"s
+			['Completed','done'],
 		].forEach( btn => {
 			filters.add( clinic.filterBtn({
 				name: btn[0],
@@ -11172,11 +11174,24 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			}, quickFilters ));
 		});
 
-		const filtersHook = document.getElementById('js-clinic-filters');
 		const patientSearch = bj.dom('input', 'search');
 		patientSearch.setAttribute('type', 'text');
 		patientSearch.setAttribute('placeholder', 'Name filter');
-		filtersHook.append( patientSearch, sortBtn, quickFilters, waitingFor );
+		
+		const popupBtn = ( css, name, inner ) => {
+			const dom =  bj.dom('button', `${css} ${name}`, inner );
+			dom.setAttribute('name', name );
+			return dom;
+		};
+		
+		document.getElementById('js-clinic-filters').append( 
+			patientSearch, 
+			 popupBtn('popup-filter', 'table-sort', 'Time'), 
+			 quickFilters, 
+			 popupBtn('popup-filter', 'waiting-for', 'Waiting for...'),
+			 popupBtn('popup-filter', 'to-do', 'To-do...'),
+			 popupBtn('popup-filter', 'help', '<!-- icon -->')
+		);
 		
 		/*
 		* Advanced search filter in header
@@ -11188,12 +11203,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		});
 */
 		
-		bj.userDown('#js-clinic-filters button.to-do', ( ev ) => {
-			clinic.pathwayPopup('to-do');
-		});
-		
-		bj.userDown('#js-clinic-filters button.table-sort', ( ev ) => {
-			clinic.pathwayPopup('table-sort');
+		bj.userDown('#js-clinic-filters button.popup-filter', ( ev ) => {
+			clinic.pathwayPopup( ev.target.name );
 		});
 		
 		/**
@@ -11387,11 +11398,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				
 				// fake a click through
 				// steps are already added (config makes no difference but shows the UIX)
-				div.querySelector('.js-fake-add')
-					.addEventListener("mousedown", (ev) => {
+				const fakeAdd = div.querySelector('.js-fake-add');
+				if( fakeAdd != null ){
+					fakeAdd.addEventListener("mousedown", (ev) => {
 						ev.stopPropagation();
 						bj.remove(div);
 					},{ once:true });
+				}	
 					
 				// cancel is handled by the Clinic app
 			})
@@ -11680,7 +11693,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				// Any other todo / config steps?
 				const todoIndex = findFirstIndex('todo', 'config');
 				if( todoIndex == -1 ){
-					// No, end of pathway, auto-finish or stuck?
 					pathSteps.push( waitStep );
 				} else {
 					// Yes, other todo/config steps
@@ -11824,14 +11836,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			if( model.status == 'later' ){
 				buildIcon('no-permissions', 'small', '', 'Pathway not started');
-			} else if ( model.status == 'later' ){
+			} else if ( model.status == 'done' ){
 				buildIcon('tick', 'small', '', 'Pathway not started');
 			} else if( pathway.canComplete()){
 				buildIcon('save', 'medium', 'js-idg-clinic-icon-complete', 'Pathway completed');
 			} else if ( model.status == "discharged") {
 				buildIcon('save-blue', 'medium', 'js-idg-clinic-icon-finish', 'Quick complete pathway');
 			} else {
-				buildIcon('finish', 'medium', 'js-idg-clinic-icon-finish', 'Patient has left<br/>Quick complete pathway');
+				buildIcon('save-blue', 'medium', 'js-idg-clinic-icon-finish', 'Patient has left<br/>Quick complete pathway');
 			}				
 		};
 		
@@ -11912,6 +11924,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					if( pathStep.getCode() == "i-discharge"){
 						waitDuration.finished( Date.now());
 						pathway.discharged();
+					
+						// can complete?
+						if( pathway.canComplete()){
+							model.status = 'discharged'; // hack this so that onComplete can run
+							onComplete();
+						}
+						
 					} else {
 						pathway.addWaiting();
 					}
@@ -12004,7 +12023,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			const psOwner = gui.pathStep({
 				shortcode: 'i-comments',
 				status: 'buff',
-				type: props.notes ? 'comments added' : 'comments',
+				type: props.notes ? 'comments-added' : 'comments',
 				info: props.notes ? 'clock' : '&nbsp;', 
 				idgPopupCode: props.notes ? false : 'i-comments-none'
 			}, false );
@@ -12064,7 +12083,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		const onComplete = () => {
 			if( model.status == "active" ) return;
-			
 			addPathStep({
 				shortcode: 'i-fin',
 				status: 'buff',
@@ -12491,7 +12509,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				'Time', 
 				'Clinic', 
 				'Patient', 
-				'<!-- meta icon -->', 
+				'<!-- meta data -->', 
 				'Pathway',
 				'<label class="patient-checkbox"><input class="js-check-patient" value="all" type="checkbox"><div class="checkbox-btn"></div></label>', 
 				`<i class="oe-i ${riskIcon}-grey no-click small"></i>`,
@@ -12776,7 +12794,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			*/
 			setType( val ){
 				// valid types
-				const valid = ['none', 'person', 'process', 'wait', 'delayed-wait', 'arrive', 'red-flag', 'fork', 'break', 'break-back', 'auto-finish', 'finish', 'comments', 'comments added'].find( test => test == val );
+				const valid = ['none', 'process', 'person', 'wait', 'delayed-wait', 'arrive', 'red-flag', 'fork', 'break', 'break-back', 'finish', 'comments', 'comments-added'].find( test => test == val );
 				if( !valid ) throw new Error(`PathStep: invaild type: "${val}"`);
 				
 				this.type = val;

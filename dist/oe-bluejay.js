@@ -408,6 +408,7 @@ const bluejay = (function () {
 	* @param {DOM Element} el
 	*/
 	const remove = ( el ) => {
+		console.log( el );
 		el.parentNode.removeChild( el );
 	};
 	

@@ -16,26 +16,24 @@
 		Add Filter btns to <header> - these apply to all Worklists
 		*/		
 		const quickFilters = bj.dom('ul', "quick-filters");
-		const sortBtn = bj.dom('button', 'table-sort', 'Time');
-		const waitingFor = bj.dom('button', 'to-do', 'To-do ...');
 		
 		/**
 		* Quick filter Btns - [ Name, filter ]
 		*/
 		[
-			//['For me', 'user'], // Not working, but capturing the UIX concept
 			['All','all'],
+			['Me', 'user'], // Not working, but capturing the UIX concept
 			//['Booked','later'], // not needed for A&E?!
-			['Checked in','clinic'],
+			['Arrived','clinic'],
 			//['-f','-f'], 
 			//['Active','active'],
 			//['Waiting','waiting'],
-			['Checked out','discharged'], // BUT patient is checked out but still has "todo"s
 			['Issues','issues'], // groups the 3 below!
 			// ['Delayed','long-wait'],
 			// ['No path','stuck'],
 			// ['Break', 'break'],
-			//['Completed','done'],
+			['Departed','discharged'], // BUT patient is still active out but still has "todo"s
+			['Completed','done'],
 		].forEach( btn => {
 			filters.add( clinic.filterBtn({
 				name: btn[0],
@@ -43,11 +41,24 @@
 			}, quickFilters ));
 		});
 
-		const filtersHook = document.getElementById('js-clinic-filters');
 		const patientSearch = bj.dom('input', 'search');
 		patientSearch.setAttribute('type', 'text');
 		patientSearch.setAttribute('placeholder', 'Name filter');
-		filtersHook.append( patientSearch, sortBtn, quickFilters, waitingFor );
+		
+		const popupBtn = ( css, name, inner ) => {
+			const dom =  bj.dom('button', `${css} ${name}`, inner );
+			dom.setAttribute('name', name );
+			return dom;
+		};
+		
+		document.getElementById('js-clinic-filters').append( 
+			patientSearch, 
+			 popupBtn('popup-filter', 'table-sort', 'Time'), 
+			 quickFilters, 
+			 popupBtn('popup-filter', 'waiting-for', 'Waiting for...'),
+			 popupBtn('popup-filter', 'to-do', 'To-do...'),
+			 popupBtn('popup-filter', 'help', '<!-- icon -->')
+		);
 		
 		/*
 		* Advanced search filter in header
@@ -59,12 +70,8 @@
 		});
 */
 		
-		bj.userDown('#js-clinic-filters button.to-do', ( ev ) => {
-			clinic.pathwayPopup('to-do');
-		});
-		
-		bj.userDown('#js-clinic-filters button.table-sort', ( ev ) => {
-			clinic.pathwayPopup('table-sort');
+		bj.userDown('#js-clinic-filters button.popup-filter', ( ev ) => {
+			clinic.pathwayPopup( ev.target.name );
 		});
 		
 		/**

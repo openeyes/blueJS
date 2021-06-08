@@ -25,7 +25,10 @@
 	/*
 	Events
 	*/
-	bj.userDown('#js-nav-worklists-btn', () => open ? hide() : show() );	
+	bj.userDown('#js-nav-worklists-btn', () => open ? hide() : show());	
+	
+	// OEC landing page needs to pop this open!
+	bj.extend('openNavWorklistPanel', show );
 	
 	
 	/**

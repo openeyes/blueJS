@@ -98,14 +98,14 @@
 			
 			if( model.status == 'later' ){
 				buildIcon('no-permissions', 'small', '', 'Pathway not started');
-			} else if ( model.status == 'later' ){
+			} else if ( model.status == 'done' ){
 				buildIcon('tick', 'small', '', 'Pathway not started');
 			} else if( pathway.canComplete()){
 				buildIcon('save', 'medium', 'js-idg-clinic-icon-complete', 'Pathway completed');
 			} else if ( model.status == "discharged") {
 				buildIcon('save-blue', 'medium', 'js-idg-clinic-icon-finish', 'Quick complete pathway');
 			} else {
-				buildIcon('finish', 'medium', 'js-idg-clinic-icon-finish', 'Patient has left<br/>Quick complete pathway');
+				buildIcon('save-blue', 'medium', 'js-idg-clinic-icon-finish', 'Patient has left<br/>Quick complete pathway');
 			}				
 		};
 		
@@ -186,6 +186,13 @@
 					if( pathStep.getCode() == "i-discharge"){
 						waitDuration.finished( Date.now());
 						pathway.discharged();
+					
+						// can complete?
+						if( pathway.canComplete()){
+							model.status = 'discharged'; // hack this so that onComplete can run
+							onComplete();
+						}
+						
 					} else {
 						pathway.addWaiting();
 					}
@@ -278,7 +285,7 @@
 			const psOwner = gui.pathStep({
 				shortcode: 'i-comments',
 				status: 'buff',
-				type: props.notes ? 'comments added' : 'comments',
+				type: props.notes ? 'comments-added' : 'comments',
 				info: props.notes ? 'clock' : '&nbsp;', 
 				idgPopupCode: props.notes ? false : 'i-comments-none'
 			}, false );
@@ -338,7 +345,6 @@
 		
 		const onComplete = () => {
 			if( model.status == "active" ) return;
-			
 			addPathStep({
 				shortcode: 'i-fin',
 				status: 'buff',

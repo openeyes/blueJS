@@ -25,11 +25,13 @@
 				
 				// fake a click through
 				// steps are already added (config makes no difference but shows the UIX)
-				div.querySelector('.js-fake-add')
-					.addEventListener("mousedown", (ev) => {
+				const fakeAdd = div.querySelector('.js-fake-add');
+				if( fakeAdd != null ){
+					fakeAdd.addEventListener("mousedown", (ev) => {
 						ev.stopPropagation();
 						bj.remove(div);
 					},{ once:true });
+				}	
 					
 				// cancel is handled by the Clinic app
 			})

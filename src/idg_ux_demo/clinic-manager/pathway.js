@@ -276,7 +276,6 @@
 				// Any other todo / config steps?
 				const todoIndex = findFirstIndex('todo', 'config');
 				if( todoIndex == -1 ){
-					// No, end of pathway, auto-finish or stuck?
 					pathSteps.push( waitStep );
 				} else {
 					// Yes, other todo/config steps
