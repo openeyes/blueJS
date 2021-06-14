@@ -74,9 +74,10 @@
 			pathway.setStatus( model.status );
 			waitDuration.render( model.status );
 			
+			// tick (+ icon)
 			if( model.status == "done" ){
-				td.addIcon.innerHTML = "<!-- pathway done -->";
-			}
+				td.addIcon.innerHTML = "<!-- completed -->"; 
+			} 
 			
 		};
 		
@@ -99,13 +100,13 @@
 			if( model.status == 'later' ){
 				buildIcon('no-permissions', 'small', '', 'Pathway not started');
 			} else if ( model.status == 'done' ){
-				buildIcon('tick', 'small', '', 'Pathway not started');
+				buildIcon('undo', 'medium', 'js-idg-pathway-reactivate', 'Re-activate pathway to add steps');
 			} else if( pathway.canComplete()){
-				buildIcon('save', 'medium', 'js-idg-clinic-icon-complete', 'Pathway completed');
+				buildIcon('save', 'medium', 'js-idg-pathway-complete', 'Pathway completed');
 			} else if ( model.status == "discharged") {
-				buildIcon('save-blue', 'medium', 'js-idg-clinic-icon-finish', 'Quick complete pathway');
+				buildIcon('save-blue', 'medium', 'js-idg-pathway-finish', 'Quick complete pathway');
 			} else {
-				buildIcon('save-blue', 'medium', 'js-idg-clinic-icon-finish', 'Patient has left<br/>Quick complete pathway');
+				buildIcon('save-blue', 'medium', 'js-idg-pathway-finish', 'Patient has left<br/>Quick complete pathway');
 			}				
 		};
 		
@@ -252,6 +253,13 @@
 			td.risks.innerHTML = `<i class="oe-i ${icon}-${color} ${size} js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
 			model.risk = num;
 		};
+		
+		const buildAddStepTick = () => {
+			const label = bj.dom('label', 'patient-checkbox');
+			const checkboxBtn = bj.div('checkbox-btn');
+			label.append( tick, checkboxBtn );
+			td.addIcon.append( label );
+		};
 
 		/**
 		* Initiate inital patient state from JSON	
@@ -272,11 +280,7 @@
 			// CSS styles this to look like a "+" icon
 			// build node tree
 			tick.setAttribute('value', `${model.uid}`);
-			
-			const label = bj.dom('label', 'patient-checkbox');
-			const checkboxBtn = bj.div('checkbox-btn');
-			label.append( tick, checkboxBtn );
-			td.addIcon.append( label );
+			buildAddStepTick();
 			
 			// set Flag (if there is one)
 			setRisk( props.risk );
@@ -353,6 +357,15 @@
 			});
 		};
 		
+		const onReactivate = () => {
+			if( model.status != "done" ) return;
+			pathway.removeCompleted();
+			// update patient status based on pathway
+			model.status = pathway.getStatus();
+			// allow users to add steps again
+			buildAddStepTick();
+		};
+		
 		/**
 		* @method 
 		* Users can select all or none of currently viewed patients
@@ -372,6 +385,12 @@
 		*/
 		const render = ( filter ) => {
 			let renderDOM = false;
+		
+			// wating for filter is set as an Array. 
+			if( typeof filter != "string" ){
+				return filter.find( e => e == model.uid ) == model.uid ? tr : null;
+			}
+			
 			
 			switch( filter ){
 				case "all": renderDOM = true;
@@ -412,8 +431,13 @@
 			onArrived, 
 			onDNA, 
 			onComplete, 
+			onReactivate,
 			getID(){ return model.uid; }, 
 			getStatus(){ return model.status; },
+			getWaitingFor(){ return { 
+				uid: model.uid,
+				step: pathway.waitingFor() 
+			};},
 			//getRisk(){ return model.risk; },
 			getRedFlagged(){ return model.redFlagged; },
 			render, 

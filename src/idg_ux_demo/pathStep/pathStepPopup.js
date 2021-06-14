@@ -39,7 +39,7 @@
 			Async.
 			Use the pathStepKey for the token check
 			*/
-			const urlShortCode = shortcode.replace(' ','-'); // watch out for "Dr XY";
+			const urlShortCode = shortcode.replaceAll(' ','-'); // watch out for "Dr X Y";
 			
 			const phpCode = `${urlShortCode}.${status}.${type}`.toLowerCase();
 			bj.xhr(`/idg-php/load/pathstep/_ps.php?full=${full}&code=${phpCode}`, pathStepKey )
@@ -55,7 +55,6 @@
 					// CSS will handle animation
 					// 22px = 10px padding + 1px border!
 					popup.style.height = (div.scrollHeight + 22) + 'px'; 
-					
 					
 				})
 				.catch( e => console.log('PHP failed to load', e ));
@@ -120,6 +119,9 @@
 			* this is a bit hack but it demo's the UIX behaviour!
 			*/
 			document.body.querySelector('main').addEventListener('scroll', removeReset, { capture:true,  once:true });
+			
+			
+			
 		};
 		
 		/**
@@ -200,10 +202,77 @@
 					// pathway position shift. This has to be managed by
 					// the pathway that contains the pathStep.
 					bj.customEvent('idg:pathStepShift', { pathStep, shift: userRequest == "right" ? 1 : -1 });
+					bj.customEvent('idg:AppUpdateFilters');
 				break;
 				default: bj.log('PathStepPopup: Unknown request state');
 			}
 		});
+		
+		/**
+		Hacky demo to show step customisation
+		*/
+		
+		bj.userDown('.oe-pathstep-popup .js-customise-view i.js-edit', ( ev ) => {
+			bj.show( popup.querySelector('.js-customise-edit'));
+			bj.hide( popup.querySelector('.js-customise-view'));
+		});
+		
+		const hideCustomEdit = () => {
+			bj.hide( popup.querySelector('.js-customise-edit'));
+			bj.show( popup.querySelector('.js-customise-view'));
+		};
+		
+		const changeStepCode = ( code ) => {
+			pathStep.setCode( code );
+			pathStep.removeIdgPopupCode();
+			popup.querySelector('.js-customise-view h3').textContent = code; 
+			hideCustomEdit();
+			bj.customEvent('idg:AppUpdateFilters');
+		};
+	
+		// free text input
+		bj.userDown('.oe-pathstep-popup .js-customise-edit i.js-save', ( ev ) => changeStepCode( ev.target.previousSibling.value ));
+		
+		// select options
+		popup.addEventListener('change', ev => {
+			if( ev.target.matches('select.js-custom-options')){
+				changeStepCode( ev.target.value );
+			}
+		});
+		
+		// cancel is the same for both
+		bj.userDown('.oe-pathstep-popup .js-customise-edit i.js-cancel', () => hideCustomEdit());
+		
+		/**
+		------- Comments!
+		Hacky demo to show comments being edited
+		*/
+		// show a character count for comment if there are any!
+		popup.addEventListener('input', ev => {
+			if( ev.target.matches('input.js-step-comments')){
+				const input = ev.target;
+				// update the view text:
+				popup.querySelector('.js-comments-view em.comment').textContent = input.value; 
+				// show capacity for input based on maxlength as percentage
+				const len = input.value.length;
+				const max = Number( input.getAttribute('maxlength'));
+				const bar = popup.querySelector('.js-comments-edit .percent-bar');
+				bar.style.width = (( len / max ) * 100 ) + '%';
+			}
+		});
+		
+		bj.userDown('.oe-pathstep-popup .step-comments i.js-save', ( ev ) => {
+			bj.hide( popup.querySelector('.js-comments-edit'));
+			bj.show( popup.querySelector('.js-comments-view'));
+			// on iDG the comments are empty first time, then afterwards we are updating it.
+			ev.target.classList.replace("save-plus", "save");
+		});
+		
+		bj.userDown('.oe-pathstep-popup .step-comments i.js-edit', () => {
+			bj.show( popup.querySelector('.js-comments-edit'));
+			bj.hide( popup.querySelector('.js-comments-view'));
+		});
+		
 		
 		
 		

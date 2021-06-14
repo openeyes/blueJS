@@ -3513,6 +3513,315 @@ const bluejay = (function () {
 	if( document.querySelector('.oeplot') == null ) return;
 	
 	/**
+	* OES Adherence template
+	* Sub-plot layout
+	* |- Events: Injection, Images (OCT), Managment (Inj Mgmt & Clinical Mgmt)
+	* |- 24hr plots of drug application
+	* |- [Navigator] 
+	*
+	* Domain allocation for layout: (note: 0 - 1, 0 is the bottom)
+	* Using subploting within plot.ly - Navigator outside this
+	*/
+	const domainLayout = [
+		[0.7, 1], 		// Events		y2
+		[0, 0.64]		// 24hrs		y1 (y) 
+	];
+	
+	// Plotly: hold all parameters for each plot (R & L)
+	const myPlotly = new Map();	
+	
+	// tools
+	let tools = null; 
+	
+	/**
+	* Build data traces for Plotly
+	* traces are stored in myPlotly Map.
+	* @param {JSON} eyeJSON data
+	* @param {String} eyeSide - 'leftEye' or 'rightEye'
+	*/
+	const buildDataTraces = ( eyeJSON, eyeSide  ) => {
+
+		/*
+		Daily adherence will have the same Drug name as 
+		the Events, make sure they have unique Map Keys!
+		*/
+		
+		
+		const daily = {
+			x: eyeJSON.daily.x,
+			y: eyeJSON.daily.y,
+			name: eyeJSON.daily.name,	
+			yaxis: 'y',	//  default is "y", not "y1"!!
+			hovertemplate: `${eyeJSON.daily.name}: %{y}:00<extra></extra>`,
+			type: 'scatter',
+			mode: 'markers',
+		};
+	
+		
+		/**
+		Store data traces in myPlotly
+		*/
+		myPlotly.set( eyeSide, new Map());
+		myPlotly.get( eyeSide ).set('data', new Map());
+		myPlotly.get( eyeSide ).get('data').set( `a:${daily.name}`, daily );
+		
+		/**
+		Event data are all individual traces
+		all the Y values are are the SAME, so that are shown on a line
+		extra data for the popup can be passed in with customdata
+		*/
+		Object.values( eyeJSON.events ).forEach(( event ) => {
+			
+			const newEvent = Object.assign({
+					oeEventType: event.event, // store event type
+					x: event.x, 
+					y: event.y, 
+					customdata: event.customdata,
+					name: event.name, 
+					yaxis: 'y2',
+					hovertemplate: event.customdata ? '%{y}<br>%{customdata}<br>%{x}<extra></extra>' : '%{y}<br>%{x}<extra></extra>',
+					type: 'scatter',
+					showlegend: false,
+				}, oePlot.eventStyle(  event.event ));
+			
+			myPlotly.get( eyeSide ).get('data').set( newEvent.name, newEvent);
+		});
+	};
+	
+	/**
+	* React to user request to change VA scale 
+	* @callback: Tools will update this
+	* @param {String} which eye side?
+	*/
+	const plotlyReacts = ( eyeSide ) => {
+		if( !myPlotly.has( eyeSide )) return;
+		
+		// get the eyePlot for the eye side
+		let eyePlot = myPlotly.get( eyeSide ); 
+		
+		// Check hoverMode setting
+		eyePlot.get('layout').hovermode = tools.hoverMode.getMode();
+
+		/**
+		* Plot.ly!
+		* Build new (or rebuild) have to use react()
+		*/
+		Plotly.react(
+			eyePlot.get('div'), 
+			Array.from( eyePlot.get('data').values()), // Data Array of ALL traces
+			eyePlot.get('layout'), 
+			{ displayModeBar: false, responsive: true }
+		);
+	};
+	
+	/**
+	* After init - build layout and initialise Plotly 
+	* @param {Object} setup - deconstructed
+	*/
+	const plotlyInit = ({ title, eyeSide, colors, xaxis, yaxes, parentDOM }) => {
+		/*
+		Ensure parentDOM is empty (theme switch re-build issue otherwise!)
+		*/
+		const parent = document.querySelector( parentDOM );
+		bj.empty( parent );
+		
+		// Need a wrapper to help with the CSS layout		
+		const div = oePlot.buildDiv(`oes-${eyeSide}`);
+		parent.append( div );
+		
+		/*
+		Build layout
+		*/
+		const layout = oePlot.getLayout({
+			darkTheme: oePlot.isDarkTheme(), // link to CSS theme
+			legend: {
+				yanchor:'bottom',
+				y: domainLayout[1][1], // position relative to subplots
+			},
+			colors,
+			plotTitle: title,
+			xaxis,
+			yaxes,
+			subplot: domainLayout.length, // num of sub-plots 
+			rangeSlider: true, 
+			dateRangeButtons: true,
+		});
+		
+		oePlot.addLayoutHorizontals( layout, [{'name':'Noon','y':12}], 'y');
+		
+		// store details
+		myPlotly.get( eyeSide ).set('div', div);
+		myPlotly.get( eyeSide ).set('layout', layout);
+
+		// build
+		plotlyReacts( eyeSide );
+		
+		/* 
+		bluejay custom event
+		User changes layout arrangement (top split view, etc)
+		*/
+		document.addEventListener('oesLayoutChange', () => {
+			Plotly.relayout( div, layout );
+		});	
+	}; 
+	
+	/**
+	* init
+	* @callback: from the PHP page that needs it
+	* @param {JSON} json - PHP supplies the data for charts
+	* @param {Boolean} isThemeChange - user event requires a rebuild
+	*/
+	const init = ( json, isThemeChange = false ) => {
+		if( json === null ) throw new Error('[oePlot] Sorry, no JSON data!');
+		bj.log(`[oePlot] - OES Medical Retina`);
+		
+		/**
+		* When a users changes themes EVERYTHING needs rebuilding
+		* the only way (I think) to do this is to re-initialise
+		*/
+		myPlotly.clear();
+		
+		/**
+		* oePlot tools
+		* Allows the user to access extra chart functionality
+		* tools will add a fixed toolbar DOM to the page.
+		*
+		* Tools are not effected by a theme switch, CSS will 
+		* re-style them, but the traces and axes need updating
+		*/
+		if( tools == null ){
+			tools = oePlot.tools();
+			tools.plot.setReacts( plotlyReacts, ['rightEye', 'leftEye']);
+			tools.hoverMode.add(); // user hoverMode options for labels
+			
+			// check for tabular data:
+			if( json.tabularDataID ){
+				tools.tabularData.add( json.tabularDataID );
+			}
+			
+			tools.showToolbar(); // update DOM
+		} 
+	
+		/**
+		* Traces - build data traces from JSON 
+		*/
+		
+		if( json.rightEye ){
+			buildDataTraces( json.rightEye, 'rightEye' );
+		}
+		
+		if( json.leftEye ){
+			buildDataTraces( json.leftEye, 'leftEye' );
+		}
+	
+		/**
+		* Axes 
+		*/
+		
+		// x1 - Timeline
+		const x1 = oePlot.getAxis({
+			type:'x',
+			numTicks: 10,
+			useDates: true,
+			spikes: true,
+			noMirrorLines: true,
+		}, oePlot.isDarkTheme());
+		
+		// y1 - daily
+		const y1 = oePlot.getAxis({
+			type:'y',
+			domain: domainLayout[1],
+			title: '24 Hours', 
+			range: json.yaxis.hours, 
+			spikes: true,
+		}, oePlot.isDarkTheme());
+		
+		// y2 - Events
+		const y2 = oePlot.getAxis({
+			type:'y',
+			domain: domainLayout[0],
+			useCategories: {
+				categoryarray: json.allEvents,
+				rangeFit: "pad", // "exact", etc
+			},
+			spikes: true,
+		}, oePlot.isDarkTheme());
+		
+		/**
+		* Layout & Initiate
+		*/	
+		
+		if( myPlotly.has('rightEye') ){
+			plotlyInit({
+				title: "Right Eye",
+				eyeSide: "rightEye",
+				colors: "rightEyeSeries",
+				xaxis: x1, 
+				yaxes: [ y1, y2 ],
+				parentDOM: '.oes-left-side',
+			});	
+		} 
+		
+		if( myPlotly.has('leftEye') ){
+			plotlyInit({
+				title: "Left Eye",
+				eyeSide: "leftEye",
+				colors: "leftEyeSeries",
+				xaxis: x1, 
+				yaxes: [ y1, y2 ],
+				parentDOM: '.oes-right-side',
+			});			
+		}
+		
+		/**
+		* OE Theme change
+		* Users changes the theme, re-initialise with the stored JSON
+		* note: once!
+		*/
+		document.addEventListener('oeThemeChange', () => {
+			// give the browser time to adjust the CSS
+			setTimeout( () => init( json, true ), 100 ); 
+		}, { once: true });
+		
+		/**
+		* First init... 
+		*/	
+		if( isThemeChange == false ){
+		
+			bj.log('[oePlot] Click and Hover Events available (click point to see data structure)');
+			
+			['rightEye', 'leftEye'].forEach( eyeSide => {
+				if( !myPlotly.has( eyeSide )) return;
+				const div = myPlotly.get( eyeSide ).get('div');
+				oePlot.addClickEvent( div, eyeSide );
+				oePlot.addHoverEvent( div, eyeSide );
+			});
+			
+			/* 
+			API, allow external JS to be able to highlight a specific marker
+			*/
+			// return { highlightPoint: oePlot.highlightPoint( myPlotly )};
+		}
+
+		
+	};
+
+	/**
+	* Extend blueJS
+	* PHP will call this directly with JSON when DOM is loaded
+	*/
+	bj.extend('plotSummaryAdherence', init );	
+	
+		
+})( bluejay, bluejay.namespace('oePlot')); 
+(function( bj, oePlot ){
+
+	'use strict';
+	
+	// oePlot required. Tools needs this
+	if( document.querySelector('.oeplot') == null ) return;
+	
+	/**
 	* OES Glaucoma
 	* Sub-plot layout
 	* |- Events: Injection, Images (OCT), Managment (Inj Mgmt & Clinical Mgmt)
@@ -10607,13 +10916,30 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// gather all the patient data and pass to filterBtns
 			let status = [];
 			let redflagged = [];
+			let waitingSteps = new Map();
+			
 			worklists.forEach( list => {
 				const patientFilters = list.getPatientFilterState();
 				status = status.concat( patientFilters.status );
 				redflagged = redflagged.concat( patientFilters.redflagged );
+				
+				// organise all the waiting for steps...
+				patientFilters.waitingFor.forEach( patient => {
+					if( waitingSteps.has( patient.step )){
+						waitingSteps.get( patient.step).add( patient.uid );
+					} else {
+						if( patient.step != false ){
+							// ignore false requests
+							waitingSteps.set( patient.step, new Set([  patient.uid ]));
+						}
+					}
+				});
+
 			});
 			
 			filters.updateCount( status, redflagged );
+			filters.waitingFor.updateOptions( waitingSteps );
+			
 			model.updateView();
 		};
 	
@@ -10640,7 +10966,17 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		bj.userDown('.js-idg-clinic-btn-filter', ( ev ) => {
 			gui.pathStepPopup.remove(); // if there is a popup open remove it
 			worklists.forEach( list => list.untickPatients());
+			filters.waitingFor.reset();
 			model.filter = ev.target.dataset.filter;
+		});
+		
+		/**
+		* Filter options in waiting for...
+		*/
+		bj.userDown('.js-filter-option', ev => {
+			gui.pathStepPopup.remove(); // if there is a popup open remove it
+			worklists.forEach( list => list.untickPatients());
+			model.filter = JSON.parse( ev.target.dataset.patients );
 		});
 		
 		/*
@@ -10656,10 +10992,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				data.s = "todo";
 			}
 			// demo a preset pathway
-			if( data.c == "Pathways"){
+			if( data.c == "preset-pathway"){
 				[
-					{c:'Dilate', s:'todo', t:'process'},
-					{c:'Nurse', s:'todo', t:'process'},
+					{c:'One', s:'todo', t:'process'},
+					{c:'Two', s:'todo', t:'process'},
 					{c:'i-fork', s:'buff', t:'fork'},
 				].forEach( data => {
 					worklists.forEach( list => list.addStepsToPatients( data ));
@@ -10668,9 +11004,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				worklists.forEach( list => list.addStepsToPatients( data ));
 				adder.addSuccess();
 			}
-			
-			
-			
 		});
 		
 		bj.userDown('div.oec-adder .close-btn', () => {
@@ -10700,18 +11033,21 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			worklists.forEach( list => list.patientDNA( ev.target.dataset.patient ));
 		});
 		
-		bj.userDown('.js-idg-clinic-icon-complete', ( ev ) => {
+		bj.userDown('.js-idg-pathway-complete', ( ev ) => {
 			worklists.forEach( list => list.patientComplete( ev.target.dataset.patient ));
 		});
 		
-		bj.userDown('.js-idg-clinic-icon-finish', ( ev ) => {
+		bj.userDown('.js-idg-pathway-reactivate', ( ev ) => {
+			worklists.forEach( list => list.patientReactivate( ev.target.dataset.patient ));
+		});
+		
+		bj.userDown('.js-idg-pathway-finish', ( ev ) => {
 			// this doesn't work! but I need to demo the UIX concept with a popup
 			clinic.pathwayPopup('quick-finish');
 			
 		});
 
-		// Patient changes it status
-		document.addEventListener('idg:PatientStatusChange', ( ev ) => updateFilterBtns());
+		
 		
 		/**
 		* Initialise App
@@ -10738,6 +11074,11 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		// update filter buttons count
 		updateFilterBtns();
+		
+		// Watch for patient changing their status
+		document.addEventListener('idg:PatientStatusChange', ( ev ) => updateFilterBtns());
+		// App 
+		document.addEventListener('idg:AppUpdateFilters', () => updateFilterBtns());
 		
 		// OK, ready to run this app, lets go!
 		loading.remove();
@@ -10855,10 +11196,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			};
 			
 
-			btn('Nurse', icon('person') + 'Nurse');
-			btn('Doctor', icon('person') + 'Doctor');
-			btn('HCA', icon('person') + 'HCA');
+			btn('Nurse');
+			btn('Doctor');
+			btn('HCA');
 			
+			btn('Gen', 'General task', false, 'todo', 'process', 'custom-step-select');
+			btn('Exam', 'Examination');
 			btn('Triage');
 			btn('Bio', 'Biometry');
 			btn('Colour');
@@ -10867,22 +11210,26 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			btn('Orth', 'Orthoptics');
 			btn('Ref', 'Refraction');
 			btn('CDU', 'Clinical decision unit');
+			btn('Presc', 'Prescription', 'Rx');
+			btn('Dilate')
+			btn('Dr Jones');
 			
 			
 			btn('DrugAdmin', icon('drop') + 'Drug Administration Preset Order', 'i-drug-admin', 'popup' );
 			btn('VisFields', 'Visual Fields', 'Fields', 'popup');
 			
-			btn('Letter', 'Send letter');
+			btn('Letter');
+			btn('Letter-discharge', 'Letter - discharge', 'Disc.letter');
 			btn('Blood', 'Blood tests');
 			btn('MRI', 'MRI tests');
 			
-			btn('Pathways', 'Preset pathways', false, 'popup');
+			btn('preset-pathway', 'Add custom pathway', false, 'popup');
 			
-			btn('i-fork', icon('fork') + 'Decision', false, 'buff', 'fork');
+			btn('i-fork', icon('fork') + 'Decision / review', false, 'buff', 'fork');
 			btn('i-break', icon('path-break') + 'Break in pathway', false, 'buff', 'break');
 			btn('i-discharge', icon('stop') + 'Check out', false, 'todo', 'process');
 			
-			btn('c-last','Remove last pathway step' );
+			btn('c-last','Remove last "todo" pathway step' );
 				
 			/*
 			* Element for all inserts
@@ -10897,7 +11244,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			};
 			
 			const buildGroup = ( title, list ) => {
-				const group = bj.dom('div','row', `<h4>${title}</h4>`);
+				const h4 = title ? `<h4>${title}</h4>` : "";
+				const group = bj.dom('div','row', h4 );
 				const ul = bj.dom('ul', 'btn-list');
 				
 				list.forEach( code => {
@@ -10922,13 +11270,17 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				inserts.append( group );
 			};
 		
-			buildGroup('Patient', ['i-fork', 'i-break', 'i-discharge']);
-			buildGroup('Pathways', ['Pathways']);
-			buildGroup('Tasks', ['Bio','Triage','Colour','Img','VA','Orth','Ref','DrugAdmin','VisFields', 'CDU'].sort());
-			buildGroup('People', ['Doctor','Nurse', 'HCA']);
-			buildGroup('Post check out', ['Letter','Blood','MRI'].sort());
+			buildGroup( false, ['i-fork', 'i-break', 'i-discharge']);
+			
+			buildGroup('Preset pathways', ['preset-pathway']);	
+			
+			buildGroup('Standard', ['Bio','DrugAdmin','VisFields','Letter','Presc','Exam','Gen'].sort());
+			
+			buildGroup('Custom', ['Triage','Colour', 'Dr Jones', 'Letter-discharge', 'Dilate','Img','VA','Orth','Ref', 'CDU','Doctor','Nurse', 'HCA','Blood','MRI'].sort());
+			
+			
 			// remove button
-			buildGroup('Remove "todo" steps from selected patient', ['c-last']);
+			buildGroup('Remove step from patient', ['c-last']);
 
 			// build div
 			div.append( bj.div('close-btn'), addTo, inserts );
@@ -11059,27 +11411,24 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	const filterBtn = ( props, ul ) => {
 		
 		const filter = props.filter; 
+		const name = bj.div('name');
 		const count = bj.div('count');
 		
 		const li = document.createElement('li');
 		li.className = "filter-btn js-idg-clinic-btn-filter"; 
 		li.setAttribute('data-filter', filter );
 		
-		// build btn and add to <ul> header
-		(() => {
-			const div = bj.div('filter');
-			// red flagged filter?
-			if( props.name.startsWith('-f')){
-				div.innerHTML = `<div class="name"><i class="oe-i flag-red medium-icon no-click"></div>`;
-			} else {
-				// change some to icons: 
-				div.innerHTML = `<div class="name">${props.name}</div>`;
-			}
-
-			div.append( count );	
-			li.append( div );
-			ul.append( li );
-		})();
+		
+		// red flagged filter?
+		if( props.name.startsWith('-f')){
+			name.innerHTML = `<i class="oe-i flag-red medium-icon no-click">`;
+		} else {
+			name.innerHTML = props.name;
+		}
+	
+		li.append( name, count );
+		ul.append( li );
+	
 		
 		/**
 		* updateCount
@@ -11136,6 +11485,90 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	'use strict';	
 	
 	/**
+	* Filter Chnageable
+	*/
+	const inner = ( name, count='' ) =>  `<div class="name">${name}</div><div class="count">${count}</div>`; 
+	
+	const filterChangeable = ( prefix ) => {
+		const selected = null;
+		const div = bj.div('changeable-filter');
+		const nav = bj.dom('nav', 'options');
+		bj.hide( nav );
+		
+		// button in the header (opens the options)
+		const headerBtn = bj.div('filter-btn');
+		headerBtn.innerHTML = inner( prefix );
+		
+		// intitate DOM: 
+		div.append( headerBtn, nav );
+		
+		const reset = () => {
+			headerBtn.classList.remove('selected');
+			headerBtn.innerHTML = inner( prefix );
+		};
+		
+		
+		/**
+		* @method - callback on any pathway change
+		* @params {Map} map - key:shortcode, value: Set of patiend ids
+		*/
+		const updateOptions = ( map ) => {
+			const filters = new DocumentFragment();
+			map.forEach(( set, key ) => {
+				const opt = bj.div('filter-btn js-filter-option');
+				
+				// the key is the PS shortcode might not work for the button name
+				const name = key == 'i-discharge' ? 'Check out' : key;
+				opt.innerHTML = inner( `&hellip; ${name}`, set.size );
+				opt.setAttribute('data-patients', JSON.stringify([ ...set.values() ]));
+				filters.append( opt );
+			});
+			
+			// rebuild the options
+			bj.empty( nav );
+			nav.append( filters );
+		};
+		
+		/**
+		* @Event, keep this internal for easy demo-ing
+		*/
+		div.addEventListener('mousedown', ev => {
+			const btn = ev.target;
+			if( ev.target.matches('nav .js-filter-option')){
+				headerBtn.innerHTML = inner(
+					btn.childNodes[0].textContent,
+					btn.childNodes[1].textContent
+				);
+				
+				headerBtn.classList.add('selected');
+			}		
+		});
+		
+		div.addEventListener('mouseenter', () => {
+			bj.show( nav );
+		});
+		
+		div.addEventListener('mouseleave', () => {
+			bj.hide( nav );
+		});
+		
+		// API
+		return { 
+			render(){ return div; },  
+			updateOptions, 
+			reset
+		};	
+	};
+	
+	// make component available to Clinic SPA	
+	clinic.filterChangeable = filterChangeable;			
+  
+})( bluejay, bluejay.namespace('clinic')); 
+(function( bj, clinic ){
+
+	'use strict';	
+	
+	/**
 	* Filters
 	*/
 	const filters = () => {
@@ -11155,7 +11588,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		[
 			['All','all'],
-			['Me', 'user'], // Not working, but capturing the UIX concept
 			//['Booked','later'], // not needed for A&E?!
 			['Arrived','clinic'],
 			//['-f','-f'], 
@@ -11178,6 +11610,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		patientSearch.setAttribute('type', 'text');
 		patientSearch.setAttribute('placeholder', 'Name filter');
 		
+		// waiting for... is complex! 
+		const waitingFor = clinic.filterChangeable('Waiting for&hellip;');
+		
 		const popupBtn = ( css, name, inner ) => {
 			const dom =  bj.dom('button', `${css} ${name}`, inner );
 			dom.setAttribute('name', name );
@@ -11188,9 +11623,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			patientSearch, 
 			 popupBtn('popup-filter', 'table-sort', 'Time'), 
 			 quickFilters, 
-			 popupBtn('popup-filter', 'waiting-for', 'Waiting for...'),
-			 popupBtn('popup-filter', 'to-do', 'To-do...'),
-			 popupBtn('popup-filter', 'help', '<!-- icon -->')
+			 // popupBtn('popup-filter', 'waiting-for', 'Waiting for...'),
+			 waitingFor.render(),
+			 popupBtn('popup-filter', 'info-help-overlay', '<!-- icon -->')
 		);
 		
 		/*
@@ -11222,7 +11657,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			filters.forEach( btn => btn.selected( filter ));
 		};
 		
-		return { updateCount, selected };	
+		return { updateCount, selected, waitingFor };	
 	};
 	
 	// make component available to Clinic SPA	
@@ -11648,6 +12083,19 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		};
 		
 		/**
+		* Remove the finish step
+		*/
+		const removeCompleted = () => {
+			discharged();
+			const last = pathSteps[ pathSteps.length - 1];
+			if( last.getCode() == 'i-fin' ){
+				last.remove();
+				pathSteps.splice( -1, 1 );
+			}
+			renderPathway();
+		}
+		
+		/**
 		* User/or auto completed
 		* Clean up the pathway	
 		*/
@@ -11713,6 +12161,22 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		};
 		
 		/**
+		* Waiting for filter needs to know this!
+		*/
+		const waitingFor = () => {
+			const findWaiting = pathSteps.findIndex( ps => {
+				const code = ps.getCode();
+				return ( code == 'i-wait' || code == "i-delayed" );
+			});
+			
+			if( findWaiting == -1 || findWaiting == pathSteps.length-1 ){
+				return false;
+			} else {
+				return pathSteps[ findWaiting + 1 ].getCode();
+			}
+		};
+		
+		/**
 		* API
 		*/
 		return {
@@ -11724,8 +12188,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			deleteRemovedStep,
 			stopWaiting,
 			addWaiting,
+			waitingFor,
 			discharged,
 			canComplete, 
+			removeCompleted,
 			completed,
 		};
 			
@@ -11812,9 +12278,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			pathway.setStatus( model.status );
 			waitDuration.render( model.status );
 			
+			// tick (+ icon)
 			if( model.status == "done" ){
-				td.addIcon.innerHTML = "<!-- pathway done -->";
-			}
+				td.addIcon.innerHTML = "<!-- completed -->"; 
+			} 
 			
 		};
 		
@@ -11837,13 +12304,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			if( model.status == 'later' ){
 				buildIcon('no-permissions', 'small', '', 'Pathway not started');
 			} else if ( model.status == 'done' ){
-				buildIcon('tick', 'small', '', 'Pathway not started');
+				buildIcon('undo', 'medium', 'js-idg-pathway-reactivate', 'Re-activate pathway to add steps');
 			} else if( pathway.canComplete()){
-				buildIcon('save', 'medium', 'js-idg-clinic-icon-complete', 'Pathway completed');
+				buildIcon('save', 'medium', 'js-idg-pathway-complete', 'Pathway completed');
 			} else if ( model.status == "discharged") {
-				buildIcon('save-blue', 'medium', 'js-idg-clinic-icon-finish', 'Quick complete pathway');
+				buildIcon('save-blue', 'medium', 'js-idg-pathway-finish', 'Quick complete pathway');
 			} else {
-				buildIcon('save-blue', 'medium', 'js-idg-clinic-icon-finish', 'Patient has left<br/>Quick complete pathway');
+				buildIcon('save-blue', 'medium', 'js-idg-pathway-finish', 'Patient has left<br/>Quick complete pathway');
 			}				
 		};
 		
@@ -11990,6 +12457,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			td.risks.innerHTML = `<i class="oe-i ${icon}-${color} ${size} js-has-tooltip" data-tt-type="basic" data-tooltip-content="${tip}"></i>`;
 			model.risk = num;
 		};
+		
+		const buildAddStepTick = () => {
+			const label = bj.dom('label', 'patient-checkbox');
+			const checkboxBtn = bj.div('checkbox-btn');
+			label.append( tick, checkboxBtn );
+			td.addIcon.append( label );
+		};
 
 		/**
 		* Initiate inital patient state from JSON	
@@ -12010,11 +12484,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// CSS styles this to look like a "+" icon
 			// build node tree
 			tick.setAttribute('value', `${model.uid}`);
-			
-			const label = bj.dom('label', 'patient-checkbox');
-			const checkboxBtn = bj.div('checkbox-btn');
-			label.append( tick, checkboxBtn );
-			td.addIcon.append( label );
+			buildAddStepTick();
 			
 			// set Flag (if there is one)
 			setRisk( props.risk );
@@ -12091,6 +12561,15 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			});
 		};
 		
+		const onReactivate = () => {
+			if( model.status != "done" ) return;
+			pathway.removeCompleted();
+			// update patient status based on pathway
+			model.status = pathway.getStatus();
+			// allow users to add steps again
+			buildAddStepTick();
+		};
+		
 		/**
 		* @method 
 		* Users can select all or none of currently viewed patients
@@ -12110,6 +12589,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const render = ( filter ) => {
 			let renderDOM = false;
+		
+			// wating for filter is set as an Array. 
+			if( typeof filter != "string" ){
+				return filter.find( e => e == model.uid ) == model.uid ? tr : null;
+			}
+			
 			
 			switch( filter ){
 				case "all": renderDOM = true;
@@ -12150,8 +12635,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			onArrived, 
 			onDNA, 
 			onComplete, 
+			onReactivate,
 			getID(){ return model.uid; }, 
 			getStatus(){ return model.status; },
+			getWaitingFor(){ return { 
+				uid: model.uid,
+				step: pathway.waitingFor() 
+			};},
 			//getRisk(){ return model.risk; },
 			getRedFlagged(){ return model.redFlagged; },
 			render, 
@@ -12594,6 +13084,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				patients.get( patientID ).onComplete();
 			}
 		};
+		
+		// reactivate a completed pathway
+		const patientReactivate = ( patientID ) => {
+			if( patients.has( patientID )){
+				patients.get( patientID ).onReactivate();
+			}
+		};
 			
 		/**
 		* Add steps to patients
@@ -12637,14 +13134,16 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const getPatientFilterState = () => {
 			const status = [];
 			const redflagged = [];
+			const waitingFor = [];
 			// only count IF user is using this list
 			if( usingList ){
 				patients.forEach( patient => {
 					status.push( patient.getStatus());
 					redflagged.push( patient.getRedFlagged());
+					waitingFor.push( patient.getWaitingFor()); // Step name
 				});
 			}
-			return { status, redflagged };
+			return { status, redflagged, waitingFor };
 		};
 		
 		/**
@@ -12697,6 +13196,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			patientArrived,
 			patientDNA,
 			patientComplete, 
+			patientReactivate, 
 			showList,
 		};
 	};
@@ -12910,6 +13410,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			*/
 			setIdgPopupCode( val ){
 				this.idgCode = val;
+			},	
+			
+			removeIdgPopupCode(){
+				delete this.idgCode;
 			}
 			
 		});
@@ -13116,7 +13620,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			Async.
 			Use the pathStepKey for the token check
 			*/
-			const urlShortCode = shortcode.replace(' ','-'); // watch out for "Dr XY";
+			const urlShortCode = shortcode.replaceAll(' ','-'); // watch out for "Dr X Y";
 			
 			const phpCode = `${urlShortCode}.${status}.${type}`.toLowerCase();
 			bj.xhr(`/idg-php/load/pathstep/_ps.php?full=${full}&code=${phpCode}`, pathStepKey )
@@ -13132,7 +13636,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					// CSS will handle animation
 					// 22px = 10px padding + 1px border!
 					popup.style.height = (div.scrollHeight + 22) + 'px'; 
-					
 					
 				})
 				.catch( e => console.log('PHP failed to load', e ));
@@ -13197,6 +13700,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			* this is a bit hack but it demo's the UIX behaviour!
 			*/
 			document.body.querySelector('main').addEventListener('scroll', removeReset, { capture:true,  once:true });
+			
+			
+			
 		};
 		
 		/**
@@ -13277,10 +13783,77 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					// pathway position shift. This has to be managed by
 					// the pathway that contains the pathStep.
 					bj.customEvent('idg:pathStepShift', { pathStep, shift: userRequest == "right" ? 1 : -1 });
+					bj.customEvent('idg:AppUpdateFilters');
 				break;
 				default: bj.log('PathStepPopup: Unknown request state');
 			}
 		});
+		
+		/**
+		Hacky demo to show step customisation
+		*/
+		
+		bj.userDown('.oe-pathstep-popup .js-customise-view i.js-edit', ( ev ) => {
+			bj.show( popup.querySelector('.js-customise-edit'));
+			bj.hide( popup.querySelector('.js-customise-view'));
+		});
+		
+		const hideCustomEdit = () => {
+			bj.hide( popup.querySelector('.js-customise-edit'));
+			bj.show( popup.querySelector('.js-customise-view'));
+		};
+		
+		const changeStepCode = ( code ) => {
+			pathStep.setCode( code );
+			pathStep.removeIdgPopupCode();
+			popup.querySelector('.js-customise-view h3').textContent = code; 
+			hideCustomEdit();
+			bj.customEvent('idg:AppUpdateFilters');
+		};
+	
+		// free text input
+		bj.userDown('.oe-pathstep-popup .js-customise-edit i.js-save', ( ev ) => changeStepCode( ev.target.previousSibling.value ));
+		
+		// select options
+		popup.addEventListener('change', ev => {
+			if( ev.target.matches('select.js-custom-options')){
+				changeStepCode( ev.target.value );
+			}
+		});
+		
+		// cancel is the same for both
+		bj.userDown('.oe-pathstep-popup .js-customise-edit i.js-cancel', () => hideCustomEdit());
+		
+		/**
+		------- Comments!
+		Hacky demo to show comments being edited
+		*/
+		// show a character count for comment if there are any!
+		popup.addEventListener('input', ev => {
+			if( ev.target.matches('input.js-step-comments')){
+				const input = ev.target;
+				// update the view text:
+				popup.querySelector('.js-comments-view em.comment').textContent = input.value; 
+				// show capacity for input based on maxlength as percentage
+				const len = input.value.length;
+				const max = Number( input.getAttribute('maxlength'));
+				const bar = popup.querySelector('.js-comments-edit .percent-bar');
+				bar.style.width = (( len / max ) * 100 ) + '%';
+			}
+		});
+		
+		bj.userDown('.oe-pathstep-popup .step-comments i.js-save', ( ev ) => {
+			bj.hide( popup.querySelector('.js-comments-edit'));
+			bj.show( popup.querySelector('.js-comments-view'));
+			// on iDG the comments are empty first time, then afterwards we are updating it.
+			ev.target.classList.replace("save-plus", "save");
+		});
+		
+		bj.userDown('.oe-pathstep-popup .step-comments i.js-edit', () => {
+			bj.show( popup.querySelector('.js-comments-edit'));
+			bj.hide( popup.querySelector('.js-comments-view'));
+		});
+		
 		
 		
 		

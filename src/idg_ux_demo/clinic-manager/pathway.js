@@ -231,6 +231,19 @@
 		};
 		
 		/**
+		* Remove the finish step
+		*/
+		const removeCompleted = () => {
+			discharged();
+			const last = pathSteps[ pathSteps.length - 1];
+			if( last.getCode() == 'i-fin' ){
+				last.remove();
+				pathSteps.splice( -1, 1 );
+			}
+			renderPathway();
+		}
+		
+		/**
 		* User/or auto completed
 		* Clean up the pathway	
 		*/
@@ -296,6 +309,22 @@
 		};
 		
 		/**
+		* Waiting for filter needs to know this!
+		*/
+		const waitingFor = () => {
+			const findWaiting = pathSteps.findIndex( ps => {
+				const code = ps.getCode();
+				return ( code == 'i-wait' || code == "i-delayed" );
+			});
+			
+			if( findWaiting == -1 || findWaiting == pathSteps.length-1 ){
+				return false;
+			} else {
+				return pathSteps[ findWaiting + 1 ].getCode();
+			}
+		};
+		
+		/**
 		* API
 		*/
 		return {
@@ -307,8 +336,10 @@
 			deleteRemovedStep,
 			stopWaiting,
 			addWaiting,
+			waitingFor,
 			discharged,
 			canComplete, 
+			removeCompleted,
 			completed,
 		};
 			

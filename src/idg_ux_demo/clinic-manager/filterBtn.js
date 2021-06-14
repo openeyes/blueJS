@@ -11,27 +11,24 @@
 	const filterBtn = ( props, ul ) => {
 		
 		const filter = props.filter; 
+		const name = bj.div('name');
 		const count = bj.div('count');
 		
 		const li = document.createElement('li');
 		li.className = "filter-btn js-idg-clinic-btn-filter"; 
 		li.setAttribute('data-filter', filter );
 		
-		// build btn and add to <ul> header
-		(() => {
-			const div = bj.div('filter');
-			// red flagged filter?
-			if( props.name.startsWith('-f')){
-				div.innerHTML = `<div class="name"><i class="oe-i flag-red medium-icon no-click"></div>`;
-			} else {
-				// change some to icons: 
-				div.innerHTML = `<div class="name">${props.name}</div>`;
-			}
-
-			div.append( count );	
-			li.append( div );
-			ul.append( li );
-		})();
+		
+		// red flagged filter?
+		if( props.name.startsWith('-f')){
+			name.innerHTML = `<i class="oe-i flag-red medium-icon no-click">`;
+		} else {
+			name.innerHTML = props.name;
+		}
+	
+		li.append( name, count );
+		ul.append( li );
+	
 		
 		/**
 		* updateCount

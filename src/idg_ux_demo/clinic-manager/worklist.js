@@ -112,6 +112,13 @@
 				patients.get( patientID ).onComplete();
 			}
 		};
+		
+		// reactivate a completed pathway
+		const patientReactivate = ( patientID ) => {
+			if( patients.has( patientID )){
+				patients.get( patientID ).onReactivate();
+			}
+		};
 			
 		/**
 		* Add steps to patients
@@ -155,14 +162,16 @@
 		const getPatientFilterState = () => {
 			const status = [];
 			const redflagged = [];
+			const waitingFor = [];
 			// only count IF user is using this list
 			if( usingList ){
 				patients.forEach( patient => {
 					status.push( patient.getStatus());
 					redflagged.push( patient.getRedFlagged());
+					waitingFor.push( patient.getWaitingFor()); // Step name
 				});
 			}
-			return { status, redflagged };
+			return { status, redflagged, waitingFor };
 		};
 		
 		/**
@@ -215,6 +224,7 @@
 			patientArrived,
 			patientDNA,
 			patientComplete, 
+			patientReactivate, 
 			showList,
 		};
 	};

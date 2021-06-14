@@ -22,7 +22,6 @@
 		*/
 		[
 			['All','all'],
-			['Me', 'user'], // Not working, but capturing the UIX concept
 			//['Booked','later'], // not needed for A&E?!
 			['Arrived','clinic'],
 			//['-f','-f'], 
@@ -45,6 +44,9 @@
 		patientSearch.setAttribute('type', 'text');
 		patientSearch.setAttribute('placeholder', 'Name filter');
 		
+		// waiting for... is complex! 
+		const waitingFor = clinic.filterChangeable('Waiting for&hellip;');
+		
 		const popupBtn = ( css, name, inner ) => {
 			const dom =  bj.dom('button', `${css} ${name}`, inner );
 			dom.setAttribute('name', name );
@@ -55,9 +57,9 @@
 			patientSearch, 
 			 popupBtn('popup-filter', 'table-sort', 'Time'), 
 			 quickFilters, 
-			 popupBtn('popup-filter', 'waiting-for', 'Waiting for...'),
-			 popupBtn('popup-filter', 'to-do', 'To-do...'),
-			 popupBtn('popup-filter', 'help', '<!-- icon -->')
+			 // popupBtn('popup-filter', 'waiting-for', 'Waiting for...'),
+			 waitingFor.render(),
+			 popupBtn('popup-filter', 'info-help-overlay', '<!-- icon -->')
 		);
 		
 		/*
@@ -89,7 +91,7 @@
 			filters.forEach( btn => btn.selected( filter ));
 		};
 		
-		return { updateCount, selected };	
+		return { updateCount, selected, waitingFor };	
 	};
 	
 	// make component available to Clinic SPA	

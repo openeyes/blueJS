@@ -203,6 +203,10 @@
 			*/
 			setIdgPopupCode( val ){
 				this.idgCode = val;
+			},	
+			
+			removeIdgPopupCode(){
+				delete this.idgCode;
 			}
 			
 		});
