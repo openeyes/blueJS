@@ -15,7 +15,6 @@
 	const init = () => {
 		bj.log('[Clinic] - intialising');
 	
-		
 		/**
 		A&E was set up as a single list
 		but need to test with multiple worklists
@@ -75,28 +74,36 @@
 			let status = [];
 			let redflagged = [];
 			let waitingSteps = new Map();
+			let assignments = new Map();
 			
+			
+			// complex filters (Waiting for & assigned) require some organising
+ 			const filterMap = ( map, arr ) => {
+				arr.forEach( patient => {
+					if( map.has( patient.step )){
+						map.get( patient.step).add( patient.uid );
+					} else {
+						if( patient.step != false ){
+							// ignore false requests
+							map.set( patient.step, new Set([  patient.uid ]));
+						}
+					}
+				});
+			} 
+			
+			// go through all lists...
 			worklists.forEach( list => {
 				const patientFilters = list.getPatientFilterState();
 				status = status.concat( patientFilters.status );
 				redflagged = redflagged.concat( patientFilters.redflagged );
-				
-				// organise all the waiting for steps...
-				patientFilters.waitingFor.forEach( patient => {
-					if( waitingSteps.has( patient.step )){
-						waitingSteps.get( patient.step).add( patient.uid );
-					} else {
-						if( patient.step != false ){
-							// ignore false requests
-							waitingSteps.set( patient.step, new Set([  patient.uid ]));
-						}
-					}
-				});
-
+				filterMap( waitingSteps, patientFilters.waitingFor );
+				filterMap( assignments, patientFilters.assignments );
 			});
+			
 			
 			filters.updateCount( status, redflagged );
 			filters.waitingFor.updateOptions( waitingSteps );
+			filters.assignee.updateOptions( assignments );
 			
 			model.updateView();
 		};
@@ -118,13 +125,21 @@
 		}, { useCapture:true });
 		
 		/**
+		* Reset filters
+		*/
+		const resetFilters = () => {
+			filters.waitingFor.reset();
+			filters.assignee.reset();
+			gui.pathStepPopup.remove(); // if there is a popup open remove it
+			worklists.forEach( list => list.untickPatients());
+		};
+		
+		/**
 		* @Events
 		* Filter button (in header bar) 
 		*/
 		bj.userDown('.js-idg-clinic-btn-filter', ( ev ) => {
-			gui.pathStepPopup.remove(); // if there is a popup open remove it
-			worklists.forEach( list => list.untickPatients());
-			filters.waitingFor.reset();
+			resetFilters();
 			model.filter = ev.target.dataset.filter;
 		});
 		
@@ -132,10 +147,9 @@
 		* Filter options in waiting for...
 		*/
 		bj.userDown('.js-filter-option', ev => {
-			gui.pathStepPopup.remove(); // if there is a popup open remove it
-			worklists.forEach( list => list.untickPatients());
+			resetFilters();
 			model.filter = JSON.parse( ev.target.dataset.patients );
-		});
+		}, { capture: true });
 		
 		/*
 		*  @Events for Adder 
@@ -144,13 +158,15 @@
 		*/
 		bj.userDown('div.oec-adder .insert-steps li', ( ev ) => {
 			const data = JSON.parse( ev.target.dataset.idg );
+			
 			// check if configurable. if show a popup
 			if( data.s == "popup"){
 				clinic.pathwayPopup( data.c );
 				data.s = "todo";
 			}
-			// demo a preset pathway
+	
 			if( data.c == "preset-pathway"){
+				// build a fake common pathway
 				[
 					{c:'One', s:'todo', t:'process'},
 					{c:'Two', s:'todo', t:'process'},
@@ -178,35 +194,19 @@
 		});
 		
 		/**
-		* @Events for Patient 
-		* Button: "Arrived"
-		* Button "DNA"
-		* Button "Complete" 
+		* @Events for Patient outside of pathway
 		*/
-		bj.userClick('.js-idg-clinic-btn-arrived', ( ev ) => {
-			worklists.forEach( list => list.patientArrived( ev.target.dataset.patient ));
-		});
+		const listChangePatientState = ( patientID, state ) => {
+			worklists.forEach( list => list.patientStateChange( patientID, state ));
+		};
 		
-		bj.userClick('.js-idg-clinic-btn-DNA', ( ev ) => {
-			worklists.forEach( list => list.patientDNA( ev.target.dataset.patient ));
-		});
+		bj.userClick('.js-idg-clinic-btn-arrived', ( ev ) => listChangePatientState( ev.target.dataset.patient, 'arrived'));
+		bj.userDown('.js-idg-pathway-complete', ( ev ) => listChangePatientState( ev.target.dataset.patient, 'complete'));
+		bj.userDown('.js-idg-pathway-reactivate', ( ev ) => listChangePatientState( ev.target.dataset.patient, 'reactivate'));
 		
-		bj.userDown('.js-idg-pathway-complete', ( ev ) => {
-			worklists.forEach( list => list.patientComplete( ev.target.dataset.patient ));
-		});
-		
-		bj.userDown('.js-idg-pathway-reactivate', ( ev ) => {
-			worklists.forEach( list => list.patientReactivate( ev.target.dataset.patient ));
-		});
-		
-		bj.userDown('.js-idg-pathway-finish', ( ev ) => {
-			// this doesn't work! but I need to demo the UIX concept with a popup
-			clinic.pathwayPopup('quick-finish');
-			
-		});
+		// this doesn't work! but I need to demo the UIX concept with a popup
+		bj.userDown('.js-idg-pathway-finish', ( ev ) => clinic.pathwayPopup('quick-finish'));
 
-		
-		
 		/**
 		* Initialise App
 		*	
@@ -233,10 +233,11 @@
 		// update filter buttons count
 		updateFilterBtns();
 		
-		// Watch for patient changing their status
-		document.addEventListener('idg:PatientStatusChange', ( ev ) => updateFilterBtns());
-		// App 
+		// App - same as above?? this needs checking!
 		document.addEventListener('idg:AppUpdateFilters', () => updateFilterBtns());
+		
+		// DNA (action within arrive popup)
+		document.addEventListener('idg:patientDNA', () => updateFilterBtns());
 		
 		// OK, ready to run this app, lets go!
 		loading.remove();

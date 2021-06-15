@@ -24,6 +24,19 @@
 			mins = Math.floor(( endTime - timestamp ) / 60000 );
 		};
 		
+		
+		/** 
+		* @callback - start the clock!
+		* this is called directed if a pathway is reactivated 
+		*/
+		const startTimer = () => {
+			calcWaitMins();
+			timerID = setInterval(() => {
+				calcWaitMins();
+				render("active");
+			}, 15000 ); 
+		};
+		
 		/**
 		* @callback from patient when the "Arrive" step is added to the pathway
 		* @param {Number} arriveTime - timestamp
@@ -31,11 +44,7 @@
 		const arrived = ( arriveTime ) => {	
 			if( timestamp !== null ) return;
 			timestamp = arriveTime;
-			calcWaitMins();
-			timerID = setInterval(() => {
-				calcWaitMins();
-				render("active");
-			}, 15000 ); 				
+			startTimer();			
 		};
 		
 		/**
@@ -113,16 +122,6 @@
 					div.className = 'wait-duration stopped';
 					div.append( waitMins( false ));
 				break;
-				case "later":
-					/*
-					Check-in and DNA moved into the Arrived step (or PAS automatically done)
-					div.className = 'flex';
-					div.innerHTML = [
-						`<button class="cols-7 blue hint js-idg-clinic-btn-arrived" data-patient="${patientID}">Check-in</button>`,
-						`<button class="cols-4 js-idg-clinic-btn-DNA" data-patient="${patientID}">DNA</button>`
-					].join('');
-					*/
-				break;
 				default: 
 					div.className = 'wait-duration';
 					div.append( svgCircles(), waitMins( true ));
@@ -135,7 +134,7 @@
 		};
 		
 		// API
-		return { arrived, finished, render };
+		return { arrived, finished, startTimer, render };
 	};
 	
 	// make component available	

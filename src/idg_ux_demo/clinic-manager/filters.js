@@ -45,7 +45,10 @@
 		patientSearch.setAttribute('placeholder', 'Name filter');
 		
 		// waiting for... is complex! 
-		const waitingFor = clinic.filterChangeable('Waiting for&hellip;');
+		const waitingFor = clinic.filterChangeable('Waiting for&hellip;', '&hellip;');
+		
+		// waiting for... is complex! 
+		const assignee = clinic.filterChangeable('<i class="oe-i person no-click medium"></i>');
 		
 		const popupBtn = ( css, name, inner ) => {
 			const dom =  bj.dom('button', `${css} ${name}`, inner );
@@ -59,6 +62,7 @@
 			 quickFilters, 
 			 // popupBtn('popup-filter', 'waiting-for', 'Waiting for...'),
 			 waitingFor.render(),
+			 assignee.render(),
 			 popupBtn('popup-filter', 'info-help-overlay', '<!-- icon -->')
 		);
 		
@@ -91,7 +95,7 @@
 			filters.forEach( btn => btn.selected( filter ));
 		};
 		
-		return { updateCount, selected, waitingFor };	
+		return { updateCount, selected, waitingFor, assignee };	
 	};
 	
 	// make component available to Clinic SPA	

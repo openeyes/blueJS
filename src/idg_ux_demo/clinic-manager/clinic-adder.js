@@ -40,6 +40,7 @@
 		const hide = () => {
 			open = false;
 			div.classList.remove('fadein');
+			assignee.clear();
 		};
 		
 		/**
@@ -57,6 +58,65 @@
 		* App needs to know this
 		*/
 		const isOpen = () => open;
+		
+		/**
+		* Simple demo of AJAX assignee search, the mechanism is based on the To: search in Messaging
+		* but it needs to work slightly different because clicking on a person must add it to selected patients
+		*/
+		const assignee = (() => {
+			const list = ['Caroline Kilduff (CK)', 'David Haider (DH)', 'Ian Rodrigues (IR)', 'James Morgan (JM)', 'Peter Thomas (PT)', 'Toby Fisher (TF)', 'Toby Bisco (TB)'];
+			const row = bj.div('row');
+			const ul = bj.dom('ul', 'btn-list');
+			const search = bj.dom('input', 'assign-to search');
+			search.setAttribute('type', 'text');
+			search.setAttribute('placeholder', 'Assign to...');
+			
+			const clear = () => {
+				bj.empty( ul );
+				search.value = "";
+			};
+			
+			const listPeople = ( inputStr ) => {
+				bj.empty( ul );
+				
+				// simple fake AJAX search
+				const matches = list.filter( people => {
+					const noCase = people.toLowerCase();
+					return noCase.startsWith( inputStr.toLowerCase());
+				});
+				
+				// build options 
+				matches.forEach(( item ) => {
+					const initials = item.substring( item.length - 3 );
+					const li = bj.dom('li', false, `<i class="oe-i person no-click small pad-right"></i> ${item}`);
+					li.setAttribute('data-idg', JSON.stringify({
+						c: 'assign',    // shortcode
+						s: initials.slice(0, -1), // status
+					}));
+					ul.append( li );
+				});
+			};
+			
+			const build = ( parent ) => {
+				row.append( search, ul );
+				parent.append( row );
+				
+				search.addEventListener('input', ev => {
+					ev.stopPropagation();
+					const str = ev.target.value;
+					if( str.length > 1 ){
+						listPeople( str );
+					} else {
+						bj.empty( ul );;
+					}
+				});
+			};
+			
+			return { build, clear };
+							
+		})(); 
+		
+		
 
 		/**
 		* Init 
@@ -108,7 +168,7 @@
 			btn('Blood', 'Blood tests');
 			btn('MRI', 'MRI tests');
 			
-			btn('preset-pathway', 'Add custom pathway', false, 'popup');
+			btn('preset-pathway', 'Add common pathway', false, 'popup');
 			
 			btn('i-fork', icon('fork') + 'Decision / review', false, 'buff', 'fork');
 			btn('i-break', icon('path-break') + 'Break in pathway', false, 'buff', 'break');
@@ -122,11 +182,8 @@
 			*/
 			const inserts = bj.div('insert-steps');
 			
-			// helper build <li>
-			const _li = ( code, type, html ) => {
-				
-				return li;
-			};
+			// Assignee
+			assignee.build( inserts );
 			
 			const buildGroup = ( title, list ) => {
 				const h4 = title ? `<h4>${title}</h4>` : "";
@@ -136,8 +193,7 @@
 				list.forEach( code => {
 					// code is the key.
 					const step = full.get( code );
-					const li = document.createElement('li');
-					li.innerHTML = `${step.btn}`;
+					const li = bj.dom('li', false, `${step.btn}`);
 					li.setAttribute('data-idg', JSON.stringify({
 						c: step.shortcode,    // shortcode
 						s: step.status, // status
@@ -155,7 +211,7 @@
 				inserts.append( group );
 			};
 		
-			buildGroup( false, ['i-fork', 'i-break', 'i-discharge']);
+			buildGroup('Path', ['i-fork', 'i-break', 'i-discharge']);
 			
 			buildGroup('Preset pathways', ['preset-pathway']);	
 			

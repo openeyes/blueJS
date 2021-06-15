@@ -10857,7 +10857,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	const init = () => {
 		bj.log('[Clinic] - intialising');
 	
-		
 		/**
 		A&E was set up as a single list
 		but need to test with multiple worklists
@@ -10917,28 +10916,36 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			let status = [];
 			let redflagged = [];
 			let waitingSteps = new Map();
+			let assignments = new Map();
 			
+			
+			// complex filters (Waiting for & assigned) require some organising
+ 			const filterMap = ( map, arr ) => {
+				arr.forEach( patient => {
+					if( map.has( patient.step )){
+						map.get( patient.step).add( patient.uid );
+					} else {
+						if( patient.step != false ){
+							// ignore false requests
+							map.set( patient.step, new Set([  patient.uid ]));
+						}
+					}
+				});
+			} 
+			
+			// go through all lists...
 			worklists.forEach( list => {
 				const patientFilters = list.getPatientFilterState();
 				status = status.concat( patientFilters.status );
 				redflagged = redflagged.concat( patientFilters.redflagged );
-				
-				// organise all the waiting for steps...
-				patientFilters.waitingFor.forEach( patient => {
-					if( waitingSteps.has( patient.step )){
-						waitingSteps.get( patient.step).add( patient.uid );
-					} else {
-						if( patient.step != false ){
-							// ignore false requests
-							waitingSteps.set( patient.step, new Set([  patient.uid ]));
-						}
-					}
-				});
-
+				filterMap( waitingSteps, patientFilters.waitingFor );
+				filterMap( assignments, patientFilters.assignments );
 			});
+			
 			
 			filters.updateCount( status, redflagged );
 			filters.waitingFor.updateOptions( waitingSteps );
+			filters.assignee.updateOptions( assignments );
 			
 			model.updateView();
 		};
@@ -10960,13 +10967,21 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		}, { useCapture:true });
 		
 		/**
+		* Reset filters
+		*/
+		const resetFilters = () => {
+			filters.waitingFor.reset();
+			filters.assignee.reset();
+			gui.pathStepPopup.remove(); // if there is a popup open remove it
+			worklists.forEach( list => list.untickPatients());
+		};
+		
+		/**
 		* @Events
 		* Filter button (in header bar) 
 		*/
 		bj.userDown('.js-idg-clinic-btn-filter', ( ev ) => {
-			gui.pathStepPopup.remove(); // if there is a popup open remove it
-			worklists.forEach( list => list.untickPatients());
-			filters.waitingFor.reset();
+			resetFilters();
 			model.filter = ev.target.dataset.filter;
 		});
 		
@@ -10974,10 +10989,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* Filter options in waiting for...
 		*/
 		bj.userDown('.js-filter-option', ev => {
-			gui.pathStepPopup.remove(); // if there is a popup open remove it
-			worklists.forEach( list => list.untickPatients());
+			resetFilters();
 			model.filter = JSON.parse( ev.target.dataset.patients );
-		});
+		}, { capture: true });
 		
 		/*
 		*  @Events for Adder 
@@ -10986,13 +11000,15 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		bj.userDown('div.oec-adder .insert-steps li', ( ev ) => {
 			const data = JSON.parse( ev.target.dataset.idg );
+			
 			// check if configurable. if show a popup
 			if( data.s == "popup"){
 				clinic.pathwayPopup( data.c );
 				data.s = "todo";
 			}
-			// demo a preset pathway
+	
 			if( data.c == "preset-pathway"){
+				// build a fake common pathway
 				[
 					{c:'One', s:'todo', t:'process'},
 					{c:'Two', s:'todo', t:'process'},
@@ -11020,35 +11036,19 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		});
 		
 		/**
-		* @Events for Patient 
-		* Button: "Arrived"
-		* Button "DNA"
-		* Button "Complete" 
+		* @Events for Patient outside of pathway
 		*/
-		bj.userClick('.js-idg-clinic-btn-arrived', ( ev ) => {
-			worklists.forEach( list => list.patientArrived( ev.target.dataset.patient ));
-		});
+		const listChangePatientState = ( patientID, state ) => {
+			worklists.forEach( list => list.patientStateChange( patientID, state ));
+		};
 		
-		bj.userClick('.js-idg-clinic-btn-DNA', ( ev ) => {
-			worklists.forEach( list => list.patientDNA( ev.target.dataset.patient ));
-		});
+		bj.userClick('.js-idg-clinic-btn-arrived', ( ev ) => listChangePatientState( ev.target.dataset.patient, 'arrived'));
+		bj.userDown('.js-idg-pathway-complete', ( ev ) => listChangePatientState( ev.target.dataset.patient, 'complete'));
+		bj.userDown('.js-idg-pathway-reactivate', ( ev ) => listChangePatientState( ev.target.dataset.patient, 'reactivate'));
 		
-		bj.userDown('.js-idg-pathway-complete', ( ev ) => {
-			worklists.forEach( list => list.patientComplete( ev.target.dataset.patient ));
-		});
-		
-		bj.userDown('.js-idg-pathway-reactivate', ( ev ) => {
-			worklists.forEach( list => list.patientReactivate( ev.target.dataset.patient ));
-		});
-		
-		bj.userDown('.js-idg-pathway-finish', ( ev ) => {
-			// this doesn't work! but I need to demo the UIX concept with a popup
-			clinic.pathwayPopup('quick-finish');
-			
-		});
+		// this doesn't work! but I need to demo the UIX concept with a popup
+		bj.userDown('.js-idg-pathway-finish', ( ev ) => clinic.pathwayPopup('quick-finish'));
 
-		
-		
 		/**
 		* Initialise App
 		*	
@@ -11075,10 +11075,11 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		// update filter buttons count
 		updateFilterBtns();
 		
-		// Watch for patient changing their status
-		document.addEventListener('idg:PatientStatusChange', ( ev ) => updateFilterBtns());
-		// App 
+		// App - same as above?? this needs checking!
 		document.addEventListener('idg:AppUpdateFilters', () => updateFilterBtns());
+		
+		// DNA (action within arrive popup)
+		document.addEventListener('idg:patientDNA', () => updateFilterBtns());
 		
 		// OK, ready to run this app, lets go!
 		loading.remove();
@@ -11155,6 +11156,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const hide = () => {
 			open = false;
 			div.classList.remove('fadein');
+			assignee.clear();
 		};
 		
 		/**
@@ -11172,6 +11174,65 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* App needs to know this
 		*/
 		const isOpen = () => open;
+		
+		/**
+		* Simple demo of AJAX assignee search, the mechanism is based on the To: search in Messaging
+		* but it needs to work slightly different because clicking on a person must add it to selected patients
+		*/
+		const assignee = (() => {
+			const list = ['Caroline Kilduff (CK)', 'David Haider (DH)', 'Ian Rodrigues (IR)', 'James Morgan (JM)', 'Peter Thomas (PT)', 'Toby Fisher (TF)', 'Toby Bisco (TB)'];
+			const row = bj.div('row');
+			const ul = bj.dom('ul', 'btn-list');
+			const search = bj.dom('input', 'assign-to search');
+			search.setAttribute('type', 'text');
+			search.setAttribute('placeholder', 'Assign to...');
+			
+			const clear = () => {
+				bj.empty( ul );
+				search.value = "";
+			};
+			
+			const listPeople = ( inputStr ) => {
+				bj.empty( ul );
+				
+				// simple fake AJAX search
+				const matches = list.filter( people => {
+					const noCase = people.toLowerCase();
+					return noCase.startsWith( inputStr.toLowerCase());
+				});
+				
+				// build options 
+				matches.forEach(( item ) => {
+					const initials = item.substring( item.length - 3 );
+					const li = bj.dom('li', false, `<i class="oe-i person no-click small pad-right"></i> ${item}`);
+					li.setAttribute('data-idg', JSON.stringify({
+						c: 'assign',    // shortcode
+						s: initials.slice(0, -1), // status
+					}));
+					ul.append( li );
+				});
+			};
+			
+			const build = ( parent ) => {
+				row.append( search, ul );
+				parent.append( row );
+				
+				search.addEventListener('input', ev => {
+					ev.stopPropagation();
+					const str = ev.target.value;
+					if( str.length > 1 ){
+						listPeople( str );
+					} else {
+						bj.empty( ul );;
+					}
+				});
+			};
+			
+			return { build, clear };
+							
+		})(); 
+		
+		
 
 		/**
 		* Init 
@@ -11223,7 +11284,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			btn('Blood', 'Blood tests');
 			btn('MRI', 'MRI tests');
 			
-			btn('preset-pathway', 'Add custom pathway', false, 'popup');
+			btn('preset-pathway', 'Add common pathway', false, 'popup');
 			
 			btn('i-fork', icon('fork') + 'Decision / review', false, 'buff', 'fork');
 			btn('i-break', icon('path-break') + 'Break in pathway', false, 'buff', 'break');
@@ -11237,11 +11298,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			*/
 			const inserts = bj.div('insert-steps');
 			
-			// helper build <li>
-			const _li = ( code, type, html ) => {
-				
-				return li;
-			};
+			// Assignee
+			assignee.build( inserts );
 			
 			const buildGroup = ( title, list ) => {
 				const h4 = title ? `<h4>${title}</h4>` : "";
@@ -11251,8 +11309,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				list.forEach( code => {
 					// code is the key.
 					const step = full.get( code );
-					const li = document.createElement('li');
-					li.innerHTML = `${step.btn}`;
+					const li = bj.dom('li', false, `${step.btn}`);
 					li.setAttribute('data-idg', JSON.stringify({
 						c: step.shortcode,    // shortcode
 						s: step.status, // status
@@ -11270,7 +11327,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				inserts.append( group );
 			};
 		
-			buildGroup( false, ['i-fork', 'i-break', 'i-discharge']);
+			buildGroup('Path', ['i-fork', 'i-break', 'i-discharge']);
 			
 			buildGroup('Preset pathways', ['preset-pathway']);	
 			
@@ -11489,7 +11546,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	*/
 	const inner = ( name, count='' ) =>  `<div class="name">${name}</div><div class="count">${count}</div>`; 
 	
-	const filterChangeable = ( prefix ) => {
+	const filterChangeable = ( name, prefix="" ) => {
 		const selected = null;
 		const div = bj.div('changeable-filter');
 		const nav = bj.dom('nav', 'options');
@@ -11497,14 +11554,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		// button in the header (opens the options)
 		const headerBtn = bj.div('filter-btn');
-		headerBtn.innerHTML = inner( prefix );
+		headerBtn.innerHTML = inner( name );
 		
 		// intitate DOM: 
 		div.append( headerBtn, nav );
 		
 		const reset = () => {
 			headerBtn.classList.remove('selected');
-			headerBtn.innerHTML = inner( prefix );
+			headerBtn.innerHTML = inner( name );
 		};
 		
 		
@@ -11515,12 +11572,37 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const updateOptions = ( map ) => {
 			const filters = new DocumentFragment();
 			map.forEach(( set, key ) => {
-				const opt = bj.div('filter-btn js-filter-option');
+				let name = key; 
+				let selectName = key;
 				
-				// the key is the PS shortcode might not work for the button name
-				const name = key == 'i-discharge' ? 'Check out' : key;
-				opt.innerHTML = inner( `&hellip; ${name}`, set.size );
+				switch( key ){
+					case "i-discharge": selectName = name = `Check out`;
+					break;
+					case "i-drug-admin": selectName = name = `Drug Admin`;
+					break;
+					case 'DH': name = "David Haider (DH)";
+					break;
+					case 'CK': name = "Caroline Kilduff (CK)";
+					break;
+					case 'JM': name = "James Morgan (JM)";
+					break;
+					case 'IR': name = "Ian Rodrigues (IR)";
+					break;
+					case 'PT': name = "Peter Thomas (PT)";
+					break;
+					case 'TB': name = "Toby Bisco (TB)";
+					break;
+					case 'TF': name = "Toby Fisher (TF)";
+					break;
+				}
+			
+				const opt = bj.div('filter-btn js-filter-option');
+				opt.innerHTML = inner( `${prefix} ${name}`, set.size );
 				opt.setAttribute('data-patients', JSON.stringify([ ...set.values() ]));
+				opt.setAttribute('data-display', JSON.stringify({ 
+					name: `${prefix}${selectName}`,
+					count: set.size 
+				}));
 				filters.append( opt );
 			});
 			
@@ -11535,11 +11617,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		div.addEventListener('mousedown', ev => {
 			const btn = ev.target;
 			if( ev.target.matches('nav .js-filter-option')){
-				headerBtn.innerHTML = inner(
-					btn.childNodes[0].textContent,
-					btn.childNodes[1].textContent
-				);
-				
+				const display = JSON.parse( btn.dataset.display );
+				headerBtn.innerHTML = inner( display.name, display.count );
 				headerBtn.classList.add('selected');
 			}		
 		});
@@ -11611,7 +11690,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		patientSearch.setAttribute('placeholder', 'Name filter');
 		
 		// waiting for... is complex! 
-		const waitingFor = clinic.filterChangeable('Waiting for&hellip;');
+		const waitingFor = clinic.filterChangeable('Waiting for&hellip;', '&hellip;');
+		
+		// waiting for... is complex! 
+		const assignee = clinic.filterChangeable('<i class="oe-i person no-click medium"></i>');
 		
 		const popupBtn = ( css, name, inner ) => {
 			const dom =  bj.dom('button', `${css} ${name}`, inner );
@@ -11625,6 +11707,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			 quickFilters, 
 			 // popupBtn('popup-filter', 'waiting-for', 'Waiting for...'),
 			 waitingFor.render(),
+			 assignee.render(),
 			 popupBtn('popup-filter', 'info-help-overlay', '<!-- icon -->')
 		);
 		
@@ -11657,7 +11740,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			filters.forEach( btn => btn.selected( filter ));
 		};
 		
-		return { updateCount, selected, waitingFor };	
+		return { updateCount, selected, waitingFor, assignee };	
 	};
 	
 	// make component available to Clinic SPA	
@@ -12222,6 +12305,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const td = {
 			path: document.createElement('td'),
 			addIcon: document.createElement('td'),
+			assign: document.createElement('td'),
 			risks: document.createElement('td'),
 			notes: document.createElement('td'),
 			complete: document.createElement('td'),
@@ -12239,6 +12323,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		/**
 		* input[type=checkbox] ( UI is "+" icon)
+		* this is used in a few places, hacky...
 		*/
 		const tick = bj.dom('input', 'js-check-patient');
 		tick.setAttribute('type', 'checkbox');
@@ -12253,6 +12338,15 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			_status: null, // "todo", "active", "complete", etc!
 			risk: null, // "-r1", "-r3", "-r3" etc 
 			redFlagged: false,
+			_assigned: false,
+			
+			get assigned(){
+				return this._assigned;
+			},
+			set assigned( val ){
+				this._assigned = val;
+				bj.customEvent('idg:AppUpdateFilters'); // App is listening
+			},
 			
 			get status(){
 				return this._status;
@@ -12265,7 +12359,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				
 				this._status = val; 
 				this.views.notify();
-				bj.customEvent('idg:PatientStatusChange', model.status ); // App is listening!
+				bj.customEvent('idg:AppUpdateFilters'); // App is listening
 			}
 		}, bj.ModelViews());
 		
@@ -12428,9 +12522,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			const pathStep = ev.detail.pathStep;
 			const direction = ev.detail.shift;
 			
-			// only interested in PathSteps events for my pathway!
+			// ONLY interested in PathSteps events for my pathway!
 			if( pathStep.pathwayID != model.uid ) return;
-			
 			pathway.shiftStepPos( pathStep, direction );
 			
 		}, { capture: true });
@@ -12458,11 +12551,40 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			model.risk = num;
 		};
 		
+		/**
+		* Tick to add step DOM
+		* if a pathway is restarted need to use this
+		*/
 		const buildAddStepTick = () => {
 			const label = bj.dom('label', 'patient-checkbox');
 			const checkboxBtn = bj.div('checkbox-btn');
 			label.append( tick, checkboxBtn );
 			td.addIcon.append( label );
+		};
+		
+		/**
+		* Pathyway comments/notes
+		* Hacky demo of the UI concept
+		*/
+		const pathwayNotes = ( notes ) => {
+			const ps = gui.pathStep({
+				shortcode: 'i-comments',
+				status: 'buff',
+				type: notes ? 'comments-added' : 'comments',	
+				idgPopupCode: notes ? false : 'i-comments-none'
+			}, false );
+			
+			td.notes.append( ps.render());
+		};
+		
+		/**
+		* Set assigned 
+		*/
+		const assignee = ( who ) => {
+			if( who ){
+				td.assign.innerHTML = who;
+				model.assigned = who;	
+			}	
 		};
 
 		/**
@@ -12479,7 +12601,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				pathway.discharged();
 			}
 			
-			
 			// Add patient select checkbox ("tick")
 			// CSS styles this to look like a "+" icon
 			// build node tree
@@ -12489,16 +12610,11 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			// set Flag (if there is one)
 			setRisk( props.risk );
 			
-			// notes
-			const psOwner = gui.pathStep({
-				shortcode: 'i-comments',
-				status: 'buff',
-				type: props.notes ? 'comments-added' : 'comments',
-				info: props.notes ? 'clock' : '&nbsp;', 
-				idgPopupCode: props.notes ? false : 'i-comments-none'
-			}, false );
+			// assign pathway
+			assignee( props.assign );
 			
-			td.notes.append( psOwner.render());
+			// notes
+			pathwayNotes( props.notes );
 			
 			// Set patient status this will trigger VIEW notifications (an iDG hack!)
 			model.status = props.status == 'fake-done' ? 'done' : props.status; 
@@ -12508,11 +12624,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			tr.insertAdjacentHTML('beforeend', `<td>${props.time}</td>`);
 			tr.insertAdjacentHTML('beforeend', `<td><div class="list-name">${props.clinic[0]}</div><div class="code">${props.clinic[1]}</div></td>`);
 			
+			
+			
 			// slightly more complex Elements and dynamic areas...
 			tr.append( clinic.patientMeta( props ));
 			tr.append( clinic.patientQuickView( props ));
 			tr.append( td.path );
 			tr.append( td.addIcon );
+			tr.append( td.assign );
 			tr.append( td.risks );
 			tr.append( td.notes );	
 			tr.append( waitDuration.render( model.status )); // returns a <td>
@@ -12526,50 +12645,43 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* Update Pathway with appropriate steps
 		* {shortcode, status, type, info = (timestamp or mins), idgPopupCode}
 		*/
-		const onArrived = () => {
-			addPathStep({
-				shortcode: 'i-arr',
-				status: 'buff',
-				type: 'arrive',
-				timestamp: Date.now(),
-				idgPopupCode: 'arrive-basic',
-			});
-			addPathStep({
-				shortcode: 'i-wait',
-				status: 'buff',
-				type: 'wait',
-				mins: 0,
-			});
+		const onStateChange = ( state ) => {
+			switch( state ){
+				case 'arrived':
+					addPathStep({
+						shortcode: 'i-arr',
+						status: 'buff',
+						type: 'arrive',
+						timestamp: Date.now(),
+						idgPopupCode: 'arrive-basic',
+					});
+					addPathStep({
+						shortcode: 'i-wait',
+						status: 'buff',
+						type: 'wait',
+						mins: 0,
+					});
+				break; 
+				case 'complete':
+					if( model.status == "active" ) return;
+					addPathStep({
+						shortcode: 'i-fin',
+						status: 'buff',
+						type: 'finish',
+						timestamp: Date.now(),
+					});
+				break;
+				case 'reactivate':
+					if( model.status != "done" ) return;
+					pathway.removeCompleted();
+					// update patient status based on pathway
+					model.status = pathway.getStatus();
+					// allow users to add steps again
+					buildAddStepTick();
+				break;
+			}
 		};
-		
-		const onDNA = () => {
-			addPathStep({
-				shortcode: 'DNA',
-				status: 'done',
-				type: 'DNA',
-				timestamp: Date.now(),
-			});
-		};
-		
-		const onComplete = () => {
-			if( model.status == "active" ) return;
-			addPathStep({
-				shortcode: 'i-fin',
-				status: 'buff',
-				type: 'finish',
-				timestamp: Date.now(),
-			});
-		};
-		
-		const onReactivate = () => {
-			if( model.status != "done" ) return;
-			pathway.removeCompleted();
-			// update patient status based on pathway
-			model.status = pathway.getStatus();
-			// allow users to add steps again
-			buildAddStepTick();
-		};
-		
+ 			
 		/**
 		* @method 
 		* Users can select all or none of currently viewed patients
@@ -12632,15 +12744,16 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 		/* API */
 		return { 
-			onArrived, 
-			onDNA, 
-			onComplete, 
-			onReactivate,
+			onStateChange,
 			getID(){ return model.uid; }, 
 			getStatus(){ return model.status; },
 			getWaitingFor(){ return { 
 				uid: model.uid,
 				step: pathway.waitingFor() 
+			};},
+			getAssigned(){ return { 
+				uid: model.uid,
+				step: model.assigned 
 			};},
 			//getRisk(){ return model.risk; },
 			getRedFlagged(){ return model.redFlagged; },
@@ -12648,6 +12761,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			addPathStep, 
 			removePathStep,
 			setTicked,
+			assignee,
 			isTicked(){ return tick.checked; } 
 		};
 	};
@@ -12851,6 +12965,19 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			mins = Math.floor(( endTime - timestamp ) / 60000 );
 		};
 		
+		
+		/** 
+		* @callback - start the clock!
+		* this is called directed if a pathway is reactivated 
+		*/
+		const startTimer = () => {
+			calcWaitMins();
+			timerID = setInterval(() => {
+				calcWaitMins();
+				render("active");
+			}, 15000 ); 
+		};
+		
 		/**
 		* @callback from patient when the "Arrive" step is added to the pathway
 		* @param {Number} arriveTime - timestamp
@@ -12858,11 +12985,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const arrived = ( arriveTime ) => {	
 			if( timestamp !== null ) return;
 			timestamp = arriveTime;
-			calcWaitMins();
-			timerID = setInterval(() => {
-				calcWaitMins();
-				render("active");
-			}, 15000 ); 				
+			startTimer();			
 		};
 		
 		/**
@@ -12940,16 +13063,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					div.className = 'wait-duration stopped';
 					div.append( waitMins( false ));
 				break;
-				case "later":
-					/*
-					Check-in and DNA moved into the Arrived step (or PAS automatically done)
-					div.className = 'flex';
-					div.innerHTML = [
-						`<button class="cols-7 blue hint js-idg-clinic-btn-arrived" data-patient="${patientID}">Check-in</button>`,
-						`<button class="cols-4 js-idg-clinic-btn-DNA" data-patient="${patientID}">DNA</button>`
-					].join('');
-					*/
-				break;
 				default: 
 					div.className = 'wait-duration';
 					div.append( svgCircles(), waitMins( true ));
@@ -12962,7 +13075,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		};
 		
 		// API
-		return { arrived, finished, render };
+		return { arrived, finished, startTimer, render };
 	};
 	
 	// make component available	
@@ -13002,6 +13115,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				'<!-- meta data -->', 
 				'Pathway',
 				'<label class="patient-checkbox"><input class="js-check-patient" value="all" type="checkbox"><div class="checkbox-btn"></div></label>', 
+				'<i class="oe-i person no-click small"></i>',
 				`<i class="oe-i ${riskIcon}-grey no-click small"></i>`,
 				'<i class="oe-i comments no-click small"></i>',
 				'Total duration', 
@@ -13062,35 +13176,14 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		/**
 		* @Event - Patient actiions outside of pathway
+		* Check to find patient and then send state change request
 		*/
-		
-		// for scheduled patients
-		const patientArrived = ( patientID ) => {
+		const patientStateChange = ( patientID, stateChange ) => {
 			if( patients.has( patientID )){
-				patients.get( patientID ).onArrived();
+				patients.get( patientID ).onStateChange( stateChange );
 			}
 		};
-		
-		// for scheduled patients
-		const patientDNA = ( patientID ) => {
-			if( patients.has( patientID )){
-				patients.get( patientID ).onDNA();
-			}
-		};
-		
-		// manually finish the pathway
-		const patientComplete = ( patientID ) => {
-			if( patients.has( patientID )){
-				patients.get( patientID ).onComplete();
-			}
-		};
-		
-		// reactivate a completed pathway
-		const patientReactivate = ( patientID ) => {
-			if( patients.has( patientID )){
-				patients.get( patientID ).onReactivate();
-			}
-		};
+	
 			
 		/**
 		* Add steps to patients
@@ -13104,6 +13197,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				if( patient.isTicked()){
 					if( code == 'c-last'){
 						patient.removePathStep( code ); // Remove last step button
+					} else if( code == "assign" ) {
+						patient.assignee( status );
 					} else {
 						patient.addPathStep({
 							shortcode: code, // pass in code
@@ -13135,15 +13230,17 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			const status = [];
 			const redflagged = [];
 			const waitingFor = [];
+			const assignments = [];
 			// only count IF user is using this list
 			if( usingList ){
 				patients.forEach( patient => {
 					status.push( patient.getStatus());
 					redflagged.push( patient.getRedFlagged());
-					waitingFor.push( patient.getWaitingFor()); // Step name
+					waitingFor.push( patient.getWaitingFor()); 
+					assignments.push( patient.getAssigned());
 				});
 			}
-			return { status, redflagged, waitingFor };
+			return { status, redflagged, waitingFor, assignments };
 		};
 		
 		/**
@@ -13193,10 +13290,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			addStepsToPatients,
 			getPatientFilterState,
 			untickPatients,
-			patientArrived,
-			patientDNA,
-			patientComplete, 
-			patientReactivate, 
+			patientStateChange, 
 			showList,
 		};
 	};
@@ -13785,12 +13879,17 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					bj.customEvent('idg:pathStepShift', { pathStep, shift: userRequest == "right" ? 1 : -1 });
 					bj.customEvent('idg:AppUpdateFilters');
 				break;
-				default: bj.log('PathStepPopup: Unknown request state');
+				case "DNA":
+					pathStep.setCode('DNA');
+					pathStep.jumpState('done');
+				break; 
+				default: bj.log(`PathStepPopup: Unknown request state: ${userRequest}`);
 			}
 		});
 		
 		/**
 		Hacky demo to show step customisation
+		These steps names can be editted!
 		*/
 		
 		bj.userDown('.oe-pathstep-popup .js-customise-view i.js-edit', ( ev ) => {
@@ -13813,13 +13912,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	
 		// free text input
 		bj.userDown('.oe-pathstep-popup .js-customise-edit i.js-save', ( ev ) => changeStepCode( ev.target.previousSibling.value ));
-		
-		// select options
-		popup.addEventListener('change', ev => {
-			if( ev.target.matches('select.js-custom-options')){
-				changeStepCode( ev.target.value );
-			}
-		});
 		
 		// cancel is the same for both
 		bj.userDown('.oe-pathstep-popup .js-customise-edit i.js-cancel', () => hideCustomEdit());

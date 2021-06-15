@@ -204,12 +204,17 @@
 					bj.customEvent('idg:pathStepShift', { pathStep, shift: userRequest == "right" ? 1 : -1 });
 					bj.customEvent('idg:AppUpdateFilters');
 				break;
-				default: bj.log('PathStepPopup: Unknown request state');
+				case "DNA":
+					pathStep.setCode('DNA');
+					pathStep.jumpState('done');
+				break; 
+				default: bj.log(`PathStepPopup: Unknown request state: ${userRequest}`);
 			}
 		});
 		
 		/**
 		Hacky demo to show step customisation
+		These steps names can be editted!
 		*/
 		
 		bj.userDown('.oe-pathstep-popup .js-customise-view i.js-edit', ( ev ) => {
@@ -232,13 +237,6 @@
 	
 		// free text input
 		bj.userDown('.oe-pathstep-popup .js-customise-edit i.js-save', ( ev ) => changeStepCode( ev.target.previousSibling.value ));
-		
-		// select options
-		popup.addEventListener('change', ev => {
-			if( ev.target.matches('select.js-custom-options')){
-				changeStepCode( ev.target.value );
-			}
-		});
 		
 		// cancel is the same for both
 		bj.userDown('.oe-pathstep-popup .js-customise-edit i.js-cancel', () => hideCustomEdit());

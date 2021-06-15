@@ -18,6 +18,7 @@
 		const td = {
 			path: document.createElement('td'),
 			addIcon: document.createElement('td'),
+			assign: document.createElement('td'),
 			risks: document.createElement('td'),
 			notes: document.createElement('td'),
 			complete: document.createElement('td'),
@@ -35,6 +36,7 @@
 		
 		/**
 		* input[type=checkbox] ( UI is "+" icon)
+		* this is used in a few places, hacky...
 		*/
 		const tick = bj.dom('input', 'js-check-patient');
 		tick.setAttribute('type', 'checkbox');
@@ -49,6 +51,15 @@
 			_status: null, // "todo", "active", "complete", etc!
 			risk: null, // "-r1", "-r3", "-r3" etc 
 			redFlagged: false,
+			_assigned: false,
+			
+			get assigned(){
+				return this._assigned;
+			},
+			set assigned( val ){
+				this._assigned = val;
+				bj.customEvent('idg:AppUpdateFilters'); // App is listening
+			},
 			
 			get status(){
 				return this._status;
@@ -61,7 +72,7 @@
 				
 				this._status = val; 
 				this.views.notify();
-				bj.customEvent('idg:PatientStatusChange', model.status ); // App is listening!
+				bj.customEvent('idg:AppUpdateFilters'); // App is listening
 			}
 		}, bj.ModelViews());
 		
@@ -224,9 +235,8 @@
 			const pathStep = ev.detail.pathStep;
 			const direction = ev.detail.shift;
 			
-			// only interested in PathSteps events for my pathway!
+			// ONLY interested in PathSteps events for my pathway!
 			if( pathStep.pathwayID != model.uid ) return;
-			
 			pathway.shiftStepPos( pathStep, direction );
 			
 		}, { capture: true });
@@ -254,11 +264,40 @@
 			model.risk = num;
 		};
 		
+		/**
+		* Tick to add step DOM
+		* if a pathway is restarted need to use this
+		*/
 		const buildAddStepTick = () => {
 			const label = bj.dom('label', 'patient-checkbox');
 			const checkboxBtn = bj.div('checkbox-btn');
 			label.append( tick, checkboxBtn );
 			td.addIcon.append( label );
+		};
+		
+		/**
+		* Pathyway comments/notes
+		* Hacky demo of the UI concept
+		*/
+		const pathwayNotes = ( notes ) => {
+			const ps = gui.pathStep({
+				shortcode: 'i-comments',
+				status: 'buff',
+				type: notes ? 'comments-added' : 'comments',	
+				idgPopupCode: notes ? false : 'i-comments-none'
+			}, false );
+			
+			td.notes.append( ps.render());
+		};
+		
+		/**
+		* Set assigned 
+		*/
+		const assignee = ( who ) => {
+			if( who ){
+				td.assign.innerHTML = who;
+				model.assigned = who;	
+			}	
 		};
 
 		/**
@@ -275,7 +314,6 @@
 				pathway.discharged();
 			}
 			
-			
 			// Add patient select checkbox ("tick")
 			// CSS styles this to look like a "+" icon
 			// build node tree
@@ -285,16 +323,11 @@
 			// set Flag (if there is one)
 			setRisk( props.risk );
 			
-			// notes
-			const psOwner = gui.pathStep({
-				shortcode: 'i-comments',
-				status: 'buff',
-				type: props.notes ? 'comments-added' : 'comments',
-				info: props.notes ? 'clock' : '&nbsp;', 
-				idgPopupCode: props.notes ? false : 'i-comments-none'
-			}, false );
+			// assign pathway
+			assignee( props.assign );
 			
-			td.notes.append( psOwner.render());
+			// notes
+			pathwayNotes( props.notes );
 			
 			// Set patient status this will trigger VIEW notifications (an iDG hack!)
 			model.status = props.status == 'fake-done' ? 'done' : props.status; 
@@ -304,11 +337,14 @@
 			tr.insertAdjacentHTML('beforeend', `<td>${props.time}</td>`);
 			tr.insertAdjacentHTML('beforeend', `<td><div class="list-name">${props.clinic[0]}</div><div class="code">${props.clinic[1]}</div></td>`);
 			
+			
+			
 			// slightly more complex Elements and dynamic areas...
 			tr.append( clinic.patientMeta( props ));
 			tr.append( clinic.patientQuickView( props ));
 			tr.append( td.path );
 			tr.append( td.addIcon );
+			tr.append( td.assign );
 			tr.append( td.risks );
 			tr.append( td.notes );	
 			tr.append( waitDuration.render( model.status )); // returns a <td>
@@ -322,50 +358,43 @@
 		* Update Pathway with appropriate steps
 		* {shortcode, status, type, info = (timestamp or mins), idgPopupCode}
 		*/
-		const onArrived = () => {
-			addPathStep({
-				shortcode: 'i-arr',
-				status: 'buff',
-				type: 'arrive',
-				timestamp: Date.now(),
-				idgPopupCode: 'arrive-basic',
-			});
-			addPathStep({
-				shortcode: 'i-wait',
-				status: 'buff',
-				type: 'wait',
-				mins: 0,
-			});
+		const onStateChange = ( state ) => {
+			switch( state ){
+				case 'arrived':
+					addPathStep({
+						shortcode: 'i-arr',
+						status: 'buff',
+						type: 'arrive',
+						timestamp: Date.now(),
+						idgPopupCode: 'arrive-basic',
+					});
+					addPathStep({
+						shortcode: 'i-wait',
+						status: 'buff',
+						type: 'wait',
+						mins: 0,
+					});
+				break; 
+				case 'complete':
+					if( model.status == "active" ) return;
+					addPathStep({
+						shortcode: 'i-fin',
+						status: 'buff',
+						type: 'finish',
+						timestamp: Date.now(),
+					});
+				break;
+				case 'reactivate':
+					if( model.status != "done" ) return;
+					pathway.removeCompleted();
+					// update patient status based on pathway
+					model.status = pathway.getStatus();
+					// allow users to add steps again
+					buildAddStepTick();
+				break;
+			}
 		};
-		
-		const onDNA = () => {
-			addPathStep({
-				shortcode: 'DNA',
-				status: 'done',
-				type: 'DNA',
-				timestamp: Date.now(),
-			});
-		};
-		
-		const onComplete = () => {
-			if( model.status == "active" ) return;
-			addPathStep({
-				shortcode: 'i-fin',
-				status: 'buff',
-				type: 'finish',
-				timestamp: Date.now(),
-			});
-		};
-		
-		const onReactivate = () => {
-			if( model.status != "done" ) return;
-			pathway.removeCompleted();
-			// update patient status based on pathway
-			model.status = pathway.getStatus();
-			// allow users to add steps again
-			buildAddStepTick();
-		};
-		
+ 			
 		/**
 		* @method 
 		* Users can select all or none of currently viewed patients
@@ -428,15 +457,16 @@
 			
 		/* API */
 		return { 
-			onArrived, 
-			onDNA, 
-			onComplete, 
-			onReactivate,
+			onStateChange,
 			getID(){ return model.uid; }, 
 			getStatus(){ return model.status; },
 			getWaitingFor(){ return { 
 				uid: model.uid,
 				step: pathway.waitingFor() 
+			};},
+			getAssigned(){ return { 
+				uid: model.uid,
+				step: model.assigned 
 			};},
 			//getRisk(){ return model.risk; },
 			getRedFlagged(){ return model.redFlagged; },
@@ -444,6 +474,7 @@
 			addPathStep, 
 			removePathStep,
 			setTicked,
+			assignee,
 			isTicked(){ return tick.checked; } 
 		};
 	};

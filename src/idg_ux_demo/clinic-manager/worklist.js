@@ -30,6 +30,7 @@
 				'<!-- meta data -->', 
 				'Pathway',
 				'<label class="patient-checkbox"><input class="js-check-patient" value="all" type="checkbox"><div class="checkbox-btn"></div></label>', 
+				'<i class="oe-i person no-click small"></i>',
 				`<i class="oe-i ${riskIcon}-grey no-click small"></i>`,
 				'<i class="oe-i comments no-click small"></i>',
 				'Total duration', 
@@ -90,35 +91,14 @@
 		
 		/**
 		* @Event - Patient actiions outside of pathway
+		* Check to find patient and then send state change request
 		*/
-		
-		// for scheduled patients
-		const patientArrived = ( patientID ) => {
+		const patientStateChange = ( patientID, stateChange ) => {
 			if( patients.has( patientID )){
-				patients.get( patientID ).onArrived();
+				patients.get( patientID ).onStateChange( stateChange );
 			}
 		};
-		
-		// for scheduled patients
-		const patientDNA = ( patientID ) => {
-			if( patients.has( patientID )){
-				patients.get( patientID ).onDNA();
-			}
-		};
-		
-		// manually finish the pathway
-		const patientComplete = ( patientID ) => {
-			if( patients.has( patientID )){
-				patients.get( patientID ).onComplete();
-			}
-		};
-		
-		// reactivate a completed pathway
-		const patientReactivate = ( patientID ) => {
-			if( patients.has( patientID )){
-				patients.get( patientID ).onReactivate();
-			}
-		};
+	
 			
 		/**
 		* Add steps to patients
@@ -132,6 +112,8 @@
 				if( patient.isTicked()){
 					if( code == 'c-last'){
 						patient.removePathStep( code ); // Remove last step button
+					} else if( code == "assign" ) {
+						patient.assignee( status );
 					} else {
 						patient.addPathStep({
 							shortcode: code, // pass in code
@@ -163,15 +145,17 @@
 			const status = [];
 			const redflagged = [];
 			const waitingFor = [];
+			const assignments = [];
 			// only count IF user is using this list
 			if( usingList ){
 				patients.forEach( patient => {
 					status.push( patient.getStatus());
 					redflagged.push( patient.getRedFlagged());
-					waitingFor.push( patient.getWaitingFor()); // Step name
+					waitingFor.push( patient.getWaitingFor()); 
+					assignments.push( patient.getAssigned());
 				});
 			}
-			return { status, redflagged, waitingFor };
+			return { status, redflagged, waitingFor, assignments };
 		};
 		
 		/**
@@ -221,10 +205,7 @@
 			addStepsToPatients,
 			getPatientFilterState,
 			untickPatients,
-			patientArrived,
-			patientDNA,
-			patientComplete, 
-			patientReactivate, 
+			patientStateChange, 
 			showList,
 		};
 	};

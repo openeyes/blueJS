@@ -7,7 +7,7 @@
 	*/
 	const inner = ( name, count='' ) =>  `<div class="name">${name}</div><div class="count">${count}</div>`; 
 	
-	const filterChangeable = ( prefix ) => {
+	const filterChangeable = ( name, prefix="" ) => {
 		const selected = null;
 		const div = bj.div('changeable-filter');
 		const nav = bj.dom('nav', 'options');
@@ -15,14 +15,14 @@
 		
 		// button in the header (opens the options)
 		const headerBtn = bj.div('filter-btn');
-		headerBtn.innerHTML = inner( prefix );
+		headerBtn.innerHTML = inner( name );
 		
 		// intitate DOM: 
 		div.append( headerBtn, nav );
 		
 		const reset = () => {
 			headerBtn.classList.remove('selected');
-			headerBtn.innerHTML = inner( prefix );
+			headerBtn.innerHTML = inner( name );
 		};
 		
 		
@@ -33,12 +33,37 @@
 		const updateOptions = ( map ) => {
 			const filters = new DocumentFragment();
 			map.forEach(( set, key ) => {
-				const opt = bj.div('filter-btn js-filter-option');
+				let name = key; 
+				let selectName = key;
 				
-				// the key is the PS shortcode might not work for the button name
-				const name = key == 'i-discharge' ? 'Check out' : key;
-				opt.innerHTML = inner( `&hellip; ${name}`, set.size );
+				switch( key ){
+					case "i-discharge": selectName = name = `Check out`;
+					break;
+					case "i-drug-admin": selectName = name = `Drug Admin`;
+					break;
+					case 'DH': name = "David Haider (DH)";
+					break;
+					case 'CK': name = "Caroline Kilduff (CK)";
+					break;
+					case 'JM': name = "James Morgan (JM)";
+					break;
+					case 'IR': name = "Ian Rodrigues (IR)";
+					break;
+					case 'PT': name = "Peter Thomas (PT)";
+					break;
+					case 'TB': name = "Toby Bisco (TB)";
+					break;
+					case 'TF': name = "Toby Fisher (TF)";
+					break;
+				}
+			
+				const opt = bj.div('filter-btn js-filter-option');
+				opt.innerHTML = inner( `${prefix} ${name}`, set.size );
 				opt.setAttribute('data-patients', JSON.stringify([ ...set.values() ]));
+				opt.setAttribute('data-display', JSON.stringify({ 
+					name: `${prefix}${selectName}`,
+					count: set.size 
+				}));
 				filters.append( opt );
 			});
 			
@@ -53,11 +78,8 @@
 		div.addEventListener('mousedown', ev => {
 			const btn = ev.target;
 			if( ev.target.matches('nav .js-filter-option')){
-				headerBtn.innerHTML = inner(
-					btn.childNodes[0].textContent,
-					btn.childNodes[1].textContent
-				);
-				
+				const display = JSON.parse( btn.dataset.display );
+				headerBtn.innerHTML = inner( display.name, display.count );
 				headerBtn.classList.add('selected');
 			}		
 		});
