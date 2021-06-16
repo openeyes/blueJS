@@ -195,7 +195,8 @@
 					Patient is discharge. However, their pathway may 
 					still have tasks to do. e.g. Letter, blood, ect
 					*/
-					if( pathStep.getCode() == "i-discharge"){
+					if( pathStep.getCode() == "i-discharge" || 
+						pathStep.getCode() == "DNA" ){
 						waitDuration.finished( Date.now());
 						pathway.discharged();
 					
@@ -336,9 +337,7 @@
 			tr.setAttribute( 'data-timestamp', props.bookedTimestamp );
 			tr.insertAdjacentHTML('beforeend', `<td>${props.time}</td>`);
 			tr.insertAdjacentHTML('beforeend', `<td><div class="list-name">${props.clinic[0]}</div><div class="code">${props.clinic[1]}</div></td>`);
-			
-			
-			
+
 			// slightly more complex Elements and dynamic areas...
 			tr.append( clinic.patientMeta( props ));
 			tr.append( clinic.patientQuickView( props ));
@@ -415,12 +414,17 @@
 		const render = ( filter ) => {
 			let renderDOM = false;
 		
-			// wating for filter is set as an Array. 
+			/*
+			"Waiting for..." & "Assigned":
+			Filter is an Array of patient IDs; check for match
+			*/
 			if( typeof filter != "string" ){
 				return filter.find( e => e == model.uid ) == model.uid ? tr : null;
 			}
 			
-			
+			/*
+			Other filters are Strings of type:
+			*/
 			switch( filter ){
 				case "all": renderDOM = true;
 				break; 
@@ -446,8 +450,6 @@
 						model.status == 'stuck' 
 					);
 				break;
-				
-				
 				default: renderDOM = ( model.status == filter );
 			}
 			

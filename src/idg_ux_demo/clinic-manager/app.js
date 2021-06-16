@@ -89,7 +89,7 @@
 						}
 					}
 				});
-			} 
+			}; 
 			
 			// go through all lists...
 			worklists.forEach( list => {
@@ -156,26 +156,35 @@
 		* - User clicks on a step to add it to patients
 		* - (Or closes the adder)
 		*/
+		const addStepsToPathways = ( psData ) => {
+			worklists.forEach( list => list.addStepsToPatients( psData ));
+		}; 
+		
 		bj.userDown('div.oec-adder .insert-steps li', ( ev ) => {
 			const data = JSON.parse( ev.target.dataset.idg );
+			
+			// intercept adding: General task 
+			if( data.s == "editable" ){
+				clinic.customStep();
+				return;
+			}
 			
 			// check if configurable. if show a popup
 			if( data.s == "popup"){
 				clinic.pathwayPopup( data.c );
 				data.s = "todo";
 			}
-	
+			
 			if( data.c == "preset-pathway"){
 				// build a fake common pathway
 				[
 					{c:'One', s:'todo', t:'process'},
 					{c:'Two', s:'todo', t:'process'},
 					{c:'i-fork', s:'buff', t:'fork'},
-				].forEach( data => {
-					worklists.forEach( list => list.addStepsToPatients( data ));
-				});
+				].forEach( data => addStepsToPathways( data ));
+				
 			} else {
-				worklists.forEach( list => list.addStepsToPatients( data ));
+				addStepsToPathways( data );
 				adder.addSuccess();
 			}
 		});
@@ -190,7 +199,7 @@
 		bj.userClick('.oe-popup button.js-cancel-popup-steps', ev => {
 			const wrap = bj.getParent( ev.target, '.oe-popup-wrap');
 			wrap.remove();
-			worklists.forEach( list => list.addStepsToPatients( { c:"c-last" }));	
+			addStepsToPathways({ c:"c-last" });	
 		});
 		
 		/**
@@ -233,11 +242,13 @@
 		// update filter buttons count
 		updateFilterBtns();
 		
-		// App - same as above?? this needs checking!
+		// Custom events
 		document.addEventListener('idg:AppUpdateFilters', () => updateFilterBtns());
 		
-		// DNA (action within arrive popup)
-		document.addEventListener('idg:patientDNA', () => updateFilterBtns());
+		// App - same as above?? this needs checking!
+		document.addEventListener('idg:addCustomStep', ( ev ) => {
+			addStepsToPathways( ev.detail );
+		});
 		
 		// OK, ready to run this app, lets go!
 		loading.remove();

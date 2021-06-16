@@ -10931,7 +10931,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 						}
 					}
 				});
-			} 
+			}; 
 			
 			// go through all lists...
 			worklists.forEach( list => {
@@ -10998,26 +10998,35 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		* - User clicks on a step to add it to patients
 		* - (Or closes the adder)
 		*/
+		const addStepsToPathways = ( psData ) => {
+			worklists.forEach( list => list.addStepsToPatients( psData ));
+		}; 
+		
 		bj.userDown('div.oec-adder .insert-steps li', ( ev ) => {
 			const data = JSON.parse( ev.target.dataset.idg );
+			
+			// intercept adding: General task 
+			if( data.s == "editable" ){
+				clinic.customStep();
+				return;
+			}
 			
 			// check if configurable. if show a popup
 			if( data.s == "popup"){
 				clinic.pathwayPopup( data.c );
 				data.s = "todo";
 			}
-	
+			
 			if( data.c == "preset-pathway"){
 				// build a fake common pathway
 				[
 					{c:'One', s:'todo', t:'process'},
 					{c:'Two', s:'todo', t:'process'},
 					{c:'i-fork', s:'buff', t:'fork'},
-				].forEach( data => {
-					worklists.forEach( list => list.addStepsToPatients( data ));
-				});
+				].forEach( data => addStepsToPathways( data ));
+				
 			} else {
-				worklists.forEach( list => list.addStepsToPatients( data ));
+				addStepsToPathways( data );
 				adder.addSuccess();
 			}
 		});
@@ -11032,7 +11041,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		bj.userClick('.oe-popup button.js-cancel-popup-steps', ev => {
 			const wrap = bj.getParent( ev.target, '.oe-popup-wrap');
 			wrap.remove();
-			worklists.forEach( list => list.addStepsToPatients( { c:"c-last" }));	
+			addStepsToPathways({ c:"c-last" });	
 		});
 		
 		/**
@@ -11075,11 +11084,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		// update filter buttons count
 		updateFilterBtns();
 		
-		// App - same as above?? this needs checking!
+		// Custom events
 		document.addEventListener('idg:AppUpdateFilters', () => updateFilterBtns());
 		
-		// DNA (action within arrive popup)
-		document.addEventListener('idg:patientDNA', () => updateFilterBtns());
+		// App - same as above?? this needs checking!
+		document.addEventListener('idg:addCustomStep', ( ev ) => {
+			addStepsToPathways( ev.detail );
+		});
 		
 		// OK, ready to run this app, lets go!
 		loading.remove();
@@ -11223,7 +11234,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					if( str.length > 1 ){
 						listPeople( str );
 					} else {
-						bj.empty( ul );;
+						bj.empty( ul );
 					}
 				});
 			};
@@ -11261,7 +11272,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			btn('Doctor');
 			btn('HCA');
 			
-			btn('Gen', 'General task', false, 'todo', 'process', 'custom-step-select');
+			btn('Gen', 'General task', false, 'editable');
 			btn('Exam', 'Examination');
 			btn('Triage');
 			btn('Bio', 'Biometry');
@@ -11272,7 +11283,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			btn('Ref', 'Refraction');
 			btn('CDU', 'Clinical decision unit');
 			btn('Presc', 'Prescription', 'Rx');
-			btn('Dilate')
+			btn('Dilate');
 			btn('Dr Jones');
 			
 			
@@ -11429,6 +11440,68 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	clinic.clock = showClock;
 	  
 
+})( bluejay, bluejay.namespace('clinic')); 
+(function( bj, clinic ){
+
+	'use strict';	
+	
+	/**
+	* Customise a step via a popup
+	*/
+	let popup = null;
+	
+	const setPopup = () => {
+		const wrap = bj.div("oe-popup-wrap");
+		const div = bj.div("oe-popup");
+		wrap.append( div );
+		
+		div.innerHTML = [
+			`<div class="close-icon-btn"><i class="oe-i remove-circle pro-theme"></i></div>`,
+			`<div class="title">Add custom general task</div>`,
+			`<div class="oe-popup-content">`,
+			`<h4>Name</h4>`,
+			`<input name="taskname" type="text" maxlength="64" size="66" placeholder="Task name (maximum 64 characters)"/>`,
+			`<h4>Step pathway display name (restricted to 16 characters)</h4>`,
+			`<input name="shortname" type="text" maxlength="16" size="18" placeholder="max 16 characters"/>`,
+			`</div><!-- .oe-popup-content -->`,
+			`<div class="popup-actions flex-right">`,
+			`<button class="green hint js-add-custom-step">Add to selected patients</button>`,
+			`<button class="red hint js-cancel-popup-steps">Cancel</button>`,
+			`</div>`
+		].join('');
+		
+		const shortname = div.querySelector('input[name=shortname]');
+		
+		div.addEventListener('input', ev => {
+			ev.stopPropagation();
+			if( ev.target.name == "taskname" ){
+				const task = ev.target.value; 
+				if( task.length > 16 ){
+					shortname.value = task.substring(0, 13) + '...';	
+				} else {
+					shortname.value = task;
+				}
+			}
+		});
+		
+		bj.userClick('button.js-add-custom-step', () => {
+			const ps = { c:'General', s:'todo', t:'process' };
+			if( shortname.value.length > 1 ) ps.c = shortname.value;
+			bj.customEvent('idg:addCustomStep', ps );
+			wrap.remove();
+		});	
+		
+		return wrap;
+	};
+	
+	const init = () => {
+		popup = popup || setPopup();
+		document.body.append( popup );
+	};
+	
+	// make component available to Clinic SPA	
+	clinic.customStep = init;			
+  
 })( bluejay, bluejay.namespace('clinic')); 
 (function( bj ){
 
@@ -12176,7 +12249,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				pathSteps.splice( -1, 1 );
 			}
 			renderPathway();
-		}
+		};
 		
 		/**
 		* User/or auto completed
@@ -12482,7 +12555,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					Patient is discharge. However, their pathway may 
 					still have tasks to do. e.g. Letter, blood, ect
 					*/
-					if( pathStep.getCode() == "i-discharge"){
+					if( pathStep.getCode() == "i-discharge" || 
+						pathStep.getCode() == "DNA" ){
 						waitDuration.finished( Date.now());
 						pathway.discharged();
 					
@@ -12623,9 +12697,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			tr.setAttribute( 'data-timestamp', props.bookedTimestamp );
 			tr.insertAdjacentHTML('beforeend', `<td>${props.time}</td>`);
 			tr.insertAdjacentHTML('beforeend', `<td><div class="list-name">${props.clinic[0]}</div><div class="code">${props.clinic[1]}</div></td>`);
-			
-			
-			
+
 			// slightly more complex Elements and dynamic areas...
 			tr.append( clinic.patientMeta( props ));
 			tr.append( clinic.patientQuickView( props ));
@@ -12702,12 +12774,17 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		const render = ( filter ) => {
 			let renderDOM = false;
 		
-			// wating for filter is set as an Array. 
+			/*
+			"Waiting for..." & "Assigned":
+			Filter is an Array of patient IDs; check for match
+			*/
 			if( typeof filter != "string" ){
 				return filter.find( e => e == model.uid ) == model.uid ? tr : null;
 			}
 			
-			
+			/*
+			Other filters are Strings of type:
+			*/
 			switch( filter ){
 				case "all": renderDOM = true;
 				break; 
@@ -12733,8 +12810,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 						model.status == 'stuck' 
 					);
 				break;
-				
-				
 				default: renderDOM = ( model.status == filter );
 			}
 			
@@ -12994,7 +13069,9 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		*/
 		const finished = ( finishTime ) => {
 			clearInterval( timerID );
-			calcWaitMins( finishTime );
+			if( timestamp){
+				calcWaitMins( finishTime );
+			} 
 		};
 					
 		/**
@@ -13284,7 +13361,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				usingList = false;
 			}
 		};
-
+		
+		/**
+		* API
+		*/
 		return {
 			render,
 			addStepsToPatients,
@@ -13423,14 +13503,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			},
 			
 			/**
-			* @method - Jump to a pathstate
-			*/
-			jumpState( newStatus ){
-				this.changeState( newStatus );
-			},
-			
-			
-			/**
 			* @method - Move PathStep onto next state
 			* PathStep popup action buttons use this
 			* @param {String} status - next is default
@@ -13481,6 +13553,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				}
 				
 				if( newStatus ) this.changeState( newStatus );
+			},
+			
+			/**
+			* @method - Jump to a pathstate
+			*/
+			jumpState( newStatus ){
+				this.changeState( newStatus );
 			},
 			
 			changeState( newStatus ){

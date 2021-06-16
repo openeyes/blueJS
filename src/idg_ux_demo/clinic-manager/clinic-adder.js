@@ -107,7 +107,7 @@
 					if( str.length > 1 ){
 						listPeople( str );
 					} else {
-						bj.empty( ul );;
+						bj.empty( ul );
 					}
 				});
 			};
@@ -145,7 +145,7 @@
 			btn('Doctor');
 			btn('HCA');
 			
-			btn('Gen', 'General task', false, 'todo', 'process', 'custom-step-select');
+			btn('Gen', 'General task', false, 'editable');
 			btn('Exam', 'Examination');
 			btn('Triage');
 			btn('Bio', 'Biometry');
@@ -156,7 +156,7 @@
 			btn('Ref', 'Refraction');
 			btn('CDU', 'Clinical decision unit');
 			btn('Presc', 'Prescription', 'Rx');
-			btn('Dilate')
+			btn('Dilate');
 			btn('Dr Jones');
 			
 			

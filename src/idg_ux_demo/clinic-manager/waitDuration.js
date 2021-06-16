@@ -53,7 +53,9 @@
 		*/
 		const finished = ( finishTime ) => {
 			clearInterval( timerID );
-			calcWaitMins( finishTime );
+			if( timestamp){
+				calcWaitMins( finishTime );
+			} 
 		};
 					
 		/**

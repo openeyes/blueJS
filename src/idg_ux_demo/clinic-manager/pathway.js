@@ -241,7 +241,7 @@
 				pathSteps.splice( -1, 1 );
 			}
 			renderPathway();
-		}
+		};
 		
 		/**
 		* User/or auto completed

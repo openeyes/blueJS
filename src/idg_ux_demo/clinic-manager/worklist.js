@@ -199,7 +199,10 @@
 				usingList = false;
 			}
 		};
-
+		
+		/**
+		* API
+		*/
 		return {
 			render,
 			addStepsToPatients,
