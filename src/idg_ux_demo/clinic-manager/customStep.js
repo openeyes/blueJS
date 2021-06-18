@@ -23,9 +23,8 @@
 			`<input name="shortname" type="text" maxlength="16" size="18" placeholder="Display name"/>`,
 		].join('');
 		
-		stepData = { c:'General', s:'todo', t:'process' };
-		
-	}
+		stepData = { c:'General', s:'todo', t:'process' };	
+	};
 	
 
 	/**
@@ -51,11 +50,7 @@
 		].join('');
 		
 		stepData = { c:'1', s:'todo', t:'hold', i:'on-hold' };
-	}
-	
-	const setMins = () => {
-		
-	}
+	};
 	
 	
 	/**
@@ -102,7 +97,7 @@
 		if( ev.target.name == "idg-timer-mins"){
 			stepData.c = ev.target.value;
 		}
-	}
+	};
 	
 	/**
 	* Event - update the App

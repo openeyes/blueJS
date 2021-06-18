@@ -11472,9 +11472,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			`<input name="shortname" type="text" maxlength="16" size="18" placeholder="Display name"/>`,
 		].join('');
 		
-		stepData = { c:'General', s:'todo', t:'process' };
-		
-	}
+		stepData = { c:'General', s:'todo', t:'process' };	
+	};
 	
 
 	/**
@@ -11500,11 +11499,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		].join('');
 		
 		stepData = { c:'1', s:'todo', t:'hold', i:'on-hold' };
-	}
-	
-	const setMins = () => {
-		
-	}
+	};
 	
 	
 	/**
@@ -11551,7 +11546,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		if( ev.target.name == "idg-timer-mins"){
 			stepData.c = ev.target.value;
 		}
-	}
+	};
 	
 	/**
 	* Event - update the App
@@ -13564,7 +13559,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			*/
 			setStatus( val ){
 				// valid status settings
-				const valid = ['config', 'todo', 'todo-next', 'active', 'done', 'buff'].find( test => test == val );
+				const valid = ['config', 'todo', 'todo-next', 'active', 'done', 'buff', 'locked'].find( test => test == val );
 				if( !valid ) throw new Error(`PathStep: invaild status: "${val}".`);
 				this.status = val;
 				this.render();

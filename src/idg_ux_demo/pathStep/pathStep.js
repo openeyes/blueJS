@@ -70,7 +70,7 @@
 			*/
 			setStatus( val ){
 				// valid status settings
-				const valid = ['config', 'todo', 'todo-next', 'active', 'done', 'buff'].find( test => test == val );
+				const valid = ['config', 'todo', 'todo-next', 'active', 'done', 'buff', 'locked'].find( test => test == val );
 				if( !valid ) throw new Error(`PathStep: invaild status: "${val}".`);
 				this.status = val;
 				this.render();
