@@ -72,7 +72,6 @@
 				// valid status settings
 				const valid = ['config', 'todo', 'todo-next', 'active', 'done', 'buff'].find( test => test == val );
 				if( !valid ) throw new Error(`PathStep: invaild status: "${val}".`);
-				
 				this.status = val;
 				this.render();
 			}, 
@@ -87,7 +86,7 @@
 			*/
 			setType( val ){
 				// valid types
-				const valid = ['none', 'process', 'person', 'wait', 'delayed-wait', 'arrive', 'red-flag', 'fork', 'break', 'break-back', 'finish', 'comments', 'comments-added'].find( test => test == val );
+				const valid = ['none', 'process', 'person', 'wait', 'hold', 'delayed-wait', 'arrive', 'red-flag', 'fork', 'break', 'break-back', 'finish', 'comments', 'comments-added'].find( test => test == val );
 				if( !valid ) throw new Error(`PathStep: invaild type: "${val}"`);
 				
 				this.type = val;
@@ -137,12 +136,11 @@
 					case 'active': 
 						newStatus = 'done';
 						// may not have any info DOM...
-						if( this.info ) this.info.textContent = bj.clock24( new Date( Date.now())); 
+						if( this.info ) this.info.textContent = bj.clock24( new Date( Date.now()));
 					break;
 					case "buff":
 						if( this.type == "break"){
 							// no longer a break (blue), patient is back
-							
 							this.type = "break-back"; 
 							this.render();
 							this.renderPopup();
@@ -150,9 +148,6 @@
 						}
 					break;
 				}
-				
-				
-				
 				
 				if( newStatus ) this.changeState( newStatus );
 			},
@@ -167,6 +162,7 @@
 				switch( this.status ){
 					case 'todo': newStatus = 'config'; 
 					break;
+					case 'done':
 					case 'active': newStatus = 'todo'; 
 					break;
 				}
@@ -185,11 +181,20 @@
 				this.setStatus( newStatus );
 				bj.customEvent('idg:pathStepChange', this );
 				
-				if( newStatus == 'done'){
-					gui.pathStepPopup.remove();
-				} else {
-					this.renderPopup();
+				gui.pathStepPopup.remove();
+				if( newStatus != 'done' && this.type != "hold" ){
+					// reload the popup this will reposition it as well
+					this.renderPopup();	
 				}
+				
+				if( this.type == "hold"){
+					if( this.status == "active"){
+						 this.holdTimer();	
+					} else {
+						this.span.querySelector('svg').remove();
+					}
+				} 
+				
 			},
 			
 			renderPopup(){
@@ -206,8 +211,57 @@
 			
 			removeIdgPopupCode(){
 				delete this.idgCode;
-			}
+			},
 			
+			holdTimer(){
+				const svgns = "http://www.w3.org/2000/svg";
+				const attr = ( el, a, b ) => el.setAttribute( a, b );
+				const svg = document.createElementNS( svgns, "svg");
+				const circle = document.createElementNS( svgns, "circle");
+				const radius = 15;
+				
+				attr( svg, 'class', 'progress-ring');
+				attr( svg, 'viewBox', '0 0 34 34'); // step CSS is 34px x 34px 
+				attr( circle, 'fill', 'transparent');
+				attr( circle, 'r', radius );
+				attr( circle, 'cx', 17 );
+				attr( circle, 'cy', 17 );
+				
+				// DOM
+				svg.append( circle );
+				this.span.append( svg );
+				
+				// animation the timer
+				const circumference = radius * 2 * Math.PI;
+				circle.style.strokeDasharray = `${circumference} ${circumference}`;
+				circle.style.strokeDashoffset = circumference;
+	
+				// timer duration from step name e.g. "2"
+				const total = Number( this.shortcode ) * 60000; // millisecs!
+				let start = null; // timestamp
+			
+				const progress = ( timeStamp ) => {
+					start = start || timeStamp; // capture inital timeStamp, in closure
+					const elapsed = timeStamp - start;
+					let percent = (elapsed / total) * 100;
+					if( percent < 2 ) percent = 2; // show something! 
+					const offset = circumference - percent / 100 * circumference;
+					
+					if( percent > 100 ){
+						this.jumpState('done');
+					} else if( 	this.status == "active" && elapsed < total ){
+						// visually show progress in circle: 
+						circle.style.strokeDashoffset = offset;
+						// take a load off the processor!
+						setTimeout( window.requestAnimationFrame( progress ), 300 );
+					}
+				};
+	
+				window.requestAnimationFrame( progress );
+				// note to self! can not test faster thatn time! 
+				// need to allow the CSS animation time to catch up! 0.5s
+			}
+				
 		});
 		
 		
@@ -220,6 +274,8 @@
 			* If it's false don't add to the DOM as this affects the height.
 			*/
 			setInfo( info ){
+				if( this.type == "hold") return; // ignore (timer e.g. 2mins, etc)
+				
 				if( info !== false ){
 					this.info = bj.dom('span','info');
 					
@@ -347,6 +403,11 @@
 			ps.setType( type );
 			ps.setInfo( info );
 			ps.pathwayID = pathwayID;
+			
+			// timer?
+			if( ps.getType() == "hold" && ps.getStatus() == "active"){
+				ps.holdTimer();
+			}
 			
 			// render DOM
 			const spanDOM = ps.render();

@@ -187,6 +187,10 @@
 			if( pathStep.pathwayID != model.uid ) return;
 			
 			switch( pathStep.getStatus()){
+				case "todo":
+					// change to todo, either an "Undo complete" or after a "config"
+					pathway.checkStepOrder();
+				break;
 				case "active": 
 					pathway.stopWaiting();
 				break;
@@ -203,7 +207,7 @@
 						// can complete?
 						if( pathway.canComplete()){
 							model.status = 'discharged'; // hack this so that onComplete can run
-							onComplete();
+							onStateChange('complete');
 						}
 						
 					} else {

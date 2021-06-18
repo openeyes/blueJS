@@ -173,6 +173,7 @@
 			btn('i-fork', icon('fork') + 'Decision / review', false, 'buff', 'fork');
 			btn('i-break', icon('path-break') + 'Break in pathway', false, 'buff', 'break');
 			btn('i-discharge', icon('stop') + 'Check out', false, 'todo', 'process');
+			btn('on-hold', icon('time') + 'Hold timer (mins)', false, 'editable');
 			
 			btn('c-last','Remove last "todo" pathway step' );
 				
@@ -211,7 +212,7 @@
 				inserts.append( group );
 			};
 		
-			buildGroup('Path', ['i-fork', 'i-break', 'i-discharge']);
+			buildGroup('Path', ['i-fork', 'i-break', 'i-discharge', 'on-hold']);
 			
 			buildGroup('Preset pathways', ['preset-pathway']);	
 			

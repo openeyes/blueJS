@@ -165,7 +165,12 @@
 			
 			// intercept adding: General task 
 			if( data.s == "editable" ){
-				clinic.customStep();
+				switch(data.c){
+					case 'Gen': clinic.customStep('common');
+					break; 
+					case 'on-hold': clinic.customStep('timer');
+					break;
+				}
 				return;
 			}
 			

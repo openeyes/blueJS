@@ -39,6 +39,17 @@
 			pathSteps[ a ] = pathSteps.splice( b, 1, pathSteps[ a ])[0];
 		};
 		
+		// remove and re-insert
+		const removeInsert = ( removeIndex, insertIndex ) => {
+			const removedStep = pathSteps.splice( removeIndex, 1 )[0]; // Array! 
+			if( removeIndex < insertIndex ){
+				// removing will re-order the array, which means the insertIndex will need adjusting.
+				insertIndex--;	
+			}
+			pathSteps.splice( insertIndex, 0, removedStep );
+		};
+		
+		
 		/**
 		* Render pathway
 		*/
@@ -202,8 +213,7 @@
 			if( todoIndex > 0 && activeIndex > todoIndex  ){
 				// active could be anywhere so remove it and
 				// insert it before the first todo step
-				const newActiveStep = pathSteps.splice( activeIndex, 1 )[0]; // Array! 
-				pathSteps.splice( todoIndex, 0, newActiveStep );
+				removeInsert( activeIndex, todoIndex  );
 				renderPathway();
 			}
 		};
@@ -265,6 +275,28 @@
 			}
 		};
 		
+		/**
+		* Check the step order 
+		* If a user clicks "Undo Complete" move the "Todo" to right
+		*/
+		const checkStepOrder = () => {
+			// activate step needs moving to the left of all "todo" steps
+			const todoIndex = findFirstIndex('todo', 'config');
+			const doneIndex = findLastIndex('done');
+			const activeIndex = findFirstIndex('active');
+			
+			// active step?
+			if( activeIndex > 1 && todoIndex < activeIndex ){
+				// move after active step
+				removeInsert( todoIndex, activeIndex + 1 );
+			} else {
+				removeInsert( todoIndex, doneIndex + 1 );
+			}
+			
+			renderPathway();
+			
+		};
+ 		
 		
 		/**
 		* User has completed a PathStep.
@@ -309,7 +341,7 @@
 		};
 		
 		/**
-		* Waiting for filter needs to know this!
+		* Waiting for filter needs this.
 		*/
 		const waitingFor = () => {
 			const findWaiting = pathSteps.findIndex( ps => {
@@ -337,6 +369,7 @@
 			stopWaiting,
 			addWaiting,
 			waitingFor,
+			checkStepOrder,
 			discharged,
 			canComplete, 
 			removeCompleted,

@@ -57,13 +57,13 @@
 		};
 		
 		document.getElementById('js-clinic-filters').append( 
+			popupBtn('popup-filter', 'table-sort', 'Time'), 
 			patientSearch, 
-			 popupBtn('popup-filter', 'table-sort', 'Time'), 
-			 quickFilters, 
-			 // popupBtn('popup-filter', 'waiting-for', 'Waiting for...'),
-			 waitingFor.render(),
-			 assignee.render(),
-			 popupBtn('popup-filter', 'info-help-overlay', '<!-- icon -->')
+			quickFilters, 
+			// popupBtn('popup-filter', 'waiting-for', 'Waiting for...'),
+			waitingFor.render(),
+			assignee.render(),
+			popupBtn('popup-filter', 'info-help-overlay', '<!-- icon -->')
 		);
 		
 		/*

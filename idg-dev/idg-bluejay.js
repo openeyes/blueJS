@@ -11007,7 +11007,12 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			// intercept adding: General task 
 			if( data.s == "editable" ){
-				clinic.customStep();
+				switch(data.c){
+					case 'Gen': clinic.customStep('common');
+					break; 
+					case 'on-hold': clinic.customStep('timer');
+					break;
+				}
 				return;
 			}
 			
@@ -11300,6 +11305,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			btn('i-fork', icon('fork') + 'Decision / review', false, 'buff', 'fork');
 			btn('i-break', icon('path-break') + 'Break in pathway', false, 'buff', 'break');
 			btn('i-discharge', icon('stop') + 'Check out', false, 'todo', 'process');
+			btn('on-hold', icon('time') + 'Hold timer (mins)', false, 'editable');
 			
 			btn('c-last','Remove last "todo" pathway step' );
 				
@@ -11338,7 +11344,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				inserts.append( group );
 			};
 		
-			buildGroup('Path', ['i-fork', 'i-break', 'i-discharge']);
+			buildGroup('Path', ['i-fork', 'i-break', 'i-discharge', 'on-hold']);
 			
 			buildGroup('Preset pathways', ['preset-pathway']);	
 			
@@ -11446,10 +11452,65 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	'use strict';	
 	
 	/**
-	* Customise a step via a popup
+	* Editable steps from adder!
 	*/
+	let type = null;
 	let popup = null;
+	let stepData = null;
 	
+	/**
+	* Content: General custom task
+	*/
+	const domCustom = ( div ) => {
+		div.querySelector('.title').textContent = "Add custom general task";
+		
+		const content = div.querySelector('.oe-popup-content');
+		content.innerHTML = [
+			`<h4>Name</h4>`,
+			`<input name="taskname" type="text" maxlength="64" size="66" placeholder="Task name (maximum 64 characters)"/>`,
+			`<h4>Step pathway display name (restricted to 16 characters)</h4>`,
+			`<input name="shortname" type="text" maxlength="16" size="18" placeholder="Display name"/>`,
+		].join('');
+		
+		stepData = { c:'General', s:'todo', t:'process' };
+		
+	}
+	
+
+	/**
+	* Content: Timer
+	*/
+	const domTimer = ( div ) => {
+		div.querySelector('.title').textContent = "Add pathway hold timer";
+		
+		const mins = min => `<label><input type="radio" name="idg-timer-mins" value="${min}"><div class="li">Add ${min} minute timer</div></label>`;
+		
+		const content = div.querySelector('.oe-popup-content');
+		content.innerHTML = [
+			`<h4>Timer</h4>`,
+			`<fieldset class="btn-list">`,
+			mins(1),
+			mins(2),
+			mins(5),
+			mins(10),
+			mins(15),
+			mins(20),
+			mins(30),
+			`</fieldset>`,
+		].join('');
+		
+		stepData = { c:'1', s:'todo', t:'hold', i:'on-hold' };
+	}
+	
+	const setMins = () => {
+		
+	}
+	
+	
+	/**
+	* build template DOM
+	* @returns Element
+	*/
 	const setPopup = () => {
 		const wrap = bj.div("oe-popup-wrap");
 		const div = bj.div("oe-popup");
@@ -11457,12 +11518,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		
 		div.innerHTML = [
 			`<div class="close-icon-btn"><i class="oe-i remove-circle pro-theme"></i></div>`,
-			`<div class="title">Add custom general task</div>`,
+			`<div class="title"></div>`,
 			`<div class="oe-popup-content">`,
-			`<h4>Name</h4>`,
-			`<input name="taskname" type="text" maxlength="64" size="66" placeholder="Task name (maximum 64 characters)"/>`,
-			`<h4>Step pathway display name (restricted to 16 characters)</h4>`,
-			`<input name="shortname" type="text" maxlength="16" size="18" placeholder="max 16 characters"/>`,
 			`</div><!-- .oe-popup-content -->`,
 			`<div class="popup-actions flex-right">`,
 			`<button class="green hint js-add-custom-step">Add to selected patients</button>`,
@@ -11470,32 +11527,51 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			`</div>`
 		].join('');
 		
-		const shortname = div.querySelector('input[name=shortname]');
-		
-		div.addEventListener('input', ev => {
-			ev.stopPropagation();
-			if( ev.target.name == "taskname" ){
-				const task = ev.target.value; 
-				if( task.length > 16 ){
-					shortname.value = task.substring(0, 13) + '...';	
-				} else {
-					shortname.value = task;
-				}
-			}
-		});
-		
-		bj.userClick('button.js-add-custom-step', () => {
-			const ps = { c:'General', s:'todo', t:'process' };
-			if( shortname.value.length > 1 ) ps.c = shortname.value;
-			bj.customEvent('idg:addCustomStep', ps );
-			wrap.remove();
-		});	
-		
+		// only custom name needs this, but here so only declared once:
+		div.addEventListener('input', stepBuilder );
 		return wrap;
 	};
 	
-	const init = () => {
+	/**
+	* Inputs
+	*/
+	const stepBuilder = ( ev ) => {
+		// custom name
+		if( ev.target.name == "taskname" ){
+			const task = ev.target.value; 
+			const shortname = ev.target.parentNode.querySelector('input[name="shortname"]');
+			if( task.length > 16 ){
+				shortname.value = task.substring(0, 13) + '...';	
+			} else {
+				shortname.value = task;
+			}
+			stepData.c = shortname.value.length > 1 ? shortname.value : 'General';
+		}
+		
+		if( ev.target.name == "idg-timer-mins"){
+			stepData.c = ev.target.value;
+		}
+	}
+	
+	/**
+	* Event - update the App
+	*/
+	bj.userClick('button.js-add-custom-step', () => {
+		bj.customEvent('idg:addCustomStep', stepData );
+		popup.remove();
+	});
+	
+	/**
+	* Editable steps: General (common) or Hold timer
+	* @param {String} userRequest - 'common' or 'timer'
+	*/
+	const init = ( userRequest ) => {
+		type = userRequest;
 		popup = popup || setPopup();
+		
+		if( type == "common") domCustom( popup.firstChild );
+		if( type == "timer") domTimer( popup.firstChild );
+		
 		document.body.append( popup );
 	};
 	
@@ -11775,13 +11851,13 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		};
 		
 		document.getElementById('js-clinic-filters').append( 
+			popupBtn('popup-filter', 'table-sort', 'Time'), 
 			patientSearch, 
-			 popupBtn('popup-filter', 'table-sort', 'Time'), 
-			 quickFilters, 
-			 // popupBtn('popup-filter', 'waiting-for', 'Waiting for...'),
-			 waitingFor.render(),
-			 assignee.render(),
-			 popupBtn('popup-filter', 'info-help-overlay', '<!-- icon -->')
+			quickFilters, 
+			// popupBtn('popup-filter', 'waiting-for', 'Waiting for...'),
+			waitingFor.render(),
+			assignee.render(),
+			popupBtn('popup-filter', 'info-help-overlay', '<!-- icon -->')
 		);
 		
 		/*
@@ -12047,6 +12123,17 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			pathSteps[ a ] = pathSteps.splice( b, 1, pathSteps[ a ])[0];
 		};
 		
+		// remove and re-insert
+		const removeInsert = ( removeIndex, insertIndex ) => {
+			const removedStep = pathSteps.splice( removeIndex, 1 )[0]; // Array! 
+			if( removeIndex < insertIndex ){
+				// removing will re-order the array, which means the insertIndex will need adjusting.
+				insertIndex--;	
+			}
+			pathSteps.splice( insertIndex, 0, removedStep );
+		};
+		
+		
 		/**
 		* Render pathway
 		*/
@@ -12210,8 +12297,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			if( todoIndex > 0 && activeIndex > todoIndex  ){
 				// active could be anywhere so remove it and
 				// insert it before the first todo step
-				const newActiveStep = pathSteps.splice( activeIndex, 1 )[0]; // Array! 
-				pathSteps.splice( todoIndex, 0, newActiveStep );
+				removeInsert( activeIndex, todoIndex  );
 				renderPathway();
 			}
 		};
@@ -12273,6 +12359,28 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			}
 		};
 		
+		/**
+		* Check the step order 
+		* If a user clicks "Undo Complete" move the "Todo" to right
+		*/
+		const checkStepOrder = () => {
+			// activate step needs moving to the left of all "todo" steps
+			const todoIndex = findFirstIndex('todo', 'config');
+			const doneIndex = findLastIndex('done');
+			const activeIndex = findFirstIndex('active');
+			
+			// active step?
+			if( activeIndex > 1 && todoIndex < activeIndex ){
+				// move after active step
+				removeInsert( todoIndex, activeIndex + 1 );
+			} else {
+				removeInsert( todoIndex, doneIndex + 1 );
+			}
+			
+			renderPathway();
+			
+		};
+ 		
 		
 		/**
 		* User has completed a PathStep.
@@ -12317,7 +12425,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 		};
 		
 		/**
-		* Waiting for filter needs to know this!
+		* Waiting for filter needs this.
 		*/
 		const waitingFor = () => {
 			const findWaiting = pathSteps.findIndex( ps => {
@@ -12345,6 +12453,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			stopWaiting,
 			addWaiting,
 			waitingFor,
+			checkStepOrder,
 			discharged,
 			canComplete, 
 			removeCompleted,
@@ -12547,6 +12656,10 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			if( pathStep.pathwayID != model.uid ) return;
 			
 			switch( pathStep.getStatus()){
+				case "todo":
+					// change to todo, either an "Undo complete" or after a "config"
+					pathway.checkStepOrder();
+				break;
 				case "active": 
 					pathway.stopWaiting();
 				break;
@@ -12563,7 +12676,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 						// can complete?
 						if( pathway.canComplete()){
 							model.status = 'discharged'; // hack this so that onComplete can run
-							onComplete();
+							onStateChange('complete');
 						}
 						
 					} else {
@@ -13453,7 +13566,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				// valid status settings
 				const valid = ['config', 'todo', 'todo-next', 'active', 'done', 'buff'].find( test => test == val );
 				if( !valid ) throw new Error(`PathStep: invaild status: "${val}".`);
-				
 				this.status = val;
 				this.render();
 			}, 
@@ -13468,7 +13580,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			*/
 			setType( val ){
 				// valid types
-				const valid = ['none', 'process', 'person', 'wait', 'delayed-wait', 'arrive', 'red-flag', 'fork', 'break', 'break-back', 'finish', 'comments', 'comments-added'].find( test => test == val );
+				const valid = ['none', 'process', 'person', 'wait', 'hold', 'delayed-wait', 'arrive', 'red-flag', 'fork', 'break', 'break-back', 'finish', 'comments', 'comments-added'].find( test => test == val );
 				if( !valid ) throw new Error(`PathStep: invaild type: "${val}"`);
 				
 				this.type = val;
@@ -13518,12 +13630,11 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 					case 'active': 
 						newStatus = 'done';
 						// may not have any info DOM...
-						if( this.info ) this.info.textContent = bj.clock24( new Date( Date.now())); 
+						if( this.info ) this.info.textContent = bj.clock24( new Date( Date.now()));
 					break;
 					case "buff":
 						if( this.type == "break"){
 							// no longer a break (blue), patient is back
-							
 							this.type = "break-back"; 
 							this.render();
 							this.renderPopup();
@@ -13531,9 +13642,6 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 						}
 					break;
 				}
-				
-				
-				
 				
 				if( newStatus ) this.changeState( newStatus );
 			},
@@ -13548,6 +13656,7 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				switch( this.status ){
 					case 'todo': newStatus = 'config'; 
 					break;
+					case 'done':
 					case 'active': newStatus = 'todo'; 
 					break;
 				}
@@ -13566,11 +13675,20 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 				this.setStatus( newStatus );
 				bj.customEvent('idg:pathStepChange', this );
 				
-				if( newStatus == 'done'){
-					gui.pathStepPopup.remove();
-				} else {
-					this.renderPopup();
+				gui.pathStepPopup.remove();
+				if( newStatus != 'done' && this.type != "hold" ){
+					// reload the popup this will reposition it as well
+					this.renderPopup();	
 				}
+				
+				if( this.type == "hold"){
+					if( this.status == "active"){
+						 this.holdTimer();	
+					} else {
+						this.span.querySelector('svg').remove();
+					}
+				} 
+				
 			},
 			
 			renderPopup(){
@@ -13587,8 +13705,57 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			
 			removeIdgPopupCode(){
 				delete this.idgCode;
-			}
+			},
 			
+			holdTimer(){
+				const svgns = "http://www.w3.org/2000/svg";
+				const attr = ( el, a, b ) => el.setAttribute( a, b );
+				const svg = document.createElementNS( svgns, "svg");
+				const circle = document.createElementNS( svgns, "circle");
+				const radius = 15;
+				
+				attr( svg, 'class', 'progress-ring');
+				attr( svg, 'viewBox', '0 0 34 34'); // step CSS is 34px x 34px 
+				attr( circle, 'fill', 'transparent');
+				attr( circle, 'r', radius );
+				attr( circle, 'cx', 17 );
+				attr( circle, 'cy', 17 );
+				
+				// DOM
+				svg.append( circle );
+				this.span.append( svg );
+				
+				// animation the timer
+				const circumference = radius * 2 * Math.PI;
+				circle.style.strokeDasharray = `${circumference} ${circumference}`;
+				circle.style.strokeDashoffset = circumference;
+	
+				// timer duration from step name e.g. "2"
+				const total = Number( this.shortcode ) * 60000; // millisecs!
+				let start = null; // timestamp
+			
+				const progress = ( timeStamp ) => {
+					start = start || timeStamp; // capture inital timeStamp, in closure
+					const elapsed = timeStamp - start;
+					let percent = (elapsed / total) * 100;
+					if( percent < 2 ) percent = 2; // show something! 
+					const offset = circumference - percent / 100 * circumference;
+					
+					if( percent > 100 ){
+						this.jumpState('done');
+					} else if( 	this.status == "active" && elapsed < total ){
+						// visually show progress in circle: 
+						circle.style.strokeDashoffset = offset;
+						// take a load off the processor!
+						setTimeout( window.requestAnimationFrame( progress ), 300 );
+					}
+				};
+	
+				window.requestAnimationFrame( progress );
+				// note to self! can not test faster thatn time! 
+				// need to allow the CSS animation time to catch up! 0.5s
+			}
+				
 		});
 		
 		
@@ -13601,6 +13768,8 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			* If it's false don't add to the DOM as this affects the height.
 			*/
 			setInfo( info ){
+				if( this.type == "hold") return; // ignore (timer e.g. 2mins, etc)
+				
 				if( info !== false ){
 					this.info = bj.dom('span','info');
 					
@@ -13728,6 +13897,11 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 			ps.setType( type );
 			ps.setInfo( info );
 			ps.pathwayID = pathwayID;
+			
+			// timer?
+			if( ps.getType() == "hold" && ps.getStatus() == "active"){
+				ps.holdTimer();
+			}
 			
 			// render DOM
 			const spanDOM = ps.render();
