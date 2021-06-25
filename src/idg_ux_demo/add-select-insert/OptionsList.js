@@ -106,7 +106,8 @@
 					re-select it and activate the dependents 
 					*/
 					d.selected = false;
-					d.click();
+					// allow time for dependants to be added ;)
+					setTimeout(() => d.click(), 100 );
 				});
 			}
 		};			
