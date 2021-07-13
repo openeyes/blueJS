@@ -47,9 +47,23 @@
 				/*
 				New JSON approach for more advanced tooltips
 				*/
-				const json = JSON.parse( target.dataset.tt );
+				const json = JSON.parse( target.dataset.tip );
 				this.type = json.type;
 				this.clickThrough = json.clickPopup; // click through to a popup?
+				
+				switch( this.type ){
+					case "bilateral": 
+						this.tip = {
+							r: json.tipR,
+							l: json.tipL
+						};
+					break;
+					case "esign":
+						 this.png = json.png;
+					break; 
+					default: 
+						this.tip = json.tip;
+				}	
 				
 				if( this.type == 'bilateral' ){
 					this.tip = {
@@ -59,7 +73,7 @@
 					this.eyeIcons = json.eyeIcons;
 				} else {
 					// basic
-					this.tip = json.tip;
+					
 				}	
 			}
 			
@@ -140,12 +154,19 @@
 				div.classList.add("inverted");
 			} 
 			
+			if( model.type == "esign"){
+				div.style.backgroundImage = `url(${model.png})`;
+			}
+			
 			/*
 			update DOM and show the tooltip
 			*/
 			div.style.top = top + 'px';
 			div.style.left = (center - offsetW) + 'px';
 			div.style.display = display;
+			
+			
+			
 		};
 		
 		/**
@@ -211,6 +232,20 @@
 		model.views.add( update );
 	
 	})();
+	
+	/**
+	* Esign signature
+	*/
+	const esign = () => {
+		if( model.type === 'esign' ){
+			tooltip.reset();
+			tooltip.div.classList.add('esign');
+			tooltip.show( "block", 210 ); // CSS width: must match 'newblue'
+		}
+	};
+	
+	model.views.add( esign );
+	
 	
 	/**
 	* Out (or click toggle tip)

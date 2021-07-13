@@ -7146,9 +7146,23 @@ Updated to Vanilla JS for IDG
 				/*
 				New JSON approach for more advanced tooltips
 				*/
-				const json = JSON.parse( target.dataset.tt );
+				const json = JSON.parse( target.dataset.tip );
 				this.type = json.type;
 				this.clickThrough = json.clickPopup; // click through to a popup?
+				
+				switch( this.type ){
+					case "bilateral": 
+						this.tip = {
+							r: json.tipR,
+							l: json.tipL
+						};
+					break;
+					case "esign":
+						 this.png = json.png;
+					break; 
+					default: 
+						this.tip = json.tip;
+				}	
 				
 				if( this.type == 'bilateral' ){
 					this.tip = {
@@ -7158,7 +7172,7 @@ Updated to Vanilla JS for IDG
 					this.eyeIcons = json.eyeIcons;
 				} else {
 					// basic
-					this.tip = json.tip;
+					
 				}	
 			}
 			
@@ -7239,12 +7253,19 @@ Updated to Vanilla JS for IDG
 				div.classList.add("inverted");
 			} 
 			
+			if( model.type == "esign"){
+				div.style.backgroundImage = `url(${model.png})`;
+			}
+			
 			/*
 			update DOM and show the tooltip
 			*/
 			div.style.top = top + 'px';
 			div.style.left = (center - offsetW) + 'px';
 			div.style.display = display;
+			
+			
+			
 		};
 		
 		/**
@@ -7310,6 +7331,20 @@ Updated to Vanilla JS for IDG
 		model.views.add( update );
 	
 	})();
+	
+	/**
+	* Esign signature
+	*/
+	const esign = () => {
+		if( model.type === 'esign' ){
+			tooltip.reset();
+			tooltip.div.classList.add('esign');
+			tooltip.show( "block", 210 ); // CSS width: must match 'newblue'
+		}
+	};
+	
+	model.views.add( esign );
+	
 	
 	/**
 	* Out (or click toggle tip)
@@ -10233,6 +10268,56 @@ Updated to Vanilla JS for IDG
 	Quicklook and QuickView DOM and only wraps the link part. This would make it much easier
 	on Touch devices, but this is unlikely to be done at the moment.
 	*/
+	
+})( bluejay ); 
+(function( bj ){
+
+	'use strict';
+	
+	
+	let loaded = false;
+	
+	const loadRemovedEvents = ( ev ) => {
+		// demo the UIX for loading in RemoveEvents into the sidebar
+		const btn = ev.target; 
+		
+		if( loaded ){
+			document.getElementById('removed-event-list').textContent = "";
+			btn.textContent = "Show removed (20)";
+			loaded = false;
+			return;
+		}
+		
+		btn.innerHTML = `Loading... <i class="spinner as-icon"></i>`;
+		
+		// Fake a db request demo...
+		
+		const li = bj.dom('li', 'event');
+		li.setAttribute('data-quick', `{"id":1004,"icon":"i-CiExamination","event":"Examination","speciality":"GL","date":"1 Mth 1975","type":"none","content":"Sorry, no preview is currently available"}`);
+		li.innerHTML = `<div class="tooltip quicklook"><div class="event-name">Examination</div><div class="event-issue urgent">Deleted</div></div><a href="/" data-id="r1"><span class="event-type "><i class="oe-i-e i-CiExamination"></i></span><span class="event-extra"></span><span class="event-date"><span class="day">1</span><span class="mth">Mth</span><span class="yr">1975</span></span><span class="tag">GL</span></a>`;
+		
+		const frag = new DocumentFragment();
+		
+		for( let i = 0; i < 20; i++ ){
+			const copy = li.cloneNode( true );
+			copy.id = `r${i}`;
+			frag.append( copy );
+		}
+		
+		
+		setTimeout(() => {
+			document.getElementById('removed-event-list').append( frag );
+			btn.innerHTML = `Hide removed`;
+			loaded = true;
+		}, 1000 );
+		
+			
+	};
+	
+	/*
+	Events 
+	*/
+	bj.userDown('div.removed-events div.removed-btn', loadRemovedEvents );
 	
 })( bluejay ); 
 (function( bj ){
