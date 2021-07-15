@@ -7863,164 +7863,6 @@ Updated to Vanilla JS for IDG
 	bj.userDown('.js-idg-demo-autocomplete', ev => autoComplete( ev.target ));	
 	
 })( bluejay ); 
-(function( bj ) {
-
-	'use strict';	
-	
-	bj.addModule('clinicPathway');	
-	
-	/**
-	* Pathway pathway btn in all events to show current pathway
-	*/
-	
-	let div = null;
-	const sidebarBtn = document.getElementById('js-idg-clinic-pathway-btn');
-	
-	const buildDemoPathway = () => {
-		// match times in the demo
-		const now = Date.now();
-		const arrive = bj.clock24( new Date( now - (155 * 60000)));
-		
-		const clinic = div.querySelector('.clinic-pathway');
-		clinic.innerHTML = [
-			`<table class="oec-patients in-event">`,
-			`<tbody>`,
-			`<tr>`,
-			`<td>${arrive}</td>`,
-			`<td><div class="list-name">Accident &amp; Emergency</div><div class="code">First Attendance</div></td>`,
-			`<td><div class="pathway active"></div></td>`,
-			`<td><label class="patient-checkbox"><input class="js-check-patient" type="checkbox" value="demoAdd"><div class="checkbox-btn"></div></label></td>`,
-			`<td><i class="oe-i circle-amber medium-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="Priority: Urgent"></i></td>`,
-			`<td></td>`,
-			`<td><div class="wait-duration"><svg class="duration-graphic yellow" viewBox="0 0 48 12" height="12" width="48"><circle class="c0" cx="6" cy="6" r="6"></circle><circle class="c1" cx="18" cy="6" r="6"></circle><circle class="c2" cx="30" cy="6" r="6"></circle><circle class="c3" cx="42" cy="6" r="6"></circle></svg><div class="mins"><small>2:35</small></div></div></td>`,
-			`<td><!-- complete action --></td>`,
-			`</tr>`,
-			`</tbody>`,
-			`</table>`,
-		].join('');
-		
-		const pathway = clinic.querySelector('.pathway');
-		const commentTD = clinic.querySelector('td:nth-child(6)');
-		const gui = bluejay.namespace('gui');
-		
-		gui.pathStep({
-			shortcode: 'i-comments',
-			status: 'buff', 
-			type: 'comments',
-			info: '&nbsp;',
-			idgPopupCode: 'i-comments-none', 
-		}, commentTD );
-		
-		
-		// -155
-		gui.pathStep({
-			shortcode: 'i-arr',
-			status: 'buff', 
-			type: 'arrive',
-			info: arrive,
-		}, pathway );
-		
-		gui.pathStep({
-			shortcode: 'Triage',
-			status: 'done', 
-			type: 'process',
-			info: bj.clock24( new Date( now - (148 * 60000))),
-		}, pathway );
-		
-		gui.pathStep({
-			shortcode: 'i-redflag',
-			status: 'buff', 
-			type: 'red-flag',
-			info:  bj.clock24( new Date( now - (119 * 60000))),
-		}, pathway );
-		
-		gui.pathStep({
-			shortcode: 'MM',
-			status: 'active', 
-			type: 'person',
-			info:  bj.clock24( new Date( now - (99 * 60000))),
-		}, pathway );
-			
-		gui.pathStep({
-			shortcode: 'i-drug-admin',
-			status: 'todo', 
-			type: 'process',
-			info: 'clock',
-			idgPopupCode: 'PSD-B',
-		}, pathway );
-		
-		gui.pathStep({
-			shortcode: 'i-discharge',
-			status: 'todo', 
-			type: 'process',
-			info: 'clock',
-		}, pathway );
-		
-		gui.pathStep({
-			shortcode: 'Letter',
-			status: 'todo', 
-			type: 'process',
-			info: 'clock',
-		}, pathway );
-		
-		gui.pathStep({
-			shortcode: 'Blood',
-			status: 'todo', 
-			type: 'process',
-			info: 'clock',
-		}, pathway );
-		
-	};
-	
-	
-	const show = () => {
-		div = bj.div('pathway-in-event');
-		div.innerHTML = [
-			`<div class="close-icon-btn"><i class="oe-i remove-circle small-icon"></i></div>`,
-			`<div class="clinic-pathway"><i class="spinner as-icon"></i></div>`
-		].join('');
-		
-		
-		// make space for the popup pathway
-		document.querySelector('main').classList.add('allow-for-pathway');
-		document.body.append( div );
-		
-		// this will clear the fake loader.
-		setTimeout(() => buildDemoPathway(), 500);
-		
-		// update sidebar btn
-		sidebarBtn.classList.add('active');
-	}; 
-	
-	const remove = () => {
-		div.remove();
-		document.querySelector('main').classList.remove('allow-for-pathway');
-		
-		// update sidebar btn
-		sidebarBtn.classList.remove('active');
-	};
-	
-	
-/*
-	<tr class="active" data-timestamp="1621690262476"><td>14:31</td><td><div class="list-name">Accident &amp; Emergency</div><div class="code">First Attendance</div></td><td><div class="oe-patient-meta"><div class="patient-name"><a href="/v3-SEM/patient-overview"><span class="patient-surname">CHANNING</span>, <span class="patient-firstname">Neayvaeh (Mr)</span></a><div class="patient-icons"></div></div><div class="patient-details"><div class="nhs-number"><span>NHS</span>385 999 7566</div><div class="gender">Male</div><div class="patient-age"><em>dob</em> 4 Feb 1965 <span class="yrs">56y</span></div></div></div></td><td><i class="oe-i eye-circle medium pad js-patient-quick-overview" data-mode="side" data-php="patient/quick/overview.php" data-patient="{&quot;surname&quot;:&quot;CHANNING&quot;,&quot;first&quot;:&quot;Neayvaeh (Mr)&quot;,&quot;id&quot;:false,&quot;nhs&quot;:&quot;385 999 7566&quot;,&quot;gender&quot;:&quot;Male&quot;,&quot;age&quot;:&quot;56y&quot;}"></i></td><td><div class="pathway active"><span class="oe-pathstep-btn buff arrive" data-bjc="440"><span class="step i-arr"></span><span class="info">14:31</span></span><span class="oe-pathstep-btn done process" data-bjc="441"><span class="step">Triage</span><span class="info">14:38</span></span><span class="oe-pathstep-btn buff red-flag" data-bjc="442"><span class="step i-redflag"></span><span class="info">15:07</span></span><span class="oe-pathstep-btn active person" data-bjc="443"><span class="step">MM</span><span class="info">15:27</span></span><span class="oe-pathstep-btn todo process" data-bjc="444"><span class="step i-drug-admin"></span><span class="info invisible">17:06</span></span><span class="oe-pathstep-btn todo process" data-bjc="445"><span class="step i-discharge"></span><span class="info invisible">17:06</span></span><span class="oe-pathstep-btn todo process" data-bjc="446"><span class="step">Letter</span><span class="info invisible">17:06</span></span><span class="oe-pathstep-btn todo process" data-bjc="447"><span class="step">Blood</span><span class="info invisible">17:06</span></span></div></td><td><label class="patient-checkbox"><input class="js-check-patient" type="checkbox" value="bj64"><div class="checkbox-btn"></div></label></td><td><i class="oe-i circle-amber medium-icon js-has-tooltip" data-tt-type="basic" data-tooltip-content="Priority: Urgent"></i></td><td><span class="oe-pathstep-btn buff comments" data-bjc="448"><span class="step i-comments"></span><span class="info">&nbsp;</span></span></td><td><div class="wait-duration"><svg class="duration-graphic yellow" viewBox="0 0 48 12" height="12" width="48"><circle class="c0" cx="6" cy="6" r="6"></circle><circle class="c1" cx="18" cy="6" r="6"></circle><circle class="c2" cx="30" cy="6" r="6"></circle><circle class="c3" cx="42" cy="6" r="6"></circle></svg><div class="mins"><small>2:35</small></div></div></td><td><i class="oe-i no-permissions small-icon pad js-has-tooltip" data-tooltip-content="Patient still in attendence.<br>Steps incomplete."></i></td></tr>
-
-	
-*/
-	/*
-	Events
-	*/
-	bj.userDown('#js-idg-clinic-pathway-btn', () => {
-		if( sidebarBtn.classList.contains('active')){
-			remove();
-		} else {
-			show();	
-		}
-		sidebarBtn.blur();
-	});
-	
-	bj.userDown('.pathway-in-event .close-icon-btn i', remove );
-
-})( bluejay ); 
 (function (uiApp) {
 
 	'use strict';	
@@ -10499,432 +10341,285 @@ Updated to Vanilla JS for IDG
 
 
 })(bluejay); 
-/*
-List Options Constructor
-*/
-(function (uiApp) {
+(function( bj ){
 
 	'use strict';	
 	
-	const addSelect = uiApp.namespace( 'addSelect' );	
+	let div = null;
+	let open = false;
 	
-	addSelect.ListOption = function (li, parent){
-		
-		let _selected = li.classList.contains('selected'); // check not setup to be selected:
-		let _dependents = false;
-		let json = JSON.parse(li.dataset.insert);
-		
-		
-		/*
-		Does list have any dependency lists?
-		*/
-		if( json.dependents !== undefined ){
-			// build dependents
-			_dependents = new addSelect.OptionDependents(json.dependents, parent.uniqueId);
-		}
-	
-		/*
-		Methods
-		*/ 
-		this.click = function(){
-			this.toggleState();
-			parent.optionClicked( _selected, this );
-	
-			if(_dependents != false){
-				_dependents.show( _selected );
-			}	
-		};
-		
-		this.toggleState = function() {
-			li.classList.toggle('selected'); 
-			_selected = !_selected;
-		};	
-		
-		this.deselect = function(){
-			if( _selected ){
-				this.toggleState();
-			}
-		};
-		
-		
-		Object.defineProperty(this, 'selected',{
-			get: () => {
-				return _selected;
-			},
-			set: (v) => {
-				_selected = v;
-				if(!v){
-					li.classList.remove('selected');
-				}
-			}
-		});
-		
-		Object.defineProperty(this, 'dependents',{
-			get: () => {
-				return _dependents === false ? false : true; 
-			}
-		});
-		
-		Object.defineProperty(this, 'value',{
-			get: () => {
-				return json.value; 
-			}
-		});
-		
-	
-	
-		/*
-		Events 
-		*/
-		li.addEventListener( "mousedown", this.click.bind( this ) );
+	/**
+	* Hide
+	* removing "fadein" effectively equals: display:none
+	*/
+	const hide = () => {
+		open = false;
+		div.classList.remove('fadein');
+		div.remove();
 	};
-		
-})(bluejay); 
-/*
-Optional Lists based on List selection
-find group ID: 	"add-to-{uniqueID}-listgroup{n}";
-find list ID: 	"add-to-{uniqueID}-list{n}";
-
-@param dependents: String e.g. "2.1" or "2.1,2.2": 
-*/
-
-(function (uiApp) {
-
-	'use strict';	
 	
-	const addSelect = uiApp.namespace( 'addSelect' );	
-	
-	addSelect.OptionDependents = function( dependents, listId ){
+	/**
+	* Show.
+	* Every time a checkbox box is checked it will try
+	* and show the adder.
+	*/
+	const show = () => {
+		if( open ) return; else open = true;
+		if( div == null ) build();
+		// update DOM
+		document.querySelector('main').append( div );
+		div.classList.remove('fadein');
+		div.classList.add('fadein'); // CSS animation 
+	};
 
-		if(dependents === undefined)  return false;
-		
+	/**
+	* Build on request	
+	*/
+	const build = () => {
 		/*
-		List has extra list options	
+		* Insert steps options are static, build once
+		*
+		* Each shortcode has a full title shown in the popup.
+		* In iDG that is in the PHP, however we also have to show 
+		* it here where the user has to select a step.
 		*/
-		const idPrefix = "#add-to-" + listId + "-";
-		let groups = [];
 		
-		/*
-		Can be mulitple list groups.
-		Check string for commas "2.1,2.2" for groups
-		*/
-		dependents.split(',').forEach( group => {
-			
-	
-			let ids = group.split('.'); // could be mutliple list IDs e.g. 2.3.4.5
-			let obj = {};
-			// find group
-			
-			if(ids[0] === 0){
-				console.log('Error: OptionDependents, listGroup = 0 !!',  idPrefix + 'listgroup'+ids[0]);
-			}
-			
-			obj.div = document.querySelector(idPrefix + 'listgroup'+ids[0]); // <div> wrapper for optional lists
-			if(obj.div === null){
-				console.log('obj.div = null!',idPrefix + 'listgroup'+ids[0]);
-			}
-			
-			obj.holder = obj.div.querySelector('.optional-placeholder'); // default placeholder for Optional Lists
-			if(obj.holder === null){
-				console.log('Adder: no placeholder text for optional group');
-			}
-			
-	
-			/*
-			Does it have lists, or show default text?
-			e.g. 2.0
-			*/
-			if( ids[1] == 0 ){
-				obj.showDefaultText = true;
-			} else {
-				obj.showDefaultText = false;
-				/*
-				Not a ZERO... so:
-				Loop through option lists required
-				e.g. 2.4.5 (two lists in group '2')
-				*/
-				obj.lists = [];
-				for(let i=1;i<ids.length;i++ ){
-					let li = document.querySelector(idPrefix + 'list' + ids[i]);
-					if(li === null){
-						console.log('Err: OptionDependents, list? ', idPrefix + 'list' + ids[i]);	
-					} else {
-						obj.lists.push(li);
-					}
-					
-				}
-			}
-			
-			groups.push(obj);
-		});
-	
-		/*
-		Methods
-		*/
-		this.show = function( show ){
-			if(show){
-				/*
-				hide ALL optional lists
-				$('#add-to-'+listId+' .optional-list').hide();
-				*/
-				this.myLists();
-			} else {
-				// unclick
-				this.reset();
-			}
+		div = bj.div('oec-adder');
+		
+		const icon = i => `<i class="oe-i ${i} small pad-right"></i>`;
+		
+		const full = new Map();	
+		
+		const btn = ( key, btn=false, shortcode=false, status='todo', type='process', idg=false ) => {
+			btn = btn || key;
+			shortcode = shortcode || key;
+			full.set( key, { btn, shortcode, status, type, idg });
 		};
-	
-		this.hideAllOptionalLists = function(div){
-			let optionalLists = uiApp.nodeArray(div.querySelectorAll('.optional-list'));
-			optionalLists.forEach((list) => {
-				uiApp.hide(list);
-			});
+		
+		btn('Nurse');
+		btn('Doctor');
+		btn('HCA');
+		
+		btn('Gen', 'General task', false, 'editable');
+		btn('Exam', 'Examination');
+		btn('Triage');
+		btn('Bio', 'Biometry');
+		btn('Colour');
+		btn('Img', 'Imaging');
+		btn('VA', 'Visual Acuity');
+		btn('Orth', 'Orthoptics');
+		btn('Ref', 'Refraction');
+		btn('CDU', 'Clinical decision unit');
+		btn('Presc', 'Prescription', 'Rx');
+		btn('Dilate');
+		btn('Dr Jones');
+		
+		btn('DrugAdmin', icon('drop') + 'Drug Administration Preset Order', 'i-drug-admin', 'popup' );
+		btn('VisFields', 'Visual Fields', 'Fields', 'popup');
+		
+		btn('Letter');
+		btn('Letter-discharge', 'Letter - discharge', 'Disc.letter');
+		btn('Blood', 'Blood tests');
+		btn('MRI', 'MRI tests');
+		
+		btn('preset-pathway', 'Add common pathway', false, 'popup');
+		
+		btn('i-fork', icon('fork') + 'Decision / review', false, 'buff', 'fork');
+		btn('i-break', icon('path-break') + 'Break in pathway', false, 'buff', 'break');
+		btn('i-discharge', icon('stop') + 'Check out', false, 'todo', 'process');
+		btn('on-hold', icon('time') + 'Hold timer (mins)', false, 'editable');
+		
+		btn('c-last','Remove last "todo" pathway step' );
 			
-		};
-	
-		this.myLists = function(){
-			groups.forEach( group => {
-				/*
-				in group hide other lists
-				*/
-				this.hideAllOptionalLists(group.div);
+		/*
+		* Element for all inserts
+		* only need to build this once
+		*/
+		const inserts = bj.div('insert-steps');
+		
+		// fake assignments (works in the Clinic Manager)
+		inserts.insertAdjacentHTML('afterbegin', `<div class="row"><input class="assign-to search" type="text" placeholder="Assign to..."><ul class="btn-list"></ul></div>`);
+		
+		const buildGroup = ( title, list ) => {
+			const h4 = title ? `<h4>${title}</h4>` : "";
+			const group = bj.dom('div','row', h4 );
+			const ul = bj.dom('ul', 'btn-list');
+			
+			list.forEach( code => {
+				// code is the key.
+				const step = full.get( code );
+				const li = bj.dom('li', false, `${step.btn}`);
+				li.setAttribute('data-idg', JSON.stringify({
+					c: step.shortcode,    // shortcode
+					s: step.status, // status
+					t: step.type, // type
+					i: step.idg
+				}));
 				
-				if(group.showDefaultText){
-					if(group.holder) uiApp.show(group.holder, 'block');
-				} else {
-					if(group.holder) uiApp.hide(group.holder);
-					// show required Lists
-					group.lists.forEach( list => {
-						uiApp.show(list, 'block');
-					});
-				}
+				// Special remove button:
+				if( code == "c-last") li.className = "red";
 				
+				ul.append( li );
 			});
-		};
-		
-		/*
-		Reset (these!) groups!	
-		*/
-		this.reset = function(){
-			groups.forEach( group => {
-				this.hideAllOptionalLists(group.div);
-				if(group.holder) uiApp.show(group.holder, 'block');
-			});
-		};
 			
-	};
+			group.append( ul );
+			inserts.append( group );
+		};
 	
-})(bluejay); 
-(function (uiApp) {
+		buildGroup('Path', ['i-fork', 'i-break', 'i-discharge', 'on-hold']);
+		buildGroup('Preset pathways', ['preset-pathway']);	
+		buildGroup('Standard', ['Bio','DrugAdmin','VisFields','Letter','Presc','Exam','Gen'].sort());
+		buildGroup('Custom', ['Triage','Colour', 'Dr Jones', 'Letter-discharge', 'Dilate','Img','VA','Orth','Ref', 'CDU','Doctor','Nurse', 'HCA','Blood','MRI'].sort());
 
-	'use strict';	
-	
-	const addSelect = uiApp.namespace( 'addSelect' );
-	
-	addSelect.OptionsList = function(ul){
+		// build div
+		div.append( bj.div('close-btn'), inserts );
 		
-		let json = JSON.parse(ul.dataset.options);
-		
-		/*
-		Types: Single & Multi are the main ones but 
-		added in "inputTemplate" to handle the 
-		list of options to fill the input field
-		*/
-		const template = json.type == 'inputTemplate' ? true : false;
-		const single = json.type == 'single' ? true : false ;				
-		// some assumptions here... 
-		const hasOptions = json.hasExtraOptions === "true" ? true : false;
-		const isOptionalList = json.isOptionalList === "true" ? true : false;
-		
-		this.uniqueId  = ul.dataset.id; // passes in DOM id (unique part) 
-		
-		/*
-		Optional List? 
-		Needs hiding. The List Option it depends on will show
-		it when it's clicked	
-		*/
-		if(isOptionalList) {
-			uiApp.hide(ul.parentNode);
-		}
-		 
-		/*
-		Store all List Options	
-		*/
-		let me = this; // hmmm... this could be better.
-		let options = [];
-		let defaultSelected = [];
-		
-		const listElems = uiApp.nodeArray(ul.querySelectorAll('li'));
-		listElems.forEach((li) => {
-			let liOpt = new addSelect.ListOption(li, this);
-			options.push(liOpt);
-			/*
-			If liOpt is selected AND has dependents
-			Need to activate the list AFTER all the other DOM
-			is set up
-			*/
-			if( liOpt.selected && liOpt.dependents){
-				/*
-				Store and then loop through after
-				others are all done to set up default
-				selected states 
-				*/
-				defaultSelected.push(liOpt);
+		// add a direct listener (otherwise it breaks clinic manager)
+		div.addEventListener('mousedown', ev => {
+			if( ev.target.matches('div.oec-adder .close-btn')){
+				hide();
 			}
 		});
 		
-		/*
-		Methods	
-		*/
-		this.optionClicked = function( selected, listOption ){
-		
-			if(template){
-				// Assume that we have an input field available.
-				let input = ul.previousElementSibling;
-				let template = listOption.value;
-				let selectStart = template.indexOf('{');
-				let selectEnd = template.indexOf('}') + 1;
-				input.value = template;
-				listOption.deselect();
-				// let the events play out
-				setTimeout(() => {
-					input.focus();
-					input.select();
-					input.setSelectionRange(selectStart, selectEnd);
-				}, 50);
-				return;
-			}
-			
-			
-			/*
-			Manage this list. 
-			Multi-select is the default	
-			*/
-			if(selected){
-				if(single){
-					options.forEach( option => {
-						if(option !== listOption) option.deselect();
-					});
-				}
-			} 
-		};
-		
-		
-		this.checkForDefaultSelections = () => {
-			if( defaultSelected.length ){
-				/*
-				This all need 'clicking' to activate
-				the dependent optional lists	
-				*/
-				defaultSelected.forEach( d => {
-					/*
-					To make the click work correctly 
-					de-select the list btn, click will
-					re-select it and activate the dependents 
-					*/
-					d.selected = false;
-					// allow time for dependants to be added ;)
-					setTimeout(() => d.click(), 100 );
-				});
-			}
-		};			
 	};
 		
-})(bluejay); 
+	// Events
+	bj.userClick('button.add-pathstep',() => show());		
 
-(function (uiApp) {
+	
+})( bluejay ); 
+(function( bj, gui ) {
 
 	'use strict';	
 	
-	const addSelect = uiApp.namespace( 'addSelect' );
+	bj.addModule('clinicPathway');	
 	
-	addSelect.Popup = function( greenBtn ){	
-		
-		let popup = document.querySelector('#' + greenBtn.dataset.popup);
-		
-		if( popup == null ) return;
-		
-		let lists = [];
-		const reset = true;
-		const require = false; 
+	/**
+	* Pathway pathway btn in all events to show current pathway
+	*/
 	
-		/*
-		Using in analytics to build the data filters. Popup
-		needs to anchor to the left. Can not rely to x < n to do this.
-		*/
-		this.anchorLeft = popup.dataset.anchorLeft ? true : false;
+	let div = null;
+	const now = Date.now();
 	
-		/*
-		Props
-		*/ 
-		this.btn = greenBtn;  
-		this.popup = popup;
-		this.closeBtn = popup.querySelector('.close-icon-btn');
+	// big button in the Event sidebar
+	const sidebarBtn = document.getElementById('js-idg-clinic-pathway-btn');
 	
-		/*
-		Methods
-		*/
-		this.open = function(){
-			this.position();
-			addSelect.closeAll();
-			uiApp.show(popup, 'block');
-			
-			this.closeBtn.addEventListener('mousedown', this.close.bind(this));
-			//window.addEventListener('scroll', this.close.bind(this), {capture:true, once:true});
-		};
+	/**
+	* Need to show this demo pathway in 2 places
+	* in the popup in any Event and in the Next Steps Element
+	* Pathway matches the idg Clinic manager demo
+	*/
+	const pathwaySteps = ( parentDiv ) => {
+		bj.empty( parentDiv ); // make sure it's empty
 		
-		this.close = function(){
-			popup.style.display = "none";	
-		};
-		
-		this.reset = function(){
-			// reset (to default state)
-		};
-		
-		let addOptions = uiApp.nodeArray(popup.querySelectorAll('.add-options'));
-		addOptions.forEach((option) => {
-			let list = new addSelect.OptionsList(option);
-			list.checkForDefaultSelections();
-			lists.push(list);
+		[
+			['i-arr', 155, 'done', 'process'],
+			['Triage', 148, 'done', 'process'],
+			['i-redflag', 119, 'buff','red-flag'],
+			['Doctor', 99, 'active', 'process'],
+			['i-drug-admin', 0, 'todo', 'process', 'PSD-B'],
+			['i-discharge', 0, 'todo','process'],
+			['Letter', 0, 'todo', 'process'],
+			['Blood', 0, 'todo', 'process']
+		].forEach( newStep => { 
+			gui.pathStep({
+				shortcode: newStep[0],
+				status: newStep[2], 
+				type: newStep[3],
+				info: newStep[1] ? bj.clock24( new Date( now - (newStep[1] * 60000))) : 0,
+				idgPopupCode: newStep[4],
+			}, parentDiv );
 		});
+	}; 
+	
+	const pathwayComments = ( parentDiv ) => {
+		// comments "step"
+		gui.pathStep({
+			shortcode: 'i-comments',
+			status: 'buff', 
+			type: 'comments',
+			idgPopupCode: 'i-comments-none', 
+		}, parentDiv );
+	};
+	
+	/*
+	Expose these 2 to use directly in Next Steps elements
+	*/
+	bj.extend('demoPathwaySteps', pathwaySteps );
+	bj.extend('demoPathwayComments', pathwayComments );
+
+	
+	const buildDemoPathway = () => {		
+		// match times in the demo
+		const arrive = bj.clock24( new Date( now - (155 * 60000)));
+		const pathwayDuration = () => '<div class="wait-duration"><svg class="duration-graphic yellow" viewBox="0 0 48 12" height="12" width="48"><circle class="c0" cx="6" cy="6" r="6"></circle><circle class="c1" cx="18" cy="6" r="6"></circle><circle class="c2" cx="30" cy="6" r="6"></circle><circle class="c3" cx="42" cy="6" r="6"></circle></svg><div class="mins"><small>2:35</small></div></div>';
 		
-		//idg.addSelectInsert.btnEvent( this, $popup.children('.close-icon-btn'), this.close );
-		this.btn.addEventListener('mousedown', this.open.bind(this) );		
+		const clinic = div.querySelector('.clinic-pathway');
+		clinic.innerHTML = [
+			`<table class="oec-patients in-event">`,
+			`<tbody>`,
+			`<tr>`,
+			`<td>${arrive}</td>`,
+			`<td><div class="list-name">Accident &amp; Emergency</div><div class="code">First Attendance</div></td>`,
+			`<td><div class="pathway active"><!-- JS --></div></td>`,
+			`<td><div class="flex"><i class="oe-i person no-click small"></i> PT</div></td>`,
+			`<td><i class="oe-i circle-amber medium-icon js-has-tooltip" data-tooltip-content="Priority: Urgent"></i></td>`,
+			`<td></td>`, // comments
+			`<td>${ pathwayDuration() }</td>`,
+			`<td><button class="add-pathstep"></button></td>`,
+			`</tr>`,
+			`</tbody>`,
+			`</table>`,
+		].join('');
+
+		pathwaySteps( clinic.querySelector('.pathway'));
+		pathwayComments( clinic.querySelector('td:nth-child(6)'));
+	
 	};
 	
 	
-	addSelect.Popup.prototype.position = function(){
-		let rect = this.btn.getBoundingClientRect();	
-		let w = window.innerWidth; // hmmm, this could be better as forces reflow
-		let h = window.innerHeight;
-		let posH = (h - rect.bottom);
+	const show = () => {
+		div = bj.div('pathway-in-event');
+		div.innerHTML = [
+			`<div class="close-icon-btn"><i class="oe-i remove-circle small-icon"></i></div>`,
+			`<div class="clinic-pathway"><i class="spinner as-icon"></i></div>`
+		].join('');
 		
-		// check popup doesn't go off the top of the screen 
-		// and don't overlay Logo! or Patient Name
-		if(h - posH < 325){
-			posH = h - 325;
-		}
 		
-		/*
-		Popup can be 'requested' to anchor left.
-		Only used in Analytics (so far)	
-		*/
-		if( this.anchorLeft ){
-			this.popup.style.left = rect.left + 'px';
+		// make space for the popup pathway
+		document.querySelector('main').classList.add('allow-for-pathway');
+		document.body.append( div );
+		
+		// this will clear the fake loader.
+		setTimeout(() => buildDemoPathway(), 500);
+		
+		// update sidebar btn
+		sidebarBtn.classList.add('active');
+	}; 
+	
+	const remove = () => {
+		div.remove();
+		document.querySelector('main').classList.remove('allow-for-pathway');
+		
+		// update sidebar btn
+		sidebarBtn.classList.remove('active');
+	};
+	
+	/*
+	Events
+	*/
+	bj.userDown('#js-idg-clinic-pathway-btn', () => {
+		if( sidebarBtn.classList.contains('active')){
+			remove();
 		} else {
-			// is popup pushing off the left
-			let leftSideEdge = rect.right - this.popup.getBoundingClientRect().width;
-			let adjustRight =  leftSideEdge < 0 ? leftSideEdge - 25 : 0;
-			this.popup.style.right = (w - rect.right) + adjustRight + 'px' ;
+			show();	
 		}
-		
-		this.popup.style.bottom = posH + 'px';
-
-	};
+		sidebarBtn.blur();
+	});
 	
-		
-})(bluejay); 
+	bj.userDown('.pathway-in-event .close-icon-btn i', remove );
 
+})( bluejay, bluejay.namespace('gui')); 
 (function( bj, clinic, gui ){
 
 	'use strict';	
@@ -13572,6 +13267,432 @@ find list ID: 	"add-to-{uniqueID}-list{n}";
 	clinic.addList = init;			
 
 })( bluejay, bluejay.namespace('clinic')); 
+/*
+List Options Constructor
+*/
+(function (uiApp) {
+
+	'use strict';	
+	
+	const addSelect = uiApp.namespace( 'addSelect' );	
+	
+	addSelect.ListOption = function (li, parent){
+		
+		let _selected = li.classList.contains('selected'); // check not setup to be selected:
+		let _dependents = false;
+		let json = JSON.parse(li.dataset.insert);
+		
+		
+		/*
+		Does list have any dependency lists?
+		*/
+		if( json.dependents !== undefined ){
+			// build dependents
+			_dependents = new addSelect.OptionDependents(json.dependents, parent.uniqueId);
+		}
+	
+		/*
+		Methods
+		*/ 
+		this.click = function(){
+			this.toggleState();
+			parent.optionClicked( _selected, this );
+	
+			if(_dependents != false){
+				_dependents.show( _selected );
+			}	
+		};
+		
+		this.toggleState = function() {
+			li.classList.toggle('selected'); 
+			_selected = !_selected;
+		};	
+		
+		this.deselect = function(){
+			if( _selected ){
+				this.toggleState();
+			}
+		};
+		
+		
+		Object.defineProperty(this, 'selected',{
+			get: () => {
+				return _selected;
+			},
+			set: (v) => {
+				_selected = v;
+				if(!v){
+					li.classList.remove('selected');
+				}
+			}
+		});
+		
+		Object.defineProperty(this, 'dependents',{
+			get: () => {
+				return _dependents === false ? false : true; 
+			}
+		});
+		
+		Object.defineProperty(this, 'value',{
+			get: () => {
+				return json.value; 
+			}
+		});
+		
+	
+	
+		/*
+		Events 
+		*/
+		li.addEventListener( "mousedown", this.click.bind( this ) );
+	};
+		
+})(bluejay); 
+/*
+Optional Lists based on List selection
+find group ID: 	"add-to-{uniqueID}-listgroup{n}";
+find list ID: 	"add-to-{uniqueID}-list{n}";
+
+@param dependents: String e.g. "2.1" or "2.1,2.2": 
+*/
+
+(function (uiApp) {
+
+	'use strict';	
+	
+	const addSelect = uiApp.namespace( 'addSelect' );	
+	
+	addSelect.OptionDependents = function( dependents, listId ){
+
+		if(dependents === undefined)  return false;
+		
+		/*
+		List has extra list options	
+		*/
+		const idPrefix = "#add-to-" + listId + "-";
+		let groups = [];
+		
+		/*
+		Can be mulitple list groups.
+		Check string for commas "2.1,2.2" for groups
+		*/
+		dependents.split(',').forEach( group => {
+			
+	
+			let ids = group.split('.'); // could be mutliple list IDs e.g. 2.3.4.5
+			let obj = {};
+			// find group
+			
+			if(ids[0] === 0){
+				console.log('Error: OptionDependents, listGroup = 0 !!',  idPrefix + 'listgroup'+ids[0]);
+			}
+			
+			obj.div = document.querySelector(idPrefix + 'listgroup'+ids[0]); // <div> wrapper for optional lists
+			if(obj.div === null){
+				console.log('obj.div = null!',idPrefix + 'listgroup'+ids[0]);
+			}
+			
+			obj.holder = obj.div.querySelector('.optional-placeholder'); // default placeholder for Optional Lists
+			if(obj.holder === null){
+				console.log('Adder: no placeholder text for optional group');
+			}
+			
+	
+			/*
+			Does it have lists, or show default text?
+			e.g. 2.0
+			*/
+			if( ids[1] == 0 ){
+				obj.showDefaultText = true;
+			} else {
+				obj.showDefaultText = false;
+				/*
+				Not a ZERO... so:
+				Loop through option lists required
+				e.g. 2.4.5 (two lists in group '2')
+				*/
+				obj.lists = [];
+				for(let i=1;i<ids.length;i++ ){
+					let li = document.querySelector(idPrefix + 'list' + ids[i]);
+					if(li === null){
+						console.log('Err: OptionDependents, list? ', idPrefix + 'list' + ids[i]);	
+					} else {
+						obj.lists.push(li);
+					}
+					
+				}
+			}
+			
+			groups.push(obj);
+		});
+	
+		/*
+		Methods
+		*/
+		this.show = function( show ){
+			if(show){
+				/*
+				hide ALL optional lists
+				$('#add-to-'+listId+' .optional-list').hide();
+				*/
+				this.myLists();
+			} else {
+				// unclick
+				this.reset();
+			}
+		};
+	
+		this.hideAllOptionalLists = function(div){
+			let optionalLists = uiApp.nodeArray(div.querySelectorAll('.optional-list'));
+			optionalLists.forEach((list) => {
+				uiApp.hide(list);
+			});
+			
+		};
+	
+		this.myLists = function(){
+			groups.forEach( group => {
+				/*
+				in group hide other lists
+				*/
+				this.hideAllOptionalLists(group.div);
+				
+				if(group.showDefaultText){
+					if(group.holder) uiApp.show(group.holder, 'block');
+				} else {
+					if(group.holder) uiApp.hide(group.holder);
+					// show required Lists
+					group.lists.forEach( list => {
+						uiApp.show(list, 'block');
+					});
+				}
+				
+			});
+		};
+		
+		/*
+		Reset (these!) groups!	
+		*/
+		this.reset = function(){
+			groups.forEach( group => {
+				this.hideAllOptionalLists(group.div);
+				if(group.holder) uiApp.show(group.holder, 'block');
+			});
+		};
+			
+	};
+	
+})(bluejay); 
+(function (uiApp) {
+
+	'use strict';	
+	
+	const addSelect = uiApp.namespace( 'addSelect' );
+	
+	addSelect.OptionsList = function(ul){
+		
+		let json = JSON.parse(ul.dataset.options);
+		
+		/*
+		Types: Single & Multi are the main ones but 
+		added in "inputTemplate" to handle the 
+		list of options to fill the input field
+		*/
+		const template = json.type == 'inputTemplate' ? true : false;
+		const single = json.type == 'single' ? true : false ;				
+		// some assumptions here... 
+		const hasOptions = json.hasExtraOptions === "true" ? true : false;
+		const isOptionalList = json.isOptionalList === "true" ? true : false;
+		
+		this.uniqueId  = ul.dataset.id; // passes in DOM id (unique part) 
+		
+		/*
+		Optional List? 
+		Needs hiding. The List Option it depends on will show
+		it when it's clicked	
+		*/
+		if(isOptionalList) {
+			uiApp.hide(ul.parentNode);
+		}
+		 
+		/*
+		Store all List Options	
+		*/
+		let me = this; // hmmm... this could be better.
+		let options = [];
+		let defaultSelected = [];
+		
+		const listElems = uiApp.nodeArray(ul.querySelectorAll('li'));
+		listElems.forEach((li) => {
+			let liOpt = new addSelect.ListOption(li, this);
+			options.push(liOpt);
+			/*
+			If liOpt is selected AND has dependents
+			Need to activate the list AFTER all the other DOM
+			is set up
+			*/
+			if( liOpt.selected && liOpt.dependents){
+				/*
+				Store and then loop through after
+				others are all done to set up default
+				selected states 
+				*/
+				defaultSelected.push(liOpt);
+			}
+		});
+		
+		/*
+		Methods	
+		*/
+		this.optionClicked = function( selected, listOption ){
+		
+			if(template){
+				// Assume that we have an input field available.
+				let input = ul.previousElementSibling;
+				let template = listOption.value;
+				let selectStart = template.indexOf('{');
+				let selectEnd = template.indexOf('}') + 1;
+				input.value = template;
+				listOption.deselect();
+				// let the events play out
+				setTimeout(() => {
+					input.focus();
+					input.select();
+					input.setSelectionRange(selectStart, selectEnd);
+				}, 50);
+				return;
+			}
+			
+			
+			/*
+			Manage this list. 
+			Multi-select is the default	
+			*/
+			if(selected){
+				if(single){
+					options.forEach( option => {
+						if(option !== listOption) option.deselect();
+					});
+				}
+			} 
+		};
+		
+		
+		this.checkForDefaultSelections = () => {
+			if( defaultSelected.length ){
+				/*
+				This all need 'clicking' to activate
+				the dependent optional lists	
+				*/
+				defaultSelected.forEach( d => {
+					/*
+					To make the click work correctly 
+					de-select the list btn, click will
+					re-select it and activate the dependents 
+					*/
+					d.selected = false;
+					// allow time for dependants to be added ;)
+					setTimeout(() => d.click(), 100 );
+				});
+			}
+		};			
+	};
+		
+})(bluejay); 
+
+(function (uiApp) {
+
+	'use strict';	
+	
+	const addSelect = uiApp.namespace( 'addSelect' );
+	
+	addSelect.Popup = function( greenBtn ){	
+		
+		let popup = document.querySelector('#' + greenBtn.dataset.popup);
+		
+		if( popup == null ) return;
+		
+		let lists = [];
+		const reset = true;
+		const require = false; 
+	
+		/*
+		Using in analytics to build the data filters. Popup
+		needs to anchor to the left. Can not rely to x < n to do this.
+		*/
+		this.anchorLeft = popup.dataset.anchorLeft ? true : false;
+	
+		/*
+		Props
+		*/ 
+		this.btn = greenBtn;  
+		this.popup = popup;
+		this.closeBtn = popup.querySelector('.close-icon-btn');
+	
+		/*
+		Methods
+		*/
+		this.open = function(){
+			this.position();
+			addSelect.closeAll();
+			uiApp.show(popup, 'block');
+			
+			this.closeBtn.addEventListener('mousedown', this.close.bind(this));
+			//window.addEventListener('scroll', this.close.bind(this), {capture:true, once:true});
+		};
+		
+		this.close = function(){
+			popup.style.display = "none";	
+		};
+		
+		this.reset = function(){
+			// reset (to default state)
+		};
+		
+		let addOptions = uiApp.nodeArray(popup.querySelectorAll('.add-options'));
+		addOptions.forEach((option) => {
+			let list = new addSelect.OptionsList(option);
+			list.checkForDefaultSelections();
+			lists.push(list);
+		});
+		
+		//idg.addSelectInsert.btnEvent( this, $popup.children('.close-icon-btn'), this.close );
+		this.btn.addEventListener('mousedown', this.open.bind(this) );		
+	};
+	
+	
+	addSelect.Popup.prototype.position = function(){
+		let rect = this.btn.getBoundingClientRect();	
+		let w = window.innerWidth; // hmmm, this could be better as forces reflow
+		let h = window.innerHeight;
+		let posH = (h - rect.bottom);
+		
+		// check popup doesn't go off the top of the screen 
+		// and don't overlay Logo! or Patient Name
+		if(h - posH < 325){
+			posH = h - 325;
+		}
+		
+		/*
+		Popup can be 'requested' to anchor left.
+		Only used in Analytics (so far)	
+		*/
+		if( this.anchorLeft ){
+			this.popup.style.left = rect.left + 'px';
+		} else {
+			// is popup pushing off the left
+			let leftSideEdge = rect.right - this.popup.getBoundingClientRect().width;
+			let adjustRight =  leftSideEdge < 0 ? leftSideEdge - 25 : 0;
+			this.popup.style.right = (w - rect.right) + adjustRight + 'px' ;
+		}
+		
+		this.popup.style.bottom = posH + 'px';
+
+	};
+	
+		
+})(bluejay); 
+
 (function( bj, gui ){
 
 	'use strict';	
